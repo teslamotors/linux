@@ -34,7 +34,6 @@
 #include <linux/mlx5/driver.h>
 #include <linux/mlx5/mlx5_ifc.h>
 #include "mlx5_core.h"
-#include "eswitch.h"
 #include "lib/mpfs.h"
 
 /* HW L2 Table (MPFS) management */
@@ -99,7 +98,7 @@ int mlx5_mpfs_init(struct mlx5_core_dev *dev)
 	int l2table_size = 1 << MLX5_CAP_GEN(dev, log_max_l2_table);
 	struct mlx5_mpfs *mpfs;
 
-	if (!MLX5_ESWITCH_MANAGER(dev))
+	if (!MLX5_VPORT_MANAGER(dev))
 		return 0;
 
 	mpfs = kzalloc(sizeof(*mpfs), GFP_KERNEL);
@@ -123,7 +122,7 @@ void mlx5_mpfs_cleanup(struct mlx5_core_dev *dev)
 {
 	struct mlx5_mpfs *mpfs = dev->priv.mpfs;
 
-	if (!MLX5_ESWITCH_MANAGER(dev))
+	if (!MLX5_VPORT_MANAGER(dev))
 		return;
 
 	WARN_ON(!hlist_empty(mpfs->hash));
@@ -138,7 +137,7 @@ int mlx5_mpfs_add_mac(struct mlx5_core_dev *dev, u8 *mac)
 	u32 index;
 	int err;
 
-	if (!MLX5_ESWITCH_MANAGER(dev))
+	if (!MLX5_VPORT_MANAGER(dev))
 		return 0;
 
 	mutex_lock(&mpfs->lock);
@@ -180,7 +179,7 @@ int mlx5_mpfs_del_mac(struct mlx5_core_dev *dev, u8 *mac)
 	int err = 0;
 	u32 index;
 
-	if (!MLX5_ESWITCH_MANAGER(dev))
+	if (!MLX5_VPORT_MANAGER(dev))
 		return 0;
 
 	mutex_lock(&mpfs->lock);

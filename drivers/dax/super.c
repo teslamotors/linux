@@ -73,50 +73,42 @@ EXPORT_SYMBOL_GPL(fs_dax_get_by_bdev);
 
 /**
  * __bdev_dax_supported() - Check if the device supports dax for filesystem
- * @bdev: block device to check
+ * @sb: The superblock of the device
  * @blocksize: The block size of the device
  *
  * This is a library function for filesystems to check if the block device
  * can be mounted with dax option.
  *
- * Return: true if supported, false if unsupported
+ * Return: negative errno if unsupported, 0 if supported.
  */
-bool __bdev_dax_supported(struct block_device *bdev, int blocksize)
+int __bdev_dax_supported(struct super_block *sb, int blocksize)
 {
+	struct block_device *bdev = sb->s_bdev;
 	struct dax_device *dax_dev;
-	struct request_queue *q;
 	pgoff_t pgoff;
 	int err, id;
 	void *kaddr;
 	pfn_t pfn;
 	long len;
-	char buf[BDEVNAME_SIZE];
 
 	if (blocksize != PAGE_SIZE) {
-		pr_debug("%s: error: unsupported blocksize for dax\n",
-				bdevname(bdev, buf));
-		return false;
-	}
-
-	q = bdev_get_queue(bdev);
-	if (!q || !blk_queue_dax(q)) {
-		pr_debug("%s: error: request queue doesn't support dax\n",
-				bdevname(bdev, buf));
-		return false;
+		pr_err("VFS (%s): error: unsupported blocksize for dax\n",
+				sb->s_id);
+		return -EINVAL;
 	}
 
 	err = bdev_dax_pgoff(bdev, 0, PAGE_SIZE, &pgoff);
 	if (err) {
-		pr_debug("%s: error: unaligned partition for dax\n",
-				bdevname(bdev, buf));
-		return false;
+		pr_err("VFS (%s): error: unaligned partition for dax\n",
+				sb->s_id);
+		return err;
 	}
 
 	dax_dev = dax_get_by_host(bdev->bd_disk->disk_name);
 	if (!dax_dev) {
-		pr_debug("%s: error: device does not support dax\n",
-				bdevname(bdev, buf));
-		return false;
+		pr_err("VFS (%s): error: device does not support dax\n",
+				sb->s_id);
+		return -EOPNOTSUPP;
 	}
 
 	id = dax_read_lock();
@@ -126,12 +118,12 @@ bool __bdev_dax_supported(struct block_device *bdev, int blocksize)
 	put_dax(dax_dev);
 
 	if (len < 1) {
-		pr_debug("%s: error: dax access failed (%ld)\n",
-				bdevname(bdev, buf), len);
-		return false;
+		pr_err("VFS (%s): error: dax access failed (%ld)",
+				sb->s_id, len);
+		return len < 0 ? len : -EIO;
 	}
 
-	return true;
+	return 0;
 }
 EXPORT_SYMBOL_GPL(__bdev_dax_supported);
 #endif

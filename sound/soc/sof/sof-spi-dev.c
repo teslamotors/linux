@@ -136,14 +136,14 @@ static struct spi_driver wm8731_spi_driver = {
 };
 
 static const struct snd_sof_machine sof_spi_machines[] = {
-	{ "INT343A", "bxt_alc298s_i2s", "intel/sof-spi.ri",
-		"intel/sof-spi.tplg", "0000:00:0e.0", &snd_sof_spi_ops },
+	{ "INT343A", "bxt_alc298s_i2s", "intel/reef-spi.ri",
+		"intel/reef-spi.tplg", "0000:00:0e.0", &snd_sof_spi_ops },
 };
 
 static const struct sof_dev_desc spi_desc = {
 	.machines		= sof_spi_machines,
-	.nocodec_fw_filename = "intel/sof-spi.ri",
-	.nocodec_tplg_filename = "intel/sof-spi.tplg"
+	.nocodec_fw_filename = "intel/reef-spi.ri",
+	.nocodec_tplg_filename = "intel/reef-spi.tplg"
 };
 
 static int __init sof_spi_modinit(void)

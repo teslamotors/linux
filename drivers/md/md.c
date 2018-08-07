@@ -266,31 +266,16 @@ static DEFINE_SPINLOCK(all_mddevs_lock);
  * call has finished, the bio has been linked into some internal structure
  * and so is visible to ->quiesce(), so we don't need the refcount any more.
  */
-static bool is_suspended(struct mddev *mddev, struct bio *bio)
-{
-	if (mddev->suspended)
-		return true;
-	if (bio_data_dir(bio) != WRITE)
-		return false;
-	if (mddev->suspend_lo >= mddev->suspend_hi)
-		return false;
-	if (bio->bi_iter.bi_sector >= mddev->suspend_hi)
-		return false;
-	if (bio_end_sector(bio) < mddev->suspend_lo)
-		return false;
-	return true;
-}
-
 void md_handle_request(struct mddev *mddev, struct bio *bio)
 {
 check_suspended:
 	rcu_read_lock();
-	if (is_suspended(mddev, bio)) {
+	if (mddev->suspended) {
 		DEFINE_WAIT(__wait);
 		for (;;) {
 			prepare_to_wait(&mddev->sb_wait, &__wait,
 					TASK_UNINTERRUPTIBLE);
-			if (!is_suspended(mddev, bio))
+			if (!mddev->suspended)
 				break;
 			rcu_read_unlock();
 			schedule();
@@ -359,17 +344,12 @@ static blk_qc_t md_make_request(struct request_queue *q, struct bio *bio)
 void mddev_suspend(struct mddev *mddev)
 {
 	WARN_ON_ONCE(mddev->thread && current == mddev->thread->tsk);
-	lockdep_assert_held(&mddev->reconfig_mutex);
 	if (mddev->suspended++)
 		return;
 	synchronize_rcu();
 	wake_up(&mddev->sb_wait);
-	set_bit(MD_ALLOW_SB_UPDATE, &mddev->flags);
-	smp_mb__after_atomic();
 	wait_event(mddev->sb_wait, atomic_read(&mddev->active_io) == 0);
 	mddev->pers->quiesce(mddev, 1);
-	clear_bit_unlock(MD_ALLOW_SB_UPDATE, &mddev->flags);
-	wait_event(mddev->sb_wait, !test_bit(MD_UPDATING_SB, &mddev->flags));
 
 	del_timer_sync(&mddev->safemode_timer);
 }
@@ -377,7 +357,6 @@ EXPORT_SYMBOL_GPL(mddev_suspend);
 
 void mddev_resume(struct mddev *mddev)
 {
-	lockdep_assert_held(&mddev->reconfig_mutex);
 	if (--mddev->suspended)
 		return;
 	wake_up(&mddev->sb_wait);
@@ -684,7 +663,6 @@ void mddev_unlock(struct mddev *mddev)
 	 */
 	spin_lock(&pers_lock);
 	md_wakeup_thread(mddev->thread);
-	wake_up(&mddev->sb_wait);
 	spin_unlock(&pers_lock);
 }
 EXPORT_SYMBOL_GPL(mddev_unlock);
@@ -2845,8 +2823,7 @@ state_store(struct md_rdev *rdev, const char *buf, size_t len)
 			err = 0;
 		}
 	} else if (cmd_match(buf, "re-add")) {
-		if (test_bit(Faulty, &rdev->flags) && (rdev->raid_disk == -1) &&
-			rdev->saved_raid_disk >= 0) {
+		if (test_bit(Faulty, &rdev->flags) && (rdev->raid_disk == -1)) {
 			/* clear_bit is performed _after_ all the devices
 			 * have their local Faulty bit cleared. If any writes
 			 * happen in the meantime in the local node, they
@@ -4850,7 +4827,7 @@ suspend_lo_show(struct mddev *mddev, char *page)
 static ssize_t
 suspend_lo_store(struct mddev *mddev, const char *buf, size_t len)
 {
-	unsigned long long new;
+	unsigned long long old, new;
 	int err;
 
 	err = kstrtoull(buf, 10, &new);
@@ -4866,10 +4843,16 @@ suspend_lo_store(struct mddev *mddev, const char *buf, size_t len)
 	if (mddev->pers == NULL ||
 	    mddev->pers->quiesce == NULL)
 		goto unlock;
-	mddev_suspend(mddev);
+	old = mddev->suspend_lo;
 	mddev->suspend_lo = new;
-	mddev_resume(mddev);
-
+	if (new >= old)
+		/* Shrinking suspended region */
+		mddev->pers->quiesce(mddev, 2);
+	else {
+		/* Expanding suspended region - need to wait */
+		mddev->pers->quiesce(mddev, 1);
+		mddev->pers->quiesce(mddev, 0);
+	}
 	err = 0;
 unlock:
 	mddev_unlock(mddev);
@@ -4887,7 +4870,7 @@ suspend_hi_show(struct mddev *mddev, char *page)
 static ssize_t
 suspend_hi_store(struct mddev *mddev, const char *buf, size_t len)
 {
-	unsigned long long new;
+	unsigned long long old, new;
 	int err;
 
 	err = kstrtoull(buf, 10, &new);
@@ -4900,13 +4883,19 @@ suspend_hi_store(struct mddev *mddev, const char *buf, size_t len)
 	if (err)
 		return err;
 	err = -EINVAL;
-	if (mddev->pers == NULL)
+	if (mddev->pers == NULL ||
+	    mddev->pers->quiesce == NULL)
 		goto unlock;
-
-	mddev_suspend(mddev);
+	old = mddev->suspend_hi;
 	mddev->suspend_hi = new;
-	mddev_resume(mddev);
-
+	if (new <= old)
+		/* Shrinking suspended region */
+		mddev->pers->quiesce(mddev, 2);
+	else {
+		/* Expanding suspended region - need to wait */
+		mddev->pers->quiesce(mddev, 1);
+		mddev->pers->quiesce(mddev, 0);
+	}
 	err = 0;
 unlock:
 	mddev_unlock(mddev);
@@ -6652,26 +6641,22 @@ static int set_bitmap_file(struct mddev *mddev, int fd)
 		return -ENOENT; /* cannot remove what isn't there */
 	err = 0;
 	if (mddev->pers) {
+		mddev->pers->quiesce(mddev, 1);
 		if (fd >= 0) {
 			struct bitmap *bitmap;
 
 			bitmap = bitmap_create(mddev, -1);
-			mddev_suspend(mddev);
 			if (!IS_ERR(bitmap)) {
 				mddev->bitmap = bitmap;
 				err = bitmap_load(mddev);
 			} else
 				err = PTR_ERR(bitmap);
-			if (err) {
-				bitmap_destroy(mddev);
-				fd = -1;
-			}
-			mddev_resume(mddev);
-		} else if (fd < 0) {
-			mddev_suspend(mddev);
-			bitmap_destroy(mddev);
-			mddev_resume(mddev);
 		}
+		if (fd < 0 || err) {
+			bitmap_destroy(mddev);
+			fd = -1; /* make sure to put the file */
+		}
+		mddev->pers->quiesce(mddev, 0);
 	}
 	if (fd < 0) {
 		struct file *f = mddev->bitmap_info.file;
@@ -6955,8 +6940,8 @@ static int update_array_info(struct mddev *mddev, mdu_array_info_t *info)
 				mddev->bitmap_info.default_offset;
 			mddev->bitmap_info.space =
 				mddev->bitmap_info.default_space;
+			mddev->pers->quiesce(mddev, 1);
 			bitmap = bitmap_create(mddev, -1);
-			mddev_suspend(mddev);
 			if (!IS_ERR(bitmap)) {
 				mddev->bitmap = bitmap;
 				rv = bitmap_load(mddev);
@@ -6964,7 +6949,7 @@ static int update_array_info(struct mddev *mddev, mdu_array_info_t *info)
 				rv = PTR_ERR(bitmap);
 			if (rv)
 				bitmap_destroy(mddev);
-			mddev_resume(mddev);
+			mddev->pers->quiesce(mddev, 0);
 		} else {
 			/* remove the bitmap */
 			if (!mddev->bitmap) {
@@ -6987,9 +6972,9 @@ static int update_array_info(struct mddev *mddev, mdu_array_info_t *info)
 				mddev->bitmap_info.nodes = 0;
 				md_cluster_ops->leave(mddev);
 			}
-			mddev_suspend(mddev);
+			mddev->pers->quiesce(mddev, 1);
 			bitmap_destroy(mddev);
-			mddev_resume(mddev);
+			mddev->pers->quiesce(mddev, 0);
 			mddev->bitmap_info.offset = 0;
 		}
 	}
@@ -8609,7 +8594,6 @@ static int remove_and_add_spares(struct mddev *mddev,
 			if (mddev->pers->hot_remove_disk(
 				    mddev, rdev) == 0) {
 				sysfs_unlink_rdev(mddev, rdev);
-				rdev->saved_raid_disk = rdev->raid_disk;
 				rdev->raid_disk = -1;
 				removed++;
 			}
@@ -8872,16 +8856,6 @@ void md_check_recovery(struct mddev *mddev)
 	unlock:
 		wake_up(&mddev->sb_wait);
 		mddev_unlock(mddev);
-	} else if (test_bit(MD_ALLOW_SB_UPDATE, &mddev->flags) && mddev->sb_flags) {
-		/* Write superblock - thread that called mddev_suspend()
-		 * holds reconfig_mutex for us.
-		 */
-		set_bit(MD_UPDATING_SB, &mddev->flags);
-		smp_mb__after_atomic();
-		if (test_bit(MD_ALLOW_SB_UPDATE, &mddev->flags))
-			md_update_sb(mddev, 0);
-		clear_bit_unlock(MD_UPDATING_SB, &mddev->flags);
-		wake_up(&mddev->sb_wait);
 	}
 }
 EXPORT_SYMBOL(md_check_recovery);

@@ -17,7 +17,6 @@
 #include <linux/device.h>
 #include <linux/platform_device.h>
 #include <linux/pci.h>
-#include <sound/soc.h>
 #include <sound/soc-acpi.h>
 #include <uapi/sound/sof-ipc.h>
 
@@ -77,10 +76,6 @@ struct sof_dev_desc {
 int sof_nocodec_setup(struct device *dev,
 		      struct snd_sof_pdata *sof_pdata,
 		      struct snd_soc_acpi_mach *mach,
-		      const struct sof_dev_desc *desc,
-		      struct snd_sof_dsp_ops *ops);
+		      const struct sof_dev_desc *desc);
 
-int sof_bes_setup(struct device *dev, struct snd_sof_dsp_ops *ops,
-		  struct snd_soc_dai_link *links, int link_num,
-		  struct snd_soc_card *card);
 #endif

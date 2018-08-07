@@ -34,7 +34,6 @@
 #include <linux/mlx5/cmd.h>
 #include <linux/module.h>
 #include "mlx5_core.h"
-#include "eswitch.h"
 #include "../../mlxfw/mlxfw.h"
 
 static int mlx5_cmd_query_adapter(struct mlx5_core_dev *dev, u32 *out,
@@ -153,13 +152,13 @@ int mlx5_query_hca_caps(struct mlx5_core_dev *dev)
 	}
 
 	if (MLX5_CAP_GEN(dev, vport_group_manager) &&
-	    MLX5_ESWITCH_MANAGER(dev)) {
+	    MLX5_CAP_GEN(dev, eswitch_flow_table)) {
 		err = mlx5_core_get_caps(dev, MLX5_CAP_ESWITCH_FLOW_TABLE);
 		if (err)
 			return err;
 	}
 
-	if (MLX5_ESWITCH_MANAGER(dev)) {
+	if (MLX5_CAP_GEN(dev, eswitch_flow_table)) {
 		err = mlx5_core_get_caps(dev, MLX5_CAP_ESWITCH);
 		if (err)
 			return err;

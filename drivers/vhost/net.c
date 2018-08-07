@@ -1186,8 +1186,7 @@ err_used:
 	if (ubufs)
 		vhost_net_ubuf_put_wait_and_free(ubufs);
 err_ubufs:
-	if (sock)
-		sockfd_put(sock);
+	sockfd_put(sock);
 err_vq:
 	mutex_unlock(&vq->mutex);
 err:

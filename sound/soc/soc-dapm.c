@@ -430,8 +430,6 @@ err_data:
 static void dapm_kcontrol_free(struct snd_kcontrol *kctl)
 {
 	struct dapm_kcontrol_data *data = snd_kcontrol_chip(kctl);
-
-	list_del(&data->paths);
 	kfree(data->wlist);
 	kfree(data);
 }
@@ -4007,12 +4005,8 @@ int snd_soc_dapm_link_dai_widgets(struct snd_soc_card *card)
 			continue;
 		}
 
-		/* let users know there is no DAI to link */
-		if (!dai_w->priv) {
-			dev_dbg(card->dev, "dai widget %s has no DAI\n",
-				dai_w->name);
+		if (!dai_w->priv)
 			continue;
-		}
 
 		dai = dai_w->priv;
 

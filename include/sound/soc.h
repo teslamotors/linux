@@ -485,11 +485,6 @@ int snd_soc_platform_write(struct snd_soc_platform *platform,
 int soc_new_pcm(struct snd_soc_pcm_runtime *rtd, int num);
 #ifdef CONFIG_SND_SOC_COMPRESS
 int snd_soc_new_compress(struct snd_soc_pcm_runtime *rtd, int num);
-#else
-static inline int snd_soc_new_compress(struct snd_soc_pcm_runtime *rtd, int num)
-{
-	return 0;
-}
 #endif
 
 struct snd_pcm_substream *snd_soc_get_dai_substream(struct snd_soc_card *card,

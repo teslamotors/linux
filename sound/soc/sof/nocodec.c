@@ -20,21 +20,12 @@
 #include <sound/soc.h>
 #include <sound/jack.h>
 #include <sound/sof.h>
-#include "sof-priv.h"
-
-static struct snd_soc_card sof_nocodec_card = {
-	.name = "sof-nocodec",
-};
 
 int sof_nocodec_setup(struct device *dev,
 		      struct snd_sof_pdata *sof_pdata,
 		      struct snd_soc_acpi_mach *mach,
-		      const struct sof_dev_desc *desc,
-		      struct snd_sof_dsp_ops *ops)
+		      const struct sof_dev_desc *desc)
 {
-	struct snd_soc_dai_link *links;
-	int ret;
-
 	if (!mach)
 		return -EINVAL;
 
@@ -44,22 +35,54 @@ int sof_nocodec_setup(struct device *dev,
 	mach->sof_fw_filename = desc->nocodec_fw_filename;
 	mach->sof_tplg_filename = desc->nocodec_tplg_filename;
 
-	/* create dummy BE dai_links */
-	links = devm_kzalloc(dev, sizeof(struct snd_soc_dai_link) *
-			     ops->dai_drv->num_drv, GFP_KERNEL);
-	if (!links)
-		return -ENOMEM;
-
-	ret = sof_bes_setup(dev, ops, links, ops->dai_drv->num_drv,
-			    &sof_nocodec_card);
-	if (ret) {
-		kfree(links);
-		return ret;
-	}
-
 	return 0;
 }
 EXPORT_SYMBOL(sof_nocodec_setup);
+
+static int sof_nocodec_codec_fixup(struct snd_soc_pcm_runtime *rtd,
+				   struct snd_pcm_hw_params *params)
+{
+	// TODO: read this from topology
+	return 0;
+}
+
+static struct snd_soc_ops sof_nocodec_ops = {};
+
+static int nocodec_rtd_init(struct snd_soc_pcm_runtime *rtd)
+{
+	snd_soc_set_dmi_name(rtd->card, NULL);
+
+	return 0;
+}
+
+/* we just set some BEs - FE provided by topology */
+static struct snd_soc_dai_link sof_nocodec_dais[] = {
+	/* Back End DAI links */
+	{
+		/* SSP0 - Codec */
+		.name = "NoCodec",
+		.id = 0,
+		.init = nocodec_rtd_init,
+		.cpu_dai_name = "sof-audio",
+		.platform_name = "sof-audio",
+		.no_pcm = 1,
+		.codec_dai_name = "snd-soc-dummy-dai",
+		.codec_name = "snd-soc-dummy",
+		.ops = &sof_nocodec_ops,
+		.dai_fmt = SND_SOC_DAIFMT_DSP_B | SND_SOC_DAIFMT_NB_NF |
+			SND_SOC_DAIFMT_CBS_CFS,
+		.ignore_suspend = 1,
+		.be_hw_params_fixup = sof_nocodec_codec_fixup,
+		.dpcm_playback = 1,
+		.dpcm_capture = 1,
+	},
+};
+
+static struct snd_soc_card sof_nocodec_card = {
+	.name = "sof-nocodec",
+	.dai_link = sof_nocodec_dais,
+	.num_links = ARRAY_SIZE(sof_nocodec_dais),
+};
 
 static int sof_nocodec_probe(struct platform_device *pdev)
 {

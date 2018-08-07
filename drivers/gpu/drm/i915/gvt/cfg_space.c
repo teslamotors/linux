@@ -56,10 +56,6 @@ static const u8 pci_cfg_space_rw_bmp[PCI_INTERRUPT_LINE + 4] = {
 
 /**
  * vgpu_pci_cfg_mem_write - write virtual cfg space memory
- * @vgpu: a vGPU
- * @off: offset into the PCI configuration space
- * @src: data buffer write to vGPU's emulated configure space
- * @bytes: size of data to write in bytes
  *
  * Use this function to write virtual cfg space memory.
  * For standard cfg space, only RW bits can be changed,
@@ -95,11 +91,6 @@ static void vgpu_pci_cfg_mem_write(struct intel_vgpu *vgpu, unsigned int off,
 
 /**
  * intel_vgpu_emulate_cfg_read - emulate vGPU configuration space read
- *
- * @vgpu: a vGPU
- * @offset: offset into the PCI configuration space
- * @p_data: data buffer read from vGPU's emulated configure space
- * @bytes: size of data to read in bytes
  *
  * Returns:
  * Zero on success, negative error code if failed.
@@ -272,10 +263,6 @@ static int emulate_pci_bar_write(struct intel_vgpu *vgpu, unsigned int offset,
 
 /**
  * intel_vgpu_emulate_cfg_read - emulate vGPU configuration space write
- * @vgpu: a vGPU
- * @offset: offset into the PCI configuration space
- * @p_data: data buffer write to vGPU's emulated configure space
- * @bytes: size of data to write in bytes
  *
  * Returns:
  * Zero on success, negative error code if failed.
@@ -293,22 +280,9 @@ int intel_vgpu_emulate_cfg_write(struct intel_vgpu *vgpu, unsigned int offset,
 
 	/* First check if it's PCI_COMMAND */
 	if (IS_ALIGNED(offset, 2) && offset == PCI_COMMAND) {
-		if (WARN_ON(bytes != 2 && bytes != 4))
+		if (WARN_ON(bytes > 2))
 			return -EINVAL;
-
-		ret = -EINVAL;
-		if (bytes == 2)
-			ret = emulate_pci_command_write(vgpu, offset,
-							p_data, bytes);
-		if (bytes ==  4) {
-			ret = emulate_pci_command_write(vgpu, offset,
-							p_data, 2);
-			if (ret)
-				return ret;
-			vgpu_pci_cfg_mem_write(vgpu, offset + 2,
-					       (u8 *)p_data + 2, 2);
-		}
-		return ret;
+		return emulate_pci_command_write(vgpu, offset, p_data, bytes);
 	}
 
 	switch (rounddown(offset, 4)) {

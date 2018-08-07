@@ -961,7 +961,8 @@ static long dm_dax_direct_access(struct dax_device *dax_dev, pgoff_t pgoff,
 	if (len < 1)
 		goto out;
 	nr_pages = min(len, nr_pages);
-	ret = ti->type->direct_access(ti, pgoff, nr_pages, kaddr, pfn);
+	if (ti->type->direct_access)
+		ret = ti->type->direct_access(ti, pgoff, nr_pages, kaddr, pfn);
 
  out:
 	dm_put_live_table(md, srcu_idx);
@@ -2049,6 +2050,9 @@ int dm_setup_md_queue(struct mapped_device *md, struct dm_table *t)
 		 */
 		bioset_free(md->queue->bio_split);
 		md->queue->bio_split = NULL;
+
+		if (type == DM_TYPE_DAX_BIO_BASED)
+			queue_flag_set_unlocked(QUEUE_FLAG_DAX, md->queue);
 		break;
 	case DM_TYPE_NONE:
 		WARN_ON_ONCE(true);

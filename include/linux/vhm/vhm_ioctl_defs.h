@@ -52,11 +52,11 @@
 #ifndef __VHM_IOCTL_DEFS_H__
 #define __VHM_IOCTL_DEFS_H__
 
-/* Common structures for ACRN/VHM/DM */
+/* Commmon structures for ACRN/VHM/DM */
 #include "acrn_common.h"
 
 /*
- * Common IOCTL ID definition for VHM/DM
+ * Commmon IOCTL ID defination for VHM/DM
  */
 #define _IC_ID(x, y) (((x)<<24)|(y))
 #define IC_ID 0x43UL
@@ -72,7 +72,7 @@
 #define IC_START_VM                    _IC_ID(IC_ID, IC_ID_VM_BASE + 0x02)
 #define IC_PAUSE_VM                    _IC_ID(IC_ID, IC_ID_VM_BASE + 0x03)
 #define	IC_CREATE_VCPU                 _IC_ID(IC_ID, IC_ID_VM_BASE + 0x04)
-#define IC_RESET_VM                    _IC_ID(IC_ID, IC_ID_VM_BASE + 0x05)
+#define IC_RESTART_VM                  _IC_ID(IC_ID, IC_ID_VM_BASE + 0x05)
 
 /* IRQ and Interrupts */
 #define IC_ID_IRQ_BASE                 0x20UL
@@ -162,7 +162,7 @@ struct ic_ptdev_irq {
 	uint32_t type;
 	/** @virt_bdf: virtual bdf description of pass thru device */
 	uint16_t virt_bdf;	/* IN: Device virtual BDF# */
-	/** @phys_bdf: physical bdf description of pass thru device */
+	/** @phy_bdf: physical bdf description of pass thru device */
 	uint16_t phys_bdf;	/* IN: Device physical BDF# */
 	/** union */
 	union {
@@ -172,7 +172,7 @@ struct ic_ptdev_irq {
 			uint32_t virt_pin;
 			/** @phys_pin: physical IOAPIC pin */
 			uint32_t phys_pin;
-			/** @is_pic_pin: PIC pin */
+			/** @pic_pin: PIC pin */
 			uint32_t is_pic_pin;
 		} intx;
 
@@ -192,7 +192,7 @@ struct ic_ptdev_irq {
 };
 
 /**
- * struct ioreq_notify - data structure to notify hypervisor ioreq is handled
+ * struct ioreq_notify - data strcture to notify hypervisor ioreq is handled
  *
  * @client_id: client id to identify ioreq client
  * @vcpu: identify the ioreq submitter

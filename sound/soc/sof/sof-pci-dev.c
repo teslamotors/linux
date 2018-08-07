@@ -14,40 +14,38 @@
 #include <linux/platform_device.h>
 #include <linux/firmware.h>
 #include <sound/pcm.h>
-#include <sound/soc-acpi.h>
-#include <sound/soc-acpi-intel-match.h>
 #include <sound/sof.h>
 #include <linux/pci.h>
 #include <linux/acpi.h>
 #include "sof-priv.h"
 
-/* platform specific devices */
-#include "intel/shim.h"
-#include "intel/hda.h"
-
 #if IS_ENABLED(CONFIG_SND_SOC_SOF_APOLLOLAKE)
-static struct sof_dev_desc bxt_desc = {
-	.machines		= snd_soc_acpi_intel_bxt_machines,
-	.resindex_lpe_base	= 0,
-	.resindex_pcicfg_base	= -1,
-	.resindex_imr_base	= -1,
-	.irqindex_host_ipc	= -1,
-	.resindex_dma_base	= -1,
-	.nocodec_fw_filename = "intel/sof-apl.ri",
-	.nocodec_tplg_filename = "intel/sof-apl-nocodec.tplg"
+static struct snd_soc_acpi_mach sof_bxt_machines[] = {
+	{
+		.id = "DLGS7219",
+		.drv_name = "bxt_da7219_max98357a_i2s",
+		.sof_fw_filename = "intel/reef-apl.ri",
+		.sof_tplg_filename = "intel/reef-apl.tplg",
+		.asoc_plat_name = "0000:00:0e.0",
+	},
+	{
+		.id = "INT34C3",
+		.drv_name = "bxt_tdf8532",
+		.sof_fw_filename = "intel/reef-apl.ri",
+		.sof_tplg_filename = "intel/reef-apl.tplg",
+		.asoc_plat_name = "0000:00:0e.0",
+	},
 };
-#endif
 
-#if IS_ENABLED(CONFIG_SND_SOC_SOF_GEMINILAKE)
-static struct sof_dev_desc glk_desc = {
-	.machines		= snd_soc_acpi_intel_glk_machines,
+static struct sof_dev_desc bxt_desc = {
+	.machines		= sof_bxt_machines,
 	.resindex_lpe_base	= 0,
 	.resindex_pcicfg_base	= -1,
 	.resindex_imr_base	= -1,
 	.irqindex_host_ipc	= -1,
 	.resindex_dma_base	= -1,
-	.nocodec_fw_filename = "intel/sof-glk.ri",
-	.nocodec_tplg_filename = "intel/sof-glk-nocodec.tplg"
+	.nocodec_fw_filename = "intel/reef-apl.ri",
+	.nocodec_tplg_filename = "intel/reef-apl-nocodec.tplg"
 };
 #endif
 
@@ -56,8 +54,8 @@ static struct snd_soc_acpi_mach sof_byt_machines[] = {
 	{
 		.id = "INT343A",
 		.drv_name = "edison",
-		.sof_fw_filename = "intel/sof-byt.ri",
-		.sof_tplg_filename = "intel/sof-byt.tplg",
+		.sof_fw_filename = "intel/reef-byt.ri",
+		.sof_tplg_filename = "intel/reef-byt.tplg",
 		.asoc_plat_name = "baytrail-pcm-audio",
 	},
 	{}
@@ -70,47 +68,32 @@ static const struct sof_dev_desc byt_desc = {
 	.resindex_imr_base	= 0,
 	.irqindex_host_ipc	= -1,
 	.resindex_dma_base	= -1,
-	.nocodec_fw_filename = "intel/sof-byt.ri",
-	.nocodec_tplg_filename = "intel/sof-byt.tplg"
+	.nocodec_fw_filename = "intel/reef-byt.ri",
+	.nocodec_tplg_filename = "intel/reef-byt.tplg"
 };
 #endif
 
 #if IS_ENABLED(CONFIG_SND_SOC_SOF_CANNONLAKE)
+static struct snd_soc_acpi_mach sof_cnl_machines[] = {
+	{
+		.id = "INT34C2",
+		.drv_name = "cnl_alc700_i2s",
+		.sof_fw_filename = "intel/reef-cnl.ri",
+		.sof_tplg_filename = "intel/reef-cnl.tplg",
+		.asoc_plat_name = "0000:00:0e.0",
+	},
+	{}
+};
+
 static const struct sof_dev_desc cnl_desc = {
-	.machines		= snd_soc_acpi_intel_cnl_machines,
+	.machines		= sof_cnl_machines,
 	.resindex_lpe_base	= 0,
 	.resindex_pcicfg_base	= -1,
 	.resindex_imr_base	= -1,
 	.irqindex_host_ipc	= -1,
 	.resindex_dma_base	= -1,
-	.nocodec_fw_filename = "intel/sof-cnl.ri",
-	.nocodec_tplg_filename = "intel/sof-cnl.tplg"
-};
-#endif
-
-#if IS_ENABLED(CONFIG_SND_SOC_SOF_SKYLAKE)
-static struct sof_dev_desc skl_desc = {
-	.machines		= snd_soc_acpi_intel_skl_machines,
-	.resindex_lpe_base	= 0,
-	.resindex_pcicfg_base	= -1,
-	.resindex_imr_base	= -1,
-	.irqindex_host_ipc	= -1,
-	.resindex_dma_base	= -1,
-	.nocodec_fw_filename = "intel/sof-skl.ri",
-	.nocodec_tplg_filename = "intel/sof-skl-nocodec.tplg"
-};
-#endif
-
-#if IS_ENABLED(CONFIG_SND_SOC_SOF_KABYLAKE)
-static struct sof_dev_desc kbl_desc = {
-	.machines		= snd_soc_acpi_intel_kbl_machines,
-	.resindex_lpe_base	= 0,
-	.resindex_pcicfg_base	= -1,
-	.resindex_imr_base	= -1,
-	.irqindex_host_ipc	= -1,
-	.resindex_dma_base	= -1,
-	.nocodec_fw_filename = "intel/sof-kbl.ri",
-	.nocodec_tplg_filename = "intel/sof-kbl-nocodec.tplg"
+	.nocodec_fw_filename = "intel/reef-cnl.ri",
+	.nocodec_tplg_filename = "intel/reef-cnl.tplg"
 };
 #endif
 
@@ -152,22 +135,13 @@ static const struct dev_pm_ops sof_pci_pm = {
 
 static const struct sof_ops_table mach_ops[] = {
 #if IS_ENABLED(CONFIG_SND_SOC_SOF_APOLLOLAKE)
-	{&bxt_desc, &sof_apl_ops},
-#endif
-#if IS_ENABLED(CONFIG_SND_SOC_SOF_GEMINILAKE)
-	{&glk_desc, &sof_apl_ops},
+	{&bxt_desc, &snd_sof_apl_ops},
 #endif
 #if IS_ENABLED(CONFIG_SND_SOC_SOF_BAYTRAIL)
-	{&byt_desc, &sof_byt_ops},
+	{&byt_desc, &snd_sof_byt_ops},
 #endif
 #if IS_ENABLED(CONFIG_SND_SOC_SOF_CANNONLAKE)
-	{&cnl_desc, &sof_cnl_ops},
-#endif
-#if IS_ENABLED(CONFIG_SND_SOC_SOF_SKYLAKE)
-	{&skl_desc, &sof_apl_ops},
-#endif
-#if IS_ENABLED(CONFIG_SND_SOC_SOF_KABYLAKE)
-	{&kbl_desc, &sof_apl_ops},
+	{&cnl_desc, &snd_sof_cnl_ops},
 #endif
 };
 
@@ -226,7 +200,7 @@ static int sof_pci_probe(struct pci_dev *pci,
 	/* force nocodec mode */
 	dev_warn(dev, "Force to use nocodec mode\n");
 	mach = devm_kzalloc(dev, sizeof(*mach), GFP_KERNEL);
-	ret = sof_nocodec_setup(dev, sof_pdata, mach, desc, ops);
+	ret = sof_nocodec_setup(dev, sof_pdata, mach, desc);
 	if (ret < 0)
 		return ret;
 #else
@@ -237,7 +211,7 @@ static int sof_pci_probe(struct pci_dev *pci,
 		/* fallback to nocodec mode */
 		dev_warn(dev, "No matching ASoC machine driver found - using nocodec\n");
 		mach = devm_kzalloc(dev, sizeof(*mach), GFP_KERNEL);
-		ret = sof_nocodec_setup(dev, sof_pdata, mach, desc, ops);
+		ret = sof_nocodec_setup(dev, sof_pdata, mach, desc);
 		if (ret < 0)
 			return ret;
 #else
@@ -312,14 +286,6 @@ static const struct pci_device_id sof_pci_ids[] = {
 #if IS_ENABLED(CONFIG_SND_SOC_SOF_CANNONLAKE)
 	{ PCI_DEVICE(0x8086, 0x9dc8),
 		.driver_data = (unsigned long)&cnl_desc},
-#endif
-#if IS_ENABLED(CONFIG_SND_SOC_SOF_KABYLAKE)
-	{ PCI_DEVICE(0x8086, 0x9d71),
-		.driver_data = (unsigned long)&kbl_desc},
-#endif
-#if IS_ENABLED(CONFIG_SND_SOC_SOF_SKYLAKE)
-	{ PCI_DEVICE(0x8086, 0x9d70),
-		.driver_data = (unsigned long)&skl_desc},
 #endif
 	{ 0, }
 };

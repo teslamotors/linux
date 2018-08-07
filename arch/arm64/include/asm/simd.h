@@ -29,15 +29,20 @@ DECLARE_PER_CPU(bool, kernel_neon_busy);
 static __must_check inline bool may_use_simd(void)
 {
 	/*
-	 * kernel_neon_busy is only set while preemption is disabled,
-	 * and is clear whenever preemption is enabled. Since
-	 * this_cpu_read() is atomic w.r.t. preemption, kernel_neon_busy
-	 * cannot change under our feet -- if it's set we cannot be
-	 * migrated, and if it's clear we cannot be migrated to a CPU
-	 * where it is set.
+	 * The raw_cpu_read() is racy if called with preemption enabled.
+	 * This is not a bug: kernel_neon_busy is only set when
+	 * preemption is disabled, so we cannot migrate to another CPU
+	 * while it is set, nor can we migrate to a CPU where it is set.
+	 * So, if we find it clear on some CPU then we're guaranteed to
+	 * find it clear on any CPU we could migrate to.
+	 *
+	 * If we are in between kernel_neon_begin()...kernel_neon_end(),
+	 * the flag will be set, but preemption is also disabled, so we
+	 * can't migrate to another CPU and spuriously see it become
+	 * false.
 	 */
 	return !in_irq() && !irqs_disabled() && !in_nmi() &&
-		!this_cpu_read(kernel_neon_busy);
+		!raw_cpu_read(kernel_neon_busy);
 }
 
 #else /* ! CONFIG_KERNEL_MODE_NEON */

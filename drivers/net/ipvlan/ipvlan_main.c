@@ -546,8 +546,7 @@ int ipvlan_link_new(struct net *src_net, struct net_device *dev,
 	ipvlan->dev = dev;
 	ipvlan->port = port;
 	ipvlan->sfeatures = IPVLAN_FEATURES;
-	if (!tb[IFLA_MTU])
-		ipvlan_adjust_mtu(ipvlan, phy_dev);
+	ipvlan_adjust_mtu(ipvlan, phy_dev);
 	INIT_LIST_HEAD(&ipvlan->addrs);
 
 	/* If the port-id base is at the MAX value, then wrap it around and

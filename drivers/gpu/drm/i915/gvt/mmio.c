@@ -39,7 +39,7 @@
 /**
  * intel_vgpu_gpa_to_mmio_offset - translate a GPA to MMIO offset
  * @vgpu: a vGPU
- * @gpa: guest physical address
+ *
  * Returns:
  * Zero on success, negative error code if failed
  */
@@ -107,6 +107,16 @@ static void failsafe_emulate_mmio_rw(struct intel_vgpu *vgpu, uint64_t pa,
 	}
 }
 
+/**
+ * intel_vgpu_emulate_mmio_read - emulate MMIO read
+ * @vgpu: a vGPU
+ * @pa: guest physical address
+ * @p_data: data return buffer
+ * @bytes: access data length
+ *
+ * Returns:
+ * Zero on success, negative error code if failed
+ */
 int intel_vgpu_emulate_mmio_read_locked(struct intel_vgpu *vgpu, uint64_t pa,
 		void *p_data, unsigned int bytes)
 {
@@ -181,16 +191,6 @@ err:
 	return ret;
 }
 
-/**
- * intel_vgpu_emulate_mmio_read - emulate MMIO read
- * @vgpu: a vGPU
- * @pa: guest physical address
- * @p_data: data return buffer
- * @bytes: access data length
- *
- * Returns:
- * Zero on success, negative error code if failed
- */
 int intel_vgpu_emulate_mmio_read(struct intel_vgpu *vgpu, uint64_t pa,
 		void *p_data, unsigned int bytes)
 {
@@ -203,7 +203,16 @@ int intel_vgpu_emulate_mmio_read(struct intel_vgpu *vgpu, uint64_t pa,
 	return ret;
 }
 
-
+/**
+ * intel_vgpu_emulate_mmio_write - emulate MMIO write
+ * @vgpu: a vGPU
+ * @pa: guest physical address
+ * @p_data: write data buffer
+ * @bytes: access data length
+ *
+ * Returns:
+ * Zero on success, negative error code if failed
+ */
 int intel_vgpu_emulate_mmio_write_locked(struct intel_vgpu *vgpu, uint64_t pa,
 		void *p_data, unsigned int bytes)
 {
@@ -279,16 +288,6 @@ err:
 	return ret;
 }
 
-/**
- * intel_vgpu_emulate_mmio_write - emulate MMIO write
- * @vgpu: a vGPU
- * @pa: guest physical address
- * @p_data: write data buffer
- * @bytes: access data length
- *
- * Returns:
- * Zero on success, negative error code if failed
- */
 int intel_vgpu_emulate_mmio_write(struct intel_vgpu *vgpu, uint64_t pa,
 		void *p_data, unsigned int bytes)
 {
@@ -304,7 +303,7 @@ int intel_vgpu_emulate_mmio_write(struct intel_vgpu *vgpu, uint64_t pa,
 /**
  * intel_vgpu_reset_mmio - reset virtual MMIO space
  * @vgpu: a vGPU
- * @dmlr: vGPU Device Model Level Reset or GT Reset
+ *
  */
 void intel_vgpu_reset_mmio(struct intel_vgpu *vgpu, bool dmlr)
 {

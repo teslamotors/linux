@@ -117,11 +117,6 @@ struct snd_sof_dai *snd_sof_find_dai(struct snd_sof_dev *sdev,
 	return NULL;
 }
 
-static inline unsigned int sof_get_pages(size_t size)
-{
-	return (size + PAGE_SIZE - 1) >> PAGE_SHIFT;
-}
-
 struct sof_panic_msg {
 	u32 id;
 	const char *msg;
@@ -139,6 +134,62 @@ static const struct sof_panic_msg panic_msg[] = {
 	{SOF_IPC_PANIC_STACK, "stack overflow"},
 	{SOF_IPC_PANIC_IDLE, "can't enter idle"},
 };
+
+/* only need xtensa atm */
+static void sof_arch_dsp_oops(struct snd_sof_dev *sdev, void *oops)
+{
+	struct sof_ipc_dsp_oops_xtensa *xoops = oops;
+
+	dev_err(sdev->dev, "error: DSP Firmware Oops\n");
+	dev_err(sdev->dev, "EXCCAUSE 0x%8.8x EXCVADDR 0x%8.8x PS       0x%8.8x SAR     0x%8.8x\n",
+		xoops->exccause, xoops->excvaddr, xoops->ps, xoops->sar);
+	dev_err(sdev->dev, "EPC1     0x%8.8x EPC2     0x%8.8x EPC3     0x%8.8x EPC4    0x%8.8x",
+		xoops->epc1, xoops->epc2, xoops->epc3, xoops->epc4);
+	dev_err(sdev->dev, "EPC5     0x%8.8x EPC6     0x%8.8x EPC7     0x%8.8x DEPC    0x%8.8x",
+		xoops->epc5, xoops->epc6, xoops->epc7, xoops->depc);
+	dev_err(sdev->dev, "EPS2     0x%8.8x EPS3     0x%8.8x EPS4     0x%8.8x EPS5    0x%8.8x",
+		xoops->eps2, xoops->eps3, xoops->eps4, xoops->eps5);
+	dev_err(sdev->dev, "EPS6     0x%8.8x EPS7     0x%8.8x INTENABL 0x%8.8x INTERRU 0x%8.8x",
+		xoops->eps6, xoops->eps7, xoops->intenable, xoops->interrupt);
+}
+
+static void sof_dsp_dump_stack(struct snd_sof_dev *sdev, void *oops,
+			       u32 *stack, u32 stack_words)
+{
+	struct sof_ipc_dsp_oops_xtensa *xoops = oops;
+	u32 stack_ptr = xoops->stack;
+	int i;
+
+	dev_err(sdev->dev, "stack dump from 0x%8.8x\n", stack_ptr);
+
+	for (i = 0; i <= stack_words - 4; i += 4) {
+		dev_err(sdev->dev, "0x%8.8x: 0x%8.8x 0x%8.8x 0x%8.8x 0x%8.8x\n",
+			stack_ptr + i, stack[i], stack[i + 1], stack[i + 2],
+			stack[i + 3]);
+	}
+
+	/* deal with any remaining words */
+	switch (stack_words - i) {
+	case 0:
+		break;
+	case 1:
+		dev_err(sdev->dev, "0x%8.8x: 0x%8.8x\n",
+			stack_ptr + stack_words - 1, stack[stack_words - 1]);
+		break;
+	case 2:
+		dev_err(sdev->dev, "0x%8.8x: 0x%8.8x 0x%8.8x\n",
+			stack_ptr + stack_words - 2, stack[stack_words - 2],
+			stack[stack_words - 1]);
+		break;
+	case 3:
+		dev_err(sdev->dev, "0x%8.8x: 0x%8.8x 0x%8.8x 0x%8.8x\n",
+			stack_ptr + stack_words - 3, stack[stack_words - 3],
+			stack[stack_words - 2], stack[stack_words - 1]);
+		break;
+	default:
+		break;
+	}
+}
 
 int snd_sof_get_status(struct snd_sof_dev *sdev, u32 panic_code,
 		       u32 tracep_code, void *oops, void *stack,
@@ -171,8 +222,8 @@ int snd_sof_get_status(struct snd_sof_dev *sdev, u32 panic_code,
 	dev_err(sdev->dev, "error: trace point %8.8x\n", tracep_code);
 
 out:
-	sof_oops(sdev, oops);
-	sof_stack(sdev, oops, stack, stack_words);
+	sof_arch_dsp_oops(sdev, oops);
+	sof_dsp_dump_stack(sdev, oops, stack, stack_words);
 	return -EFAULT;
 }
 EXPORT_SYMBOL(snd_sof_get_status);
@@ -210,7 +261,7 @@ static int sof_probe(struct platform_device *pdev)
 	spin_lock_init(&sdev->ipc_lock);
 	spin_lock_init(&sdev->hw_lock);
 
-	/* set up platform component driver */
+	/* set up platform and component drivers */
 	snd_sof_new_platform_drv(sdev);
 	snd_sof_new_dai_drv(sdev);
 
@@ -271,16 +322,14 @@ static int sof_probe(struct platform_device *pdev)
 		goto fw_run_err;
 	}
 
-	ret = snd_soc_register_component(&pdev->dev, sdev->cmpnt_drv,
-					 sdev->ops->dai_drv->drv,
-					 sdev->ops->dai_drv->num_drv);
+	ret = snd_soc_register_component(&pdev->dev,  sdev->cmpnt_drv,
+					 &sdev->dai_drv, sdev->num_dai);
 	if (ret < 0) {
 		dev_err(sdev->dev,
 			"error: failed to register DSP DAI driver %d\n", ret);
 		goto comp_err;
 	}
 
-	/* init DMA trace */
 	ret = snd_sof_init_trace(sdev);
 	if (ret < 0) {
 		dev_warn(sdev->dev,
@@ -329,7 +378,7 @@ int snd_sof_create_page_table(struct snd_sof_dev *sdev,
 {
 	int i, pages;
 
-	pages = sof_get_pages(size);
+	pages = snd_sgbuf_aligned_pages(size);
 
 	dev_dbg(sdev->dev, "generating page table for %p size 0x%zx pages %d\n",
 		dmab->area, size, pages);
@@ -363,6 +412,6 @@ static struct platform_driver sof_driver = {
 module_platform_driver(sof_driver);
 
 MODULE_AUTHOR("Liam Girdwood");
-MODULE_DESCRIPTION("Sound Open Firmware (SOF) Core");
+MODULE_DESCRIPTION("Sound Open Firmware (Reef) Core");
 MODULE_LICENSE("Dual BSD/GPL");
 MODULE_ALIAS("platform:sof-audio");

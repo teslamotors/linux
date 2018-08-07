@@ -193,5 +193,4 @@ struct rds_transport rds_loop_transport = {
 	.inc_copy_to_user	= rds_message_inc_copy_to_user,
 	.inc_free		= rds_loop_inc_free,
 	.t_name			= "loopback",
-	.t_type			= RDS_TRANS_LOOP,
 };

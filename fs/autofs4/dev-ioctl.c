@@ -148,15 +148,6 @@ static int validate_dev_ioctl(int cmd, struct autofs_dev_ioctl *param)
 				cmd);
 			goto out;
 		}
-	} else {
-		unsigned int inr = _IOC_NR(cmd);
-
-		if (inr == AUTOFS_DEV_IOCTL_OPENMOUNT_CMD ||
-		    inr == AUTOFS_DEV_IOCTL_REQUESTER_CMD ||
-		    inr == AUTOFS_DEV_IOCTL_ISMOUNTPOINT_CMD) {
-			err = -EINVAL;
-			goto out;
-		}
 	}
 
 	err = 0;
@@ -293,8 +284,7 @@ static int autofs_dev_ioctl_openmount(struct file *fp,
 	dev_t devid;
 	int err, fd;
 
-	/* param->path has been checked in validate_dev_ioctl() */
-
+	/* param->path has already been checked */
 	if (!param->openmount.devid)
 		return -EINVAL;
 
@@ -456,7 +446,10 @@ static int autofs_dev_ioctl_requester(struct file *fp,
 	dev_t devid;
 	int err = -ENOENT;
 
-	/* param->path has been checked in validate_dev_ioctl() */
+	if (param->size <= AUTOFS_DEV_IOCTL_SIZE) {
+		err = -EINVAL;
+		goto out;
+	}
 
 	devid = sbi->sb->s_dev;
 
@@ -541,7 +534,10 @@ static int autofs_dev_ioctl_ismountpoint(struct file *fp,
 	unsigned int devid, magic;
 	int err = -ENOENT;
 
-	/* param->path has been checked in validate_dev_ioctl() */
+	if (param->size <= AUTOFS_DEV_IOCTL_SIZE) {
+		err = -EINVAL;
+		goto out;
+	}
 
 	name = param->path;
 	type = param->ismountpoint.in.type;

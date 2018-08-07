@@ -1474,8 +1474,8 @@ int i915_driver_load(struct pci_dev *pdev, const struct pci_device_id *ent)
 				      msecs_to_jiffies(i915_modparams.tsd_delay));
 	}
 
-	printk(KERN_INFO "IOTG i915 driver 2018y-07m-10d-11h-32m-25s -0700\n");
-	printk(KERN_INFO "40 patches carried on top of PK commit e304288f\n");
+	printk(KERN_INFO "IOTG i915 driver 2018y-07m-03d-15h-02m-12s -0700\n");
+	printk(KERN_INFO "40 patches carried on top of PK commit bf856bde\n");
 
 	return 0;
 

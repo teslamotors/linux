@@ -24,9 +24,9 @@
 
 #include <trace/events/hswadsp.h>
 #include <sound/sof.h>
-#include "../sof-priv.h"
-#include "../ops.h"
-#include "shim.h"
+#include "sof-priv.h"
+#include "ops.h"
+#include "intel.h"
 
 /* BARs */
 #define BDW_DSP_BAR 0
@@ -57,8 +57,6 @@
 #define SSP_SIZE	0x100
 
 #define BDW_STACK_DUMP_SIZE	32
-
-#define BDW_PANIC_OFFSET(x)	((x) & 0xFFFF)
 
 static const struct snd_sof_debugfs_map bdw_debugfs[] = {
 	{"dmac0", BDW_DSP_BAR, DMAC0_OFFSET, DMAC_SIZE},
@@ -164,7 +162,7 @@ static int bdw_run(struct snd_sof_dev *sdev)
 	snd_sof_dsp_update_bits_unlocked(sdev, BDW_DSP_BAR, SHIM_CSR,
 					 SHIM_CSR_STALL, 0x0);
 
-	return 0;
+	return 0; //TODO: Fix return value
 }
 
 static int bdw_reset(struct snd_sof_dev *sdev)
@@ -182,7 +180,7 @@ static int bdw_reset(struct snd_sof_dev *sdev)
 					 SHIM_CSR_RST | SHIM_CSR_STALL,
 					 SHIM_CSR_STALL);
 
-	return 0;
+	return 0; //TODO: Fix return value
 }
 
 static int bdw_set_dsp_D0(struct snd_sof_dev *sdev)
@@ -292,6 +290,7 @@ finish:
 	return 0;
 }
 
+
 static void bdw_get_registers(struct snd_sof_dev *sdev,
 			      struct sof_ipc_dsp_oops_xtensa *xoops,
 			      u32 *stack, size_t stack_words)
@@ -378,12 +377,17 @@ static irqreturn_t bdw_irq_thread(int irq, void *context)
 	if (ipcd & SHIM_IPCD_BUSY) {
 		/* Handle messages from DSP Core */
 		if ((ipcd & SOF_IPC_PANIC_MAGIC_MASK) == SOF_IPC_PANIC_MAGIC) {
-			snd_sof_dsp_panic(sdev, BDW_PANIC_OFFSET(ipcx) +
-					  MBOX_OFFSET);
+			dev_err(sdev->dev, "error : DSP panic!\n");
+			snd_sof_dsp_cmd_done(sdev);
+			snd_sof_dsp_dbg_dump(sdev, SOF_DBG_REGS | SOF_DBG_MBOX);
+			snd_sof_trace_notify_for_error(sdev);
 		} else {
 			snd_sof_ipc_msgs_rx(sdev);
 		}
 	}
+
+	/* continue to send any remaining messages... */
+	snd_sof_ipc_msgs_tx(sdev);
 
 	return IRQ_HANDLED;
 }
@@ -556,7 +560,7 @@ static int bdw_get_reply(struct snd_sof_dev *sdev, struct snd_sof_ipc_msg *msg)
 	} else {
 		/* reply correct size ? */
 		if (reply.hdr.size != msg->reply_size) {
-			dev_err(sdev->dev, "error: reply expected 0x%zx got 0x%x bytes\n",
+			dev_err(sdev->dev, "error: reply expected 0x%lx got 0x%x bytes\n",
 				msg->reply_size, reply.hdr.size);
 			size = msg->reply_size;
 			ret = -EINVAL;
@@ -599,9 +603,6 @@ static int bdw_probe(struct snd_sof_dev *sdev)
 	struct resource *mmio;
 	u32 base, size;
 	int ret = 0;
-
-	/* set DSP arch ops */
-	sdev->arch_ops = &sof_xtensa_arch_ops;
 
 	/* LPE base */
 	mmio = platform_get_resource(pdev, IORESOURCE_MEM,
@@ -709,34 +710,8 @@ static int bdw_remove(struct snd_sof_dev *sdev)
 	return 0;
 }
 
-#define BDW_FORMATS (SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE | \
-	SNDRV_PCM_FMTBIT_S32_LE)
-
-/* Broadwell DAIs */
-static struct snd_soc_dai_driver bdw_dai[] = {
-{
-	.name = "ssp0-port",
-	.playback = SOF_DAI_STREAM("ssp0 Tx", 1, 8,
-				   SNDRV_PCM_RATE_8000_192000, BDW_FORMATS),
-	.capture = SOF_DAI_STREAM("ssp0 Rx", 1, 8,
-				  SNDRV_PCM_RATE_8000_192000, BDW_FORMATS),
-},
-{
-	.name = "ssp1-port",
-	.playback = SOF_DAI_STREAM("ssp1 Tx", 1, 8,
-				   SNDRV_PCM_RATE_8000_192000, BDW_FORMATS),
-	.capture = SOF_DAI_STREAM("ssp1 Rx", 1, 8,
-				  SNDRV_PCM_RATE_8000_192000, BDW_FORMATS),
-},
-};
-
-struct snd_sof_dai_drv bdw_dai_drv = {
-	.drv = bdw_dai,
-	.num_drv = ARRAY_SIZE(bdw_dai)
-};
-
 /* broadwell ops */
-struct snd_sof_dsp_ops sof_bdw_ops = {
+struct snd_sof_dsp_ops snd_sof_bdw_ops = {
 	/*Device init */
 	.probe          = bdw_probe,
 	.remove         = bdw_remove,
@@ -776,10 +751,7 @@ struct snd_sof_dsp_ops sof_bdw_ops = {
 
 	/*Firmware loading */
 	.load_firmware	= snd_sof_load_firmware_memcpy,
-
-	/* DAI drivers */
-	.dai_drv = &bdw_dai_drv,
 };
-EXPORT_SYMBOL(sof_bdw_ops);
+EXPORT_SYMBOL(snd_sof_bdw_ops);
 
 MODULE_LICENSE("Dual BSD/GPL");

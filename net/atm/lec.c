@@ -182,8 +182,9 @@ lec_send(struct atm_vcc *vcc, struct sk_buff *skb)
 	struct net_device *dev = skb->dev;
 
 	ATM_SKB(skb)->vcc = vcc;
-	atm_account_tx(vcc, skb);
+	ATM_SKB(skb)->atm_options = vcc->atm_options;
 
+	refcount_add(skb->truesize, &sk_atm(vcc)->sk_wmem_alloc);
 	if (vcc->send(vcc, skb) < 0) {
 		dev->stats.tx_dropped++;
 		return;

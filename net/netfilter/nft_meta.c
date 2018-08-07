@@ -229,7 +229,7 @@ void nft_meta_set_eval(const struct nft_expr *expr,
 	struct sk_buff *skb = pkt->skb;
 	u32 *sreg = &regs->data[meta->sreg];
 	u32 value = *sreg;
-	u8 value8;
+	u8 pkt_type;
 
 	switch (meta->key) {
 	case NFT_META_MARK:
@@ -239,17 +239,15 @@ void nft_meta_set_eval(const struct nft_expr *expr,
 		skb->priority = value;
 		break;
 	case NFT_META_PKTTYPE:
-		value8 = nft_reg_load8(sreg);
+		pkt_type = nft_reg_load8(sreg);
 
-		if (skb->pkt_type != value8 &&
-		    skb_pkt_type_ok(value8) &&
+		if (skb->pkt_type != pkt_type &&
+		    skb_pkt_type_ok(pkt_type) &&
 		    skb_pkt_type_ok(skb->pkt_type))
-			skb->pkt_type = value8;
+			skb->pkt_type = pkt_type;
 		break;
 	case NFT_META_NFTRACE:
-		value8 = nft_reg_load8(sreg);
-
-		skb->nf_trace = !!value8;
+		skb->nf_trace = !!value;
 		break;
 	default:
 		WARN_ON(1);

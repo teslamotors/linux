@@ -2838,15 +2838,16 @@ static void serial_console_write(struct console *co, const char *s,
 	unsigned long flags;
 	int locked = 1;
 
+	local_irq_save(flags);
 #if defined(SUPPORT_SYSRQ)
 	if (port->sysrq)
 		locked = 0;
 	else
 #endif
 	if (oops_in_progress)
-		locked = spin_trylock_irqsave(&port->lock, flags);
+		locked = spin_trylock(&port->lock);
 	else
-		spin_lock_irqsave(&port->lock, flags);
+		spin_lock(&port->lock);
 
 	/* first save SCSCR then disable interrupts, keep clock source */
 	ctrl = serial_port_in(port, SCSCR);
@@ -2866,7 +2867,8 @@ static void serial_console_write(struct console *co, const char *s,
 	serial_port_out(port, SCSCR, ctrl);
 
 	if (locked)
-		spin_unlock_irqrestore(&port->lock, flags);
+		spin_unlock(&port->lock);
+	local_irq_restore(flags);
 }
 
 static int serial_console_setup(struct console *co, char *options)

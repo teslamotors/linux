@@ -33,30 +33,7 @@
 #ifndef _GVT_HYPERCALL_H_
 #define _GVT_HYPERCALL_H_
 
-/**
- * struct intel_gvt_mpt - GVT module Mediate Pass-through Interface (MPT)
- *
- * @host_init: register intel_gvt_ops interface into hypervisor MPT module and
- *             init GVT-g host side
- * @host_exit: exit GVT-g host side
- * @attach_vgpu: call hypervisor to initialize vGPU related stuffs inside
- *               hypervisor
- * @detach_vgpu: call hypervisor to release vGPU related stuffs inside
- *               hypervisor
- * @inject_msi: inject a MSI interrupt into vGPU
- * @from_virt_to_mfn: translate a host VA into MFN
- * @set_wp_page: set a guest page to write-protected
- * @unset_wp_page: remove the write-protection of a guest page
- * @read_gpa: copy data from GPA to host data buffer
- * @write_gpa: copy data from host data buffer to GPA
- * @gfn_to_mfn: translate a GFN to MFN
- * @map_gfn_to_mfn: map a GFN region to MFN
- * @set_trap_area: Trap a guest PA region
- * @set_pvmmio: Set the pvmmio area
- * @pause_domain: pause a domain
- * @unpause_domain: unpause a domain
- * @dom0_ready: raise a uevent when Dom 0 is ready for Dom U
- *
+/*
  * Specific GVT-g MPT modules function collections. Currently GVT-g supports
  * both Xen and KVM by providing dedicated hypervisor-related MPT modules.
  */

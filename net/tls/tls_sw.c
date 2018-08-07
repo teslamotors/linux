@@ -449,7 +449,7 @@ alloc_encrypted:
 			ret = tls_push_record(sk, msg->msg_flags, record_type);
 			if (!ret)
 				continue;
-			if (ret < 0)
+			if (ret == -EAGAIN)
 				goto send_end;
 
 			copied -= try_to_copy;

@@ -202,7 +202,6 @@ smb2_find_mid(struct TCP_Server_Info *server, char *buf)
 		if ((mid->mid == wire_mid) &&
 		    (mid->mid_state == MID_REQUEST_SUBMITTED) &&
 		    (mid->command == shdr->Command)) {
-			kref_get(&mid->refcount);
 			spin_unlock(&GlobalMid_Lock);
 			return mid;
 		}
@@ -636,8 +635,6 @@ smb2_set_ea(const unsigned int xid, struct cifs_tcon *tcon,
 
 	rc = SMB2_set_ea(xid, tcon, fid.persistent_fid, fid.volatile_fid, ea,
 			 len);
-	kfree(ea);
-
 	SMB2_close(xid, tcon, fid.persistent_fid, fid.volatile_fid);
 
 	return rc;

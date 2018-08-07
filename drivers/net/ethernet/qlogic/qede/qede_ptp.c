@@ -337,14 +337,8 @@ int qede_ptp_get_ts_info(struct qede_dev *edev, struct ethtool_ts_info *info)
 {
 	struct qede_ptp *ptp = edev->ptp;
 
-	if (!ptp) {
-		info->so_timestamping = SOF_TIMESTAMPING_TX_SOFTWARE |
-					SOF_TIMESTAMPING_RX_SOFTWARE |
-					SOF_TIMESTAMPING_SOFTWARE;
-		info->phc_index = -1;
-
-		return 0;
-	}
+	if (!ptp)
+		return -EIO;
 
 	info->so_timestamping = SOF_TIMESTAMPING_TX_SOFTWARE |
 				SOF_TIMESTAMPING_RX_SOFTWARE |

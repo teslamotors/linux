@@ -400,7 +400,8 @@ static ssize_t yurex_read(struct file *file, char __user *buffer, size_t count,
 			  loff_t *ppos)
 {
 	struct usb_yurex *dev;
-	int len = 0;
+	int retval = 0;
+	int bytes_read = 0;
 	char in_buffer[20];
 	unsigned long flags;
 
@@ -408,16 +409,26 @@ static ssize_t yurex_read(struct file *file, char __user *buffer, size_t count,
 
 	mutex_lock(&dev->io_mutex);
 	if (!dev->interface) {		/* already disconnected */
-		mutex_unlock(&dev->io_mutex);
-		return -ENODEV;
+		retval = -ENODEV;
+		goto exit;
 	}
 
 	spin_lock_irqsave(&dev->lock, flags);
-	len = snprintf(in_buffer, 20, "%lld\n", dev->bbu);
+	bytes_read = snprintf(in_buffer, 20, "%lld\n", dev->bbu);
 	spin_unlock_irqrestore(&dev->lock, flags);
-	mutex_unlock(&dev->io_mutex);
 
-	return simple_read_from_buffer(buffer, count, ppos, in_buffer, len);
+	if (*ppos < bytes_read) {
+		if (copy_to_user(buffer, in_buffer + *ppos, bytes_read - *ppos))
+			retval = -EFAULT;
+		else {
+			retval = bytes_read - *ppos;
+			*ppos += bytes_read;
+		}
+	}
+
+exit:
+	mutex_unlock(&dev->io_mutex);
+	return retval;
 }
 
 static ssize_t yurex_write(struct file *file, const char __user *user_buffer,

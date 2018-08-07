@@ -23,10 +23,6 @@
 #include <asm/iosf_mbi.h>
 #include "sof-priv.h"
 
-/* platform specific devices */
-#include "intel/shim.h"
-#include "intel/hda.h"
-
 #if IS_ENABLED(CONFIG_SND_SOC_SOF_HASWELL)
 static struct sof_dev_desc sof_acpi_haswell_desc = {
 	.machines = snd_soc_acpi_intel_haswell_machines,
@@ -34,8 +30,8 @@ static struct sof_dev_desc sof_acpi_haswell_desc = {
 	.resindex_pcicfg_base = 1,
 	.resindex_imr_base = -1,
 	.irqindex_host_ipc = 0,
-	.nocodec_fw_filename = "intel/sof-hsw.ri",
-	.nocodec_tplg_filename = "intel/sof-hsw-nocodec.tplg"
+	.nocodec_fw_filename = "intel/reef-hsw.ri",
+	.nocodec_tplg_filename = "intel/reef-hsw-nocodec.tplg"
 };
 #endif
 
@@ -46,8 +42,8 @@ static struct sof_dev_desc sof_acpi_broadwell_desc = {
 	.resindex_pcicfg_base = 1,
 	.resindex_imr_base = -1,
 	.irqindex_host_ipc = 0,
-	.nocodec_fw_filename = "intel/sof-bdw.ri",
-	.nocodec_tplg_filename = "intel/sof-bdw-nocodec.tplg"
+	.nocodec_fw_filename = "intel/reef-bdw.ri",
+	.nocodec_tplg_filename = "intel/reef-bdw-nocodec.tplg"
 };
 #endif
 
@@ -60,8 +56,8 @@ static struct sof_dev_desc sof_acpi_baytrailcr_desc = {
 	.resindex_pcicfg_base = 1,
 	.resindex_imr_base = 2,
 	.irqindex_host_ipc = 0,
-	.nocodec_fw_filename = "intel/sof-byt.ri",
-	.nocodec_tplg_filename = "intel/sof-byt-nocodec.tplg"
+	.nocodec_fw_filename = "intel/reef-byt.ri",
+	.nocodec_tplg_filename = "intel/reef-byt-nocodec.tplg"
 };
 
 static struct sof_dev_desc sof_acpi_baytrail_desc = {
@@ -70,8 +66,8 @@ static struct sof_dev_desc sof_acpi_baytrail_desc = {
 	.resindex_pcicfg_base = 1,
 	.resindex_imr_base = 2,
 	.irqindex_host_ipc = 5,
-	.nocodec_fw_filename = "intel/sof-byt.ri",
-	.nocodec_tplg_filename = "intel/sof-byt-nocodec.tplg"
+	.nocodec_fw_filename = "intel/reef-byt.ri",
+	.nocodec_tplg_filename = "intel/reef-byt-nocodec.tplg"
 };
 
 static int is_byt_cr(struct device *dev)
@@ -112,8 +108,8 @@ static struct sof_dev_desc sof_acpi_cherrytrail_desc = {
 	.resindex_pcicfg_base = 1,
 	.resindex_imr_base = 2,
 	.irqindex_host_ipc = 5,
-	.nocodec_fw_filename = "intel/sof-cht.ri",
-	.nocodec_tplg_filename = "intel/sof-cht-nocodec.tplg"
+	.nocodec_fw_filename = "intel/reef-cht.ri",
+	.nocodec_tplg_filename = "intel/reef-cht-nocodec.tplg"
 };
 #endif
 
@@ -172,15 +168,15 @@ static const struct dev_pm_ops sof_acpi_pm = {
 
 static const struct sof_ops_table mach_ops[] = {
 #if IS_ENABLED(CONFIG_SND_SOC_SOF_HASWELL)
-	{&sof_acpi_haswell_desc, &sof_hsw_ops},
+	{&sof_acpi_haswell_desc, &snd_sof_hsw_ops},
 #endif
 #if IS_ENABLED(CONFIG_SND_SOC_SOF_BROADWELL)
-	{&sof_acpi_broadwell_desc, &sof_bdw_ops},
+	{&sof_acpi_broadwell_desc, &snd_sof_bdw_ops},
 #endif
 #if IS_ENABLED(CONFIG_SND_SOC_SOF_BAYTRAIL)
-	{&sof_acpi_baytrail_desc, &sof_byt_ops, mfld_new_mach_data},
-	{&sof_acpi_baytrailcr_desc, &sof_byt_ops, mfld_new_mach_data},
-	{&sof_acpi_cherrytrail_desc, &sof_cht_ops, mfld_new_mach_data},
+	{&sof_acpi_baytrail_desc, &snd_sof_byt_ops, mfld_new_mach_data},
+	{&sof_acpi_baytrailcr_desc, &snd_sof_byt_ops, mfld_new_mach_data},
+	{&sof_acpi_cherrytrail_desc, &snd_sof_cht_ops, mfld_new_mach_data},
 #endif
 };
 
@@ -246,7 +242,7 @@ static int sof_acpi_probe(struct platform_device *pdev)
 	/* force nocodec mode */
 	dev_warn(dev, "Force to use nocodec mode\n");
 	mach = devm_kzalloc(dev, sizeof(*mach), GFP_KERNEL);
-	ret = sof_nocodec_setup(dev, sof_pdata, mach, desc, ops);
+	ret = sof_nocodec_setup(dev, sof_pdata, mach, desc);
 	if (ret < 0)
 		return ret;
 #else
@@ -257,7 +253,7 @@ static int sof_acpi_probe(struct platform_device *pdev)
 		/* fallback to nocodec mode */
 		dev_warn(dev, "No matching ASoC machine driver found - using nocodec\n");
 		mach = devm_kzalloc(dev, sizeof(*mach), GFP_KERNEL);
-		ret = sof_nocodec_setup(dev, sof_pdata, mach, desc, ops);
+		ret = sof_nocodec_setup(dev, sof_pdata, mach, desc);
 		if (ret < 0)
 			return ret;
 #else

@@ -124,6 +124,9 @@ static irqreturn_t spi_irq_thread(int irq, void *context)
 	/* if cmd, Handle messages from DSP Core */
 	//snd_sof_ipc_msgs_rx(sdev);
 
+	/* continue to send any remaining messages... */
+	snd_sof_ipc_msgs_tx(sdev);
+
 	return IRQ_HANDLED;
 }
 

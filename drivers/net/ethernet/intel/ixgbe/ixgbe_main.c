@@ -2211,10 +2211,9 @@ static struct sk_buff *ixgbe_build_skb(struct ixgbe_ring *rx_ring,
 	return skb;
 }
 
-#define IXGBE_XDP_PASS		0
-#define IXGBE_XDP_CONSUMED	BIT(0)
-#define IXGBE_XDP_TX		BIT(1)
-#define IXGBE_XDP_REDIR		BIT(2)
+#define IXGBE_XDP_PASS 0
+#define IXGBE_XDP_CONSUMED 1
+#define IXGBE_XDP_TX 2
 
 static int ixgbe_xmit_xdp_ring(struct ixgbe_adapter *adapter,
 			       struct xdp_buff *xdp);
@@ -2243,7 +2242,7 @@ static struct sk_buff *ixgbe_run_xdp(struct ixgbe_adapter *adapter,
 	case XDP_REDIRECT:
 		err = xdp_do_redirect(adapter->netdev, xdp, xdp_prog);
 		if (!err)
-			result = IXGBE_XDP_REDIR;
+			result = IXGBE_XDP_TX;
 		else
 			result = IXGBE_XDP_CONSUMED;
 		break;
@@ -2303,7 +2302,7 @@ static int ixgbe_clean_rx_irq(struct ixgbe_q_vector *q_vector,
 	unsigned int mss = 0;
 #endif /* IXGBE_FCOE */
 	u16 cleaned_count = ixgbe_desc_unused(rx_ring);
-	unsigned int xdp_xmit = 0;
+	bool xdp_xmit = false;
 
 	while (likely(total_rx_packets < budget)) {
 		union ixgbe_adv_rx_desc *rx_desc;
@@ -2343,10 +2342,8 @@ static int ixgbe_clean_rx_irq(struct ixgbe_q_vector *q_vector,
 		}
 
 		if (IS_ERR(skb)) {
-			unsigned int xdp_res = -PTR_ERR(skb);
-
-			if (xdp_res & (IXGBE_XDP_TX | IXGBE_XDP_REDIR)) {
-				xdp_xmit |= xdp_res;
+			if (PTR_ERR(skb) == -IXGBE_XDP_TX) {
+				xdp_xmit = true;
 				ixgbe_rx_buffer_flip(rx_ring, rx_buffer, size);
 			} else {
 				rx_buffer->pagecnt_bias++;
@@ -2418,10 +2415,7 @@ static int ixgbe_clean_rx_irq(struct ixgbe_q_vector *q_vector,
 		total_rx_packets++;
 	}
 
-	if (xdp_xmit & IXGBE_XDP_REDIR)
-		xdp_do_flush_map();
-
-	if (xdp_xmit & IXGBE_XDP_TX) {
+	if (xdp_xmit) {
 		struct ixgbe_ring *ring = adapter->xdp_ring[smp_processor_id()];
 
 		/* Force memory writes to complete before letting h/w
@@ -2429,6 +2423,8 @@ static int ixgbe_clean_rx_irq(struct ixgbe_q_vector *q_vector,
 		 */
 		wmb();
 		writel(ring->next_to_use, ring->tail);
+
+		xdp_do_flush_map();
 	}
 
 	u64_stats_update_begin(&rx_ring->syncp);

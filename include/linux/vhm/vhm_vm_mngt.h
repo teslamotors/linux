@@ -55,9 +55,10 @@
  */
 
 /**
- * DOC: brief Virtio and Hypervisor Module(VHM) management APIs
+ * @file vhm_vm_mngt.h
+ *
+ * @brief Virtio and Hypervisor Module(VHM) management APIs
  */
-
 #ifndef __VHM_VM_MNGT_H__
 #define __VHM_VM_MNGT_H__
 
@@ -76,7 +77,6 @@ extern struct mutex vhm_vm_list_lock;
  * @dev: pointer to dev of linux device mode
  * @list: list of vhm_vm
  * @vmid: guest vmid
- * @trusty_host_gpa: host physical address of continuous memory for Trusty
  * @ioreq_fallback_client: default ioreq client
  * @refcnt: reference count of guest
  * @seg_lock:  mutex to protect memseg_list
@@ -88,13 +88,11 @@ extern struct mutex vhm_vm_list_lock;
  * @ioreq_client_list: list of ioreq clients
  * @req_buf: request buffer shared between HV, SOS and UOS
  * @pg: pointer to linux page which holds req_buf
- * @hugetlb_enabled: flag to enable/disable hugetlb page ept mapping
  */
 struct vhm_vm {
 	struct device *dev;
 	struct list_head list;
 	unsigned long vmid;
-	unsigned long trusty_host_gpa;
 	int ioreq_fallback_client;
 	long refcnt;
 	struct mutex seg_lock;
@@ -121,7 +119,7 @@ struct vm_info {
 };
 
 /**
- * find_get_vm() - find and keep guest vhm_vm based on the vmid
+ * struct find_get_vm - find and hold vhm_vm of guest according to guest vmid
  *
  * @vmid: guest vmid
  *
@@ -130,16 +128,17 @@ struct vm_info {
 struct vhm_vm *find_get_vm(unsigned long vmid);
 
 /**
- * put_vm() - release vhm_vm of guest according to guest vmid
+ * struct put_vm - release vhm_vm of guest according to guest vmid
  * If the latest reference count drops to zero, free vhm_vm as well
- * @vm: pointer to vhm_vm which identify specific guest
+ *
+ * @vm: pointer to vhm_vm which identrify specific guest
  *
  * Return:
  */
 void put_vm(struct vhm_vm *vm);
 
 /**
- * vhm_get_vm_info() - get vm_info of specific guest
+ * struct vhm_get_vm_info - get vm_info of specific guest
  *
  * @vmid: guest vmid
  * @info: pointer to vm_info for returned vm_info
@@ -149,7 +148,7 @@ void put_vm(struct vhm_vm *vm);
 int vhm_get_vm_info(unsigned long vmid, struct vm_info *info);
 
 /**
- * vhm_inject_msi() - inject MSI interrupt to guest
+ * struct vhm_inject_msi - inject MSI interrupt to guest
  *
  * @vmid: guest vmid
  * @msi_addr: MSI addr matches MSI spec
@@ -161,11 +160,11 @@ int vhm_inject_msi(unsigned long vmid, unsigned long msi_addr,
 	unsigned long msi_data);
 
 /**
- * vhm_vm_gpa2hpa() - convert guest physical address to
+ * struct vhm_vm_gpa2hpa - convert guest physical address to
  * host physical address
  *
  * @vmid: guest vmid
- * @gpa: guest physical address
+ * @gap: guest physical address
  *
  * Return: host physical address, <0 on error
  */

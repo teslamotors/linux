@@ -305,31 +305,6 @@ int check_guest_mem(struct vhm_vm *vm)
 	return 0;
 }
 
-#define TRUSTY_MEM_GPA_BASE (511UL * 1024UL * 1024UL * 1024UL)
-#define TRUSTY_MEM_SIZE    (0x01000000)
-int init_trusty(struct vhm_vm *vm)
-{
-	unsigned long host_gpa, guest_gpa = TRUSTY_MEM_GPA_BASE;
-	unsigned long len = TRUSTY_MEM_SIZE;
-
-	host_gpa = _alloc_memblk(vm->dev, TRUSTY_MEM_SIZE);
-	if (host_gpa == 0ULL)
-		return -ENOMEM;
-
-	vm->trusty_host_gpa = host_gpa;
-
-	pr_info("VHM: set ept for trusty memory [host_gpa=0x%lx, "
-		"guest_gpa=0x%lx, len=0x%lx]", host_gpa, guest_gpa, len);
-	return _mem_set_memmap(vm->vmid, guest_gpa, host_gpa, len,
-		MEM_TYPE_WB, MEM_ACCESS_RWX, MAP_MEM);
-}
-
-void deinit_trusty(struct vhm_vm *vm)
-{
-	_free_memblk(vm->dev, vm->trusty_host_gpa, TRUSTY_MEM_SIZE);
-	vm->trusty_host_gpa = 0;
-}
-
 static void guest_vm_open(struct vm_area_struct *vma)
 {
 	struct vhm_vm *vm = vma->vm_file->private_data;

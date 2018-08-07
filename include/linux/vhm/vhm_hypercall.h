@@ -137,13 +137,12 @@ static inline long acrn_hypercall4(unsigned long hcall_id, unsigned long param1,
 	return result;
 }
 
-inline long hcall_sos_offline_cpu(unsigned long cpu);
 inline long hcall_get_api_version(unsigned long api_version);
 inline long hcall_create_vm(unsigned long vminfo);
 inline long hcall_start_vm(unsigned long vmid);
 inline long hcall_pause_vm(unsigned long vmid);
 inline long hcall_destroy_vm(unsigned long vmid);
-inline long hcall_reset_vm(unsigned long vmid);
+inline long hcall_restart_vm(unsigned long vmid);
 inline long hcall_query_vm_state(unsigned long vmid);
 inline long hcall_setup_sbuf(unsigned long sbuf_head);
 inline long hcall_set_sstate_data(unsigned long sx_data_addr);
