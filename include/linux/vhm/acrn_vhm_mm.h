@@ -99,12 +99,12 @@ void *map_guest_phys(unsigned long vmid, u64 uos_phys, size_t size);
 int unmap_guest_phys(unsigned long vmid, u64 uos_phys);
 
 /**
- * set_mmio_map - map mmio EPT mapping between UOS gpa and SOS gpa
+ * add_memory_region - add a guest memory region
  *
  * @vmid: guest vmid
- * @guest_gpa: gpa of UOS
+ * @gpa: gpa of UOS
  * @host_gpa: gpa of SOS
- * @len: memory mapped length
+ * @size: memory region size
  * @mem_type: memory mapping type. Possible value could be:
  *                    MEM_TYPE_WB
  *                    MEM_TYPE_WT
@@ -119,51 +119,35 @@ int unmap_guest_phys(unsigned long vmid, u64 uos_phys);
  *
  * Return: 0 on success, <0 for error.
  */
-int set_mmio_map(unsigned long vmid, unsigned long guest_gpa,
-	unsigned long host_gpa, unsigned long len,
+int add_memory_region(unsigned long vmid, unsigned long gpa,
+	unsigned long host_gpa, unsigned long size,
 	unsigned int mem_type, unsigned int mem_access_right);
 
 /**
- * unset_mmio_map - unmap mmio mapping between UOS gpa and SOS gpa
+ * del_memory_region - delete a guest memory region
  *
  * @vmid: guest vmid
- * @guest_gpa: gpa of UOS
- * @host_gpa: gpa of SOS
- * @len: memory mapped length
+ * @gpa: gpa of UOS
+ * @size: memory region size
  *
  * Return: 0 on success, <0 for error.
  */
-int unset_mmio_map(unsigned long vmid, unsigned long guest_gpa,
-	unsigned long host_gpa, unsigned long len);
+int del_memory_region(unsigned long vmid, unsigned long gpa,
+	unsigned long size);
 
 /**
- * update_memmap_attr - update mmio EPT mapping between UOS gpa and SOS gpa
+ * write_protect_page - change one page write protection
  *
  * @vmid: guest vmid
- * @guest_gpa: gpa of UOS
- * @host_gpa: gpa of SOS
- * @len: memory mapped length
- * @mem_type: memory mapping type. Possible value could be:
- *                    MEM_TYPE_WB
- *                    MEM_TYPE_WT
- *                    MEM_TYPE_UC
- *                    MEM_TYPE_WC
- *                    MEM_TYPE_WP
- * @mem_access_right: memory mapping access. Possible value could be:
- *                    MEM_ACCESS_READ
- *                    MEM_ACCESS_WRITE
- *                    MEM_ACCESS_EXEC
- *                    MEM_ACCESS_RWX
+ * @gpa: gpa in guest vmid
+ * @set: set or clear page write protection
  *
  * Return: 0 on success, <0 for error.
  */
-int update_memmap_attr(unsigned long vmid, unsigned long guest_gpa,
-	unsigned long host_gpa, unsigned long len,
-	unsigned int mem_type, unsigned int mem_access_right);
+int write_protect_page(unsigned long vmid,
+	unsigned long gpa, unsigned char set);
 
 int vhm_dev_mmap(struct file *file, struct vm_area_struct *vma);
-
-int check_guest_mem(struct vhm_vm *vm);
 
 /**
  * free_guest_mem - free memory of guest
@@ -173,17 +157,6 @@ int check_guest_mem(struct vhm_vm *vm);
  * Return:
  */
 void free_guest_mem(struct vhm_vm *vm);
-
-/**
- * alloc_guest_memseg - alloc memory of guest according to pre-defined
- * memory segment info
- *
- * @vm: pointer to guest vm
- * @memseg: pointer to guest memory segment info
- *
- * Return:
- */
-int alloc_guest_memseg(struct vhm_vm *vm, struct vm_memseg *memseg);
 
 /**
  * map_guest_memseg - set guest mmapping of memory according to
@@ -199,21 +172,17 @@ int map_guest_memseg(struct vhm_vm *vm, struct vm_memmap *memmap);
 int init_trusty(struct vhm_vm *vm);
 void deinit_trusty(struct vhm_vm *vm);
 
-int _mem_set_memmap(unsigned long vmid, unsigned long guest_gpa,
-	unsigned long host_gpa, unsigned long len,
-	unsigned int mem_type, unsigned int mem_access_right,
-	unsigned int type);
 int hugepage_map_guest(struct vhm_vm *vm, struct vm_memmap *memmap);
 void hugepage_free_guest(struct vhm_vm *vm);
 void *hugepage_map_guest_phys(struct vhm_vm *vm, u64 guest_phys, size_t size);
 int hugepage_unmap_guest_phys(struct vhm_vm *vm, u64 guest_phys);
 
 /**
- * set_memmaps - set guest mapping for multi regions
+ * set_memory_regions - set guest mapping for multi regions
  *
- * @memmaps: pointer to set_memmaps
+ * @regions: pointer to set_regions
  *
  * Return: 0 on success, <0 for error.
  */
-int set_memmaps(struct set_memmaps *memmaps);
+int set_memory_regions(struct set_regions *regions);
 #endif

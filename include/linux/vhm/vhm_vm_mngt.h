@@ -79,16 +79,14 @@ extern struct mutex vhm_vm_list_lock;
  * @trusty_host_gpa: host physical address of continuous memory for Trusty
  * @ioreq_fallback_client: default ioreq client
  * @refcnt: reference count of guest
- * @seg_lock:  mutex to protect memseg_list
- * @memseg_list: list of memseg
  * @hugepage_lock:  mutex to protect hugepage_hlist
  * @hugepage_hlist: hash list of hugepage
+ * @vcpu_num: vcpu number
  * @max_gfn: maximum guest page frame number
  * @ioreq_client_lock: spinlock to protect ioreq_client_list
  * @ioreq_client_list: list of ioreq clients
  * @req_buf: request buffer shared between HV, SOS and UOS
  * @pg: pointer to linux page which holds req_buf
- * @hugetlb_enabled: flag to enable/disable hugetlb page ept mapping
  */
 struct vhm_vm {
 	struct device *dev;
@@ -97,16 +95,14 @@ struct vhm_vm {
 	unsigned long trusty_host_gpa;
 	int ioreq_fallback_client;
 	long refcnt;
-	struct mutex seg_lock;
-	struct list_head memseg_list;
 	struct mutex hugepage_lock;
 	struct hlist_head hugepage_hlist[HUGEPAGE_HLIST_ARRAY_SIZE];
+	atomic_t vcpu_num;
 	int max_gfn;
 	spinlock_t ioreq_client_lock;
 	struct list_head ioreq_client_list;
 	struct vhm_request_buffer *req_buf;
 	struct page *pg;
-	int hugetlb_enabled;
 };
 
 /**

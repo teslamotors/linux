@@ -663,12 +663,9 @@ static int acrngt_set_wp_page(unsigned long handle, u64 gfn)
 		gvt_err("failed acrn_ioreq_add_iorange for gfn 0x%llx\n", gfn);
 		return ret;
 	}
-	ret = update_memmap_attr(info->vm_id, gfn << PAGE_SHIFT,
-				acrn_hpa2gpa(hpa), 0x1000,
-				MEM_TYPE_WB,
-				(MEM_ACCESS_READ | MEM_ACCESS_EXEC));
+	ret = write_protect_page(info->vm_id, gfn << PAGE_SHIFT, true);
 	if (ret)
-		gvt_err("failed update_memmap_attr set for gfn 0x%llx\n", gfn);
+		gvt_err("failed set write protect for gfn 0x%llx\n", gfn);
 	return ret;
 }
 
@@ -680,12 +677,9 @@ static int acrngt_unset_wp_page(unsigned long handle, u64 gfn)
 	gvt_dbg_core("unset wp page for gfx 0x%llx\n", gfn);
 
 	hpa = vhm_vm_gpa2hpa(info->vm_id, gfn << PAGE_SHIFT);
-	/* TODO: need to read back default value before write */
-	ret = update_memmap_attr(info->vm_id, gfn << PAGE_SHIFT,
-			acrn_hpa2gpa(hpa), 0x1000, MEM_TYPE_WB, MEM_ACCESS_RWX);
+	ret = write_protect_page(info->vm_id, gfn << PAGE_SHIFT, false);
 	if (ret) {
-		gvt_err("failed update_memmap_attr unset for gfn 0x%llx\n",
-			gfn);
+		gvt_err("failed unset write protect for gfn 0x%llx\n", gfn);
 		return ret;
 	}
 	ret = acrn_ioreq_del_iorange(info->client, REQ_WP, gfn << PAGE_SHIFT,
@@ -780,12 +774,12 @@ static int acrngt_map_gfn_to_mfn(unsigned long handle, unsigned long gfn,
 		gfn, mfn, nr, map);
 
 	if (map)
-		ret = set_mmio_map(info->vm_id, gfn << PAGE_SHIFT,
+		ret = add_memory_region(info->vm_id, gfn << PAGE_SHIFT,
 					mfn << PAGE_SHIFT, nr << PAGE_SHIFT,
 					MEM_TYPE_UC, MEM_ACCESS_RWX);
 	else
-		ret = unset_mmio_map(info->vm_id, gfn << PAGE_SHIFT,
-					mfn << PAGE_SHIFT, nr << PAGE_SHIFT);
+		ret = del_memory_region(info->vm_id, gfn << PAGE_SHIFT,
+					nr << PAGE_SHIFT);
 	if (ret)
 		gvt_err("failed map/unmap gfn 0x%lx to mfn 0x%lx with %u pages,"
 			" map %d\n", gfn, mfn, nr, map);
@@ -814,7 +808,7 @@ static int acrngt_set_trap_area(unsigned long handle, u64 start,
 
 static int acrngt_set_pvmmio(unsigned long handle, u64 start, u64 end, bool map)
 {
-	int rc;
+	int rc, i;
 	unsigned long mfn, shared_mfn;
 	unsigned long pfn = start >> PAGE_SHIFT;
 	u32 mmio_size_fn = acrngt_priv.gvt->device_info.mmio_size >> PAGE_SHIFT;
@@ -844,13 +838,15 @@ static int acrngt_set_pvmmio(unsigned long handle, u64 start, u64 end, bool map)
 			gvt_err("failed acrn_ioreq_add_iorange for pfn 0x%lx\n", pfn);
 			return rc;
 		}
-		rc = update_memmap_attr(info->vm_id, pfn << PAGE_SHIFT,
-					mfn << PAGE_SHIFT,
-					mmio_size_fn << PAGE_SHIFT,
-					MEM_TYPE_WB,
-					(MEM_ACCESS_READ | MEM_ACCESS_EXEC));
-		if (rc)
-			gvt_err("failed update_memmap_attr set for pfn 0x%lx\n", pfn);
+
+		for (i = 0; i < mmio_size_fn; i++) {
+			rc = write_protect_page(info->vm_id,
+				(pfn + i) << PAGE_SHIFT, true);
+			if (rc) {
+				gvt_err("failed set wp for pfn 0x%lx\n", pfn + i);
+				return rc;
+			}
+		}
 
 		/* scratch reg access is trapped like mmio access, 1 page */
 		rc = acrngt_map_gfn_to_mfn(handle, pfn + (VGT_PVINFO_PAGE >> PAGE_SHIFT),
@@ -869,15 +865,6 @@ static int acrngt_set_pvmmio(unsigned long handle, u64 start, u64 end, bool map)
 			return rc;
 		}
 
-		/* shared page is not trapped, directly pass through */
-		//todo: MEM_ATTR_ALL_WB or MEM_ATTR_ALL?
-		rc = update_memmap_attr(info->vm_id,
-				(pfn + mmio_size_fn) << PAGE_SHIFT,
-				shared_mfn << PAGE_SHIFT,
-				0x1000, MEM_TYPE_WB, MEM_ACCESS_RWX);
-		if (rc)
-			gvt_err("failed update_memmap_attr set for gfn 0x%lx\n",
-				pfn + mmio_size_fn);
 	} else {
 		mfn = acrngt_virt_to_mfn(info->vgpu->mmio.vreg);
 		rc = acrngt_map_gfn_to_mfn(handle, pfn, mfn, mmio_size_fn, map);

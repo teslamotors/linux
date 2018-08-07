@@ -93,9 +93,9 @@
 
 /* Guest memory management */
 #define HC_ID_MEM_BASE              0x40UL
-#define HC_VM_SET_MEMMAP            _HC_ID(HC_ID, HC_ID_MEM_BASE + 0x00)
 #define HC_VM_GPA2HPA               _HC_ID(HC_ID, HC_ID_MEM_BASE + 0x01)
-#define HC_VM_SET_MEMMAPS           _HC_ID(HC_ID, HC_ID_MEM_BASE + 0x02)
+#define HC_VM_SET_MEMORY_REGIONS    _HC_ID(HC_ID, HC_ID_MEM_BASE + 0x02)
+#define HC_VM_WRITE_PROTECT_PAGE    _HC_ID(HC_ID, HC_ID_MEM_BASE + 0x03)
 
 /* PCI assignment*/
 #define HC_ID_PCI_BASE              0x50UL
@@ -132,60 +132,58 @@
 #define	MEM_TYPE_WP                     0x00000400
 #define MEM_TYPE_MASK                   0x000007C0
 
-struct vm_set_memmap {
-#define MAP_MEM		0
-#define MAP_MMIO	1
-#define MAP_UNMAP	2
+struct vm_memory_region {
+#define MR_ADD		0
+#define MR_DEL		2
 	uint32_t type;
 
 	/* IN: mem attr */
 	uint32_t prot;
 
 	/* IN: beginning guest GPA to map */
-	uint64_t remote_gpa;
+	uint64_t gpa;
 
 	/* IN: VM0's GPA which foreign gpa will be mapped to */
 	uint64_t vm0_gpa;
 
-	/* IN: length of the range */
-	uint64_t length;
-
-	uint32_t prot_2;
+	/* IN: size of the region */
+	uint64_t size;
 } __attribute__((aligned(8)));
 
-struct memory_map {
-	uint32_t type;
-
-	/* IN: mem attr */
-	uint32_t prot;
-
-	/* IN: beginning guest GPA to map */
-	uint64_t remote_gpa;
-
-	/* IN: VM0's GPA which foreign gpa will be mapped to */
-	uint64_t vm0_gpa;
-
-	/* IN: length of the range */
-	uint64_t length;
-} __attribute__((aligned(8)));
-
-struct set_memmaps {
+struct set_regions {
 	/*IN: vmid for this hypercall */
-	uint64_t vmid;
+	uint16_t vmid;
+
+	/** Reserved */
+	uint16_t reserved[3];
 
 	/* IN: multi memmaps numbers */
-	uint32_t memmaps_num;
+	uint32_t mr_num;
 
 	/* IN:
 	 * the gpa of memmaps buffer, point to the memmaps array:
 	 *  	struct memory_map memmap_array[memmaps_num]
 	 * the max buffer size is one page.
 	 */
-	uint64_t memmaps_gpa;
+	uint64_t regions_gpa;
 } __attribute__((aligned(8)));
 
+struct wp_data {
+	/** set page write protect permission.
+	 *  ture: set the wp; flase: clear the wp
+	 */
+	uint8_t set;
+
+	/** Reserved */
+	uint64_t pad:56;
+
+	/** the guest physical address of the page to change */
+	uint64_t gpa;
+} __aligned(8);
+
 struct sbuf_setup_param {
-	uint32_t pcpu_id;
+	uint16_t pcpu_id;
+	uint16_t reserved;
 	uint32_t sbuf_id;
 	uint64_t gpa;
 } __attribute__((aligned(8)));
@@ -204,9 +202,12 @@ struct hc_ptdev_irq {
 	uint16_t phys_bdf;	/* IN: Device physical BDF# */
 	union {
 		struct {
-			uint32_t virt_pin;	/* IN: virtual IOAPIC pin */
-			uint32_t phys_pin;	/* IN: physical IOAPIC pin */
-			uint32_t pic_pin;	/* IN: pin from PIC? */
+			uint8_t virt_pin;	/* IN: virtual IOAPIC pin */
+			uint8_t reserved0[3];	/* Reserved */
+			uint8_t phys_pin;	/* IN: physical IOAPIC pin */
+			uint8_t reserved1[3];	/* Reserved */
+			bool pic_pin;		/* IN: pin from PIC? */
+			uint8_t reserved2[3];	/* Reserved */
 		} intx;
 		struct {
 			/* IN: vector count of MSI/MSIX */

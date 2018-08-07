@@ -743,6 +743,60 @@ static int spr_surf_mmio_write(struct intel_vgpu *vgpu, unsigned int offset,
 	return 0;
 }
 
+static int skl_plane_mmio_write(struct intel_vgpu *vgpu, unsigned int offset,
+		void *p_data, unsigned int bytes);
+static int skl_ps_mmio_write(struct intel_vgpu *vgpu, unsigned int offset,
+		void *p_data, unsigned int bytes);
+
+static void pvmmio_update_plane_register(struct intel_vgpu *vgpu,
+	unsigned int pipe, unsigned int plane)
+{
+	struct pv_plane_update *pv_plane = &vgpu->mmio.shared_page->pv_plane;
+
+	/* null function for PLANE_COLOR_CTL, PLANE_AUX_DIST, PLANE_AUX_OFFSET,
+	 * and SKL_PS_PWR_GATE register trap
+	 */
+
+	if (pv_plane->flags & PLANE_KEY_BIT) {
+		skl_plane_mmio_write(vgpu,
+			i915_mmio_reg_offset(PLANE_KEYVAL(pipe, plane)),
+			&pv_plane->plane_key_val, 4);
+		skl_plane_mmio_write(vgpu,
+			i915_mmio_reg_offset(PLANE_KEYMAX(pipe, plane)),
+			&pv_plane->plane_key_max, 4);
+		skl_plane_mmio_write(vgpu,
+			i915_mmio_reg_offset(PLANE_KEYMSK(pipe, plane)),
+			&pv_plane->plane_key_msk, 4);
+	}
+	skl_plane_mmio_write(vgpu,
+		i915_mmio_reg_offset(PLANE_OFFSET(pipe, plane)),
+		&pv_plane->plane_offset, 4);
+	skl_plane_mmio_write(vgpu,
+		i915_mmio_reg_offset(PLANE_STRIDE(pipe, plane)),
+		&pv_plane->plane_stride, 4);
+	skl_plane_mmio_write(vgpu,
+		i915_mmio_reg_offset(PLANE_SIZE(pipe, plane)),
+		&pv_plane->plane_size, 4);
+
+	if (pv_plane->flags & PLANE_SCALER_BIT) {
+		skl_ps_mmio_write(vgpu,
+			i915_mmio_reg_offset(SKL_PS_CTRL(pipe, plane)),
+			&pv_plane->ps_ctrl, 4);
+		skl_ps_mmio_write(vgpu,
+			i915_mmio_reg_offset(SKL_PS_WIN_POS(pipe, plane)),
+			&pv_plane->ps_win_ps, 4);
+		skl_ps_mmio_write(vgpu,
+			i915_mmio_reg_offset(SKL_PS_WIN_SZ(pipe, plane)),
+			&pv_plane->ps_win_sz, 4);
+	}
+	skl_plane_mmio_write(vgpu,
+		i915_mmio_reg_offset(PLANE_POS(pipe, plane)),
+		&pv_plane->plane_pos, 4);
+	skl_plane_mmio_write(vgpu,
+		i915_mmio_reg_offset(PLANE_CTL(pipe, plane)),
+		&pv_plane->plane_ctl, 4);
+}
+
 static int skl_plane_surf_write(struct intel_vgpu *vgpu, unsigned int offset,
 		void *p_data, unsigned int bytes)
 {
@@ -751,6 +805,10 @@ static int skl_plane_surf_write(struct intel_vgpu *vgpu, unsigned int offset,
 	unsigned int plane = SKL_PLANE_REG_TO_PLANE(offset);
 	i915_reg_t reg_1ac = _MMIO(_REG_701AC(pipe, plane));
 	int flip_event = SKL_FLIP_EVENT(pipe, plane);
+
+	/* plane disable is not pv and it is indicated by value 0 */
+	if (*(u32 *)p_data != 0 && VGPU_PVMMIO(vgpu) & PVMMIO_PLANE_UPDATE)
+		pvmmio_update_plane_register(vgpu, pipe, plane);
 
 	write_vreg(vgpu, offset, p_data, bytes);
 	vgpu_vreg(vgpu, reg_1ac) = vgpu_vreg(vgpu, offset);
@@ -814,6 +872,28 @@ static int skl_plane_mmio_write(struct intel_vgpu *vgpu, unsigned int offset,
 	if ((vgpu_vreg(vgpu, PIPECONF(pipe)) & I965_PIPECONF_ACTIVE) &&
 			(vgpu->gvt->pipe_info[pipe].plane_owner[plane] == vgpu->id)) {
 		I915_WRITE(_MMIO(offset), vgpu_vreg(vgpu, offset));
+	}
+	return 0;
+}
+
+static int pv_plane_wm_mmio_write(struct intel_vgpu *vgpu, unsigned int offset,
+		void *p_data, unsigned int bytes)
+{
+	unsigned int pipe = SKL_PLANE_REG_TO_PIPE(offset);
+	unsigned int plane = SKL_PLANE_REG_TO_PLANE(offset);
+	struct pv_plane_wm_update *pv_plane_wm =
+		&vgpu->mmio.shared_page->pv_plane_wm;
+	int level;
+
+	if (VGPU_PVMMIO(vgpu) & PVMMIO_PLANE_WM_UPDATE) {
+		for (level = 0; level <= pv_plane_wm->max_wm_level; level++)
+			skl_plane_mmio_write(vgpu,
+			    i915_mmio_reg_offset(PLANE_WM(pipe, plane, level)),
+			    &pv_plane_wm->plane_wm_level[level], 4);
+		skl_plane_mmio_write(vgpu,
+			i915_mmio_reg_offset(PLANE_WM_TRANS(pipe, plane)),
+			&pv_plane_wm->plane_trans_wm_level, 4);
+		/* null function for PLANE_BUF_CFG and PLANE_NV12_BUF_CFG */
 	}
 	return 0;
 }
@@ -2987,7 +3067,8 @@ static int init_skl_mmio_info(struct intel_gvt *gvt)
 
 	MMIO_PLANES_SDH(_PLANE_WM_BASE, 4 * 8, D_SKL_PLUS, NULL, NULL);
 	MMIO_PLANES_DH(PLANE_WM_TRANS, D_SKL_PLUS, NULL, NULL);
-	MMIO_PLANES_DH(PLANE_NV12_BUF_CFG, D_SKL_PLUS, NULL, NULL);
+	MMIO_PLANES_DH(PLANE_NV12_BUF_CFG, D_SKL_PLUS, NULL,
+		       pv_plane_wm_mmio_write);
 	MMIO_PLANES_DH(PLANE_BUF_CFG, D_SKL_PLUS, NULL, NULL);
 
 	MMIO_D(0x8f074, D_SKL | D_KBL);
@@ -3150,7 +3231,7 @@ static int init_bxt_mmio_info(struct intel_gvt *gvt)
 		MMIO_PLANES_DH(PLANE_WM_TRANS, D_BXT, NULL, skl_plane_mmio_write);
 	}
 
-	MMIO_PLANES_DH(PLANE_NV12_BUF_CFG, D_BXT, NULL, NULL);
+	MMIO_PLANES_DH(PLANE_NV12_BUF_CFG, D_BXT, NULL, pv_plane_wm_mmio_write);
 	MMIO_PLANES_DH(PLANE_BUF_CFG, D_BXT, NULL, NULL);
 
 	MMIO_F(0x80000, 0x3000, 0, 0, 0, D_BXT, NULL, NULL);

@@ -120,11 +120,11 @@ static int add_guest_map(struct vhm_vm *vm, unsigned long vm0_gpa,
 
 int hugepage_map_guest(struct vhm_vm *vm, struct vm_memmap *memmap)
 {
-	struct page *page = NULL, *memmaps_buf_pg = NULL;
+	struct page *page = NULL, *regions_buf_pg = NULL;
 	unsigned long len, guest_gpa, vma;
-	struct memory_map *memmap_array;
-	struct set_memmaps memmaps;
-	int max_size = PAGE_SIZE/sizeof(struct memory_map);
+	struct vm_memory_region *region_array;
+	struct set_regions regions;
+	int max_size = PAGE_SIZE/sizeof(struct vm_memory_region);
 	int ret;
 
 	if (vm == NULL || memmap == NULL)
@@ -134,14 +134,14 @@ int hugepage_map_guest(struct vhm_vm *vm, struct vm_memmap *memmap)
 	vma = memmap->vma_base;
 	guest_gpa = memmap->gpa;
 
-	/* prepare set_memmaps info */
-	memmaps_buf_pg = alloc_page(GFP_KERNEL);
-	if (memmaps_buf_pg == NULL)
+	/* prepare set_memory_regions info */
+	regions_buf_pg = alloc_page(GFP_KERNEL);
+	if (regions_buf_pg == NULL)
 		return -ENOMEM;
-	memmaps.memmaps_num = 0;
-	memmaps.vmid = vm->vmid;
-	memmaps.memmaps_gpa = page_to_phys(memmaps_buf_pg);
-	memmap_array = page_to_virt(memmaps_buf_pg);
+	regions.mr_num = 0;
+	regions.vmid = vm->vmid;
+	regions.regions_gpa = page_to_phys(regions_buf_pg);
+	region_array = page_to_virt(regions_buf_pg);
 
 	while (len > 0) {
 		unsigned long vm0_gpa, pagesize;
@@ -162,24 +162,23 @@ int hugepage_map_guest(struct vhm_vm *vm, struct vm_memmap *memmap)
 			goto err;
 		}
 
-		/* fill each memmap region into memmap_array */
-		memmap_array[memmaps.memmaps_num].type = MAP_MEM;
-		memmap_array[memmaps.memmaps_num].remote_gpa = guest_gpa;
-		memmap_array[memmaps.memmaps_num].vm0_gpa = vm0_gpa;
-		memmap_array[memmaps.memmaps_num].length = pagesize;
-		memmap_array[memmaps.memmaps_num].prot =
-				MEM_TYPE_WB & MEM_TYPE_MASK;
-		memmap_array[memmaps.memmaps_num].prot |=
-				memmap->prot & MEM_ACCESS_RIGHT_MASK;
-		memmaps.memmaps_num++;
-		if (memmaps.memmaps_num == max_size) {
-			pr_info("region buffer full, set & renew memmaps!\n");
-			ret = set_memmaps(&memmaps);
+		/* fill each memory region into region_array */
+		region_array[regions.mr_num].type = MR_ADD;
+		region_array[regions.mr_num].gpa = guest_gpa;
+		region_array[regions.mr_num].vm0_gpa = vm0_gpa;
+		region_array[regions.mr_num].size = pagesize;
+		region_array[regions.mr_num].prot =
+				(MEM_TYPE_WB & MEM_TYPE_MASK) |
+				(memmap->prot & MEM_ACCESS_RIGHT_MASK);
+		regions.mr_num++;
+		if (regions.mr_num == max_size) {
+			pr_info("region buffer full, set & renew regions!\n");
+			ret = set_memory_regions(&regions);
 			if (ret < 0) {
-				pr_err("failed to set memmaps,ret=%d!\n", ret);
+				pr_err("failed to set regions,ret=%d!\n", ret);
 				goto err;
 			}
-			memmaps.memmaps_num = 0;
+			regions.mr_num = 0;
 		}
 
 		len -= pagesize;
@@ -187,19 +186,18 @@ int hugepage_map_guest(struct vhm_vm *vm, struct vm_memmap *memmap)
 		guest_gpa += pagesize;
 	}
 
-	ret = set_memmaps(&memmaps);
+	ret = set_memory_regions(&regions);
 	if (ret < 0) {
-		pr_err("failed to set memmaps, ret=%d!\n", ret);
+		pr_err("failed to set regions, ret=%d!\n", ret);
 		goto err;
 	}
 
-	__free_page(memmaps_buf_pg);
-	vm->hugetlb_enabled = 1;
+	__free_page(regions_buf_pg);
 
 	return 0;
 err:
-	if (memmaps_buf_pg)
-		__free_page(memmaps_buf_pg);
+	if (regions_buf_pg)
+		__free_page(regions_buf_pg);
 	if (page)
 		put_page(page);
 	return ret;

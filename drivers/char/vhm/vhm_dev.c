@@ -96,7 +96,6 @@ static int    major;
 static struct class *vhm_class;
 static struct device *vhm_device;
 static struct tasklet_struct vhm_io_req_tasklet;
-static atomic_t ioreq_retry = ATOMIC_INIT(0);
 
 struct table_iomems {
 	/* list node for this table_iomems */
@@ -122,9 +121,6 @@ static int vhm_dev_open(struct inode *inodep, struct file *filep)
 	vm->vmid = ACRN_INVALID_VMID;
 	vm->dev = vhm_device;
 
-	INIT_LIST_HEAD(&vm->memseg_list);
-	mutex_init(&vm->seg_lock);
-
 	for (i = 0; i < HUGEPAGE_HLIST_ARRAY_SIZE; i++)
 		INIT_HLIST_HEAD(&vm->hugepage_hlist[i]);
 	mutex_init(&vm->hugepage_lock);
@@ -134,7 +130,6 @@ static int vhm_dev_open(struct inode *inodep, struct file *filep)
 
 	vm_mutex_lock(&vhm_vm_list_lock);
 	vm->refcnt = 1;
-	vm->hugetlb_enabled = 0;
 	vm_list_add(&vm->list);
 	vm_mutex_unlock(&vhm_vm_list_lock);
 	filep->private_data = vm;
@@ -286,18 +281,9 @@ static long vhm_dev_ioctl(struct file *filep,
 			pr_err("vhm: failed to create vcpu %d!\n", cv.vcpu_id);
 			return -EFAULT;
 		}
+		atomic_inc(&vm->vcpu_num);
 
 		return ret;
-	}
-
-	case IC_ALLOC_MEMSEG: {
-		struct vm_memseg memseg;
-
-		if (copy_from_user(&memseg, (void *)ioctl_param,
-			sizeof(struct vm_memseg)))
-			return -EFAULT;
-
-		return alloc_guest_memseg(vm, &memseg);
 	}
 
 	case IC_SET_MEMSEG: {
@@ -637,19 +623,11 @@ static void io_req_tasklet(unsigned long data)
 
 		acrn_ioreq_distribute_request(vm);
 	}
-
-	if (atomic_read(&ioreq_retry) > 0) {
-		atomic_dec(&ioreq_retry);
-		tasklet_schedule(&vhm_io_req_tasklet);
-	}
 }
 
 static void vhm_intr_handler(void)
 {
-	if (test_bit(TASKLET_STATE_SCHED, &(vhm_io_req_tasklet.state)))
-		atomic_inc(&ioreq_retry);
-	else
-		tasklet_schedule(&vhm_io_req_tasklet);
+	tasklet_schedule(&vhm_io_req_tasklet);
 }
 
 static int vhm_dev_release(struct inode *inodep, struct file *filep)
@@ -669,7 +647,6 @@ static const struct file_operations fops = {
 	.open = vhm_dev_open,
 	.read = vhm_dev_read,
 	.write = vhm_dev_write,
-	.mmap = vhm_dev_mmap,
 	.release = vhm_dev_release,
 	.unlocked_ioctl = vhm_dev_ioctl,
 	.poll = vhm_dev_poll,

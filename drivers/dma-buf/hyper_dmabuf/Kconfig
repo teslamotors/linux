@@ -3,7 +3,7 @@ menu "hyper_dmabuf options"
 config HYPER_DMABUF
 	bool "Enables hyper dmabuf driver"
 	default y
-	depends on (X86=y || X86_64=y || 64BIT=y)
+	depends on (X86=y || X86_64=y)
 
 choice
 	prompt "Hypervisor"

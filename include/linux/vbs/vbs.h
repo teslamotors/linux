@@ -181,7 +181,7 @@ struct virtio_dev_info {
 	 * This is the callback function to be registered to VHM,
 	 * so that VBS gets notified when frontend accessed the register.
 	 */
-	int (*dev_notify)(int, int);
+	int (*dev_notify)(int, unsigned long *);
 	/** @vqs: virtqueue(s) of this device */
 	struct virtio_vq_info *vqs;
 	/** @curq: current virtqueue index */
@@ -269,10 +269,10 @@ long virtio_dev_deregister(struct virtio_dev_info *dev);
  * frontend.
  *
  * @dev: Pointer to VBS-K device data struct
- * @req_cnt: Number of requests need to handle, provided by VHM
+ * @ioreqs_map: requests bitmap need to handle, provided by VHM
  *
  * Return: >=0 on virtqueue index, <0 on error
  */
-int virtio_vq_index_get(struct virtio_dev_info *dev, int req_cnt);
+int virtio_vq_index_get(struct virtio_dev_info *dev, unsigned long *ioreqs_map);
 
 #endif

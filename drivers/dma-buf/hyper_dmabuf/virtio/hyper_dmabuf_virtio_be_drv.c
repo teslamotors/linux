@@ -161,15 +161,12 @@ static void virtio_be_handle_vq_kick(
 /*
  *  Received new buffer in virtqueue
  */
-static int virtio_be_handle_kick(int client_id, int req_cnt)
+static int virtio_be_handle_kick(int client_id, unsigned long *ioreqs_map)
 {
 	int val = -1;
 	struct vhm_request *req;
 	struct virtio_fe_info *fe_info;
-	int i;
-
-	if (unlikely(req_cnt <= 0))
-		return -EINVAL;
+	int vcpu;
 
 	fe_info = virtio_fe_find(client_id);
 	if (fe_info == NULL) {
@@ -177,8 +174,11 @@ static int virtio_be_handle_kick(int client_id, int req_cnt)
 		return -EINVAL;
 	}
 
-	for (i = 0; i < fe_info->max_vcpu; ++i) {
-		req = &fe_info->req_buf[i];
+	while (1) {
+		vcpu = find_first_bit(ioreqs_map, fe_info->max_vcpu);
+		if (vcpu == fe_info->max_vcpu)
+			break;
+		req = &fe_info->req_buf[vcpu];
 		if (req->valid &&
 		    req->processed == REQ_STATE_PROCESSING &&
 		    req->client == fe_info->client_id) {
@@ -188,7 +188,7 @@ static int virtio_be_handle_kick(int client_id, int req_cnt)
 				val = req->reqs.pio_request.value;
 
 			req->processed = REQ_STATE_SUCCESS;
-			acrn_ioreq_complete_request(fe_info->client_id, i);
+			acrn_ioreq_complete_request(fe_info->client_id, vcpu);
 		}
 	}
 
