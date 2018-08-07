@@ -200,6 +200,16 @@ static int acrngt_hvm_mmio_emulation(struct intel_vgpu *vgpu,
 	return 0;
 }
 
+static void handle_request_error(struct intel_vgpu *vgpu)
+{
+       mutex_lock(&vgpu->gvt->lock);
+       if (vgpu->failsafe == false) {
+               vgpu->failsafe= true;
+               gvt_err("Now vgpu %d will enter failsafe mode.\n", vgpu->id);
+       }
+       mutex_unlock(&vgpu->gvt->lock);
+}
+
 static int acrngt_emulation_thread(void *priv)
 {
 	struct intel_vgpu *vgpu = (struct intel_vgpu *)priv;
@@ -242,7 +252,7 @@ static int acrngt_emulation_thread(void *priv)
 				}
 				/* error handling */
 				if (ret)
-					BUG();
+					handle_request_error(vgpu);
 
 				smp_mb();
 				atomic_set(&req->processed, REQ_STATE_COMPLETE);
