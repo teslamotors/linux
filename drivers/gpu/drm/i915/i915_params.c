@@ -24,6 +24,7 @@
 
 #include "i915_params.h"
 #include "i915_drv.h"
+#include "i915_pvinfo.h"
 
 #define i915_param_named(name, T, perm, desc) \
 	module_param_named(name, i915_modparams.name, T, perm); \
@@ -72,7 +73,8 @@ struct i915_params i915_modparams __read_mostly = {
 	.inject_load_failure = 0,
 	.enable_dpcd_backlight = false,
 	.enable_gvt = false,
-	.enable_pvmmio = 1,
+	.enable_pvmmio = PVMMIO_ELSP_SUBMIT | PVMMIO_PLANE_UPDATE |
+			 PVMMIO_PLANE_WM_UPDATE,
 	.enable_gvt_oos = 1,
 	.enable_conformance_check = true,
 	.disable_gvt_fw_loading = true,

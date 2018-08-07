@@ -55,13 +55,45 @@ enum vgt_g2v_type {
 	VGT_G2V_MAX,
 };
 
+#define PLANE_COLOR_CTL_BIT	(1 << 0)
+#define PLANE_KEY_BIT		(1 << 1)
+#define PLANE_SCALER_BIT	(1 << 2)
+
+struct pv_plane_update {
+	u32 flags;
+	u32 plane_color_ctl;
+	u32 plane_key_val;
+	u32 plane_key_max;
+	u32 plane_key_msk;
+	u32 plane_offset;
+	u32 plane_stride;
+	u32 plane_size;
+	u32 plane_aux_dist;
+	u32 plane_aux_offset;
+	u32 ps_ctrl;
+	u32 ps_pwr_gate;
+	u32 ps_win_ps;
+	u32 ps_win_sz;
+	u32 plane_pos;
+	u32 plane_ctl;
+};
+
+struct pv_plane_wm_update {
+	u32 max_wm_level;
+	u32 plane_wm_level[8];
+	u32 plane_trans_wm_level;
+	u32 plane_buf_cfg;
+};
+
 /* shared page(4KB) between gvt and VM, located at the first page next
  * to MMIO region(2MB size normally).
  */
 struct gvt_shared_page {
 	u32 elsp_data[4];
 	u32 reg_addr;
-	u32 rsvd2[0x400 - 5];
+	struct pv_plane_update pv_plane;
+	struct pv_plane_wm_update pv_plane_wm;
+	u32 rsvd2[0x400 - 32];
 };
 
 #define VGPU_PVMMIO(vgpu) vgpu_vreg(vgpu, vgtif_reg(enable_pvmmio))
@@ -76,6 +108,8 @@ struct gvt_shared_page {
  */
 enum pvmmio_levels {
 	PVMMIO_ELSP_SUBMIT = 0x1,
+	PVMMIO_PLANE_UPDATE = 0x2,
+	PVMMIO_PLANE_WM_UPDATE = 0x4,
 };
 
 struct vgt_if {
