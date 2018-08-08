@@ -1957,6 +1957,8 @@ static int sof_route_load(struct snd_soc_component *scomp, int index,
 	    sink_swidget->id != snd_soc_dapm_buffer) {
 		dev_dbg(sdev->dev, "warning: neither Linked source component %s nor sink component %s is of buffer type, ignoring link\n",
 			route->source, route->sink);
+		ret = 0;
+		goto err;
 	} else {
 		ret = sof_ipc_tx_message(sdev->ipc,
 					 connect->hdr.cmd,
@@ -1981,13 +1983,13 @@ static int sof_route_load(struct snd_soc_component *scomp, int index,
 			ret = reply.error;
 			goto err;
 		}
+
+		sroute->route = route;
+		sroute->private = connect;
+
+		/* add route to route list */
+		list_add(&sroute->list, &sdev->route_list);
 	}
-
-	sroute->route = route;
-	sroute->private = connect;
-
-	/* add route to route list */
-	list_add(&sroute->list, &sdev->route_list);
 
 	return ret;
 
