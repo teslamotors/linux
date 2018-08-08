@@ -1832,17 +1832,17 @@ static int sof_link_load(struct snd_soc_component *scomp, int index,
 	if (ret < 0)
 		return ret;
 
-	dai = snd_sof_find_dai(sdev, (char *)link->name);
-	if (dai) {
-		/* set config for dai */
-		memcpy(&dai->dai_config, &config,
-		       sizeof(struct sof_ipc_dai_config));
-		return 0;
+	/* set config for all DAI's with name matching the link name */
+	list_for_each_entry(dai, &sdev->dai_list, list) {
+		if (!dai->name)
+			continue;
+
+		if (strcmp(link->name, dai->name) == 0)
+			memcpy(&dai->dai_config, &config,
+			       sizeof(struct sof_ipc_dai_config));
 	}
 
-	dev_err(sdev->dev, "failed to find BE DAI for link %s\n", link->name);
-
-	return -EINVAL;
+	return 0;
 }
 
 static int sof_link_unload(struct snd_soc_component *scomp,
