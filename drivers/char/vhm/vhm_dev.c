@@ -631,6 +631,23 @@ create_vm_fail:
 		break;
 	}
 
+	case IC_VM_INTR_MONITOR: {
+		struct page *page;
+
+		ret = get_user_pages_fast(ioctl_param, 1, 1, &page);
+		if (unlikely(ret != 1) || (page == NULL)) {
+			pr_err("vhm-dev: failed to pin intr hdr buffer!\n");
+			return -ENOMEM;
+		}
+
+		ret = hcall_vm_intr_monitor(vm->vmid, page_to_phys(page));
+		if (ret < 0) {
+			pr_err("vhm-dev: monitor intr data err=%d\n", ret);
+			return -EFAULT;
+		}
+		break;
+	}
+
 	default:
 		pr_warn("Unknown IOCTL 0x%x\n", ioctl_num);
 		ret = 0;
