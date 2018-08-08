@@ -285,7 +285,7 @@ int sof_ipc_tx_message(struct snd_sof_ipc *ipc, u32 header,
 	/* add message to transmit list */
 	list_add_tail(&msg->list, &ipc->tx_list);
 
-	/* schedule the messgae if not busy */
+	/* schedule the message if not busy */
 	if (snd_sof_dsp_is_ready(sdev))
 		schedule_work(&ipc->tx_kwork);
 
