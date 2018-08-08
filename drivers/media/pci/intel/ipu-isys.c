@@ -702,10 +702,9 @@ static int isys_register_subdevices(struct ipu_isys *isys)
 			     k < NR_OF_CSI2_BE_SOC_SINK_PADS; k++) {
 				rval =
 				    media_create_pad_link(&isys->csi2[i].asd.sd.
-							  entity, j,
+							  entity, CSI2_PAD_SOURCE,
 							  &isys->csi2_be_soc.
-							  asd.sd.entity, k,
-							  MEDIA_LNK_FL_DYNAMIC);
+							  asd.sd.entity, CSI2_BE_SOC_PAD_SINK, 0);
 				if (rval) {
 					dev_info(&isys->adev->dev,
 						 "can't create link csi2->be_soc\n");
@@ -732,7 +731,8 @@ static int isys_register_subdevices(struct ipu_isys *isys)
 			    media_create_pad_link(&isys->tpg[i].asd.sd.entity,
 						  TPG_PAD_SOURCE,
 						  &isys->csi2_be_soc.asd.sd.
-						  entity, k, 0);
+						  entity, k,
+						  MEDIA_LNK_FL_DYNAMIC);
 			if (rval) {
 				dev_info(&isys->adev->dev,
 					 "can't create link tpg->be_soc\n");
