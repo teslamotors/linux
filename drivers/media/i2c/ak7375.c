@@ -1,4 +1,4 @@
-// SPDX-License_Identifier: GPL-2.0
+// SPDX-License-Identifier: GPL-2.0
 // Copyright (C) 2018 Intel Corporation
 
 #include <linux/acpi.h>
@@ -8,6 +8,7 @@
 #include <linux/pm_runtime.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
+#include <media/v4l2-event.h>
 
 #define AK7375_NAME		"ak7375"
 #define AK7375_MAX_FOCUS_POS	4095
@@ -108,7 +109,14 @@ static const struct v4l2_subdev_internal_ops ak7375_int_ops = {
 	.close = ak7375_close,
 };
 
-static const struct v4l2_subdev_ops ak7375_ops = { };
+static const struct v4l2_subdev_core_ops ak7375_subdev_core_ops = {
+	.subscribe_event = v4l2_ctrl_subdev_subscribe_event,
+	.unsubscribe_event = v4l2_event_subdev_unsubscribe,
+};
+
+static const struct v4l2_subdev_ops ak7375_ops = {
+	.core = &ak7375_subdev_core_ops,
+};
 
 static void ak7375_subdev_cleanup(struct ak7375_device *ak7375_dev)
 {
@@ -146,7 +154,8 @@ static int ak7375_probe(struct i2c_client *client,
 		return -ENOMEM;
 
 	v4l2_i2c_subdev_init(&ak7375_dev->sd, client, &ak7375_ops);
-	ak7375_dev->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
+	ak7375_dev->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE |
+				V4L2_SUBDEV_FL_HAS_EVENTS;
 	ak7375_dev->sd.internal_ops = &ak7375_int_ops;
 
 	rval = ak7375_init_controls(ak7375_dev);

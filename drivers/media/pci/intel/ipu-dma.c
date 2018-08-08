@@ -1,4 +1,4 @@
-// SPDX-License_Identifier: GPL-2.0
+// SPDX-License-Identifier: GPL-2.0
 // Copyright (C) 2013 - 2018 Intel Corporation
 
 #include <asm/cacheflush.h>
@@ -376,7 +376,8 @@ static int ipu_dma_map_sg(struct device *dev, struct scatterlist *sglist,
 		int rval;
 
 		dev_dbg(dev, "mapping entry %d: iova 0x%8.8x,phy 0x%16.16llx\n",
-			i, iova_addr << PAGE_SHIFT, page_to_phys(sg_page(sg)));
+			i, iova_addr << PAGE_SHIFT,
+			(unsigned long long)page_to_phys(sg_page(sg)));
 		rval = iommu_map(mmu->dmap->domain, iova_addr << PAGE_SHIFT,
 				 page_to_phys(sg_page(sg)),
 				 PAGE_ALIGN(sg->length), 0);

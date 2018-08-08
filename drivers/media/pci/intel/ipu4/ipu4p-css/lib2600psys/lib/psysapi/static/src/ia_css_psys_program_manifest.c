@@ -1059,6 +1059,14 @@ void ia_css_program_manifest_init(
    supported in the firmware
   */
 #if !defined(__HIVECC)
+
+#if defined(_MSC_VER)
+/* WA for a visual studio compiler bug, refer to
+ developercommunity.visualstudio.com/content/problem/209359/ice-with-fpfast-in-156-and-msvc-daily-1413263051-p.html
+*/
+#pragma optimize("", off)
+#endif
+
 int ia_css_program_manifest_print(
 	const ia_css_program_manifest_t *manifest,
 	void *fid)
@@ -1223,5 +1231,11 @@ EXIT:
 	}
 	return retval;
 }
+
+#if defined(_MSC_VER)
+/* WA for a visual studio compiler bug */
+#pragma optimize("", off)
+#endif
+
 #endif
 

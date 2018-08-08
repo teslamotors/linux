@@ -1,4 +1,4 @@
-// SPDX-License_Identifier: GPL-2.0
+// SPDX-License-Identifier: GPL-2.0
 // Copyright (C) 2013 - 2018 Intel Corporation
 
 #include <linux/types.h>
@@ -124,19 +124,6 @@ enum ipu_isys_subdev_pixelorder ipu_isys_subdev_get_pixelorder(u32 code)
 	default:
 		WARN_ON(1);
 		return -EINVAL;
-	}
-}
-
-unsigned int ipu_isys_get_compression_scheme(u32 code)
-{
-	switch (code) {
-	case MEDIA_BUS_FMT_SBGGR10_DPCM8_1X8:
-	case MEDIA_BUS_FMT_SGBRG10_DPCM8_1X8:
-	case MEDIA_BUS_FMT_SGRBG10_DPCM8_1X8:
-	case MEDIA_BUS_FMT_SRGGB10_DPCM8_1X8:
-		return 3;
-	default:
-		return 0;
 	}
 }
 
@@ -881,9 +868,6 @@ int ipu_isys_subdev_init(struct ipu_isys_subdev *asd,
 
 	v4l2_subdev_init(&asd->sd, ops);
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
-	asd->sd.entity.function = MEDIA_ENT_F_IO_V4L;
-#endif
 	asd->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE | sd_flags;
 	asd->sd.owner = THIS_MODULE;
 

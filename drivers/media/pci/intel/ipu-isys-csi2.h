@@ -1,4 +1,4 @@
-/* SPDX-License_Identifier: GPL-2.0 */
+/* SPDX-License-Identifier: GPL-2.0 */
 /* Copyright (C) 2013 - 2018 Intel Corporation */
 
 #ifndef IPU_ISYS_CSI2_H
@@ -25,10 +25,14 @@ struct ipu_isys;
 	(__n >= NR_OF_CSI2_SOURCE_PADS ? \
 		(NR_OF_CSI2_PADS - 2) : \
 		(__n + NR_OF_CSI2_SINK_PADS)); })
+#ifdef IPU_META_DATA_SUPPORT
 #define NR_OF_CSI2_META_PADS		1
 #define NR_OF_CSI2_PADS			\
 	(NR_OF_CSI2_SINK_PADS + NR_OF_CSI2_SOURCE_PADS + NR_OF_CSI2_META_PADS)
 #define CSI2_PAD_META			(NR_OF_CSI2_PADS - 1)
+#else
+#define NR_OF_CSI2_PADS	(NR_OF_CSI2_SINK_PADS + NR_OF_CSI2_SOURCE_PADS)
+#endif
 
 #define IPU_ISYS_SHORT_PACKET_BUFFER_NUM	VIDEO_MAX_FRAME
 #define IPU_ISYS_SHORT_PACKET_WIDTH	32
@@ -90,7 +94,9 @@ struct ipu_isys_csi2 {
 	struct ipu_isys *isys;
 	struct ipu_isys_subdev asd;
 	struct ipu_isys_video av[NR_OF_CSI2_SOURCE_PADS];
+#ifdef IPU_META_DATA_SUPPORT
 	struct ipu_isys_video av_meta;
+#endif
 	struct completion eof_completion;
 
 	void __iomem *base;
@@ -119,16 +125,16 @@ struct ipu_isys_csi2_timing {
  * from IPU MIPI receiver. Due to hardware conversion,
  * this structure is not the same as defined in CSI-2 spec.
  */
-__packed struct ipu_isys_mipi_packet_header {
+struct ipu_isys_mipi_packet_header {
 	u32 word_count:16, dtype:13, sync:2, stype:1;
 	u32 sid:4, port_id:4, reserved:23, odd_even:1;
-};
+} __packed;
 
 /*
  * This structure defines the trace message content
  * for CSI2 receiver monitor messages.
  */
-__packed struct ipu_isys_csi2_monitor_message {
+struct ipu_isys_csi2_monitor_message {
 	u64 fe:1,
 	    fs:1,
 	    pe:1,
@@ -147,7 +153,7 @@ __packed struct ipu_isys_csi2_monitor_message {
 	    port:4, vc:2, reserved4:2, frame_sync:4, reserved5:4;
 	u64 reserved6:3,
 	    cmd:2, reserved7:1, monitor_id:7, reserved8:1, timestamp_h:50;
-};
+} __packed;
 
 #define to_ipu_isys_csi2(sd) container_of(to_ipu_isys_subdev(sd), \
 					struct ipu_isys_csi2, asd)

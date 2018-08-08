@@ -1,4 +1,4 @@
-/* SPDX-License_Identifier: GPL-2.0 */
+/* SPDX-License-Identifier: GPL-2.0 */
 /* Copyright (C) 2013 - 2018 Intel Corporation */
 
 #ifndef IPU_PSYS_H
@@ -137,7 +137,7 @@ struct ipu_psys_pg {
 	size_t pg_size;
 	dma_addr_t pg_dma_addr;
 	struct list_head list;
-	struct ipu_psys_resource_alloc *resource_alloc;
+	struct ipu_psys_resource_alloc resource_alloc;
 };
 
 enum ipu_psys_cmd_state {
@@ -177,7 +177,6 @@ struct ipu_psys_kcmd {
 	struct ipu_buttress_constraint constraint;
 	struct ipu_psys_buffer_set *kbuf_set;
 
-	struct ipu_psys_resource_alloc resource_alloc;
 	struct ipu_psys_event ev;
 	struct timer_list watchdog;
 };
@@ -218,12 +217,13 @@ long ipu_psys_compat_ioctl32(struct file *file, unsigned int cmd,
 #endif
 
 void ipu_psys_setup_hw(struct ipu_psys *psys);
-void ipu_psys_reset(struct ipu_psys *psys);
 void ipu_psys_handle_events(struct ipu_psys *psys);
 int ipu_psys_kcmd_new(struct ipu_psys_command *cmd, struct ipu_psys_fh *fh);
 int ipu_psys_kcmd_queue(struct ipu_psys *psys, struct ipu_psys_kcmd *kcmd);
 void ipu_psys_kcmd_complete(struct ipu_psys *psys,
 			    struct ipu_psys_kcmd *kcmd, int error);
+void ipu_psys_run_next(struct ipu_psys *psys);
+void ipu_psys_watchdog_work(struct work_struct *work);
 int ipu_psys_kcmd_abort(struct ipu_psys *psys,
 			struct ipu_psys_kcmd *kcmd, int error);
 void ipu_psys_kcmd_free(struct ipu_psys_kcmd *kcmd);

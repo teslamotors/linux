@@ -1,4 +1,4 @@
-// SPDX-License_Identifier: GPL-2.0
+// SPDX-License-Identifier: GPL-2.0
 // Copyright (C) 2014 - 2018 Intel Corporation
 
 #include <linux/module.h>
@@ -7,7 +7,8 @@
 #include "ipu-isys.h"
 #include "ipu-wrapper.h"
 #include <ia_css_isysapi.h>
-#include "libintel-checker.h"
+
+#include "ipu-platform.h"
 
 #define ipu_lib_call_notrace_unlocked(func, isys, ...)		\
 	({								\
@@ -277,8 +278,7 @@ static void isa_cfg_abi_to_api(const struct ipu_fw_isys_isa_cfg_abi *abi,
 {
 	unsigned int i;
 
-	for (i = 0; i < min(N_IPU_FW_ISYS_RESOLUTION_INFO,
-			    N_IA_CSS_ISYS_RESOLUTION_INFO); i++)
+	for (i = 0; i < N_IA_CSS_ISYS_RESOLUTION_INFO; i++)
 		resolution_abi_to_api(&abi->isa_res[i], &api->isa_res[i]);
 
 	api->blc_enabled = abi->cfg.blc;
@@ -312,8 +312,7 @@ static void stream_cfg_abi_to_api(struct ipu_fw_isys_stream_cfg_data_abi *abi,
 	api->isl_use = abi->isl_use;
 	api->compfmt = abi->compfmt;
 	isa_cfg_abi_to_api(&abi->isa_cfg, &api->isa_cfg);
-	for (i = 0; i < min(N_IPU_FW_ISYS_CROPPING_LOCATION,
-			    N_IA_CSS_ISYS_CROPPING_LOCATION); i++)
+	for (i = 0; i < N_IA_CSS_ISYS_CROPPING_LOCATION; i++)
 		cropping_abi_to_api(&abi->crop[i], &api->crop[i]);
 
 	api->send_irq_sof_discarded = abi->send_irq_sof_discarded;
@@ -346,6 +345,8 @@ static void frame_buff_set_abi_to_api(
 
 	api->send_irq_sof = abi->send_irq_sof;
 	api->send_irq_eof = abi->send_irq_eof;
+	api->send_irq_capture_ack = abi->send_irq_capture_ack;
+	api->send_irq_capture_done = abi->send_irq_capture_done;
 }
 
 int ipu_fw_isys_complex_cmd(struct ipu_isys *isys,
@@ -386,19 +387,6 @@ int ipu_fw_isys_complex_cmd(struct ipu_isys *isys,
 	return rval;
 }
 EXPORT_SYMBOL_GPL(ipu_fw_isys_complex_cmd);
-
-static int __init library_init(void)
-{
-	ipu_isys_abi_checker();
-	return 0;
-}
-
-static void __exit library_exit(void)
-{
-}
-
-module_init(library_init);
-module_exit(library_exit);
 
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Intel ipu library");

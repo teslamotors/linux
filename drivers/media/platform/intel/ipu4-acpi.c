@@ -531,7 +531,7 @@ static int ipu_acpi_get_sensor_data(struct device *dev,
 			return rval;
 		}
 		/* we have 24 MHz clock for sensors now */
-		data->ext_clk = 24000000;
+		data->ext_clk = 286363636;
 	}
 
 	/* dsdt data currently contains wrong numbers for combo ports */
@@ -646,6 +646,7 @@ err_free_pdata:
 	return rval;
 }
 
+#if defined (CONFIG_VIDEO_INTEL_ICI)
 static int get_crlmodule_lite_pdata(struct i2c_client *client,
 			       struct ipu4_camera_module_data *data,
 			       struct ipu4_i2c_helper *helper,
@@ -672,12 +673,15 @@ static int get_crlmodule_lite_pdata(struct i2c_client *client,
 
 	data->pdata = pdata;
 	/* sensor.dev may here point to sensor or dependent device */
+#if !defined(CONFIG_VIDEO_INTEL_UOS)
 	pdata->xshutdown = get_sensor_gpio(sensor.dev, 0);
 	if (pdata->xshutdown < 0) {
 		rval = pdata->xshutdown;
-		goto err_free_pdata;
+		kfree(pdata);
+		data->pdata = NULL;
+		return rval;
 	}
-
+#endif
 	pdata->lanes = data->csi2.nlanes;
 	pdata->ext_clk = data->ext_clk;
 	client->dev.platform_data = pdata;
@@ -693,12 +697,8 @@ static int get_crlmodule_lite_pdata(struct i2c_client *client,
 		 i2c[1].bus, i2c[1].addr, vcm);
 
 	return add_new_i2c(i2c[1].addr, i2c[1].bus, 0, vcm, vcm_pdata);
-
-err_free_pdata:
-	kfree(pdata);
-	data->pdata = NULL;
-	return rval;
 }
+#endif
 
 static int get_smiapp_pdata(struct i2c_client *client,
 			    struct ipu4_camera_module_data *data,
@@ -863,8 +863,13 @@ static const struct ipu4_acpi_devices supported_devices[] = {
 	  sizeof(imx132_op_clocks) },
 	{ "TXNW3643", LM3643_NAME,    get_lm3643_pdata, NULL, 0 },
 	{ "AMS3638", AS3638_NAME,    get_as3638_pdata, NULL, 0 },
+#if defined (CONFIG_VIDEO_INTEL_ICI)
 	{ "ADV7481A", CRLMODULE_LITE_NAME, get_crlmodule_lite_pdata, NULL, 0 },
 	{ "ADV7481B", CRLMODULE_LITE_NAME, get_crlmodule_lite_pdata, NULL, 0 },
+#else
+        { "ADV7481A", CRLMODULE_NAME, get_crlmodule_pdata, NULL, 0 },
+        { "ADV7481B", CRLMODULE_NAME, get_crlmodule_pdata, NULL, 0 },
+#endif
 };
 
 static int get_table_index(struct device *device, const __u8 *acpi_name)

@@ -1,4 +1,4 @@
-// SPDX-License_Identifier: GPL-2.0
+// SPDX-License-Identifier: GPL-2.0
 // Copyright (C) 2018 Intel Corporation
 
 #include <linux/uaccess.h>
@@ -27,9 +27,13 @@
 #include "ipu-trace-event.h"
 
 static bool early_pg_transfer;
+static bool enable_concurrency = true;
 module_param(early_pg_transfer, bool, 0664);
+module_param(enable_concurrency, bool, 0664);
 MODULE_PARM_DESC(early_pg_transfer,
 		 "Copy PGs back to user after resource allocation");
+MODULE_PARM_DESC(enable_concurrency,
+		 "Enable concurrent execution of program groups");
 
 struct ipu_trace_block psys_trace_blocks[] = {
 	{
@@ -211,8 +215,8 @@ void ipu_psys_kcmd_free(struct ipu_psys_kcmd *kcmd)
 	kfree(kcmd);
 }
 
-struct ipu_psys_kcmd *ipu_psys_copy_cmd(struct ipu_psys_command *cmd,
-					struct ipu_psys_fh *fh)
+static struct ipu_psys_kcmd *ipu_psys_copy_cmd(struct ipu_psys_command *cmd,
+					       struct ipu_psys_fh *fh)
 {
 	struct ipu_psys *psys = fh->psys;
 	struct ipu_psys_kcmd *kcmd;
@@ -333,7 +337,7 @@ static void ipu_psys_kcmd_run(struct ipu_psys *psys)
 	int ret;
 
 	ret = ipu_psys_move_resources(&psys->adev->dev,
-				      &kcmd->resource_alloc,
+				      &kcmd->kpg->resource_alloc,
 				      &psys->resource_pool_started,
 				      &psys->resource_pool_running);
 	if (!ret) {
@@ -381,7 +385,7 @@ void ipu_psys_kcmd_complete(struct ipu_psys *psys,
 		}
 		/* Fall through on purpose */
 	case KCMD_STATE_RUN_PREPARED:
-		ipu_psys_free_resources(&kcmd->resource_alloc,
+		ipu_psys_free_resources(&kcmd->kpg->resource_alloc,
 					&psys->resource_pool_running);
 		if (psys->started_kcmds)
 			ipu_psys_kcmd_run(psys);
@@ -393,7 +397,7 @@ void ipu_psys_kcmd_complete(struct ipu_psys *psys,
 		list_del(&kcmd->started_list);
 		/* Fall through on purpose */
 	case KCMD_STATE_START_PREPARED:
-		ipu_psys_free_resources(&kcmd->resource_alloc,
+		ipu_psys_free_resources(&kcmd->kpg->resource_alloc,
 					&psys->resource_pool_started);
 		break;
 	default:
@@ -432,6 +436,97 @@ void ipu_psys_kcmd_complete(struct ipu_psys *psys,
 	kcmd->state = KCMD_STATE_COMPLETE;
 
 	wake_up_interruptible(&fh->wait);
+}
+
+/*
+ * Schedule next kcmd by finding a runnable kcmd from the highest
+ * priority queue in a round-robin fashion versus the client
+ * queues and running it.
+ * Any kcmds which fail to start are completed with an error.
+ */
+void ipu_psys_run_next(struct ipu_psys *psys)
+{
+	int p;
+
+	/*
+	 * Code below will crash if fhs is empty. Normally this
+	 * shouldn't happen.
+	 */
+	if (list_empty(&psys->fhs)) {
+		WARN_ON(1);
+		return;
+	}
+
+	for (p = 0; p < IPU_PSYS_CMD_PRIORITY_NUM; p++) {
+		int removed;
+
+		do {
+			struct ipu_psys_fh *fh = list_first_entry(&psys->fhs,
+								  struct
+								  ipu_psys_fh,
+								  list);
+			struct ipu_psys_fh *fh_last =
+			    list_last_entry(&psys->fhs,
+					    struct ipu_psys_fh,
+					    list);
+			/*
+			 * When a kcmd is scheduled from a fh, it might expose
+			 * more runnable kcmds behind it in the same queue.
+			 * Therefore loop running kcmds as long as some were
+			 * scheduled.
+			 */
+			removed = 0;
+			do {
+				struct ipu_psys_fh *fh_next =
+				    list_next_entry(fh, list);
+				struct ipu_psys_kcmd *kcmd;
+				int ret;
+
+				mutex_lock(&fh->mutex);
+
+				kcmd = fh->new_kcmd_tail[p];
+				/*
+				 * If concurrency is disabled and there are
+				 * already commands running on the PSYS, do not
+				 * run new commands.
+				 */
+				if (!enable_concurrency &&
+				    psys->active_kcmds > 0) {
+					mutex_unlock(&fh->mutex);
+					return;
+				}
+
+				/* Are there new kcmds available for running? */
+				if (!kcmd)
+					goto next;
+
+				ret = ipu_psys_kcmd_queue(psys, kcmd);
+				if (ret == -ENOSPC)
+					goto next;
+
+				/* Update pointer to the first new kcmd */
+				fh->new_kcmd_tail[p] = NULL;
+				while (kcmd != list_last_entry(&fh->kcmds[p],
+							       struct
+							       ipu_psys_kcmd,
+							       list)) {
+					kcmd = list_next_entry(kcmd, list);
+					if (kcmd->state == KCMD_STATE_NEW) {
+						fh->new_kcmd_tail[p] = kcmd;
+						break;
+					}
+				}
+
+				list_move_tail(&fh->list, &psys->fhs);
+				removed++;
+next:
+				mutex_unlock(&fh->mutex);
+				if (fh == fh_last)
+					break;
+				fh = fh_next;
+			} while (1);
+		} while (removed > 0);
+	}
 }
 
 /*
@@ -544,9 +639,122 @@ error:
 	return ret;
 }
 
+/*
+ * Move all kcmds in all queues forcily into completed state.
+ */
+static void ipu_psys_flush_kcmds(struct ipu_psys *psys, int error)
+{
+	struct ipu_psys_fh *fh;
+	struct ipu_psys_kcmd *kcmd;
+	int p;
+
+	dev_err(&psys->dev, "flushing all commands with error: %d\n", error);
+
+	list_for_each_entry(fh, &psys->fhs, list) {
+		mutex_lock(&fh->mutex);
+		for (p = 0; p < IPU_PSYS_CMD_PRIORITY_NUM; p++) {
+			fh->new_kcmd_tail[p] = NULL;
+			list_for_each_entry(kcmd, &fh->kcmds[p], list) {
+				if (kcmd->state == KCMD_STATE_COMPLETE)
+					continue;
+				ipu_psys_kcmd_complete(psys, kcmd, error);
+			}
+		}
+		mutex_unlock(&fh->mutex);
+	}
+}
+
+/*
+ * Abort all currently running process groups and reset PSYS
+ * by power cycling it. PSYS power must not be acquired
+ * except by running kcmds when calling this.
+ */
+static void ipu_psys_reset(struct ipu_psys *psys)
+{
+#ifdef CONFIG_PM
+	struct device *d = &psys->adev->isp->psys_iommu->dev;
+	int r;
+
+	pm_runtime_dont_use_autosuspend(&psys->adev->dev);
+	r = pm_runtime_get_sync(d);
+	if (r < 0) {
+		pm_runtime_put_noidle(d);
+		dev_err(&psys->adev->dev, "power management failed\n");
+		return;
+	}
+
+	ipu_psys_flush_kcmds(psys, -EIO);
+	flush_workqueue(pm_wq);
+	r = pm_runtime_put_sync(d);	/* Turn big red power knob off here */
+	/* Power was successfully turned off if and only if zero was returned */
+	if (r)
+		dev_warn(&psys->adev->dev,
+			 "power management failed, PSYS reset may be incomplete\n");
+	pm_runtime_use_autosuspend(&psys->adev->dev);
+	ipu_psys_run_next(psys);
+#else
+	dev_err(&psys->adev->dev,
+		"power management disabled, can not reset PSYS\n");
+#endif
+}
+
+void ipu_psys_watchdog_work(struct work_struct *work)
+{
+	struct ipu_psys *psys = container_of(work,
+					     struct ipu_psys, watchdog_work);
+	struct ipu_psys_fh *fh;
+
+	mutex_lock(&psys->mutex);
+
+	/* Loop over all running kcmds */
+	list_for_each_entry(fh, &psys->fhs, list) {
+		int p, r;
+
+		mutex_lock(&fh->mutex);
+		for (p = 0; p < IPU_PSYS_CMD_PRIORITY_NUM; p++) {
+			struct ipu_psys_kcmd *kcmd;
+
+			list_for_each_entry(kcmd, &fh->kcmds[p], list) {
+				if (fh->new_kcmd_tail[p] == kcmd)
+					break;
+				if (kcmd->state != KCMD_STATE_RUNNING)
+					continue;
+
+				if (timer_pending(&kcmd->watchdog))
+					continue;
+				/* Found an expired but running command */
+				dev_err(&psys->adev->dev,
+					"kcmd:0x%llx[0x%llx] taking too long\n",
+					kcmd->user_token, kcmd->issue_id);
+				r = ipu_psys_kcmd_abort(psys, kcmd, -ETIME);
+				if (r)
+					goto stop_failed;
+			}
+		}
+		mutex_unlock(&fh->mutex);
+	}
+
+	/* Kick command scheduler thread */
+	atomic_set(&psys->wakeup_sched_thread_count, 1);
+	wake_up_interruptible(&psys->sched_cmd_wq);
+	mutex_unlock(&psys->mutex);
+	return;
+
+stop_failed:
+	mutex_unlock(&fh->mutex);
+	ipu_psys_reset(psys);
+	mutex_unlock(&psys->mutex);
+}
+
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(4, 14, 2)
 static void ipu_psys_watchdog(unsigned long data)
 {
 	struct ipu_psys_kcmd *kcmd = (struct ipu_psys_kcmd *)data;
+#else
+static void ipu_psys_watchdog(struct timer_list *t)
+{
+	struct ipu_psys_kcmd *kcmd = from_timer(kcmd, t, watchdog);
+#endif
 	struct ipu_psys *psys = kcmd->fh->psys;
 
 	queue_work(IPU_PSYS_WORK_QUEUE, &psys->watchdog_work);
@@ -586,7 +794,7 @@ static int ipu_psys_config_legacy_pg(struct ipu_psys_kcmd *kcmd)
 		}
 	}
 
-	ipu_fw_psys_pg_set_token(kcmd, (u64) kcmd);
+	ipu_fw_psys_pg_set_token(kcmd, (uintptr_t) kcmd);
 
 	ret = ipu_fw_psys_pg_submit(kcmd);
 	if (ret) {
@@ -637,7 +845,7 @@ int ipu_psys_kcmd_queue(struct ipu_psys *psys, struct ipu_psys_kcmd *kcmd)
 		ret = ipu_psys_allocate_resources(&psys->adev->dev,
 						  kcmd->kpg->pg,
 						  kcmd->pg_manifest,
-						  &kcmd->resource_alloc,
+						  &kcmd->kpg->resource_alloc,
 						  &psys->resource_pool_running);
 		if (!ret) {
 			if (kcmd->state == KCMD_STATE_NEW)
@@ -659,7 +867,7 @@ int ipu_psys_kcmd_queue(struct ipu_psys *psys, struct ipu_psys_kcmd *kcmd)
 	ret = ipu_psys_allocate_resources(&psys->adev->dev,
 					  kcmd->kpg->pg,
 					  kcmd->pg_manifest,
-					  &kcmd->resource_alloc,
+					  &kcmd->kpg->resource_alloc,
 					  &psys->resource_pool_started);
 	if (!ret) {
 		kcmd->state = KCMD_STATE_START_PREPARED;
@@ -691,11 +899,13 @@ int ipu_psys_kcmd_new(struct ipu_psys_command *cmd, struct ipu_psys_fh *fh)
 	if (!kcmd)
 		return -EINVAL;
 
-	ipu_psys_resource_alloc_init(&kcmd->resource_alloc);
-
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(4, 14, 2)
 	init_timer(&kcmd->watchdog);
 	kcmd->watchdog.data = (unsigned long)kcmd;
 	kcmd->watchdog.function = &ipu_psys_watchdog;
+#else
+	timer_setup(&kcmd->watchdog, ipu_psys_watchdog, 0);
+#endif
 
 	if (cmd->min_psys_freq) {
 		kcmd->constraint.min_freq = cmd->min_psys_freq;
@@ -705,7 +915,7 @@ int ipu_psys_kcmd_new(struct ipu_psys_command *cmd, struct ipu_psys_fh *fh)
 
 	pg_size = ipu_fw_psys_pg_get_size(kcmd);
 	if (pg_size > kcmd->kpg->pg_size) {
-		dev_dbg(&psys->adev->dev, "pg size mismatch %lu %lu\n",
+		dev_dbg(&psys->adev->dev, "pg size mismatch %zu %zu\n",
 			pg_size, kcmd->kpg->pg_size);
 		ret = -EINVAL;
 		goto error;
@@ -749,7 +959,7 @@ void ipu_psys_handle_events(struct ipu_psys *psys)
 			break;
 
 		error = false;
-		kcmd = (struct ipu_psys_kcmd *)event.token;
+		kcmd = (struct ipu_psys_kcmd *)(unsigned long)event.token;
 		error = IS_ERR_OR_NULL(kcmd) ? true : false;
 
 		dev_dbg(&psys->adev->dev, "psys received event status:%d\n",

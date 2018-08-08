@@ -1,4 +1,4 @@
-// SPDX-License_Identifier: GPL-2.0
+// SPDX-License-Identifier: GPL-2.0
 // Copyright (C) 2013 - 2018 Intel Corporation
 
 #include <linux/debugfs.h>
@@ -744,7 +744,7 @@ fail:
 	return rval;
 }
 
-struct media_device_ops isys_mdev_ops = {
+static struct media_device_ops isys_mdev_ops = {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
 	.link_notify = ipu_pipeline_link_notify,
 #else
@@ -923,7 +923,8 @@ static void isys_remove(struct ipu_bus_device *adev)
 	struct isys_fw_msgs *fwmsg, *safe;
 
 	dev_info(&adev->dev, "removed\n");
-	debugfs_remove_recursive(isys->debugfsdir);
+	if (isp->ipu_dir)
+		debugfs_remove_recursive(isys->debugfsdir);
 
 	list_for_each_entry_safe(fwmsg, safe, &isys->framebuflist, head) {
 		dma_free_attrs(&adev->dev, sizeof(struct isys_fw_msgs),
@@ -1124,7 +1125,7 @@ void ipu_cleanup_fw_msg_bufs(struct ipu_isys *isys)
 void ipu_put_fw_mgs_buffer(struct ipu_isys *isys, u64 data)
 {
 	struct isys_fw_msgs *msg;
-	u64 *ptr = (u64 *) data;
+	u64 *ptr = (u64 *)(unsigned long)data;
 
 	if (!ptr)
 		return;

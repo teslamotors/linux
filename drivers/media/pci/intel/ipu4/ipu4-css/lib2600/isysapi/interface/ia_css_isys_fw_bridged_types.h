@@ -272,6 +272,8 @@ struct ia_css_isys_frame_buff_set_comm {
 	aligned_struct(struct ia_css_isys_param_pin_comm, process_group_light);
 	aligned_uint8(unsigned int, send_irq_sof);
 	aligned_uint8(unsigned int, send_irq_eof);
+	aligned_uint8(unsigned int, send_irq_capture_ack);
+	aligned_uint8(unsigned int, send_irq_capture_done);
 	aligned_uint8(unsigned int, send_resp_sof);
 	aligned_uint8(unsigned int, send_resp_eof);
 	aligned_uint8(unsigned int, frame_counter);
