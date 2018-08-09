@@ -256,8 +256,8 @@ static int handle_kick(int client_id, unsigned long *ioreqs_map)
 	int val = -1;
 	struct vbs_rng *rng;
 
-	if (unlikely(bitmap_empty(ioreqs_map, VHM_REQUEST_MAX) <= 0))
-		return -EINVAL;
+	if (unlikely(bitmap_empty(ioreqs_map, VHM_REQUEST_MAX)))
+		return 0;
 
 	pr_debug("%s: handle kick!\n", __func__);
 
