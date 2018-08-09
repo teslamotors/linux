@@ -145,7 +145,7 @@ static struct cdev cdev_keystore; /* Structure to create device */
 #ifdef CONFIG_DAL_KEYSTORE
 int add_to_blacklist(const char *uuid_str)
 {
-	uuid_be uuid;
+	uuid_t uuid;
 	int ret = 0;
 
 	ret = dal_uuid_parse(uuid_str, &uuid);
@@ -199,7 +199,6 @@ end:
 
 static void schedule_applet_blacklisting(void)
 {
-	int ret = 0;
 	work_ = (applet_blacklisting_work_t *)kmalloc(sizeof(applet_blacklisting_work_t), GFP_KERNEL);
 	if (work_) {
 		ks_info(KBUILD_MODNAME ": Scheduling DAL Keystore blacklisting work\n");

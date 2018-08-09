@@ -19,6 +19,7 @@
 
 #include <linux/dal.h>
 #include <linux/printk.h>
+#include <linux/errno.h>
 #include <security/keystore_api_common.h>
 
 #define DAL_KEYSTORE_GCM_IV_SIZE 12
