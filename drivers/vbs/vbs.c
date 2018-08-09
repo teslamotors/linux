@@ -135,12 +135,15 @@ err:
 
 long virtio_dev_deregister(struct virtio_dev_info *dev)
 {
+	if (dev->_ctx.vhm_client_id < 0)
+		return 0;
+
 	acrn_ioreq_del_iorange(dev->_ctx.vhm_client_id,
 			      dev->io_range_type ? REQ_MMIO : REQ_PORTIO,
 			      dev->io_range_start,
 			      dev->io_range_start + dev->io_range_len);
-
 	acrn_ioreq_destroy_client(dev->_ctx.vhm_client_id);
+	dev->_ctx.vhm_client_id = -1;
 
 	return 0;
 }
@@ -299,6 +302,8 @@ long virtio_dev_init(struct virtio_dev_info *dev,
 
 	for (i = 0; i < nvq; i++)
 		virtio_vq_reset(&vqs[i]);
+
+	dev->_ctx.vhm_client_id = -1;
 
 	return 0;
 }
