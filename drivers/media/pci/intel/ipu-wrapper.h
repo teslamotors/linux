@@ -11,10 +11,6 @@
 #define PSYS_MMID 0
 
 struct device;
-struct ia_css_env;
-struct ipu_isys_iomem_filter;
-struct iommu_domain;
-struct firmware;
 
 void ipu_wrapper_init(int mmid, struct device *dev, void __iomem *base);
 

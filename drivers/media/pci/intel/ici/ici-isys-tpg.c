@@ -103,13 +103,15 @@ void ici_tpg_set_ffmt(struct ici_isys_subdev *asd,
 	ffmt->field = ICI_FIELD_NONE;
 	ffmt->colorspace = 0;
 	memset(ffmt->reserved, 0, sizeof(ffmt->reserved));
-	*cur_ffmt = *ffmt;
-	dev_dbg(&asd->isys->adev->dev, "%s: TPG ici stream set format\n"
-		"width: %u, height: %u, pixelformat: %u, colorspace: %u field: %u\n",
+	if (cur_ffmt) {
+            *cur_ffmt = *ffmt;
+	     dev_dbg(&asd->isys->adev->dev, "%s: TPG ici stream set format\n"
+	        "width: %u, height: %u, pixelformat: %u, colorspace: %u field: %u\n",
 		__func__,
 		cur_ffmt->width,
 		cur_ffmt->height,
 		cur_ffmt->pixelformat, cur_ffmt->colorspace, cur_ffmt->field);
+	}
 }
 
 static int ici_tpg_pipeline_validate(

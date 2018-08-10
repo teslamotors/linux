@@ -41,11 +41,12 @@
 #define IMX319_ANA_GAIN_DEFAULT		0
 
 /* Digital gain control */
-#define IMX319_REG_DIGITAL_GAIN		0x020e
-#define IMX319_DGTL_GAIN_MIN		0x100
-#define IMX319_DGTL_GAIN_MAX		0xfff
-#define IMX319_DGTL_GAIN_DEFAULT	0x100
+#define IMX319_REG_DPGA_USE_GLOBAL_GAIN	0x3ff9
+#define IMX319_REG_DIG_GAIN_GLOBAL	0x020e
+#define IMX319_DGTL_GAIN_MIN		256
+#define IMX319_DGTL_GAIN_MAX		4095
 #define IMX319_DGTL_GAIN_STEP		1
+#define IMX319_DGTL_GAIN_DEFAULT	256
 
 /* Test Pattern Control */
 #define IMX319_REG_TEST_PATTERN		0x0600
@@ -1590,9 +1591,9 @@ static const struct imx319_reg mode_1280x720_regs[] = {
 
 static const char * const imx319_test_pattern_menu[] = {
 	"Disabled",
-	"Solid Color",
-	"Color Bars",
-	"Grey Color Bars",
+	"Solid color",
+	"100% color bars",
+	"Fade to gray color bars",
 	"PN9"
 };
 
@@ -1853,14 +1854,22 @@ static int imx319_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 
 static int imx319_update_digital_gain(struct imx319 *imx319, u32 d_gain)
 {
-	return imx319_write_reg(imx319, IMX319_REG_DIGITAL_GAIN,
+	int ret;
+
+	ret = imx319_write_reg(imx319, IMX319_REG_DPGA_USE_GLOBAL_GAIN,
+			       IMX319_REG_VALUE_08BIT, 1);
+	if (ret)
+		return ret;
+
+	/* Digital gain = (d_gain & 0xFF00) + (d_gain & 0xFF)/256 times */
+	return imx319_write_reg(imx319, IMX319_REG_DIG_GAIN_GLOBAL,
 				IMX319_REG_VALUE_16BIT, d_gain);
 }
 
 static int imx319_enable_test_pattern(struct imx319 *imx319, u32 pattern)
 {
 	return imx319_write_reg(imx319, IMX319_REG_TEST_PATTERN,
-				 IMX319_REG_VALUE_08BIT, pattern);
+				 IMX319_REG_VALUE_16BIT, pattern);
 }
 
 static int imx319_set_ctrl(struct v4l2_ctrl *ctrl)
@@ -1892,6 +1901,7 @@ static int imx319_set_ctrl(struct v4l2_ctrl *ctrl)
 	ret = 0;
 	switch (ctrl->id) {
 	case V4L2_CID_ANALOGUE_GAIN:
+		/* Analog gain = 1024/(1024 - ctrl->val) times */
 		ret = imx319_write_reg(imx319, IMX319_REG_ANALOG_GAIN,
 					IMX319_REG_VALUE_16BIT, ctrl->val);
 		break;

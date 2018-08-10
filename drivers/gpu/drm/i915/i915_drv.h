@@ -2704,6 +2704,8 @@ struct drm_i915_private {
 	 * NOTE: This is the dri1/ums dungeon, don't add stuff here. Your patch
 	 * will be rejected. Instead look for a better place.
 	 */
+
+	bool contexts_ready; /* for deferred initialization */
 };
 
 static inline struct drm_i915_private *to_i915(const struct drm_device *dev)
@@ -3651,6 +3653,7 @@ void i915_gem_reset_engine(struct intel_engine_cs *engine,
 void i915_gem_init_mmio(struct drm_i915_private *i915);
 int __must_check i915_gem_init(struct drm_i915_private *dev_priv);
 int __must_check i915_gem_init_hw(struct drm_i915_private *dev_priv);
+int __must_check i915_gem_init_hw_late(struct drm_i915_private *dev_priv);
 void i915_gem_init_swizzling(struct drm_i915_private *dev_priv);
 void i915_gem_cleanup_engines(struct drm_i915_private *dev_priv);
 int i915_gem_wait_for_idle(struct drm_i915_private *dev_priv,

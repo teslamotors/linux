@@ -1,15 +1,25 @@
 config INTEL_IPU4_BXT_P_PDATA
 	bool "Enable built in platform data for Broxton-P"
+	depends on VIDEO_INTEL_IPU && VIDEO_INTEL_IPU4
+	---help---
+	Pre-ACPI system platform data is compiled inside kernel
+
+config INTEL_IPU4_BXT_GP_PDATA
+	depends on VIDEO_INTEL_IPU && VIDEO_INTEL_IPU4
+	bool "Enable built in platform data for Gordon Peak"
 	---help---
 	Pre-ACPI system platform data is compiled inside kernel
 
 config INTEL_IPU4_ICI_BXT_P_PDATA
-   bool "Enable built in platform data for Broxton-P ICI driver"
-   ---help---
-   Pre-ACPI system platform data is compiled inside kernel
+	depends on VIDEO_INTEL_IPU && VIDEO_INTEL_ICI
+	bool "Enable built in platform data for Broxton-P ICI driver"
+	---help---
+	Pre-ACPI system platform data is compiled inside kernel
 
 config INTEL_IPU4P_CNL_RVP_PDATA
+	depends on VIDEO_INTEL_IPU && VIDEO_INTEL_IPU4P
 	bool "Enable built in platform data for ipu4p"
+	depends on VIDEO_INTEL_IPU4P
 	---help---
 	Pre-ACPI system platform data is compiled inside kernel
 
@@ -88,6 +98,13 @@ config INTEL_IPU4_ADV7481
 	bool "Compile platform data for ADV7481"
 	---help---
 	HDMI2MIPI convertor device ADV7481
+
+config INTEL_IPU4_ADV7481_I2C_ID
+	int "I2C bus ID for ADV7481"
+	range 0 8
+	default 0
+	---help---
+	I2C bus number of ADV7481 Mondello
 
 config INTEL_IPU4_ADV7481_EVAL
 	bool "Compile platform data for ADV7481 evaluation board"

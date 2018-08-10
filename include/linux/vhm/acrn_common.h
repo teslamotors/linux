@@ -178,10 +178,10 @@ struct acrn_create_vm {
  */
 struct acrn_create_vcpu {
 	/** the virtual CPU ID for the VCPU created */
-	uint32_t vcpu_id;
+	uint16_t vcpu_id;
 
 	/** the physical CPU ID for the VCPU created */
-	uint32_t pcpu_id;
+	uint16_t pcpu_id;
 } __attribute__((aligned(8)));
 
 /**
@@ -335,6 +335,23 @@ struct cpu_px_data {
 	uint64_t control;		/* control value */
 	uint64_t status;		/* success indicator */
 } __attribute__((aligned(8)));
+
+struct acpi_sstate_pkg {
+	uint8_t		val_pm1a;
+	uint8_t		val_pm1b;
+	uint16_t	reserved;
+} __attribute__((aligned(8)));
+
+struct acpi_sstate_data {
+	struct acpi_generic_address pm1a_evt;
+	struct acpi_generic_address pm1b_evt;
+	struct acpi_generic_address pm1a_cnt;
+	struct acpi_generic_address pm1b_cnt;
+	struct acpi_sstate_pkg s3_pkg;
+	struct acpi_sstate_pkg s5_pkg;
+	uint32_t *wake_vector_32;
+	uint64_t *wake_vector_64;
+}__attribute__((aligned(8)));
 
 /**
  * @brief Info PM command from DM/VHM.

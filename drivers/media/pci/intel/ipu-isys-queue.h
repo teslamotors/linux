@@ -14,7 +14,6 @@
 #endif
 
 
-struct ipu_isys;
 struct ipu_isys_video;
 struct ipu_isys_pipeline;
 struct ipu_fw_isys_resp_info_abi;

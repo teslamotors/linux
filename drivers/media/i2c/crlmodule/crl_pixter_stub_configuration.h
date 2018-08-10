@@ -33,6 +33,17 @@ static struct crl_pll_configuration pixter_stub_pll_configurations[] = {
 		.pll_regs_items = 0,
 		.pll_regs = NULL,
 	},
+	{
+		.input_clk = 24000000,
+		.op_sys_clk = 400000000,
+		.bitsperpixel = 12,
+		.pixel_rate_csi = 800000000,
+		.pixel_rate_pa = 800000000,
+		.comp_items = 0,
+		.ctrl_data = 0,
+		.pll_regs_items = 0,
+		.pll_regs = NULL,
+	},
 };
 
 static struct crl_subdev_rect_rep pixter_stub_720p_rects[] = {
@@ -265,6 +276,72 @@ static struct crl_sensor_subdev_config pixter_stub_b_sensor_subdevs[] = {
 	{
 		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
 		.name = "pixter_stubB pixel array",
+	},
+};
+
+static struct crl_sensor_subdev_config pixter_stub_c_sensor_subdevs[] = {
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_SCALER,
+		.name = "pixter_stubC scaler",
+	},
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.name = "pixter_stubC pixel array",
+	},
+};
+
+static struct crl_sensor_subdev_config pixter_stub_d_sensor_subdevs[] = {
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_SCALER,
+		.name = "pixter_stubD scaler",
+	},
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.name = "pixter_stubD pixel array",
+	},
+};
+
+static struct crl_sensor_subdev_config pixter_stub_e_sensor_subdevs[] = {
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_SCALER,
+		.name = "pixter_stubE scaler",
+	},
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.name = "pixter_stubE pixel array",
+	},
+};
+
+static struct crl_sensor_subdev_config pixter_stub_f_sensor_subdevs[] = {
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_SCALER,
+		.name = "pixter_stubF scaler",
+	},
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.name = "pixter_stubF pixel array",
+	},
+};
+
+static struct crl_sensor_subdev_config pixter_stub_g_sensor_subdevs[] = {
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_SCALER,
+		.name = "pixter_stubG scaler",
+	},
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.name = "pixter_stubG pixel array",
+	},
+};
+
+static struct crl_sensor_subdev_config pixter_stub_h_sensor_subdevs[] = {
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_SCALER,
+		.name = "pixter_stubH scaler",
+	},
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.name = "pixter_stubH pixel array",
 	},
 };
 
@@ -583,78 +660,51 @@ static struct crl_v4l2_ctrl pixter_stub_v4l2_ctrls[] = {
 	},
 };
 
-static struct crl_sensor_configuration pixter_stub_crl_configuration = {
-	.powerup_regs_items = 0,
-	.powerup_regs = NULL,
+#define DEFINE_PIXTER_CRL_CONFIGURATION(port) \
+static struct crl_sensor_configuration pixter_##port##_crl_configuration = { \
+	.powerup_regs_items = 0, \
+	.powerup_regs = NULL, \
+\
+	.poweroff_regs_items = 0, \
+	.poweroff_regs = NULL, \
+\
+	.id_reg_items = 0, \
+	.id_regs = NULL, \
+\
+	.subdev_items = ARRAY_SIZE(pixter_##port##_sensor_subdevs), \
+	.subdevs = pixter_##port##_sensor_subdevs, \
+\
+	.sensor_limits = &pixter_stub_sensor_limits, \
+\
+	.pll_config_items = ARRAY_SIZE(pixter_stub_pll_configurations), \
+	.pll_configs = pixter_stub_pll_configurations, \
+\
+	.modes_items = ARRAY_SIZE(pixter_stub_modes), \
+	.modes = pixter_stub_modes, \
+\
+	.streamon_regs_items = 0, \
+	.streamon_regs = NULL, \
+\
+	.streamoff_regs_items = 0, \
+	.streamoff_regs = NULL, \
+\
+	.v4l2_ctrls_items = ARRAY_SIZE(pixter_stub_v4l2_ctrls), \
+	.v4l2_ctrl_bank = pixter_stub_v4l2_ctrls, \
+\
+	.flip_items = ARRAY_SIZE(pixter_stub_flip_configurations), \
+	.flip_data = pixter_stub_flip_configurations, \
+\
+	.csi_fmts_items = ARRAY_SIZE(pixter_stub_crl_csi_data_fmt), \
+	.csi_fmts = pixter_stub_crl_csi_data_fmt, \
+}
+DEFINE_PIXTER_CRL_CONFIGURATION(stub);
+DEFINE_PIXTER_CRL_CONFIGURATION(stub_b);
+DEFINE_PIXTER_CRL_CONFIGURATION(stub_c);
+DEFINE_PIXTER_CRL_CONFIGURATION(stub_d);
+DEFINE_PIXTER_CRL_CONFIGURATION(stub_e);
+DEFINE_PIXTER_CRL_CONFIGURATION(stub_f);
+DEFINE_PIXTER_CRL_CONFIGURATION(stub_g);
+DEFINE_PIXTER_CRL_CONFIGURATION(stub_h);
 
-	.poweroff_regs_items = 0,
-	.poweroff_regs = NULL,
-
-	.id_reg_items = 0,
-	.id_regs = NULL,
-
-	.subdev_items = ARRAY_SIZE(pixter_stub_sensor_subdevs),
-	.subdevs = pixter_stub_sensor_subdevs,
-
-	.sensor_limits = &pixter_stub_sensor_limits,
-
-	.pll_config_items = ARRAY_SIZE(pixter_stub_pll_configurations),
-	.pll_configs = pixter_stub_pll_configurations,
-
-	.modes_items = ARRAY_SIZE(pixter_stub_modes),
-	.modes = pixter_stub_modes,
-
-	.streamon_regs_items = 0,
-	.streamon_regs = NULL,
-
-	.streamoff_regs_items = 0,
-	.streamoff_regs = NULL,
-
-	.v4l2_ctrls_items = ARRAY_SIZE(pixter_stub_v4l2_ctrls),
-	.v4l2_ctrl_bank = pixter_stub_v4l2_ctrls,
-
-	.flip_items = ARRAY_SIZE(pixter_stub_flip_configurations),
-	.flip_data = pixter_stub_flip_configurations,
-
-	.csi_fmts_items = ARRAY_SIZE(pixter_stub_crl_csi_data_fmt),
-	.csi_fmts = pixter_stub_crl_csi_data_fmt,
-};
-
-static struct crl_sensor_configuration pixter_stub_b_crl_configuration = {
-	.powerup_regs_items = 0,
-	.powerup_regs = NULL,
-
-	.poweroff_regs_items = 0,
-	.poweroff_regs = NULL,
-
-	.id_reg_items = 0,
-	.id_regs = NULL,
-
-	.subdev_items = ARRAY_SIZE(pixter_stub_b_sensor_subdevs),
-	.subdevs = pixter_stub_b_sensor_subdevs,
-
-	.sensor_limits = &pixter_stub_sensor_limits,
-
-	.pll_config_items = ARRAY_SIZE(pixter_stub_pll_configurations),
-	.pll_configs = pixter_stub_pll_configurations,
-
-	.modes_items = ARRAY_SIZE(pixter_stub_modes),
-	.modes = pixter_stub_modes,
-
-	.streamon_regs_items = 0,
-	.streamon_regs = NULL,
-
-	.streamoff_regs_items = 0,
-	.streamoff_regs = NULL,
-
-	.v4l2_ctrls_items = ARRAY_SIZE(pixter_stub_v4l2_ctrls),
-	.v4l2_ctrl_bank = pixter_stub_v4l2_ctrls,
-
-	.flip_items = ARRAY_SIZE(pixter_stub_flip_configurations),
-	.flip_data = pixter_stub_flip_configurations,
-
-	.csi_fmts_items = ARRAY_SIZE(pixter_stub_crl_csi_data_fmt),
-	.csi_fmts = pixter_stub_crl_csi_data_fmt,
-};
 
 #endif  /* __CRLMODULE_PIXTER_STUB_CONFIGURATION_H_ */

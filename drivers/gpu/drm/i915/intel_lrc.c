@@ -462,7 +462,8 @@ static void execlists_submit_ports(struct intel_engine_cs *engine)
 			GEM_BUG_ON(!n);
 			desc = 0;
 		}
-		if (intel_vgpu_active(engine->i915) && i915_modparams.enable_pvmmio) {
+		if (intel_vgpu_active(engine->i915) &&
+		    i915_modparams.enable_pvmmio & PVMMIO_ELSP_SUBMIT) {
 			BUG_ON(i >= 4);
 			descs[i] = upper_32_bits(desc);
 			descs[i + 1] = lower_32_bits(desc);
@@ -472,7 +473,8 @@ static void execlists_submit_ports(struct intel_engine_cs *engine)
 		}
 	}
 
-	if (intel_vgpu_active(engine->i915) && i915_modparams.enable_pvmmio) {
+	if (intel_vgpu_active(engine->i915) &&
+	    i915_modparams.enable_pvmmio & PVMMIO_ELSP_SUBMIT) {
 		u32 __iomem *elsp_data = engine->i915->shared_page->elsp_data;
 		spin_lock(&engine->i915->shared_page_lock);
 		writel(descs[0], elsp_data);
@@ -528,7 +530,8 @@ static void inject_preempt_context(struct intel_engine_cs *engine)
 	ce->ring->tail &= (ce->ring->size - 1);
 	ce->lrc_reg_state[CTX_RING_TAIL+1] = ce->ring->tail;
 
-	if (intel_vgpu_active(engine->i915) && i915_modparams.enable_pvmmio) {
+	if (intel_vgpu_active(engine->i915) &&
+	    i915_modparams.enable_pvmmio & PVMMIO_ELSP_SUBMIT) {
 		u32 __iomem *elsp_data = engine->i915->shared_page->elsp_data;
 
 		spin_lock(&engine->i915->shared_page_lock);
@@ -1328,11 +1331,21 @@ static u32 *gen9_init_indirectctx_bb(struct intel_engine_cs *engine, u32 *batch)
 	/* WaFlushCoherentL3CacheLinesAtContextSwitch:skl,bxt,glk */
 	batch = gen8_emit_flush_coherentl3_wa(engine, batch);
 
+	*batch++ = MI_LOAD_REGISTER_IMM(3);
+
 	/* WaDisableGatherAtSetShaderCommonSlice:skl,bxt,kbl,glk */
-	*batch++ = MI_LOAD_REGISTER_IMM(1);
 	*batch++ = i915_mmio_reg_offset(COMMON_SLICE_CHICKEN2);
 	*batch++ = _MASKED_BIT_DISABLE(
 			GEN9_DISABLE_GATHER_AT_SET_SHADER_COMMON_SLICE);
+
+	/* BSpec: 11391 */
+	*batch++ = i915_mmio_reg_offset(FF_SLICE_CHICKEN);
+	*batch++ = _MASKED_BIT_ENABLE(FF_SLICE_CHICKEN_CL_PROVOKING_VERTEX_FIX);
+
+	/* BSpec: 11299 */
+	*batch++ = i915_mmio_reg_offset(_3D_CHICKEN3);
+	*batch++ = _MASKED_BIT_ENABLE(_3D_CHICKEN_SF_PROVOKING_VERTEX_FIX);
+
 	*batch++ = MI_NOOP;
 
 	/* WaClearSlmSpaceAtContextSwitch:kbl */

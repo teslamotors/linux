@@ -5,8 +5,6 @@
 #define IPU_TRACE_H
 #include <linux/debugfs.h>
 
-#define TRACE_REG_MAX_ISYS_OFFSET	0x0fffff
-#define TRACE_REG_MAX_PSYS_OFFSET	0xffffff
 #define TRACE_REG_MAX_BLOCK_SIZE	0x0fff
 
 #define TRACE_REG_END_MARK 0xffff

@@ -151,6 +151,10 @@ config SND_SOC_INTEL_BYT_CHT_ES8316_MACH
 	  Say Y or m if you have such a device. This is a recommended option.
 	  If unsure select "N".
 
+endif ## SND_SST_ATOM_HIFI2_PLATFORM || SND_SOC_SOF_BAYTRAIL
+
+if SND_SST_ATOM_HIFI2_PLATFORM
+
 config SND_SOC_INTEL_BYT_CHT_NOCODEC_MACH
 	tristate "Baytrail & Cherrytrail platform with no codec (MinnowBoard MAX, Up)"
 	depends on X86_INTEL_LPSS && I2C && ACPI
@@ -163,7 +167,7 @@ config SND_SOC_INTEL_BYT_CHT_NOCODEC_MACH
 
 	  If unsure select "N".
 
-endif ## SND_SST_ATOM_HIFI2_PLATFORM || SND_SOC_SOF_BAYTRAIL
+endif ## SND_SST_ATOM_HIFI2_PLATFORM
 
 if SND_SOC_INTEL_SKYLAKE
 
@@ -236,16 +240,25 @@ config SND_SOC_INTEL_BXT_RT298_MACH
 	   Say Y or m if you have such a device. This is a recommended option.
 	   If unsure select "N".
 
+config SND_SOC_INTEL_BXT_PCM512x_MACH
+	tristate "Broxton with TI PCM512x codec"
+	depends on MFD_INTEL_LPSS && I2C && ACPI
+	select SND_SOC_PCM512x_I2C
+	help
+	  This adds support for ASoC machine driver for Broxton platforms
+	  with TI PCM512x I2S audio codec.
+	  Say Y or m if you have such a device. This is a recommended option.
+
 config SND_SOC_INTEL_BXT_TDF8532_MACH
-        tristate "ASoC Audio driver for BXT with TDF8532 in I2S mode"
-        depends on X86 && ACPI && I2C
-        select SND_SOC_TDF8532
-        select SND_SOC_COMPRESS
-        help
-	   This adds support for ASoC machine driver for Broxton IVI GP MRB platform
-	   Say Y if you have such a device.
-	   If unsure select "N".
- 
+	tristate "ASoC Audio driver for BXT with TDF8532 in I2S mode"
+	depends on X86 && ACPI && I2C
+	select SND_SOC_TDF8532
+	select SND_SOC_COMPRESS
+	help
+	  This adds support for ASoC machine driver for Broxton IVI GP MRB platform
+	  Say Y if you have such a device.
+	  If unsure select "N".
+
 endif ##  SND_SOC_INTEL_SKYLAKE || SND_SOC_SOF_APOLLOLAKE
 
 if  SND_SOC_INTEL_SKYLAKE
@@ -371,6 +384,22 @@ config SND_SOC_INTEL_BXTP_IVI_GENERIC_MACH
 	help
 	   This adds support for ASoC machine driver for Broxton-P platforms
 	   with Dummy I2S audio codec for IVI generic topology.
+	   Say Y or m if you have such a device. This is a recommended option.
+	   If unsure select "N".
+
+endif ## SND_SOC_INTEL_SKYLAKE
+
+if SND_SOC_INTEL_SKYLAKE || SND_SOC_SOF_CANNONLAKE
+
+config SND_SOC_INTEL_CNL_RT274_MACH
+	tristate "Cannonlake with RT274 I2S mode"
+	depends on MFD_INTEL_LPSS && I2C && ACPI
+	select SND_SOC_RT274
+	select SND_SOC_DMIC
+	select SND_SOC_HDAC_HDMI
+        help
+	   This adds support for ASoC machine driver for Cannonlake platform
+	   with RT274 I2S audio codec.
 	   Say Y or m if you have such a device. This is a recommended option.
 	   If unsure select "N".
 

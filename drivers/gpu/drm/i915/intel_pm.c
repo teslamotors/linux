@@ -4793,7 +4793,7 @@ static void skl_write_plane_wm(struct intel_crtc *intel_crtc,
 				&wm->trans_wm);
 	}
 #else
-	skl_write_wm_level(dev_priv, PLANE_WM(pipe, plane_id, level),
+	skl_write_wm_level(dev_priv, PLANE_WM_TRANS(pipe, plane_id),
 			&wm->trans_wm);
 #endif
 
@@ -8060,6 +8060,13 @@ static void __intel_autoenable_gt_powersave(struct work_struct *work)
 		container_of(work, typeof(*dev_priv), rps.autoenable_work.work);
 	struct intel_engine_cs *rcs;
 	struct drm_i915_gem_request *req;
+
+	/*
+	 * ANDROID: In deferred fw mode, we can't submit anything until we know
+	 * we loaded and setup the guc and we're ready to handle submissions.
+	 */
+	if (!dev_priv->contexts_ready)
+		goto out;
 
 	if (READ_ONCE(dev_priv->rps.enabled))
 		goto out;

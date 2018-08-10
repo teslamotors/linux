@@ -13642,6 +13642,7 @@ static void intel_crtc_init_scalers(struct intel_crtc *crtc,
 		scaler->owned = 1;
 #if IS_ENABLED(CONFIG_DRM_I915_GVT)
 		if (!intel_vgpu_active(dev_priv) &&
+		    intel_gvt_active(dev_priv) &&
 		    dev_priv->gvt->pipe_info[crtc->pipe].scaler_owner[i] != 0)
 			scaler->owned = 0;
 #endif
@@ -14858,9 +14859,10 @@ fail:
 
 static int intel_sanitize_plane_restriction(struct drm_i915_private *dev_priv)
 {
-	/*plane restriction feature is only for APL for now*/
-	if (!IS_BROXTON(dev_priv) ||
-	    !i915_modparams.enable_initial_modeset) {
+	/*plane restriction feature is only for APL and KBL for now*/
+	if (!(IS_BROXTON(dev_priv) || IS_KABYLAKE(dev_priv)) ||
+	    (!intel_vgpu_active(dev_priv) &&
+	     !i915_modparams.enable_initial_modeset)) {
 		i915_modparams.avail_planes_per_pipe = 0;
 		DRM_INFO("Turning off Plane Restrictions feature\n");
 	}
@@ -14957,7 +14959,7 @@ int intel_modeset_init(struct drm_device *dev)
 	}
 
 	for_each_pipe(dev_priv, pipe) {
-		int ret;
+		int ret = 0;
 
 		if (!i915_modparams.avail_planes_per_pipe) {
 			ret = intel_crtc_init(dev_priv, pipe);

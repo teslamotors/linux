@@ -242,9 +242,65 @@ struct ipu_fw_psys_buffer_set {
 	u8 padding[IPU_FW_PSYS_N_PADDING_UINT8_IN_BUFFER_SET_STRUCT];
 };
 
+struct ipu_fw_psys_program_group_manifest {
+	u32 kernel_bitmap[IPU_FW_PSYS_KERNEL_BITMAP_NOF_ELEMS];
+	u32 ID;
+	u16 program_manifest_offset;
+	u16 terminal_manifest_offset;
+	u16 private_data_offset;
+	u16 rbm_manifest_offset;
+	u16 size;
+	u8 alignment;
+	u8 kernel_count;
+	u8 program_count;
+	u8 terminal_count;
+	u8 subgraph_count;
+	u8 reserved[5];
+};
+
+struct ipu_fw_generic_program_manifest {
+	u16 *dev_chn_size;
+	u16 *dev_chn_offset;
+	u16 *ext_mem_size;
+	u16 *ext_mem_offset;
+	u8 cell_id;
+	u8 cells[IPU_FW_PSYS_PROCESS_MAX_CELLS];
+	u8 cell_type_id;
+	u8 *is_dfm_relocatable;
+	u32 *dfm_port_bitmap;
+	u32 *dfm_active_port_bitmap;
+};
+
+struct ipu_fw_generic_process {
+	u16 ext_mem_id;
+	u16 ext_mem_offset;
+	u16 dev_chn_offset;
+	u16 cell_id;
+	u16 dfm_port_bitmap;
+	u16 dfm_active_port_bitmap;
+};
+
+struct ipu_fw_resource_definitions {
+	u32 num_cells;
+	u32 num_cells_type;
+	const u32 *cells;
+	u32 num_dev_channels;
+	const u16 *dev_channels;
+
+	u32 num_ext_mem_types;
+	u32 num_ext_mem_ids;
+	const u16 *ext_mem_ids;
+
+	u32 num_dfm_ids;
+	const u16 *dfms;
+
+	u32 cell_mem_row;
+	const enum ipu_mem_id *cell_mem;
+	struct ipu_fw_generic_process process;
+};
+
 struct ipu_psys_kcmd;
 struct ipu_psys;
-
 int ipu_fw_psys_pg_start(struct ipu_psys_kcmd *kcmd);
 int ipu_fw_psys_pg_disown(struct ipu_psys_kcmd *kcmd);
 int ipu_fw_psys_pg_abort(struct ipu_psys_kcmd *kcmd);
@@ -272,4 +328,19 @@ u64 ipu_fw_psys_pg_get_token(struct ipu_psys_kcmd *kcmd);
 int ipu_fw_psys_pg_get_protocol(struct ipu_psys_kcmd *kcmd);
 int ipu_fw_psys_open(struct ipu_psys *psys);
 int ipu_fw_psys_close(struct ipu_psys *psys);
+
+/* common resource interface for both abi and api mode */
+void ipu_fw_psys_set_process_cell_id(struct ipu_fw_psys_process *ptr, u8 index,
+				     u8 value);
+u8 ipu_fw_psys_get_process_cell_id(struct ipu_fw_psys_process *ptr, u8 index);
+void ipu_fw_psys_set_process_dev_chn_offset(struct ipu_fw_psys_process *ptr,
+					    u16 offset, u16 value);
+void ipu_fw_psys_set_process_ext_mem_offset(struct ipu_fw_psys_process *ptr,
+					    u16 offset, u16 value);
+void ipu_fw_psys_set_process_ext_mem_id(struct ipu_fw_psys_process *ptr,
+					u16 offset, u8 value);
+int ipu_fw_psys_get_program_manifest_by_process(
+	struct ipu_fw_generic_program_manifest *gen_pm,
+	const struct ipu_fw_psys_program_group_manifest *pg_manifest,
+	struct ipu_fw_psys_process *process);
 #endif /* IPU_FW_PSYS_H */

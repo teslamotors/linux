@@ -511,9 +511,18 @@ extern const struct file_operations tpm_fops;
 extern const struct file_operations tpmrm_fops;
 extern struct idr dev_nums_idr;
 
+/**
+ * enum tpm_transmit_flags
+ *
+ * @TPM_TRANSMIT_UNLOCKED: used to lock sequence of tpm_transmit calls.
+ * @__TPM_TRANSMIT_RAW: prevent recursive calls into setup steps
+ *                    (go idle, locality,..). Don't use directly.
+ * @TPM_TRANSMIT_NESTED: Use from nested tpm_transmit calls
+ */
 enum tpm_transmit_flags {
-	TPM_TRANSMIT_UNLOCKED	= BIT(0),
-	TPM_TRANSMIT_RAW	= BIT(1),
+	TPM_TRANSMIT_UNLOCKED   = BIT(0),
+	__TPM_TRANSMIT_RAW      = BIT(1),
+	TPM_TRANSMIT_NESTED     = TPM_TRANSMIT_UNLOCKED | __TPM_TRANSMIT_RAW,
 };
 
 ssize_t tpm_transmit(struct tpm_chip *chip, struct tpm_space *space,

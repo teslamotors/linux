@@ -1346,6 +1346,10 @@ int isys_isr_one(struct ipu_bus_device *adev)
 
 		break;
 	case IPU_FW_ISYS_RESP_TYPE_FRAME_SOF:
+#ifdef IPU_TPG_SOF
+		if (pipe->tpg)
+			ipu_isys_tpg_sof_event(pipe->tpg);
+#endif
 		pipe->seq[pipe->seq_index].sequence =
 		    atomic_read(&pipe->sequence) - 1;
 		pipe->seq[pipe->seq_index].timestamp = ts;

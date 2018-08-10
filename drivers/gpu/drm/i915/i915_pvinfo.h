@@ -71,6 +71,13 @@ struct gvt_shared_page {
  */
 #define VGT_CAPS_FULL_48BIT_PPGTT	BIT(2)
 
+/*
+ * define different levels of PVMMIO optimization
+ */
+enum pvmmio_levels {
+	PVMMIO_ELSP_SUBMIT = 0x1,
+};
+
 struct vgt_if {
 	u64 magic;		/* VGT_MAGIC */
 	u16 version_major;

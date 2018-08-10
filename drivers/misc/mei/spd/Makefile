@@ -10,4 +10,3 @@ mei_spd-objs += rpmb.o
 mei_spd-$(CONFIG_DEBUG_FS) += debugfs.o
 
 ccflags-y += -D__CHECK_ENDIAN__
-

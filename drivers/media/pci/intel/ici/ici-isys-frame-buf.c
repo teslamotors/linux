@@ -236,8 +236,10 @@ static int ici_get_userpages(struct device *dev,
 	else
 		pages = vzalloc(array_size);
 
-	if (!pages)
+	if (!pages) {
+		kfree(sgt);
 		return -ENOMEM;
+	}
 
 	down_read(&current->mm->mmap_sem);
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
@@ -348,7 +350,8 @@ int ici_isys_get_buf(struct ici_isys_stream *as,
 		if (!frame_info->frame_planes[0].mem.userptr) {
 			dev_err(&as->isys->adev->dev,
 				"User pointer not define\n");
-			return -EINVAL;
+			res = -EINVAL;
+			goto err_exit;
 		}
 		for (i = 0; i < frame_info->num_planes; i++) {
 			kframe_plane = &buf->kframe_info.planes[i];
@@ -361,7 +364,7 @@ int ici_isys_get_buf(struct ici_isys_stream *as,
 						frame_planes[i],
 						kframe_plane);
 			if (res)
-				return res;
+				goto err_exit;
 		}
 		break;
 	case ICI_MEM_DMABUF:
@@ -375,7 +378,7 @@ int ici_isys_get_buf(struct ici_isys_stream *as,
 						frame_planes[i],
 						kframe_plane);
 			if (res)
-				return res;
+				goto err_exit;
 		}
 		break;
 	}
@@ -385,6 +388,10 @@ int ici_isys_get_buf(struct ici_isys_stream *as,
 	list_add_tail(&buf->node, &buf_list->getbuf_list);
 	mutex_unlock(&buf_list->mutex);
 	return 0;
+
+err_exit:
+	kfree(buf);
+	return res;
 }
 
 int ici_isys_put_buf(struct ici_isys_stream *as,

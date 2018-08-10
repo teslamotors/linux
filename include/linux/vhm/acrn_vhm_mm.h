@@ -52,9 +52,7 @@
  */
 
 /**
- * @file acrn_vhm_mm.h
- *
- * @brief Virtio and Hypervisor Module memory manager APIs
+ * DOC: Virtio and Hypervisor Module memory manager APIs
  */
 
 #ifndef __ACRN_VHM_MM_H__
@@ -80,12 +78,10 @@ static inline unsigned long  acrn_hpa2gpa(unsigned long hpa)
 }
 
 /**
- * map_guest_phys - map guest physical address
- *
- * to SOS kernel virtual address
+ * map_guest_phys - map guest physical address to SOS kernel virtual address
  *
  * @vmid: guest vmid
- * @uos_phy: phsical address in guest
+ * @uos_phys: physical address in guest
  * @size: the memory size mapped
  *
  * Return: SOS kernel virtual address, NULL on error
@@ -96,7 +92,7 @@ void *map_guest_phys(unsigned long vmid, u64 uos_phys, size_t size);
  * unmap_guest_phys - unmap guest physical address
  *
  * @vmid: guest vmid
- * @uos_phy: phsical address in guest
+ * @uos_phys: physical address in guest
  *
  * Return: 0 on success, <0 for error.
  */
@@ -109,7 +105,7 @@ int unmap_guest_phys(unsigned long vmid, u64 uos_phys);
  * @guest_gpa: gpa of UOS
  * @host_gpa: gpa of SOS
  * @len: memory mapped length
- * @mem_type: memory mapping type. Possilble value could be:
+ * @mem_type: memory mapping type. Possible value could be:
  *                    MEM_TYPE_WB
  *                    MEM_TYPE_WT
  *                    MEM_TYPE_UC
@@ -147,7 +143,7 @@ int unset_mmio_map(unsigned long vmid, unsigned long guest_gpa,
  * @guest_gpa: gpa of UOS
  * @host_gpa: gpa of SOS
  * @len: memory mapped length
- * @mem_type: memory mapping type. Possilble value could be:
+ * @mem_type: memory mapping type. Possible value could be:
  *                    MEM_TYPE_WB
  *                    MEM_TYPE_WT
  *                    MEM_TYPE_UC
@@ -199,6 +195,9 @@ int alloc_guest_memseg(struct vhm_vm *vm, struct vm_memseg *memseg);
  * Return:
  */
 int map_guest_memseg(struct vhm_vm *vm, struct vm_memmap *memmap);
+
+int init_trusty(struct vhm_vm *vm);
+void deinit_trusty(struct vhm_vm *vm);
 
 int _mem_set_memmap(unsigned long vmid, unsigned long guest_gpa,
 	unsigned long host_gpa, unsigned long len,

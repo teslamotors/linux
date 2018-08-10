@@ -63,8 +63,8 @@ struct i915_params i915_modparams __read_mostly = {
 	.verbose_state_checks = 1,
 	.nuclear_pageflip = 0,
 	.edp_vswing = 0,
-	.enable_guc_loading = 0,
-	.enable_guc_submission = 0,
+	.enable_guc_loading = 1,
+	.enable_guc_submission = 1,
 	.guc_log_level = -1,
 	.guc_firmware_path = NULL,
 	.huc_firmware_path = NULL,
@@ -215,11 +215,11 @@ i915_param_named_unsafe(edp_vswing, int, 0400,
 
 i915_param_named_unsafe(enable_guc_loading, int, 0400,
 	"Enable GuC firmware loading "
-	"(-1=auto, 0=never [default], 1=if available, 2=required)");
+	"(-1=auto, 0=never, 1=if available [default], 2=required)");
 
 i915_param_named_unsafe(enable_guc_submission, int, 0400,
 	"Enable GuC submission "
-	"(-1=auto, 0=never [default], 1=if available, 2=required)");
+	"(-1=auto, 0=never, 1=if available [default], 2=required)");
 
 i915_param_named(guc_log_level, int, 0400,
 	"GuC firmware logging level (-1:disabled (default), 0-3:enabled)");
@@ -242,9 +242,9 @@ i915_param_named(enable_dpcd_backlight, bool, 0600,
 i915_param_named(enable_gvt, bool, 0400,
 	"Enable support for Intel GVT-g graphics virtualization host support(default:false)");
 
-module_param_named(enable_pvmmio, i915_modparams.enable_pvmmio, bool, 0400);
+module_param_named(enable_pvmmio, i915_modparams.enable_pvmmio, uint, 0400);
 MODULE_PARM_DESC(enable_pvmmio,
-	"Enable pv mmio feature, default TRUE. This parameter "
+	"Enable pv mmio feature and set pvmmio level, default 1. This parameter "
 	"could only set from host, guest value is set through vgt_if");
 
 module_param_named(enable_gvt_oos, i915_modparams.enable_gvt_oos, bool, 0400);

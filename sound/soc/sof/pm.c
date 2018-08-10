@@ -8,6 +8,7 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
+#include <linux/mm.h>
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/delay.h>

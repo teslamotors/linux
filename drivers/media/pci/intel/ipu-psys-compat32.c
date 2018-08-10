@@ -57,7 +57,7 @@ get_ipu_psys_command32(struct ipu_psys_command *kp,
 	compat_uptr_t pgm, bufs;
 
 	if (!access_ok(VERIFY_READ, up,
-		       sizeof(struct ipu_psys_buffer32)) ||
+		       sizeof(struct ipu_psys_command32)) ||
 	    get_user(kp->issue_id, &up->issue_id) ||
 	    get_user(kp->user_token, &up->user_token) ||
 	    get_user(kp->priority, &up->priority) ||

@@ -746,7 +746,7 @@ long hyper_dmabuf_ioctl(struct file *filp,
 	hyper_dmabuf_ioctl_t func;
 	char *kdata;
 
-	if (nr > ARRAY_SIZE(hyper_dmabuf_ioctls)) {
+	if (nr >= ARRAY_SIZE(hyper_dmabuf_ioctls)) {
 		dev_err(hy_drv_priv->dev, "invalid ioctl\n");
 		return -EINVAL;
 	}

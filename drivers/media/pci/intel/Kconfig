@@ -1,6 +1,6 @@
 config VIDEO_INTEL_IPU
 	tristate "Intel IPU driver"
-	depends on ACPI
+	depends on ACPI && X86_64
 	select IOMMU_API
 	select IOMMU_IOVA
 	select X86_DEV_DMA_OPS if X86
@@ -44,7 +44,21 @@ config VIDEO_INTEL_IPU_FW_LIB
 	---help---
 	If selected, the firmware hostlib css would be compiled
 
+config VIDEO_INTEL_IPU_WERROR
+	bool "Force GCC to throw an error instead of a warning when compiling"
+	depends on VIDEO_INTEL_IPU
+	depends on EXPERT
+	depends on !COMPILE_TEST
+	default n
+	help
+	  Add -Werror to the build flags for (and only for) intel ipu module.
+	  Do not enable this unless you are writing code for the ipu module.
+
+	  Recommended for driver developers only.
+
+	  If in doubt, say "N".
 config VIDEO_INTEL_ICI
+	depends on VIDEO_INTEL_IPU
 	bool "Compile for ICI driver"
 	---help---
 	If selected ICI driver will be compiled

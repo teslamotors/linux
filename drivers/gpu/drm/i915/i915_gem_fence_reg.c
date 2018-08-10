@@ -63,6 +63,7 @@ static void i965_write_fence_reg(struct drm_i915_fence_reg *fence,
 	i915_reg_t fence_reg_lo, fence_reg_hi;
 	int fence_pitch_shift;
 	u64 val;
+	struct drm_i915_private *dev_priv = fence->i915;
 
 	if (INTEL_INFO(fence->i915)->gen >= 6) {
 		fence_reg_lo = FENCE_REG_GEN6_LO(fence->id);
@@ -92,9 +93,17 @@ static void i965_write_fence_reg(struct drm_i915_fence_reg *fence,
 		val |= I965_FENCE_REG_VALID;
 	}
 
-	if (!pipelined) {
-		struct drm_i915_private *dev_priv = fence->i915;
-
+	if (intel_vgpu_active(dev_priv)) {
+		/* Use the 64-bit RW to write fence reg on VGPU mode.
+		 * The GVT-g can trap the written val of VGPU to program the
+		 * fence reg. And the fence write in gvt-g follows the
+		 * sequence of off/read/double-write/read. This assures that
+		 * the fence reg is configured as expected.
+		 * At the same time the 64-bit op can help to reduce the num
+		 * of VGPU trap for the fence reg.
+		 */
+		I915_WRITE64_FW(fence_reg_lo, val);
+	} else if (!pipelined) {
 		/* To w/a incoherency with non-atomic 64-bit register updates,
 		 * we split the 64-bit update into two 32-bit writes. In order
 		 * for a partial fence not to be evaluated between writes, we
