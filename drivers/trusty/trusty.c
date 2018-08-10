@@ -648,13 +648,14 @@ static int trusty_remove(struct platform_device *pdev)
 
 static int trusty_suspend(struct platform_device *pdev, pm_message_t state)
 {
-	dev_info(&pdev->dev, "%s() is called\n", __func__);
 	long ret = 0, save_ret = 0;
 	int cpu = 0;
 
+	dev_info(&pdev->dev, "%s() is called\n", __func__);
+
 	ret = smp_call_function_single(cpu, acrn_save_sworld_context, (void *)&save_ret, 1);
 	if (ret) {
-		pr_err("%s: smp_call_function_single failed: %d\n", __func__, ret);
+		pr_err("%s: smp_call_function_single failed: %ld\n", __func__, ret);
 	}
 	if(save_ret < 0) {
 		dev_err(&pdev->dev, "%s(): failed to save world context!\n", __func__);
