@@ -777,6 +777,12 @@ static void pvmmio_update_plane_register(struct intel_vgpu *vgpu,
 	skl_plane_mmio_write(vgpu,
 		i915_mmio_reg_offset(PLANE_SIZE(pipe, plane)),
 		&pv_plane->plane_size, 4);
+	skl_plane_mmio_write(vgpu,
+		i915_mmio_reg_offset(PLANE_AUX_DIST(pipe, plane)),
+		&pv_plane->plane_aux_dist, 4);
+	skl_plane_mmio_write(vgpu,
+		i915_mmio_reg_offset(PLANE_AUX_OFFSET(pipe, plane)),
+		&pv_plane->plane_aux_offset, 4);
 
 	if (pv_plane->flags & PLANE_SCALER_BIT) {
 		skl_ps_mmio_write(vgpu,
