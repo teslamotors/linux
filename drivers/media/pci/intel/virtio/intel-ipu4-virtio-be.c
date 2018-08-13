@@ -412,7 +412,7 @@ int ipu_virtio_vqs_index_get(struct virtio_dev_info *dev, unsigned long *ioreqs_
 		if (vcpu == dev->_ctx.max_vcpu)
 			break;
 		req = &dev->_ctx.req_buf[vcpu];
-		if (req->valid && req->processed == REQ_STATE_PROCESSING &&
+		if (atomic_read(&req->processed) == REQ_STATE_PROCESSING &&
 		    req->client == dev->_ctx.vhm_client_id) {
 			if (req->reqs.pio_request.direction == REQUEST_READ) {
 				/* currently we handle kick only,
@@ -431,7 +431,8 @@ int ipu_virtio_vqs_index_get(struct virtio_dev_info *dev, unsigned long *ioreqs_
 				else
 					vqs_index[idx++] = req->reqs.mmio_request.value;
 			}
-			req->processed = REQ_STATE_SUCCESS;
+			smp_mb();
+			atomic_set(&req->processed, REQ_STATE_COMPLETE);
 			acrn_ioreq_complete_request(req->client, vcpu);
 		}
 	}
