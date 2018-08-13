@@ -89,6 +89,7 @@ struct ia_css_isys_resolution {
  * @out_buf_id: Points to output pin buffer - buffer identifier
  * @addr: Points to output pin buffer - CSS Virtual Address
  * @compressed: Request frame compression (1), or  not (0)
+ * This must be the same as ia_css_isys_output_pin_info::reserve_compression
  */
 struct ia_css_isys_output_pin_payload {
 	ia_css_return_token out_buf_id;
@@ -272,6 +273,8 @@ struct ia_css_isys_frame_buff_set {
 	struct ia_css_isys_param_pin process_group_light;
 	unsigned int send_irq_sof;
 	unsigned int send_irq_eof;
+	unsigned int send_irq_capture_ack;
+	unsigned int send_irq_capture_done;
 	unsigned int send_resp_sof;
 	unsigned int send_resp_eof;
 	uint8_t      frame_counter;

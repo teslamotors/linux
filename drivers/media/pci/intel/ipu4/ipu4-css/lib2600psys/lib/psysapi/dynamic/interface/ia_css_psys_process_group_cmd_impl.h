@@ -22,8 +22,8 @@
 #define N_UINT64_IN_PROCESS_GROUP_STRUCT	2
 #define N_UINT32_IN_PROCESS_GROUP_STRUCT	5
 #define N_UINT16_IN_PROCESS_GROUP_STRUCT	5
-#define N_UINT8_IN_PROCESS_GROUP_STRUCT		6
-#define N_PADDING_UINT8_IN_PROCESS_GROUP_STRUCT	4
+#define N_UINT8_IN_PROCESS_GROUP_STRUCT		7
+#define N_PADDING_UINT8_IN_PROCESS_GROUP_STRUCT	3
 
 #define SIZE_OF_PROCESS_GROUP_STRUCT_BITS \
 	(IA_CSS_RBM_BITS \
@@ -88,6 +88,8 @@ struct ia_css_process_group_s {
 	uint8_t base_queue_id;
 	/**< Number of dedicated queues used */
 	uint8_t num_queues;
+	/**< Mask the send_pg_done IRQ */
+	uint8_t mask_irq;
 	/**< Padding for 64bit alignment */
 	uint8_t padding[N_PADDING_UINT8_IN_PROCESS_GROUP_STRUCT];
 };

@@ -1,4 +1,4 @@
-// SPDX-License_Identifier: GPL-2.0
+// SPDX-License-Identifier: GPL-2.0
 // Copyright (C) 2013 - 2018 Intel Corporation
 
 #include <linux/clk.h>
@@ -50,7 +50,7 @@
 
 #define BUTTRESS_IPC_CMD_SEND_RETRY	1
 
-const struct ipu_buttress_sensor_clk_freq sensor_clk_freqs[] = {
+static const struct ipu_buttress_sensor_clk_freq sensor_clk_freqs[] = {
 	{6750000, BUTTRESS_SENSOR_CLK_FREQ_6P75MHZ},
 	{8000000, BUTTRESS_SENSOR_CLK_FREQ_8MHZ},
 	{9600000, BUTTRESS_SENSOR_CLK_FREQ_9P6MHZ},
@@ -862,10 +862,10 @@ int ipu_buttress_authenticate(struct ipu_device *isp)
 	 * Write address of FIT table to FW_SOURCE register
 	 * Let's use fw address. I.e. not using FIT table yet
 	 */
-	data = (u32)isp->pkg_dir_dma_addr;
+	data = lower_32_bits(isp->pkg_dir_dma_addr);
 	writel(data, isp->base + BUTTRESS_REG_FW_SOURCE_BASE_LO);
 
-	data = (u32)(isp->pkg_dir_dma_addr >> 32);
+	data = upper_32_bits(isp->pkg_dir_dma_addr);
 	writel(data, isp->base + BUTTRESS_REG_FW_SOURCE_BASE_HI);
 
 	/*
@@ -1499,6 +1499,7 @@ DEFINE_SIMPLE_ATTRIBUTE(ipu_buttress_start_tsc_sync_fops, NULL,
 
 u64 ipu_buttress_tsc_ticks_to_ns(u64 ticks)
 {
+	u64 ns = ticks * 10000;
 	/*
 	 * TSC clock frequency is 19.2MHz,
 	 * converting TSC tick count to ns is calculated by:
@@ -1506,7 +1507,9 @@ u64 ipu_buttress_tsc_ticks_to_ns(u64 ticks)
 	 *    = ticks * 1000 000 000 / 19200000Hz
 	 *    = ticks * 10000 / 192 ns
 	 */
-	return ticks * 10000 / 192;
+	do_div(ns, 192);
+
+	return ns;
 }
 EXPORT_SYMBOL_GPL(ipu_buttress_tsc_ticks_to_ns);
 
@@ -1534,7 +1537,8 @@ static int ipu_buttress_psys_force_freq_set(void *data, u64 val)
 		    val > BUTTRESS_MAX_FORCE_PS_FREQ))
 		return -EINVAL;
 
-	isp->buttress.psys_force_ratio = val / BUTTRESS_PS_FREQ_STEP;
+	do_div(val, BUTTRESS_PS_FREQ_STEP);
+	isp->buttress.psys_force_ratio = val;
 
 	if (isp->buttress.psys_force_ratio)
 		ipu_buttress_set_psys_ratio(isp,

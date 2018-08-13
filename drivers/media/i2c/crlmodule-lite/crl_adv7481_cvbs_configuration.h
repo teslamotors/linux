@@ -61,6 +61,17 @@ static const s64 adv7481_cvbs_op_sys_clock[] =  {130000000};
 
 static struct crl_pll_configuration adv7481_cvbs_pll_configurations[] = {
 	{
+		.input_clk = 286363636,
+		.op_sys_clk = 216000000,
+		.bitsperpixel = 16,
+		.pixel_rate_csi = 130000000,
+		.pixel_rate_pa = 130000000,
+		.comp_items = 0,
+		.ctrl_data = 0,
+		.pll_regs_items = 0,
+		.pll_regs = NULL,
+	},
+	{
 		.input_clk = 24000000,
 		.op_sys_clk = 130000000,
 		.bitsperpixel = 16,

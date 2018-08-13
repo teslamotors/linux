@@ -61,6 +61,7 @@ struct ia_css_isys_resolution_comm {
  * @out_buf_id: Points to output pin buffer - buffer identifier
  * @addr: Points to output pin buffer - CSS Virtual Address
  * @compress: Request frame compression (1), or  not (0)
+ * This must be the same as ia_css_isys_output_pin_info_comm::reserve_compression
  */
 struct ia_css_isys_output_pin_payload_comm {
 	aligned_uint64(ia_css_return_token, out_buf_id);
@@ -272,6 +273,8 @@ struct ia_css_isys_frame_buff_set_comm {
 	aligned_struct(struct ia_css_isys_param_pin_comm, process_group_light);
 	aligned_uint8(unsigned int, send_irq_sof);
 	aligned_uint8(unsigned int, send_irq_eof);
+	aligned_uint8(unsigned int, send_irq_capture_ack);
+	aligned_uint8(unsigned int, send_irq_capture_done);
 	aligned_uint8(unsigned int, send_resp_sof);
 	aligned_uint8(unsigned int, send_resp_eof);
 	aligned_uint8(unsigned int, frame_counter);

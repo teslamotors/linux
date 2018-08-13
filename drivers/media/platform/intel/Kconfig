@@ -114,4 +114,10 @@ config INTEL_IPU4_IMX290
 	bool "Compile platform data for IMX290"
 	depends on INTEL_IPU4_BXT_P_PDATA
 	---help---
-	Sony 8MB camera sensor is enabled for HDR function
+	"Sony 8MB camera sensor is enabled for HDR function"
+
+config INTEL_IPU4_OV2775
+	bool "Compile platform data for OV2775"
+	depends on INTEL_IPU4_BXT_P_PDATA
+	---help---
+	"Omnivision OV2775 camera sensor"

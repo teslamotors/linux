@@ -1,4 +1,4 @@
-/* SPDX-License_Identifier: GPL-2.0 */
+/* SPDX-License-Identifier: GPL-2.0 */
 /* Copyright (C) 2013 - 2018 Intel Corporation */
 
 #ifndef IPU_H
@@ -25,8 +25,6 @@
 /* input system frequency: 1600Mhz / divisor. Legal values [2,8] */
 #define IS_FREQ_SOURCE			1600000000
 #define IS_FREQ_CTL_DIVISOR		0x4
-
-#define IPU_ISYS_NUM_STREAMS		8	/* Max 8 */
 
 /*
  * ISYS DMA can overshoot. For higher resolutions over allocation is one line

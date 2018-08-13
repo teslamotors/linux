@@ -601,6 +601,10 @@ STORAGE_CLASS_INLINE void frame_buff_set_host_to_css(
 			frame_buff_set_host->send_irq_sof ? 1 : 0;
 	frame_buff_set_css->send_irq_eof =
 			frame_buff_set_host->send_irq_eof ? 1 : 0;
+	frame_buff_set_css->send_irq_capture_done =
+			(uint8_t)frame_buff_set_host->send_irq_capture_done;
+	frame_buff_set_css->send_irq_capture_ack =
+			frame_buff_set_host->send_irq_capture_ack ? 1 : 0;
 	frame_buff_set_css->send_resp_sof =
 			frame_buff_set_host->send_irq_sof ?
 				1 : frame_buff_set_host->send_resp_sof;

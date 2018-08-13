@@ -1,4 +1,4 @@
-// SPDX-License_Identifier: GPL-2.0
+// SPDX-License-Identifier: GPL-2.0
 // Copyright (C) 2013 - 2018 Intel Corporation
 
 #include <linux/delay.h>
@@ -414,12 +414,6 @@ int ipu_isys_vidioc_enum_fmt(struct file *file, void *fh,
 
 	f->flags = 0;
 
-	if (*supported_codes == MEDIA_BUS_FMT_FIXED) {
-		/* FIXME: No proper pixel format. Use 0. */
-		f->pixelformat = 0;
-		return 0;
-	}
-
 	/* Code found */
 	for (pfmt = av->pfmts; pfmt->bpp; pfmt++)
 		if (pfmt->code == *supported_codes)
@@ -466,6 +460,11 @@ const struct ipu_isys_pixelformat *ipu_isys_video_try_fmt_vid_mplane(
 	mpix->pixelformat = pfmt->pixelformat;
 	mpix->num_planes = 1;
 
+	mpix->width = clamp(mpix->width, IPU_ISYS_MIN_WIDTH,
+			    IPU_ISYS_MAX_WIDTH);
+	mpix->height = clamp(mpix->height, IPU_ISYS_MIN_HEIGHT,
+			     IPU_ISYS_MAX_HEIGHT);
+
 	if (!av->packed)
 		mpix->plane_fmt[0].bytesperline =
 		    mpix->width * DIV_ROUND_UP(pfmt->bpp_planar ?
@@ -503,8 +502,16 @@ const struct ipu_isys_pixelformat *ipu_isys_video_try_fmt_vid_mplane(
 		    max(mpix->plane_fmt[0].bytesperline,
 			av->isys->pdata->ipdata->isys_dma_overshoot)), 1U);
 
+	memset(mpix->plane_fmt[0].reserved, 0,
+	       sizeof(mpix->plane_fmt[0].reserved));
+
 	if (mpix->field == V4L2_FIELD_ANY)
 		mpix->field = V4L2_FIELD_NONE;
+	/* Use defaults */
+	mpix->colorspace = V4L2_COLORSPACE_RAW;
+	mpix->ycbcr_enc = V4L2_YCBCR_ENC_DEFAULT;
+	mpix->quantization = V4L2_QUANTIZATION_DEFAULT;
+	mpix->xfer_func = V4L2_XFER_FUNC_DEFAULT;
 
 	return pfmt;
 }
@@ -557,6 +564,10 @@ static void fmt_mp_to_sp(struct v4l2_pix_format *pix,
 	pix->bytesperline = mpix->plane_fmt[0].bytesperline;
 	pix->sizeimage = mpix->plane_fmt[0].sizeimage;
 	pix->flags = mpix->flags;
+	pix->colorspace = mpix->colorspace;
+	pix->ycbcr_enc = mpix->ycbcr_enc;
+	pix->quantization = mpix->quantization;
+	pix->xfer_func = mpix->xfer_func;
 }
 
 static int vidioc_g_fmt_vid_cap(struct file *file, void *fh,
@@ -894,7 +905,7 @@ static int short_packet_queue_setup(struct ipu_isys_pipeline *ip)
 	return 0;
 }
 
-void csi_short_packet_prepare_firmware_stream_cfg(
+static void csi_short_packet_prepare_firmware_stream_cfg(
 				struct ipu_isys_pipeline *ip,
 				struct ipu_fw_isys_stream_cfg_data_abi *cfg)
 {
@@ -1048,6 +1059,9 @@ static int start_stream_firmware(struct ipu_isys_video *av,
 	if (ip->csi2 && !v4l2_ctrl_g_ctrl(ip->csi2->store_csi2_header))
 		stream_cfg->input_pins[0].mipi_store_mode =
 		    IPU_FW_ISYS_MIPI_STORE_MODE_DISCARD_LONG_HEADER;
+	else if (ip->tpg && !v4l2_ctrl_g_ctrl(ip->tpg->store_csi2_header))
+		stream_cfg->input_pins[0].mipi_store_mode =
+		    IPU_FW_ISYS_MIPI_STORE_MODE_DISCARD_LONG_HEADER;
 
 	stream_cfg->src = ip->source;
 	stream_cfg->vc = 0;
@@ -1134,7 +1148,7 @@ static int start_stream_firmware(struct ipu_isys_video *av,
 				       to_dma_addr(msg),
 				       sizeof(*stream_cfg),
 				       IPU_FW_ISYS_SEND_TYPE_STREAM_OPEN);
-	ipu_put_fw_mgs_buffer(av->isys, (u64) stream_cfg);
+	ipu_put_fw_mgs_buffer(av->isys, (uintptr_t) stream_cfg);
 
 	if (rval < 0) {
 		dev_err(dev, "can't open stream (%d)\n", rval);
@@ -1189,7 +1203,7 @@ static int start_stream_firmware(struct ipu_isys_video *av,
 				buf, to_dma_addr(msg),
 				sizeof(*buf),
 				IPU_FW_ISYS_SEND_TYPE_STREAM_START_AND_CAPTURE);
-		ipu_put_fw_mgs_buffer(av->isys, (u64) buf);
+		ipu_put_fw_mgs_buffer(av->isys, (uintptr_t) buf);
 	} else {
 		rval = ipu_fw_isys_simple_cmd(av->isys,
 					ip->stream_handle,
@@ -1376,6 +1390,7 @@ int ipu_isys_video_prepare_streaming(struct ipu_isys_video *av,
 	ip->csi2_be = NULL;
 	ip->csi2_be_soc = NULL;
 	ip->csi2 = NULL;
+	ip->tpg = NULL;
 	ip->seq_index = 0;
 	memset(ip->seq, 0, sizeof(ip->seq));
 
