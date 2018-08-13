@@ -12,7 +12,6 @@
 #include <linux/vmalloc.h>
 
 #include <linux/vbs/vq.h>
-#include <linux/vbs/vbs.h>
 #include <linux/hashtable.h>
 
 #include "intel-ipu4-virtio-common.h"
@@ -60,7 +59,7 @@ static int ipu_vbk_hash_initialized;
 static int ipu_vbk_connection_cnt;
 
 /* function declarations */
-static int handle_kick(int client_id, int req_cnt);
+static int handle_kick(int client_id, long unsigned int *req_cnt);
 static void ipu_vbk_reset(struct ipu4_virtio_be_priv *rng);
 static void ipu_vbk_stop(struct ipu4_virtio_be_priv *rng);
 static void ipu_vbk_flush(struct ipu4_virtio_be_priv *rng);
@@ -213,12 +212,12 @@ static void handle_vq_kick(struct ipu4_virtio_be_priv *priv, int vq_idx)
 		virtio_vq_endchains(vq, 1);
 }
 
-static int handle_kick(int client_id, int req_cnt)
+static int handle_kick(int client_id, long unsigned *ioreqs_map)
 {
-	int val = -1;
+	int val[IPU_VIRTIO_QUEUE_MAX], i, count;
 	struct ipu4_virtio_be_priv *priv;
 
-	if (unlikely(req_cnt <= 0))
+	if (unlikely(bitmap_empty(ioreqs_map, VHM_REQUEST_MAX)))
 		return -EINVAL;
 
 	pr_debug("%s: IPU VBK handle kick!\n", __func__);
@@ -230,10 +229,13 @@ static int handle_kick(int client_id, int req_cnt)
 		return -EINVAL;
 	}
 
-	val = virtio_vq_index_get(&priv->dev, req_cnt);
+	count = ipu_virtio_vqs_index_get(&priv->dev, ioreqs_map, val, IPU_VIRTIO_QUEUE_MAX);
 
-	if (val >= 0)
-		handle_vq_kick(priv, val);
+	for (i = 0; i < count; i++) {
+		if (val[i] >= 0) {
+			handle_vq_kick(priv, val[i]);
+		}
+	}
 
 	return 0;
 }
@@ -391,6 +393,50 @@ int notify_fe(void)
 		pr_debug("%s: NULL vq!", __func__);
 
 	return 0;
+}
+
+int ipu_virtio_vqs_index_get(struct virtio_dev_info *dev, unsigned long *ioreqs_map,
+				int *vqs_index, int max_vqs_index)
+{
+	int idx = 0;
+	struct vhm_request *req;
+	int vcpu;
+
+	if (dev == NULL) {
+		pr_err("%s: dev is NULL!\n", __func__);
+		return -EINVAL;
+	}
+
+	while (idx < max_vqs_index) {
+		vcpu = find_first_bit(ioreqs_map, dev->_ctx.max_vcpu);
+		if (vcpu == dev->_ctx.max_vcpu)
+			break;
+		req = &dev->_ctx.req_buf[vcpu];
+		if (req->valid && req->processed == REQ_STATE_PROCESSING &&
+		    req->client == dev->_ctx.vhm_client_id) {
+			if (req->reqs.pio_request.direction == REQUEST_READ) {
+				/* currently we handle kick only,
+				 * so read will return 0
+				 */
+				pr_debug("%s: read request!\n", __func__);
+				if (dev->io_range_type == PIO_RANGE)
+					req->reqs.pio_request.value = 0;
+				else
+					req->reqs.mmio_request.value = 0;
+			} else {
+				pr_debug("%s: write request! type %d\n",
+						__func__, req->type);
+				if (dev->io_range_type == PIO_RANGE)
+					vqs_index[idx++] = req->reqs.pio_request.value;
+				else
+					vqs_index[idx++] = req->reqs.mmio_request.value;
+			}
+			req->processed = REQ_STATE_SUCCESS;
+			acrn_ioreq_complete_request(req->client, vcpu);
+		}
+	}
+
+	return idx;
 }
 
 /* device specific function to cleanup itself */
