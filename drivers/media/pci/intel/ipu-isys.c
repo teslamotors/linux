@@ -40,7 +40,7 @@
  * The param was passed from module to indicate if port
  * could be optimized.
  */
-static bool csi2_port_optimized;
+static bool csi2_port_optimized = true;
 module_param(csi2_port_optimized, bool, 0660);
 MODULE_PARM_DESC(csi2_port_optimized, "IPU CSI2 port optimization");
 
