@@ -242,6 +242,10 @@ static struct crl_register_write_rep adv7481_hdmi_mode_1080p[] = {
 	{0x31, CRL_REG_LEN_08BIT, 0x80, 0x94},
 	{0xC9, CRL_REG_LEN_08BIT, 0x2D, 0x44},
 	{0x05, CRL_REG_LEN_08BIT, 0x5E, 0xE0},
+	{0x8B, CRL_REG_LEN_08BIT, 0x43, 0x44}, /* shift 44 pixel to right */
+	{0x8C, CRL_REG_LEN_08BIT, 0xD4, 0x44},
+	{0x8B, CRL_REG_LEN_08BIT, 0x4F, 0x44},
+	{0x8D, CRL_REG_LEN_08BIT, 0xD4, 0x44},
 };
 
 static struct crl_register_write_rep adv7481_hdmi_mode_1080i[] = {
@@ -261,6 +265,10 @@ static struct crl_register_write_rep adv7481_hdmi_mode_1080i[] = {
 	{0x31, CRL_REG_LEN_08BIT, 0x80, 0x94},
 	{0xC9, CRL_REG_LEN_08BIT, 0x2D, 0x44},
 	{0x05, CRL_REG_LEN_08BIT, 0x54, 0xE0},
+	{0x8B, CRL_REG_LEN_08BIT, 0x43, 0x44}, /* shift 44 pixel to right */
+	{0x8C, CRL_REG_LEN_08BIT, 0xD4, 0x44},
+	{0x8B, CRL_REG_LEN_08BIT, 0x4F, 0x44},
+	{0x8D, CRL_REG_LEN_08BIT, 0xD4, 0x44},
 };
 
 static struct crl_register_write_rep adv7481_hdmi_mode_480p[] = {
@@ -299,6 +307,10 @@ static struct crl_register_write_rep adv7481_hdmi_mode_720p[] = {
 	{0x31, CRL_REG_LEN_08BIT, 0x80, 0x94},
 	{0xC9, CRL_REG_LEN_08BIT, 0x2D, 0x44},
 	{0x05, CRL_REG_LEN_08BIT, 0x53, 0xE0},
+	{0x8B, CRL_REG_LEN_08BIT, 0x43, 0x44}, /* shift 40 pixel to right */
+	{0x8C, CRL_REG_LEN_08BIT, 0xD8, 0x44},
+	{0x8B, CRL_REG_LEN_08BIT, 0x4F, 0x44},
+	{0x8D, CRL_REG_LEN_08BIT, 0xD8, 0x44},
 };
 
 static struct crl_register_write_rep adv7481_hdmi_mode_576p[] = {
