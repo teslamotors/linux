@@ -15058,7 +15058,7 @@ int intel_modeset_init(struct drm_device *dev)
 	for_each_intel_crtc(dev, crtc) {
 		struct intel_initial_plane_config plane_config = {};
 
-		if (!crtc->active)
+		if (!crtc->active || !crtc->base.primary)
 			continue;
 
 		/*
