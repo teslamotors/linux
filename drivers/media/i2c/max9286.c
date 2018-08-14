@@ -155,15 +155,31 @@ max96705_read_register(struct max9286 *max, unsigned int i, u8 reg)
 	return val;
 }
 
+/* Validate csi_data_format */
+static const struct max9286_csi_data_format *
+max9286_validate_csi_data_format(u32 code)
+{
+	unsigned int i;
+
+	for (i = 0; i < ARRAY_SIZE(max_csi_data_formats); i++) {
+		if (max_csi_data_formats[i].code == code)
+			return &max_csi_data_formats[i];
+	}
+
+	return &max_csi_data_formats[0];
+}
+
 /* Initialize image sensors and set stream on registers */
 static int max9286_set_stream(struct v4l2_subdev *subdev, int enable)
 {
 	struct max9286 *max = to_max_9286(subdev);
 	struct media_pad *remote_pad;
 	struct v4l2_subdev *sd;
-	int i, rval;
+	int i, rval, j;
 	unsigned int val;
 	u8 slval = 0xE0;
+	u8 dtval = 0xF7;
+	struct max9286_register_write *max9286_byte_order_settings;
 
 	dev_dbg(max->v4l2_sd.dev, "MAX9286 set stream. enable = %d\n", enable);
 
@@ -183,6 +199,51 @@ static int max9286_set_stream(struct v4l2_subdev *subdev, int enable)
 
 		if (!remote_pad)
 			continue;
+
+		if (enable) {
+			/*
+			 * Enable CSI-2 lanes D0, D1, D2, D3
+			 * Enable CSI-2 DBL (Double Input Mode)
+			 * Enable GMSL DBL for RAWx2
+			 * Enable RAW10/RAW12 data type
+			 */
+			u8 bpp = max9286_validate_csi_data_format(
+				max->ffmts[i][0].code)->width;
+
+			if (bpp == 10) {
+				dtval = 0xF6;
+				max9286_byte_order_settings =
+					&max9286_byte_order_settings_10bit[0];
+			} else if (bpp == 12) {
+				dtval = 0xF7;
+				max9286_byte_order_settings =
+					&max9286_byte_order_settings_12bit[0];
+			} else {
+				dev_err(max->v4l2_sd.dev,
+					"Only support RAW10/12, current bpp is %d!\n", bpp);
+				return -EINVAL;
+			}
+
+			rval = regmap_write(max->regmap8, DS_CSI_DBL_DT, dtval);
+			if (rval) {
+				dev_err(max->v4l2_sd.dev, "Failed to set data type!\n");
+				return rval;
+			}
+
+			for (j = 0; j < bpp * 2; j++) {
+				rval = max96705_write_register(max,
+					S_ADDR_MAX96705_BROADCAST - S_ADDR_MAX96705,
+					(max9286_byte_order_settings + j)->reg,
+					(max9286_byte_order_settings + j)->val);
+				if (rval) {
+					dev_err(max->v4l2_sd.dev,
+						"Failed to set max9286 byte order\n");
+					return rval;
+				}
+			}
+			usleep_range(2000, 3000);
+		}
+
 		/* Enable link */
 		slval |= (0x0F & (1 << i));
 		rval = regmap_write(max->regmap8, DS_LINK_ENABLE, slval);
@@ -352,20 +413,6 @@ static int max9286_get_format(struct v4l2_subdev *subdev,
 		fmt->format.width, fmt->format.height, fmt->format.code);
 
 	return 0;
-}
-
-/* Validate csi_data_format */
-static const struct max9286_csi_data_format *
-max9286_validate_csi_data_format(u32 code)
-{
-	unsigned int i;
-
-	for (i = 0; i < ARRAY_SIZE(max_csi_data_formats); i++) {
-		if (max_csi_data_formats[i].code == code)
-			return &max_csi_data_formats[i];
-	}
-
-	return &max_csi_data_formats[0];
 }
 
 /* callback for VIDIOC_SUBDEV_S_FMT ioctl handler code */
@@ -720,6 +767,7 @@ static int max9286_register_subdev(struct max9286 *max)
 	v4l2_subdev_init(&max->v4l2_sd, &max9286_sd_ops);
 	snprintf(max->v4l2_sd.name, sizeof(max->v4l2_sd.name),
 		"MAX9286 %c", max->pdata->suffix);
+
 	max->v4l2_sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE |
 		V4L2_SUBDEV_FL_HAS_SUBSTREAMS;
 
@@ -890,20 +938,21 @@ static int max9286_init(struct max9286 *max, struct i2c_client *client)
 	 * Enable CSI-2 lanes D0, D1, D2, D3
 	 * Enable CSI-2 DBL (Double Input Mode)
 	 * Enable GMSL DBL for RAWx2
-	 * Enable YUV422 8-bit data type
+	 * Enable RAW12 data type by default
 	 */
-	rval = regmap_write(max->regmap8, DS_CSI_DBL_DT, 0xF7);
+	rval = regmap_write(max->regmap8, DS_CSI_DBL_DT, 0xF7); //RAW12
 	if (rval) {
-		dev_err(max->v4l2_sd.dev, "Failed to disable PRBS test!\n");
+		dev_err(max->v4l2_sd.dev, "Failed to set data type!\n");
 		return rval;
 	}
 	usleep_range(2000, 3000);
+
 	/* Enable Frame sync Auto-mode for row/column reset on frame sync
 	 * sensors
 	 */
 	rval = regmap_write(max->regmap8, DS_FSYNCMODE, 0x00);
 	if (rval) {
-		dev_err(max->v4l2_sd.dev, "Failed to disable PRBS test!\n");
+		dev_err(max->v4l2_sd.dev, "Failed to set frame sync mode!\n");
 		return rval;
 	}
 	usleep_range(2000, 3000);
@@ -914,10 +963,10 @@ static int max9286_init(struct max9286 *max, struct i2c_client *client)
 	rval = regmap_write(max->regmap8, DS_FSYNC_PERIOD_MIDDLE, 0xc2);
 	rval = regmap_write(max->regmap8, DS_FSYNC_PERIOD_HIGH, 0x2C);
 
-	for (i = 0; i < ARRAY_SIZE(max9286_byte_order_settings); i++) {
+	for (i = 0; i < ARRAY_SIZE(max9286_byte_order_settings_12bit); i++) {
 		rval = max96705_write_register(max, 0,
-				max9286_byte_order_settings[i].reg,
-				max9286_byte_order_settings[i].val);
+				max9286_byte_order_settings_12bit[i].reg,
+				max9286_byte_order_settings_12bit[i].val);
 		if (rval) {
 			dev_err(max->v4l2_sd.dev,
 				"Failed to set max9286 byte order\n");
