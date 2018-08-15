@@ -15,11 +15,6 @@
 #ifndef __IA_CSS_ISYSAPI_H
 #define __IA_CSS_ISYSAPI_H
 
-/**
- * errno.h specified error codes to be used
- * URL:http://man7.org/linux/man-pages/man3/errno.3.html>
- */
-
 
 /* The following is needed for the function arguments */
 #include "ia_css_isysapi_types.h"
