@@ -1,4 +1,4 @@
-// SPDX-License_Identifier: GPL-2.0
+// SPDX-License-Identifier: GPL-2.0
 // Copyright (C) 2013 - 2018 Intel Corporation
 
 #include <linux/device.h>
@@ -90,7 +90,6 @@ static const char *const tpg_mode_items[] = {
 	"Ramp",
 	"Checkerboard",	/* Does not work, disabled. */
 	"Frame Based Colour",
-	NULL,
 };
 
 static struct v4l2_ctrl_config tpg_mode = {
@@ -105,6 +104,16 @@ static struct v4l2_ctrl_config tpg_mode = {
 	.qmenu = tpg_mode_items,
 };
 
+static const struct v4l2_ctrl_config csi2_header_cfg = {
+	.id = V4L2_CID_IPU_STORE_CSI2_HEADER,
+	.name = "Store CSI-2 Headers",
+	.type = V4L2_CTRL_TYPE_BOOLEAN,
+	.min = 0,
+	.max = 1,
+	.step = 1,
+	.def = 1,
+};
+
 static void ipu_isys_tpg_init_controls(struct v4l2_subdev *sd)
 {
 	struct ipu_isys_tpg *tpg = to_ipu_isys_tpg(sd);
@@ -115,7 +124,7 @@ static void ipu_isys_tpg_init_controls(struct v4l2_subdev *sd)
 		.max = 65535,
 		.min = 8,
 		.step = 1,
-		.qmenu = 0,
+		.qmenu = NULL,
 		.elem_size = 0,
 	};
 
@@ -150,6 +159,8 @@ static void ipu_isys_tpg_init_controls(struct v4l2_subdev *sd)
 	}
 
 	v4l2_ctrl_new_custom(&tpg->asd.ctrl_handler, &tpg_mode, NULL);
+	tpg->store_csi2_header =
+		v4l2_ctrl_new_custom(&tpg->asd.ctrl_handler, &csi2_header_cfg, NULL);
 }
 
 static void tpg_set_ffmt(struct v4l2_subdev *sd,
@@ -191,13 +202,29 @@ static int ipu_isys_tpg_set_ffmt(struct v4l2_subdev *sd,
 	return 0;
 }
 
-const struct ipu_isys_pixelformat *ipu_isys_tpg_try_fmt(struct ipu_isys_video
-							*av,
-							struct
-							v4l2_pix_format_mplane
-							*mpix)
+static const struct ipu_isys_pixelformat *ipu_isys_tpg_try_fmt(
+					struct ipu_isys_video *av,
+					struct v4l2_pix_format_mplane *mpix)
 {
-	return ipu_isys_video_try_fmt_vid_mplane(av, mpix, 1);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
+	struct media_entity entity = av->vdev.entity;
+	struct v4l2_subdev *sd =
+		media_entity_to_v4l2_subdev(entity.links[0].source->entity);
+#else
+	struct media_link *link = list_first_entry(&av->vdev.entity.links,
+						   struct media_link, list);
+	struct v4l2_subdev *sd =
+		media_entity_to_v4l2_subdev(link->source->entity);
+#endif
+	struct ipu_isys_tpg *tpg;
+
+	if (!sd)
+		return NULL;
+
+	tpg = to_ipu_isys_tpg(sd);
+
+	return ipu_isys_video_try_fmt_vid_mplane(av, mpix,
+		v4l2_ctrl_g_ctrl(tpg->store_csi2_header));
 }
 
 static const struct v4l2_subdev_pad_ops tpg_sd_pad_ops = {
@@ -206,10 +233,29 @@ static const struct v4l2_subdev_pad_ops tpg_sd_pad_ops = {
 	.enum_mbus_code = ipu_isys_subdev_enum_mbus_code,
 };
 
-static struct v4l2_subdev_ops tpg_sd_ops = {
+static int subscribe_event(struct v4l2_subdev *sd, struct v4l2_fh *fh,
+			   struct v4l2_event_subscription *sub)
+{
+	switch (sub->type) {
 #ifdef IPU_TPG_SOF
-	.core = &tpg_sd_core_ops,
+	case V4L2_EVENT_FRAME_SYNC:
+		return v4l2_event_subscribe(fh, sub, 10, NULL);
 #endif
+	case V4L2_EVENT_CTRL:
+		return v4l2_ctrl_subscribe_event(fh, sub);
+	default:
+		return -EINVAL;
+	}
+};
+
+/* V4L2 subdev core operations */
+static const struct v4l2_subdev_core_ops tpg_sd_core_ops = {
+	.subscribe_event = subscribe_event,
+	.unsubscribe_event = v4l2_event_subdev_unsubscribe,
+};
+
+static struct v4l2_subdev_ops tpg_sd_ops = {
+	.core = &tpg_sd_core_ops,
 	.video = &tpg_sd_video_ops,
 	.pad = &tpg_sd_pad_ops,
 };
@@ -253,7 +299,8 @@ int ipu_isys_tpg_init(struct ipu_isys_tpg *tpg,
 				    NR_OF_TPG_PADS,
 				    NR_OF_TPG_STREAMS,
 				    NR_OF_TPG_SOURCE_PADS,
-				    NR_OF_TPG_SINK_PADS, 0);
+				    NR_OF_TPG_SINK_PADS,
+				    V4L2_SUBDEV_FL_HAS_EVENTS);
 	if (rval)
 		return rval;
 
@@ -261,9 +308,6 @@ int ipu_isys_tpg_init(struct ipu_isys_tpg *tpg,
 	tpg->asd.sd.entity.type = MEDIA_ENT_T_V4L2_SUBDEV_SENSOR;
 #else
 	tpg->asd.sd.entity.function = MEDIA_ENT_F_CAM_SENSOR;
-#endif
-#ifdef IPU_TPG_SOF
-	tpg->asd.sd.flags |= V4L2_SUBDEV_FL_HAS_EVENTS;
 #endif
 	tpg->asd.pad[TPG_PAD_SOURCE].flags = MEDIA_PAD_FL_SOURCE;
 

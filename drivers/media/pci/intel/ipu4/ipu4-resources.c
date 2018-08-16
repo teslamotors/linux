@@ -1,4 +1,4 @@
-// SPDX-License_Identifier: GPL-2.0
+// SPDX-License-Identifier: GPL-2.0
 // Copyright (C) 2015 - 2018 Intel Corporation
 
 #include <linux/bitmap.h>
@@ -11,174 +11,6 @@
 
 #include "ipu-fw-psys.h"
 #include "ipu-psys.h"
-
-/* resources table */
-/*
- * Cell types by cell IDs
- */
-const u32 ipu_fw_psys_cell_types[IPU_FW_PSYS_N_CELL_ID] = {
-	IPU_FW_PSYS_SP_CTRL_TYPE_ID,
-	IPU_FW_PSYS_SP_SERVER_TYPE_ID,
-	IPU_FW_PSYS_SP_SERVER_TYPE_ID,
-	IPU_FW_PSYS_VP_TYPE_ID,
-	IPU_FW_PSYS_VP_TYPE_ID,
-	IPU_FW_PSYS_VP_TYPE_ID,
-	IPU_FW_PSYS_VP_TYPE_ID,
-	IPU_FW_PSYS_ACC_ISA_TYPE_ID,
-	IPU_FW_PSYS_ACC_PSA_TYPE_ID,
-	IPU_FW_PSYS_ACC_PSA_TYPE_ID,
-	IPU_FW_PSYS_ACC_PSA_TYPE_ID,
-	IPU_FW_PSYS_ACC_PSA_TYPE_ID,
-	IPU_FW_PSYS_ACC_PSA_TYPE_ID,
-	IPU_FW_PSYS_ACC_PSA_TYPE_ID,
-	IPU_FW_PSYS_ACC_OSA_TYPE_ID,
-	IPU_FW_PSYS_GDC_TYPE_ID,
-	IPU_FW_PSYS_GDC_TYPE_ID
-};
-
-const u16 ipu_fw_num_dev_channels[IPU_FW_PSYS_N_DEV_CHN_ID] = {
-	IPU_FW_PSYS_DEV_CHN_DMA_EXT0_MAX_SIZE,
-	IPU_FW_PSYS_DEV_CHN_GDC_MAX_SIZE,
-	IPU_FW_PSYS_DEV_CHN_DMA_EXT1_READ_MAX_SIZE,
-	IPU_FW_PSYS_DEV_CHN_DMA_EXT1_WRITE_MAX_SIZE,
-	IPU_FW_PSYS_DEV_CHN_DMA_INTERNAL_MAX_SIZE,
-	IPU_FW_PSYS_DEV_CHN_DMA_IPFD_MAX_SIZE,
-	IPU_FW_PSYS_DEV_CHN_DMA_ISA_MAX_SIZE,
-	IPU_FW_PSYS_DEV_CHN_DMA_FW_MAX_SIZE,
-#ifdef CONFIG_VIDEO_INTEL_IPU4P
-	IPU_FW_PSYS_DEV_CHN_DMA_CMPRS_MAX_SIZE
-#endif
-};
-
-const u16 ipu_fw_psys_mem_size[IPU_FW_PSYS_N_MEM_ID] = {
-	IPU_FW_PSYS_VMEM0_MAX_SIZE,
-	IPU_FW_PSYS_VMEM1_MAX_SIZE,
-	IPU_FW_PSYS_VMEM2_MAX_SIZE,
-	IPU_FW_PSYS_VMEM3_MAX_SIZE,
-	IPU_FW_PSYS_VMEM4_MAX_SIZE,
-	IPU_FW_PSYS_BAMEM0_MAX_SIZE,
-	IPU_FW_PSYS_BAMEM1_MAX_SIZE,
-	IPU_FW_PSYS_BAMEM2_MAX_SIZE,
-	IPU_FW_PSYS_BAMEM3_MAX_SIZE,
-	IPU_FW_PSYS_DMEM0_MAX_SIZE,
-	IPU_FW_PSYS_DMEM1_MAX_SIZE,
-	IPU_FW_PSYS_DMEM2_MAX_SIZE,
-	IPU_FW_PSYS_DMEM3_MAX_SIZE,
-	IPU_FW_PSYS_DMEM4_MAX_SIZE,
-	IPU_FW_PSYS_DMEM5_MAX_SIZE,
-	IPU_FW_PSYS_DMEM6_MAX_SIZE,
-	IPU_FW_PSYS_DMEM7_MAX_SIZE,
-	IPU_FW_PSYS_PMEM0_MAX_SIZE,
-	IPU_FW_PSYS_PMEM1_MAX_SIZE,
-	IPU_FW_PSYS_PMEM2_MAX_SIZE,
-	IPU_FW_PSYS_PMEM3_MAX_SIZE
-};
-
-const enum ipu_mem_id
-ipu_fw_psys_cell_mem[IPU_FW_PSYS_N_CELL_ID][IPU_FW_PSYS_N_DATA_MEM_TYPE_ID] = {
-	{
-	 IPU_FW_PSYS_N_MEM_ID,
-	 IPU_FW_PSYS_DMEM0_ID,
-	 IPU_FW_PSYS_N_MEM_ID,
-	 IPU_FW_PSYS_N_MEM_ID
-	},
-	{
-	 IPU_FW_PSYS_N_MEM_ID,
-	 IPU_FW_PSYS_DMEM1_ID,
-	 IPU_FW_PSYS_N_MEM_ID,
-	 IPU_FW_PSYS_N_MEM_ID
-	},
-	{
-	 IPU_FW_PSYS_N_MEM_ID,
-	 IPU_FW_PSYS_DMEM2_ID,
-	 IPU_FW_PSYS_N_MEM_ID,
-	 IPU_FW_PSYS_N_MEM_ID
-	},
-	{
-	 IPU_FW_PSYS_VMEM4_ID,
-	 IPU_FW_PSYS_DMEM4_ID,
-	 IPU_FW_PSYS_VMEM0_ID,
-	 IPU_FW_PSYS_BAMEM0_ID
-	},
-	{
-	 IPU_FW_PSYS_VMEM4_ID,
-	 IPU_FW_PSYS_DMEM5_ID,
-	 IPU_FW_PSYS_VMEM1_ID,
-	 IPU_FW_PSYS_BAMEM1_ID
-	},
-	{
-	 IPU_FW_PSYS_VMEM4_ID,
-	 IPU_FW_PSYS_DMEM6_ID,
-	 IPU_FW_PSYS_VMEM2_ID,
-	 IPU_FW_PSYS_BAMEM2_ID
-	},
-	{
-	 IPU_FW_PSYS_VMEM4_ID,
-	 IPU_FW_PSYS_DMEM7_ID,
-	 IPU_FW_PSYS_VMEM3_ID,
-	 IPU_FW_PSYS_BAMEM3_ID
-	},
-	{
-	 IPU_FW_PSYS_N_MEM_ID,
-	 IPU_FW_PSYS_N_MEM_ID,
-	 IPU_FW_PSYS_N_MEM_ID,
-	 IPU_FW_PSYS_N_MEM_ID
-	},
-	{
-	 IPU_FW_PSYS_N_MEM_ID,
-	 IPU_FW_PSYS_N_MEM_ID,
-	 IPU_FW_PSYS_N_MEM_ID,
-	 IPU_FW_PSYS_N_MEM_ID
-	},
-	{
-	 IPU_FW_PSYS_N_MEM_ID,
-	 IPU_FW_PSYS_N_MEM_ID,
-	 IPU_FW_PSYS_N_MEM_ID,
-	 IPU_FW_PSYS_N_MEM_ID
-	},
-	{
-	 IPU_FW_PSYS_N_MEM_ID,
-	 IPU_FW_PSYS_N_MEM_ID,
-	 IPU_FW_PSYS_N_MEM_ID,
-	 IPU_FW_PSYS_N_MEM_ID
-	},
-	{
-	 IPU_FW_PSYS_N_MEM_ID,
-	 IPU_FW_PSYS_N_MEM_ID,
-	 IPU_FW_PSYS_N_MEM_ID,
-	 IPU_FW_PSYS_N_MEM_ID
-	},
-	{
-	 IPU_FW_PSYS_N_MEM_ID,
-	 IPU_FW_PSYS_N_MEM_ID,
-	 IPU_FW_PSYS_N_MEM_ID,
-	 IPU_FW_PSYS_N_MEM_ID
-	},
-	{
-	 IPU_FW_PSYS_N_MEM_ID,
-	 IPU_FW_PSYS_N_MEM_ID,
-	 IPU_FW_PSYS_N_MEM_ID,
-	 IPU_FW_PSYS_N_MEM_ID
-	},
-	{
-	 IPU_FW_PSYS_N_MEM_ID,
-	 IPU_FW_PSYS_N_MEM_ID,
-	 IPU_FW_PSYS_N_MEM_ID,
-	 IPU_FW_PSYS_N_MEM_ID
-	},
-	{
-	 IPU_FW_PSYS_N_MEM_ID,
-	 IPU_FW_PSYS_N_MEM_ID,
-	 IPU_FW_PSYS_N_MEM_ID,
-	 IPU_FW_PSYS_N_MEM_ID
-	},
-	{
-	 IPU_FW_PSYS_N_MEM_ID,
-	 IPU_FW_PSYS_N_MEM_ID,
-	 IPU_FW_PSYS_N_MEM_ID,
-	 IPU_FW_PSYS_N_MEM_ID
-	}
-};
 
 static int ipu_resource_init(struct ipu_resource *res, u32 id, int elements)
 {
@@ -303,13 +135,6 @@ void ipu_psys_resource_pool_cleanup(struct ipu_psys_resource_pool
 
 	for (i = 0; i < res_defs->num_dfm_ids; i++)
 		ipu_resource_cleanup(&pool->dfms[i]);
-}
-
-void ipu_psys_resource_alloc_init(struct ipu_psys_resource_alloc
-				  *alloc)
-{
-	alloc->cells = 0;
-	alloc->resources = 0;
 }
 
 static int ipu_psys_allocate_one_resource(const struct device *dev,
@@ -446,8 +271,9 @@ int ipu_psys_allocate_resources(const struct device *dev,
 				ret = -ENOSPC;
 				goto free_out;
 			}
-			pg->resource_bitmap |= 1 << cell;
-			ipu_fw_psys_set_process_cell_id(process, 0, cell);
+			ret = ipu_fw_psys_set_process_cell_id(process, 0, cell);
+			if (ret)
+				goto free_out;
 		}
 		if (cell < res_defs->num_cells)
 			cells |= 1 << cell;
@@ -463,8 +289,10 @@ int ipu_psys_allocate_resources(const struct device *dev,
 				     &pool->dev_channels[resid], &pm, resid, alloc);
 				if (ret)
 					goto free_out;
-				ipu_fw_psys_set_process_dev_chn_offset(process, resid,
+				ret = ipu_fw_psys_set_process_dev_chn_offset(process, resid,
 					alloc->resource_alloc[alloc->resources - 1].pos);
+				if (ret)
+					goto free_out;
 			}
 		}
 
@@ -486,8 +314,13 @@ int ipu_psys_allocate_resources(const struct device *dev,
 				     &pm, mem_type_id, mem_bank_id, alloc);
 				if (ret)
 					goto free_out;
-				ipu_fw_psys_set_process_ext_mem_id(process, mem_type_id, mem_bank_id);
-				ipu_fw_psys_set_process_ext_mem_offset(process, mem_type_id,
+				/* no return value check here because fw api will
+				 * do some checks, and would return non-zero
+				 * except mem_type_id == 0. This may be caused by that
+				 * above flow if allocating mem_bank_id is improper
+				 */
+				ipu_fw_psys_set_process_ext_mem
+					(process, mem_type_id, mem_bank_id,
 					alloc->resource_alloc[alloc->resources - 1].pos);
 			}
 		}
@@ -514,11 +347,13 @@ free_out:
 		if ((pm.cell_id != res_defs->num_cells &&
 		     pm.cell_type_id == res_defs->num_cells_type))
 			continue;
-		pg->resource_bitmap &=
-		    ~(1 << ipu_fw_psys_get_process_cell_id(process, 0));
-		ipu_fw_psys_set_process_cell_id(process, 0, 0);
+		/* no return value check here because if finding free cell
+		 * failed, process cell would not set then calling clear_cell
+		 * will return non-zero.
+		 */
+		ipu_fw_psys_clear_process_cell(process);
 	}
-
+	dev_dbg(dev, "failed to allocate resources, ret %d\n", ret);
 	ipu_psys_free_resources(alloc, pool);
 	return ret;
 }

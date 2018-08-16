@@ -206,4 +206,42 @@ ia_css_syscom_recv_port_transfer(
 	void *token
 );
 
+#if HAS_DUAL_CMD_CTX_SUPPORT
+/**
+ * ia_css_syscom_store_dmem() - store subsystem context information in DMEM
+ * @context: pointer to the subsystem context
+ * @ssid: subsystem id
+ * @vtl0_addr_mask: VTL0 address mask; only applicable when the passed in context is secure
+ * @returns: 0 on success, -1 (FW_ERROR_INVALID_PARAMETER) otherwise.
+ */
+extern int
+ia_css_syscom_store_dmem(
+	struct ia_css_syscom_context *context,
+	unsigned int ssid,
+	unsigned int vtl0_addr_mask
+);
+
+/**
+ * ia_css_syscom_set_trustlet_status() - store truslet configuration setting
+ * @context: pointer to the subsystem context
+ * @trustlet_exist: 1 if trustlet exists
+ */
+extern void
+ia_css_syscom_set_trustlet_status(
+	unsigned int dmem_addr,
+	unsigned int ssid,
+	bool trustlet_exist
+);
+
+/**
+ * ia_css_syscom_is_ab_spc_ready() - check if SPC access blocker programming is completed
+ * @context: pointer to the subsystem context
+ * @returns: 1 when status is ready. 0 otherwise
+ */
+bool
+ia_css_syscom_is_ab_spc_ready(
+	struct ia_css_syscom_context *ctx
+);
+#endif /* HAS_DUAL_CMD_CTX_SUPPORT */
+
 #endif /* __IA_CSS_SYSCOM_H */

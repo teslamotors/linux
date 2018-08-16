@@ -1,4 +1,4 @@
-/* SPDX-License_Identifier: GPL-2.0 */
+/* SPDX-License-Identifier: GPL-2.0 */
 /* Copyright (C) 2016 - 2018 Intel Corporation
  *
  * Author: Yunliang Ding <yunliang.ding@intel.com>
@@ -1906,10 +1906,15 @@ static struct crl_register_write_rep ov10635_1280_800_YUV_HDR[] = {
 	{0xceb3, CRL_REG_LEN_08BIT, 0x00},
 	{0xceb4, CRL_REG_LEN_08BIT, 0x00},
 	{0xceb5, CRL_REG_LEN_08BIT, 0x00},
+	{0x0000, CRL_REG_LEN_DELAY, 0x0c},
 	{0xceb6, CRL_REG_LEN_08BIT, 0x00},
+	{0x0000, CRL_REG_LEN_DELAY, 0x0c},
 	{0xceb7, CRL_REG_LEN_08BIT, 0x00},
+	{0x0000, CRL_REG_LEN_DELAY, 0x0c},
 	{0xc4bc, CRL_REG_LEN_08BIT, 0x01},
+	{0x0000, CRL_REG_LEN_DELAY, 0x0c},
 	{0xc4bd, CRL_REG_LEN_08BIT, 0x60},
+	{0x0000, CRL_REG_LEN_DELAY, 0x0c},
 };
 
 static struct crl_register_write_rep ov10635_1280_720_YUV_HDR_BT656[] = {
@@ -3947,14 +3952,23 @@ static struct crl_register_write_rep ov10635_1280_720_YUV_HDR_BT656[] = {
 	{0xceb3, CRL_REG_LEN_08BIT, 0x00},
 	{0xceb4, CRL_REG_LEN_08BIT, 0x00},
 	{0xceb5, CRL_REG_LEN_08BIT, 0x00},
+	{0x0000, CRL_REG_LEN_DELAY, 0x0c},
 	{0xceb6, CRL_REG_LEN_08BIT, 0x00},
+	{0x0000, CRL_REG_LEN_DELAY, 0x0c},
 	{0xceb7, CRL_REG_LEN_08BIT, 0x00},
+	{0x0000, CRL_REG_LEN_DELAY, 0x0c},
 	{0xc4bc, CRL_REG_LEN_08BIT, 0x01},
+	{0x0000, CRL_REG_LEN_DELAY, 0x0c},
 	{0xc4bd, CRL_REG_LEN_08BIT, 0x60},
+	{0x0000, CRL_REG_LEN_DELAY, 0x0c},
 	{0xc4a0, CRL_REG_LEN_08BIT, 0x03},
+	{0x0000, CRL_REG_LEN_DELAY, 0x0c},
 	{0xc4a2, CRL_REG_LEN_08BIT, 0x04},
+	{0x0000, CRL_REG_LEN_DELAY, 0x0c},
 	{0x3011, CRL_REG_LEN_08BIT, 0x42},
+	{0x0000, CRL_REG_LEN_DELAY, 0x0c},
 	{0x5608, CRL_REG_LEN_08BIT, 0x0d},
+	{0x0000, CRL_REG_LEN_DELAY, 0x0c},
 };
 
 static struct crl_register_write_rep ov10635_640_480_YUV_HDR[] = {
@@ -5912,10 +5926,15 @@ static struct crl_register_write_rep ov10635_640_480_YUV_HDR[] = {
 	{0xceb3, CRL_REG_LEN_08BIT, 0x00},
 	{0xceb4, CRL_REG_LEN_08BIT, 0x00},
 	{0xceb5, CRL_REG_LEN_08BIT, 0x00},
+	{0x0000, CRL_REG_LEN_DELAY, 0x0c},
 	{0xceb6, CRL_REG_LEN_08BIT, 0x00},
+	{0x0000, CRL_REG_LEN_DELAY, 0x0c},
 	{0xceb7, CRL_REG_LEN_08BIT, 0x00},
+	{0x0000, CRL_REG_LEN_DELAY, 0x0c},
 	{0xc4bc, CRL_REG_LEN_08BIT, 0x01},
+	{0x0000, CRL_REG_LEN_DELAY, 0x0c},
 	{0xc4bd, CRL_REG_LEN_08BIT, 0x60},
+	{0x0000, CRL_REG_LEN_DELAY, 0x0c},
 };
 
 static struct crl_dynamic_register_access ov10635_h_flip_regs[] = {
