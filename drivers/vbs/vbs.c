@@ -135,12 +135,15 @@ err:
 
 long virtio_dev_deregister(struct virtio_dev_info *dev)
 {
+	if (dev->_ctx.vhm_client_id < 0)
+		return 0;
+
 	acrn_ioreq_del_iorange(dev->_ctx.vhm_client_id,
 			      dev->io_range_type ? REQ_MMIO : REQ_PORTIO,
 			      dev->io_range_start,
 			      dev->io_range_start + dev->io_range_len);
-
 	acrn_ioreq_destroy_client(dev->_ctx.vhm_client_id);
+	dev->_ctx.vhm_client_id = -1;
 
 	return 0;
 }
@@ -161,7 +164,7 @@ int virtio_vq_index_get(struct virtio_dev_info *dev, unsigned long *ioreqs_map)
 		if (vcpu == dev->_ctx.max_vcpu)
 			break;
 		req = &dev->_ctx.req_buf[vcpu];
-		if (req->valid && req->processed == REQ_STATE_PROCESSING &&
+		if (atomic_read(&req->processed) == REQ_STATE_PROCESSING &&
 		    req->client == dev->_ctx.vhm_client_id) {
 			if (req->reqs.pio_request.direction == REQUEST_READ) {
 				/* currently we handle kick only,
@@ -180,7 +183,8 @@ int virtio_vq_index_get(struct virtio_dev_info *dev, unsigned long *ioreqs_map)
 				else
 					val = req->reqs.mmio_request.value;
 			}
-			req->processed = REQ_STATE_SUCCESS;
+			smp_mb();
+			atomic_set(&req->processed, REQ_STATE_COMPLETE);
 			acrn_ioreq_complete_request(req->client, vcpu);
 		}
 	}
@@ -299,9 +303,30 @@ long virtio_dev_init(struct virtio_dev_info *dev,
 	for (i = 0; i < nvq; i++)
 		virtio_vq_reset(&vqs[i]);
 
+	dev->_ctx.vhm_client_id = -1;
+
 	return 0;
 }
 EXPORT_SYMBOL_GPL(virtio_dev_init);
+
+long virtio_dev_reset(struct virtio_dev_info *dev)
+{
+	int i;
+
+	for (i = 0; i < dev->nvq; i++)
+		virtio_vq_reset(&dev->vqs[i]);
+
+	memset(dev->name, 0, sizeof(dev->name));
+	dev->_ctx.vmid = 0;
+	dev->nvq = 0;
+	dev->negotiated_features = 0;
+	dev->io_range_start = 0;
+	dev->io_range_len = 0;
+	dev->io_range_type = PIO_RANGE;
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(virtio_dev_reset);
 
 static int __init vbs_init(void)
 {

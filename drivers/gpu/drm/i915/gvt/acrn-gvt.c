@@ -200,6 +200,16 @@ static int acrngt_hvm_mmio_emulation(struct intel_vgpu *vgpu,
 	return 0;
 }
 
+static void handle_request_error(struct intel_vgpu *vgpu)
+{
+       mutex_lock(&vgpu->gvt->lock);
+       if (vgpu->failsafe == false) {
+               vgpu->failsafe= true;
+               gvt_err("Now vgpu %d will enter failsafe mode.\n", vgpu->id);
+       }
+       mutex_unlock(&vgpu->gvt->lock);
+}
+
 static int acrngt_emulation_thread(void *priv)
 {
 	struct intel_vgpu *vgpu = (struct intel_vgpu *)priv;
@@ -221,8 +231,8 @@ static int acrngt_emulation_thread(void *priv)
 
 		for (vcpu = 0; vcpu < nr_vcpus; vcpu++) {
 			req = &info->req_buf[vcpu];
-			if (req->valid &&
-				req->processed == REQ_STATE_PROCESSING &&
+			if (atomic_read(&req->processed) ==
+				REQ_STATE_PROCESSING &&
 				req->client == info->client) {
 				gvt_dbg_core("handle ioreq type %d\n",
 						req->type);
@@ -242,9 +252,10 @@ static int acrngt_emulation_thread(void *priv)
 				}
 				/* error handling */
 				if (ret)
-					BUG();
+					handle_request_error(vgpu);
 
-				req->processed = REQ_STATE_SUCCESS;
+				smp_mb();
+				atomic_set(&req->processed, REQ_STATE_COMPLETE);
 				/* complete request */
 				if (acrn_ioreq_complete_request(info->client,
 						vcpu))
@@ -755,13 +766,33 @@ static int acrngt_write_gpa(unsigned long handle, unsigned long gpa,
 	return 0;
 }
 
+static bool is_identical_mmap(void)
+{
+	/* todo: need add hypercall to get such info from hypervisor */
+	return true;
+}
+
 static unsigned long acrngt_gfn_to_pfn(unsigned long handle, unsigned long gfn)
 {
 	unsigned long hpa;
 	struct acrngt_hvm_dev *info = (struct acrngt_hvm_dev *)handle;
-	gvt_dbg_core("convert gfn 0x%lx to pfn\n", gfn);
 
-	hpa = vhm_vm_gpa2hpa(info->vm_id, gfn << PAGE_SHIFT);
+	gvt_dbg_core("convert gfn 0x%lx to pfn\n", gfn);
+	if (is_identical_mmap()) {
+		void *va = NULL;
+
+		va = map_guest_phys(info->vm_id, gfn << PAGE_SHIFT,
+				    1 << PAGE_SHIFT);
+		if (!va) {
+			gvt_err("GVT: can not map gfn = 0x%lx!!!\n", gfn);
+			hpa = vhm_vm_gpa2hpa(info->vm_id, gfn << PAGE_SHIFT);
+		} else {
+			hpa = virt_to_phys(va);
+		}
+	} else {
+		hpa = vhm_vm_gpa2hpa(info->vm_id, gfn << PAGE_SHIFT);
+	}
+
 	return hpa >> PAGE_SHIFT;
 }
 

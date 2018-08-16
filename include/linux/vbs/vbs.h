@@ -275,4 +275,12 @@ long virtio_dev_deregister(struct virtio_dev_info *dev);
  */
 int virtio_vq_index_get(struct virtio_dev_info *dev, unsigned long *ioreqs_map);
 
+/**
+ * virtio_dev_reset - reset a VBS-K device
+ *
+ * @dev: Pointer to VBS-K device data struct
+ *
+ * Return: 0 on success, <0 on error
+ */
+long virtio_dev_reset(struct virtio_dev_info *dev);
 #endif
