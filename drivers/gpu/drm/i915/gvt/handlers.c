@@ -777,6 +777,12 @@ static void pvmmio_update_plane_register(struct intel_vgpu *vgpu,
 	skl_plane_mmio_write(vgpu,
 		i915_mmio_reg_offset(PLANE_SIZE(pipe, plane)),
 		&pv_plane->plane_size, 4);
+	skl_plane_mmio_write(vgpu,
+		i915_mmio_reg_offset(PLANE_AUX_DIST(pipe, plane)),
+		&pv_plane->plane_aux_dist, 4);
+	skl_plane_mmio_write(vgpu,
+		i915_mmio_reg_offset(PLANE_AUX_OFFSET(pipe, plane)),
+		&pv_plane->plane_aux_offset, 4);
 
 	if (pv_plane->flags & PLANE_SCALER_BIT) {
 		skl_ps_mmio_write(vgpu,
@@ -867,6 +873,9 @@ static int skl_plane_mmio_write(struct intel_vgpu *vgpu, unsigned int offset,
 	struct drm_i915_private *dev_priv = vgpu->gvt->dev_priv;
 	unsigned int pipe = SKL_PLANE_REG_TO_PIPE(offset);
 	unsigned int plane = SKL_PLANE_REG_TO_PLANE(offset);
+
+	if (WARN_ON_ONCE(pipe >= I915_MAX_PIPES))
+		return -EINVAL;
 
 	write_vreg(vgpu, offset, p_data, bytes);
 	if ((vgpu_vreg(vgpu, PIPECONF(pipe)) & I965_PIPECONF_ACTIVE) &&
@@ -1323,6 +1332,15 @@ static int handle_g2v_notification(struct intel_vgpu *vgpu, int notification)
 	case VGT_G2V_PPGTT_L4_PAGE_TABLE_DESTROY:
 		ret = intel_vgpu_g2v_destroy_ppgtt_mm(vgpu, 4);
 		break;
+	case VGT_G2V_PPGTT_L4_ALLOC:
+		ret = intel_vgpu_g2v_pv_ppgtt_alloc_4lvl(vgpu, 4);
+			break;
+	case VGT_G2V_PPGTT_L4_INSERT:
+		ret = intel_vgpu_g2v_pv_ppgtt_insert_4lvl(vgpu, 4);
+		break;
+	case VGT_G2V_PPGTT_L4_CLEAR:
+		ret = intel_vgpu_g2v_pv_ppgtt_clear_4lvl(vgpu, 4);
+		break;
 	case VGT_G2V_EXECLIST_CONTEXT_CREATE:
 	case VGT_G2V_EXECLIST_CONTEXT_DESTROY:
 	case 1:	/* Remove this in guest driver. */
@@ -1393,6 +1411,8 @@ static int pvinfo_mmio_write(struct intel_vgpu *vgpu, unsigned int offset,
 				break;
 			}
 			vgpu_vreg(vgpu, offset) = data & i915_modparams.enable_pvmmio;
+			DRM_INFO("vgpu id=%d pvmmio=0x%x\n",
+					vgpu->id, VGPU_PVMMIO(vgpu));
 		} else {
 			vgpu_vreg(vgpu, offset) = 0;
 		}

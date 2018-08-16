@@ -212,21 +212,36 @@ static long vhm_dev_ioctl(struct file *filep,
 		}
 
 		if (copy_to_user((void *)ioctl_param, &created_vm,
-			sizeof(struct acrn_create_vm)))
-			return -EFAULT;
-
+			sizeof(struct acrn_create_vm))) {
+			ret = -EFAULT;
+			goto create_vm_fail;
+		}
 		vm->vmid = created_vm.vmid;
 
 		if (created_vm.vm_flag & SECURE_WORLD_ENABLED) {
 			ret = init_trusty(vm);
 			if (ret < 0) {
 				pr_err("vhm: failed to init trusty for VM!\n");
-				return ret;
+				goto create_vm_fail;
 			}
+		}
+
+		if (created_vm.req_buf) {
+			ret = acrn_ioreq_init(vm, created_vm.req_buf);
+			if (ret < 0)
+				goto ioreq_buf_fail;
 		}
 
 		pr_info("vhm: VM %d created\n", created_vm.vmid);
 		break;
+ioreq_buf_fail:
+		if (created_vm.vm_flag & SECURE_WORLD_ENABLED)
+			deinit_trusty(vm);
+create_vm_fail:
+		hcall_destroy_vm(created_vm.vmid);
+		vm->vmid = ACRN_INVALID_VMID;
+		break;
+
 	}
 
 	case IC_START_VM: {
@@ -300,8 +315,9 @@ static long vhm_dev_ioctl(struct file *filep,
 	case IC_SET_IOREQ_BUFFER: {
 		/* init ioreq buffer */
 		ret = acrn_ioreq_init(vm, (unsigned long)ioctl_param);
-		if (ret < 0)
+		if (ret < 0 && ret != -EEXIST)
 			return ret;
+		ret = 0;
 		break;
 	}
 
