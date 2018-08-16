@@ -1,4 +1,4 @@
-/* SPDX-License_Identifier: GPL-2.0 */
+/* SPDX-License-Identifier: GPL-2.0 */
 /* Copyright (C) 2013 - 2018 Intel Corporation */
 
 #ifndef IPU_ISYS_TPG_H
@@ -81,6 +81,7 @@ struct ipu_isys_tpg {
 	struct v4l2_ctrl *llp;
 	struct v4l2_ctrl *fll;
 	struct v4l2_ctrl *pixel_rate;
+	struct v4l2_ctrl *store_csi2_header;
 };
 
 #define to_ipu_isys_tpg(sd)		\

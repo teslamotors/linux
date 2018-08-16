@@ -110,13 +110,5 @@ struct ia_css_proxy_write_region_description ipu4p_b0_reg_write_desc[N_IPU4P_B0_
 
 #endif /*defined(IPU4P_B0_PROXY_INT)*/
 
-/*
- */
-
-
-
-/*
- */
-
 
 #endif /* __IA_CSS_ISYSAPI_PROXY_REGION_DEFS_H */
