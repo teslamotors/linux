@@ -406,11 +406,10 @@ static irqreturn_t byt_irq_thread(int irq, void *context)
 
 static int byt_is_ready(struct snd_sof_dev *sdev)
 {
-	u64 imrx, ipcx;
+	u64 ipcx;
 
-	imrx = snd_sof_dsp_read64(sdev, BYT_DSP_BAR, SHIM_IMRX);
 	ipcx = snd_sof_dsp_read64(sdev, BYT_DSP_BAR, SHIM_IPCX);
-	if ((imrx & SHIM_IMRX_DONE) || (ipcx & SHIM_BYT_IPCX_DONE))
+	if ((ipcx & SHIM_BYT_IPCX_BUSY) || (ipcx & SHIM_BYT_IPCX_DONE))
 		return 0;
 
 	return 1;
