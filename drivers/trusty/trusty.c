@@ -72,12 +72,17 @@ static inline ulong smc_evmm(ulong r0, ulong r1, ulong r2, ulong r3)
 static inline ulong smc_acrn(ulong r0, ulong r1, ulong r2, ulong r3)
 {
 	register unsigned long smc_id asm("r8") = ACRN_HC_SWITCH_WORLD;
+	register signed long ret asm("rax");
 	__asm__ __volatile__(
 		"vmcall; \n"
-		: "=D"(r0)
+		: "=D"(r0), "=r"(ret)
 		: "r"(smc_id), "D"(r0), "S"(r1), "d"(r2), "b"(r3)
-		: "rax"
 	);
+
+	if(ret < 0) {
+		pr_err("trusty: %s: hypercall failed: %ld\n", __func__, ret);
+		r0 = (ulong)SM_ERR_NOT_SUPPORTED;
+	}
 
 	return r0;
 }
