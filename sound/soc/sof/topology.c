@@ -420,6 +420,12 @@ static const struct sof_topology_token ssp_tokens[] = {
 	{SOF_TKN_INTEL_SSP_SAMPLE_BITS, SND_SOC_TPLG_TUPLE_TYPE_WORD,
 		get_token_u32,
 		offsetof(struct sof_ipc_dai_ssp_params, sample_valid_bits), 0},
+	{SOF_TKN_INTEL_SSP_FRAME_PULSE_WIDTH, SND_SOC_TPLG_TUPLE_TYPE_SHORT,
+		get_token_u16,
+		offsetof(struct sof_ipc_dai_ssp_params, frame_pulse_width), 0},
+	{SOF_TKN_INTEL_SSP_QUIRKS, SND_SOC_TPLG_TUPLE_TYPE_WORD,
+		get_token_u32,
+		offsetof(struct sof_ipc_dai_ssp_params, quirks), 0},
 };
 
 /* DMIC */
@@ -1743,13 +1749,20 @@ static int sof_link_load(struct snd_soc_component *scomp, int index,
 		ret = -EINVAL;
 		break;
 	}
+	if (ret < 0)
+		return ret;
 
 	dai = snd_sof_find_dai(sdev, (char *)link->name);
-	if (dai)
+	if (dai) {
+		/* set config for dai */
 		memcpy(&dai->dai_config, &config,
 		       sizeof(struct sof_ipc_dai_config));
+		return 0;
+	}
 
-	return 0;
+	dev_err(sdev->dev, "failed to find BE DAI for link %s\n", link->name);
+
+	return -EINVAL;
 }
 
 static int sof_link_unload(struct snd_soc_component *scomp,

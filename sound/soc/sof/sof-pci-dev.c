@@ -337,6 +337,11 @@ static const struct pci_device_id sof_pci_ids[] = {
 	{ PCI_DEVICE(0x8086, 0x1a98),
 		.driver_data = (unsigned long)&bxt_desc},
 #endif
+#if IS_ENABLED(CONFIG_SND_SOC_SOF_GEMINILAKE)
+	{ PCI_DEVICE(0x8086, 0x3198),
+		.driver_data = (unsigned long)&glk_desc},
+#endif
+
 #if IS_ENABLED(CONFIG_SND_SOC_SOF_BAYTRAIL)
 	{ PCI_DEVICE(0x8086, 0x119a),
 		.driver_data = (unsigned long)&byt_desc},
