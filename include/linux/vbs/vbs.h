@@ -262,7 +262,7 @@ long virtio_dev_register(struct virtio_dev_info *dev);
 long virtio_dev_deregister(struct virtio_dev_info *dev);
 
 /**
- * virtio_vq_index_get - get virtqueue index that frontend kicks
+ * virtio_vqs_index_get - get virtqueue indexes that frontend kicks
  *
  * This API is normally called in the VBS-K device's callback
  * function, to get value write to the "kick" register from
@@ -270,10 +270,15 @@ long virtio_dev_deregister(struct virtio_dev_info *dev);
  *
  * @dev: Pointer to VBS-K device data struct
  * @ioreqs_map: requests bitmap need to handle, provided by VHM
+ * @vqs_index: array to store the vq indexes
+ * @max_vqs_index: size of vqs_index array
  *
- * Return: >=0 on virtqueue index, <0 on error
+ * Return: Number of vq request
  */
-int virtio_vq_index_get(struct virtio_dev_info *dev, unsigned long *ioreqs_map);
+int virtio_vqs_index_get(struct virtio_dev_info *dev,
+						unsigned long *ioreqs_map,
+						int *vqs_index,
+						int max_vqs_index);
 
 /**
  * virtio_dev_reset - reset a VBS-K device
