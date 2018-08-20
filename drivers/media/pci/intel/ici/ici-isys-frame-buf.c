@@ -308,6 +308,78 @@ error_free_pages:
 	goto error_free_page_list;
 }
 
+static int ici_get_userpages_virt(struct device *dev,
+					 struct ici_frame_plane
+					 *frame_plane,
+					 struct ici_kframe_plane
+					 *kframe_plane,
+					 struct page **pages)
+{
+	unsigned long addr;
+	int npages;
+	int ret = 0;
+	struct sg_table *sgt;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
+    DEFINE_DMA_ATTRS(attrs);
+#else
+    unsigned long attrs;
+#endif
+
+	addr = (unsigned long)frame_plane->mem.userptr;
+	npages = kframe_plane->npages;
+
+	if (!npages)
+		return -EINVAL;
+
+	sgt = kzalloc(sizeof(*sgt), GFP_KERNEL);
+	if (!sgt)
+		return -ENOMEM;
+
+    ret = sg_alloc_table_from_pages(sgt, pages, npages,
+					addr & ~PAGE_MASK, frame_plane->length,
+					GFP_KERNEL);
+	if (ret) {
+		dev_err(dev, "Failed to init sgt\n");
+		goto error_free_pages;
+	}
+
+
+	kframe_plane->dev = dev;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
+    dma_set_attr(DMA_ATTR_SKIP_CPU_SYNC, &attrs);
+	sgt->nents = dma_map_sg_attrs(dev, sgt->sgl, sgt->orig_nents,
+					DMA_FROM_DEVICE, &attrs);
+#else
+    attrs = DMA_ATTR_SKIP_CPU_SYNC;
+    sgt->nents = dma_map_sg_attrs(dev, sgt->sgl, sgt->orig_nents,
+				DMA_FROM_DEVICE, attrs);
+#endif
+
+	if (sgt->nents <= 0) {
+		dev_err(dev, "Failed to init dma_map\n");
+		ret = -EIO;
+		goto error_dma_map;
+	}
+	kframe_plane->dma_addr = sg_dma_address(sgt->sgl);
+	kframe_plane->sgt = sgt;
+
+error_free_page_list:
+	return ret;
+
+error_dma_map:
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
+    dma_unmap_sg_attrs(dev, sgt->sgl, sgt->orig_nents,
+			DMA_FROM_DEVICE, &attrs);
+#else
+    dma_unmap_sg_attrs(dev, sgt->sgl, sgt->orig_nents,
+			DMA_FROM_DEVICE, attrs);
+#endif
+
+error_free_pages:
+	kfree(sgt);
+	goto error_free_page_list;
+}
+
 int ici_isys_get_buf(struct ici_isys_stream *as,
 				struct ici_frame_info *frame_info)
 {
@@ -394,6 +466,72 @@ err_exit:
 	return res;
 }
 
+int ici_isys_get_buf_virt(struct ici_isys_stream *as,
+				struct ici_frame_buf_wrapper *frame_buf,
+				struct page **pages)
+{
+	int res;
+	unsigned i;
+	struct ici_frame_buf_wrapper *buf;
+
+	struct ici_kframe_plane *kframe_plane;
+	struct ici_isys_frame_buf_list *buf_list = &as->buf_list;
+	int mem_type = frame_buf->frame_info.mem_type;
+
+	if (mem_type != ICI_MEM_USERPTR &&
+		mem_type != ICI_MEM_DMABUF) {
+		dev_err(&as->isys->adev->dev, "Memory type not supproted\n");
+		return -EINVAL;
+	}
+
+	if (!frame_buf->frame_info.frame_planes[0].length) {
+		dev_err(&as->isys->adev->dev, "User length not set\n");
+		return -EINVAL;
+	}
+	buf = ici_frame_buf_lookup(buf_list, &frame_buf->frame_info);
+
+	if (buf) {
+		buf->state = ICI_BUF_PREPARED;
+		return 0;
+	}
+
+
+	buf = frame_buf;
+
+	buf->buf_list = buf_list;
+
+	switch (mem_type) {
+	case ICI_MEM_USERPTR:
+		if (!frame_buf->frame_info.frame_planes[0].mem.userptr) {
+			dev_err(&as->isys->adev->dev,
+				"User pointer not define\n");
+			return -EINVAL;
+		}
+		for (i = 0; i < frame_buf->frame_info.num_planes; i++) {
+			kframe_plane = &buf->kframe_info.planes[i];
+			kframe_plane->mem_type =
+			ICI_MEM_USERPTR;
+			res =
+				ici_get_userpages_virt(
+					&as->isys->adev->dev,
+						&frame_buf->frame_info.frame_planes[i],
+						kframe_plane,
+						pages);
+			if (res)
+				return res;
+		}
+		break;
+	case ICI_MEM_DMABUF:
+		break;
+	}
+
+	mutex_lock(&buf_list->mutex);
+	buf->state = ICI_BUF_PREPARED;
+	list_add_tail(&buf->node, &buf_list->getbuf_list);
+	mutex_unlock(&buf_list->mutex);
+	return 0;
+}
+
 int ici_isys_put_buf(struct ici_isys_stream *as,
 				struct ici_frame_info *frame_info,
 				unsigned int f_flags)
@@ -406,8 +544,8 @@ int ici_isys_put_buf(struct ici_isys_stream *as,
 	spin_lock_irqsave(&buf_list->lock, flags);
 	if (list_empty(&buf_list->putbuf_list)) {
 		/* Wait */
-		spin_unlock_irqrestore(&buf_list->lock, flags);
 		if (!(f_flags & O_NONBLOCK)) {
+			spin_unlock_irqrestore(&buf_list->lock, flags);
 			rval = wait_event_interruptible(buf_list->wait,
 							!list_empty(&buf_list->
 								putbuf_list));
@@ -501,6 +639,8 @@ void ici_isys_frame_buf_ready(struct ici_isys_pipeline
 	} else {
 		buf->frame_info.field = ICI_FIELD_NONE;
 		frame_buf_done(buf_list, buf);
+		if (as->frame_done_notify_queue)
+			as->frame_done_notify_queue();
 	}
 
 	dev_dbg(&isys->adev->dev, "buffer: found buffer %p\n", buf);
@@ -657,6 +797,8 @@ void ici_isys_frame_buf_capture_done(
 			buf->frame_info.field = ip->cur_field;
 			list_del(&buf->node);
 			frame_buf_done(buf_list, buf);
+		if (as->frame_done_notify_queue)
+			as->frame_done_notify_queue();
 		}
 	}
 }

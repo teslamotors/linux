@@ -50,6 +50,7 @@ struct ici_isys_stream {
 	void (*prepare_firmware_stream_cfg)(
 		struct ici_isys_stream *as,
 		struct ia_css_isys_stream_cfg_data *cfg);
+	int (*frame_done_notify_queue)(void);
 };
 
 #define to_intel_ipu4_isys_ici_stream(__buf_list) \
