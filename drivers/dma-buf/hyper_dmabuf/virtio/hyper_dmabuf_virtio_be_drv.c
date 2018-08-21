@@ -234,7 +234,7 @@ static int virtio_be_register_vhm_client(struct virtio_dev_info *d)
 	ret = acrn_ioreq_add_iorange(fe_info->client_id,
 				    d->io_range_type ? REQ_MMIO : REQ_PORTIO,
 				    d->io_range_start,
-				    d->io_range_start + d->io_range_len);
+				    d->io_range_start + d->io_range_len - 1);
 
 	if (ret < 0) {
 		dev_err(hy_drv_priv->dev,
@@ -247,7 +247,7 @@ static int virtio_be_register_vhm_client(struct virtio_dev_info *d)
 		acrn_ioreq_del_iorange(fe_info->client_id,
 				      d->io_range_type ? REQ_MMIO : REQ_PORTIO,
 				      d->io_range_start,
-				      d->io_range_start + d->io_range_len);
+				      d->io_range_start + d->io_range_len - 1);
 
 		dev_err(hy_drv_priv->dev, "Failed in vhm_get_vm_info\n");
 		goto err;
@@ -260,7 +260,7 @@ static int virtio_be_register_vhm_client(struct virtio_dev_info *d)
 		acrn_ioreq_del_iorange(fe_info->client_id,
 				      d->io_range_type ? REQ_MMIO : REQ_PORTIO,
 				      d->io_range_start,
-				      d->io_range_start + d->io_range_len);
+				      d->io_range_start + d->io_range_len - 1);
 
 		dev_err(hy_drv_priv->dev, "Failed in acrn_ioreq_get_reqbuf\n");
 		goto err;
@@ -326,7 +326,7 @@ static void cleanup_fe(struct virtio_fe_info *fe_info, void *attr)
 		acrn_ioreq_del_iorange(fe_info->client_id,
 				priv->dev.io_range_type ? REQ_MMIO : REQ_PORTIO,
 				priv->dev.io_range_start,
-				priv->dev.io_range_start + priv->dev.io_range_len);
+				priv->dev.io_range_start + priv->dev.io_range_len - 1);
 
 		acrn_ioreq_destroy_client(fe_info->client_id);
 		virtio_fe_remove(fe_info->client_id);
