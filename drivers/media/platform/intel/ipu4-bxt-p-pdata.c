@@ -989,6 +989,25 @@ static struct ipu_isys_subdev_info ov2775_crl_sd = {
 };
 #endif
 
+#ifdef CONFIG_INTEL_IPU4_OX03A10
+#define OX03A10_LANES	4
+#define OX03A10_I2C_PHY_ADDR   0x6c
+#define OX03A10A_I2C_ADDRESS   0x30
+#define OX03A10B_I2C_ADDRESS   0x31
+
+#define OX03A10A_SER_ADDRESS   0x58
+#define OX03A10B_SER_ADDRESS   0x59
+
+static struct crlmodule_platform_data ox03a10_pdata = {
+	.lanes = OX03A10_LANES,
+	.ext_clk = 27000000,
+	.op_sys_clock = (uint64_t[]){ 87750000 },
+	.module_name = "OX03A10",
+	.id_string = "0x58 0x3 0x41",
+	.xshutdown = 1,
+};
+#endif
+
 #if IS_ENABLED(CONFIG_VIDEO_TI960)
 #define TI960_I2C_ADAPTER	2
 #define TI960_I2C_ADAPTER_2	7
@@ -1005,9 +1024,61 @@ static struct ipu_isys_csi2_config ti960_csi2_cfg_2 = {
 };
 
 static struct ti960_subdev_info ti960_subdevs[] = {
+#ifdef CONFIG_INTEL_IPU4_OX03A10
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = OX03A10A_I2C_ADDRESS,
+			.platform_data = &ox03a10_pdata,
+		},
+		.i2c_adapter_id = TI960_I2C_ADAPTER,
+		.rx_port = 0,
+		.phy_i2c_addr = OX03A10_I2C_PHY_ADDR,
+		.ser_alias = OX03A10A_SER_ADDRESS,
+		.suffix = 'a',
+	},
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = OX03A10B_I2C_ADDRESS,
+			.platform_data = &ox03a10_pdata,
+		},
+		.i2c_adapter_id = TI960_I2C_ADAPTER,
+		.rx_port = 1,
+		.phy_i2c_addr = OX03A10_I2C_PHY_ADDR,
+		.ser_alias = OX03A10B_SER_ADDRESS,
+		.suffix = 'b',
+	},
+#endif
 };
 
 static struct ti960_subdev_info ti960_subdevs_2[] = {
+#ifdef CONFIG_INTEL_IPU4_OX03A10
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = OX03A10A_I2C_ADDRESS,
+			.platform_data = &ox03a10_pdata,
+		},
+		.i2c_adapter_id = TI960_I2C_ADAPTER_2,
+		.rx_port = 0,
+		.phy_i2c_addr = OX03A10_I2C_PHY_ADDR,
+		.ser_alias = OX03A10A_SER_ADDRESS,
+		.suffix = 'e',
+	},
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = OX03A10B_I2C_ADDRESS,
+			.platform_data = &ox03a10_pdata,
+		},
+		.i2c_adapter_id = TI960_I2C_ADAPTER_2,
+		.rx_port = 1,
+		.phy_i2c_addr = OX03A10_I2C_PHY_ADDR,
+		.ser_alias = OX03A10B_SER_ADDRESS,
+		.suffix = 'f',
+	},
+#endif
 };
 
 static struct ti960_pdata ti960_pdata = {
