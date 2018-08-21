@@ -10,6 +10,7 @@
 #include <media/ipu-isys.h>
 #include <media/crlmodule.h>
 #include <media/ti964.h>
+#include <media/ti960.h>
 #include <media/max9286.h>
 #include "ipu.h"
 #include <media/dw9714.h>
@@ -988,6 +989,66 @@ static struct ipu_isys_subdev_info ov2775_crl_sd = {
 };
 #endif
 
+#if IS_ENABLED(CONFIG_VIDEO_TI960)
+#define TI960_I2C_ADAPTER	2
+#define TI960_I2C_ADAPTER_2	7
+#define TI960_LANES	4
+
+static struct ipu_isys_csi2_config ti960_csi2_cfg = {
+	.nlanes = TI960_LANES,
+	.port = 0,
+};
+
+static struct ipu_isys_csi2_config ti960_csi2_cfg_2 = {
+	.nlanes = TI960_LANES,
+	.port = 4,
+};
+
+static struct ti960_subdev_info ti960_subdevs[] = {
+};
+
+static struct ti960_subdev_info ti960_subdevs_2[] = {
+};
+
+static struct ti960_pdata ti960_pdata = {
+	.subdev_info = ti960_subdevs,
+	.subdev_num = ARRAY_SIZE(ti960_subdevs),
+	.reset_gpio = GPIO_BASE + 63,
+	.suffix = 'a',
+};
+
+static struct ipu_isys_subdev_info ti960_sd = {
+	.csi2 = &ti960_csi2_cfg,
+	.i2c = {
+		.board_info = {
+			 .type = "ti960",
+			 .addr = TI960_I2C_ADDRESS,
+			 .platform_data = &ti960_pdata,
+		},
+		.i2c_adapter_id = TI960_I2C_ADAPTER,
+	}
+};
+
+static struct ti960_pdata ti960_pdata_2 = {
+	.subdev_info = ti960_subdevs_2,
+	.subdev_num = ARRAY_SIZE(ti960_subdevs_2),
+	.reset_gpio = GPIO_BASE + 66,
+	.suffix = 'b',
+};
+
+static struct ipu_isys_subdev_info ti960_sd_2 = {
+	.csi2 = &ti960_csi2_cfg_2,
+	.i2c = {
+		.board_info = {
+			 .type = "ti960",
+			 .addr = TI960_I2C_ADDRESS,
+			 .platform_data = &ti960_pdata_2,
+		},
+		.i2c_adapter_id = TI960_I2C_ADAPTER_2,
+	}
+};
+#endif
+
 #ifdef CONFIG_INTEL_IPU4_AR0231AT
 #define AR0231AT_LANES            4
 #define AR0231ATA_I2C_ADDRESS      0x11
@@ -1149,6 +1210,10 @@ static struct ipu_isys_subdev_pdata pdata = {
 #if IS_ENABLED(CONFIG_VIDEO_TI964)
 		&ti964_sd,
 		&ti964_sd_2,
+#endif
+#if IS_ENABLED(CONFIG_VIDEO_TI960)
+		&ti960_sd,
+		&ti960_sd_2,
 #endif
 #ifdef CONFIG_INTEL_IPU4_OV2775
 		&ov2775_crl_sd,
