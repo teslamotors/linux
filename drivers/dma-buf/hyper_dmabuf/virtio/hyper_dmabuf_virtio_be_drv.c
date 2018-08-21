@@ -319,6 +319,21 @@ static int vbs_k_open(struct inode *inode, struct file *f)
 	return 0;
 }
 
+static void cleanup_fe(struct virtio_fe_info *fe_info, void *attr)
+{
+	struct virtio_be_priv *priv = attr;
+	if (fe_info->priv == priv) {
+		acrn_ioreq_del_iorange(fe_info->client_id,
+				priv->dev.io_range_type ? REQ_MMIO : REQ_PORTIO,
+				priv->dev.io_range_start,
+				priv->dev.io_range_start + priv->dev.io_range_len);
+
+		acrn_ioreq_destroy_client(fe_info->client_id);
+		virtio_fe_remove(fe_info->client_id);
+		kfree(fe_info);
+	}
+}
+
 static int vbs_k_release(struct inode *inode, struct file *f)
 {
 	struct virtio_be_priv *priv =
@@ -333,6 +348,13 @@ static int vbs_k_release(struct inode *inode, struct file *f)
 
 	kfree(priv->pending_tx_req);
 	virtio_comm_ring_free(&priv->tx_ring);
+
+	/*
+	 * Find and cleanup virtio frontend that
+	 * has been using released vbs k file
+	 */
+	virtio_fe_foreach(cleanup_fe, priv);
+
 	kfree(priv);
 	return 0;
 }
