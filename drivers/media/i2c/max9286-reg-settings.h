@@ -20,9 +20,11 @@
 #define DS_FSYNC_PERIOD_HIGH      0x08
 #define DS_FWDCCEN_REVCCEN        0x0A
 #define DS_LINK_OUTORD            0x0B
+#define DS_HS_VS                  0x0C
 #define DS_CSI_DBL_DT             0x12
 #define DS_CSI_VC_CTL             0x15
 #define DS_ENEQ                   0x1B
+#define DS_HIGHIMM                0x1C
 #define DS_MAX9286_DEVID          0x1E
 #define DS_FSYNC_LOCKED           0x31
 #define DS_I2CLOCACK              0x34
@@ -50,6 +52,7 @@
 #define S_VS_H_2                  0x47
 #define S_VS_H_1                  0x48
 #define S_VS_H_0                  0x49
+#define S_DBL_ALIGN_TO            0x67
 #define S_RSVD_97                 0x97
 
 struct max9286_register_write {

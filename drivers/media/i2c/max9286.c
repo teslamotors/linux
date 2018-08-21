@@ -320,6 +320,10 @@ static int max9286_set_stream(struct v4l2_subdev *subdev, int enable)
 		S_ADDR_MAX96705, S_VS_H_0, 0x00);
 	usleep_range(5000, 6000);
 
+	max96705_write_register(max, S_ADDR_MAX96705_BROADCAST -
+		S_ADDR_MAX96705, S_DBL_ALIGN_TO, 0xC4);
+	usleep_range(5000, 6000);
+
 	/* Enable link equalizers */
 	rval = regmap_write(max->regmap8, DS_ENEQ, 0x0F);
 	if (rval) {
@@ -328,7 +332,7 @@ static int max9286_set_stream(struct v4l2_subdev *subdev, int enable)
 		return rval;
 	}
 	usleep_range(5000, 6000);
-	rval = regmap_write(max->regmap8, 0x0C, 0x91);
+	rval = regmap_write(max->regmap8, DS_HS_VS, 0x91);
 
 	/* Enable serial links and desable configuration */
 	max96705_write_register(max, S_ADDR_MAX96705_BROADCAST -
@@ -963,6 +967,16 @@ static int max9286_init(struct max9286 *max, struct i2c_client *client)
 	rval = regmap_write(max->regmap8, DS_FSYNC_PERIOD_MIDDLE, 0xc2);
 	rval = regmap_write(max->regmap8, DS_FSYNC_PERIOD_HIGH, 0x2C);
 
+	rval = regmap_write(max->regmap8, DS_HIGHIMM, 0x06);
+
+	/*
+	 * Enable DBL
+	 * Edge select: Rising Edge
+	 * Enable HS/VS encoding
+	 */
+	max96705_write_register(max, 0, S_CONFIG, 0xD4);
+	usleep_range(2000, 3000);
+
 	for (i = 0; i < ARRAY_SIZE(max9286_byte_order_settings_12bit); i++) {
 		rval = max96705_write_register(max, 0,
 				max9286_byte_order_settings_12bit[i].reg,
@@ -1019,14 +1033,6 @@ static int max9286_init(struct max9286 *max, struct i2c_client *client)
 	}
 
 	slval = 0xE0 | max->sensor_present;
-
-	/*
-	 * Enable DBL
-	 * Edge select: Rising Edge
-	 * Enable HS/VS encoding
-	 */
-	max96705_write_register(max, 0, S_CONFIG, 0x94);
-	usleep_range(2000, 3000);
 
 	mval = 0;
 	tmval = 0;
