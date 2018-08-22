@@ -53,6 +53,11 @@ struct virtio_hdma_fe_priv {
 	struct virtio_comm_ring tx_ring;
 	struct virtio_comm_ring rx_ring;
 	int vmid;
+	/*
+	 * Lock to protect operations on virtqueue
+	 * which are not safe to run concurrently
+	 */
+	spinlock_t lock;
 };
 
 /* Assuming there will be one FE instance per VM */
@@ -68,6 +73,7 @@ static void virtio_hdma_fe_tx_done(struct virtqueue *vq)
 	struct virtio_hdma_fe_priv *priv =
 		(struct virtio_hdma_fe_priv *) vq->vdev->priv;
 	int len;
+	unsigned long flags;
 
 	if (priv == NULL) {
 		dev_dbg(hy_drv_priv->dev,
@@ -75,6 +81,7 @@ static void virtio_hdma_fe_tx_done(struct virtqueue *vq)
 		return;
 	}
 
+	spin_lock_irqsave(&priv->lock, flags);
 	/* Make sure that all pending responses are processed */
 	while (virtqueue_get_buf(vq, &len)) {
 		if (len == sizeof(struct hyper_dmabuf_req)) {
@@ -83,6 +90,7 @@ static void virtio_hdma_fe_tx_done(struct virtqueue *vq)
 			virtio_comm_ring_pop(&priv->tx_ring);
 		}
 	}
+	spin_unlock_irqrestore(&priv->lock, flags);
 }
 
 /*
@@ -164,6 +172,8 @@ static int virtio_hdma_fe_probe_common(struct virtio_device *vdev)
 
 	/* Set vmid to -1 to mark that it is not initialized yet */
 	priv->vmid = -1;
+
+	spin_lock_init(&priv->lock);
 
 	vdev->priv = priv;
 
@@ -317,6 +327,7 @@ static int virtio_hdma_fe_send_req(int vmid, struct hyper_dmabuf_req *req,
 	struct virtio_hdma_fe_priv *priv = hyper_dmabuf_virtio_fe;
 	struct hyper_dmabuf_req *tx_req;
 	int timeout = 1000;
+	unsigned long flags;
 
 	if (priv == NULL) {
 		dev_err(hy_drv_priv->dev,
@@ -337,6 +348,7 @@ static int virtio_hdma_fe_send_req(int vmid, struct hyper_dmabuf_req *req,
 		return -EBUSY;
 	}
 
+	spin_lock_irqsave(&priv->lock, flags);
 	/* Get free buffer for sending request from ring */
 	tx_req = (struct hyper_dmabuf_req *)
 			virtio_comm_ring_push(&priv->tx_ring);
@@ -348,6 +360,7 @@ static int virtio_hdma_fe_send_req(int vmid, struct hyper_dmabuf_req *req,
 	virtio_hdma_fe_queue_buffer(hyper_dmabuf_virtio_fe,
 			       HDMA_VIRTIO_TX_QUEUE,
 			       tx_req, sizeof(*tx_req));
+	spin_unlock_irqrestore(&priv->lock, flags);
 
 	if (wait) {
 		while (timeout--) {
