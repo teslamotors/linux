@@ -282,10 +282,11 @@ static void acrn_ioreq_destroy_client_pervm(struct ioreq_client *client,
 	spin_lock_irqsave(&vm->ioreq_client_lock, flags);
 	list_del(&client->list);
 	spin_unlock_irqrestore(&vm->ioreq_client_lock, flags);
-	free_client(client->id);
 
 	if (client->id == vm->ioreq_fallback_client)
 		vm->ioreq_fallback_client = -1;
+
+	free_client(client->id);
 }
 
 void acrn_ioreq_destroy_client(int client_id)
