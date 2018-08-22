@@ -149,6 +149,7 @@ static int alloc_client(void)
 	if (!client)
 		return -ENOMEM;
 	client->id = i;
+	client->kthread_exit = true;
 	clients[i] = client;
 
 	return i;
@@ -266,7 +267,7 @@ static void acrn_ioreq_destroy_client_pervm(struct ioreq_client *client,
 	/* the client thread will mark kthread_exit flag as true before exit,
 	 * so wait for it exited.
 	 */
-	while (!client->kthread_exit)
+	while (client->vhm_create_kthread && !client->kthread_exit)
 		msleep(10);
 
 	spin_lock_irqsave(&client->range_lock, flags);
@@ -533,7 +534,9 @@ int acrn_ioreq_attach_client(int client_id, bool check_kthread_stop)
 					"for client %s\n", client->name);
 			return -ENOMEM;
 		}
+		client->kthread_exit = false;
 	} else {
+		client->kthread_exit = false;
 		might_sleep();
 
 		if (check_kthread_stop) {
