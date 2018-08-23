@@ -1943,6 +1943,8 @@ void intel_init_clock_gating_hooks(struct drm_i915_private *dev_priv);
 void intel_pm_setup(struct drm_i915_private *dev_priv);
 void intel_gpu_ips_init(struct drm_i915_private *dev_priv);
 void intel_gpu_ips_teardown(void);
+void intel_gpu_tfm_init(struct drm_i915_private *dev_priv);
+void intel_gpu_tfm_teardown(void);
 void intel_init_gt_powersave(struct drm_i915_private *dev_priv);
 void intel_cleanup_gt_powersave(struct drm_i915_private *dev_priv);
 void intel_sanitize_gt_powersave(struct drm_i915_private *dev_priv);
