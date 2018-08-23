@@ -287,7 +287,8 @@ static int cl_copy_fw(struct snd_sof_dev *sdev, int tag)
 	return status;
 }
 
-int hda_dsp_cl_load_fw(struct snd_sof_dev *sdev, const struct firmware *fw)
+int hda_dsp_cl_load_fw(struct snd_sof_dev *sdev, const struct firmware *fw,
+		       bool first_boot)
 {
 	struct snd_sof_pdata *plat_data = dev_get_platdata(sdev->dev);
 	int ret;
