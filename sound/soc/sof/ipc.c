@@ -81,6 +81,134 @@ static struct snd_sof_ipc_msg *msg_get_empty(struct snd_sof_ipc *ipc)
 	return msg;
 }
 
+#if IS_ENABLED(CONFIG_SND_SOC_SOF_DEBUG_VERBOSE_IPC)
+static void ipc_log_header(struct device *dev, u8 *text, u32 cmd)
+{
+	u8 *str;
+	u32 glb;
+	u32 type;
+
+	glb = cmd & SOF_GLB_TYPE_MASK;
+	type = cmd & SOF_CMD_TYPE_MASK;
+
+	switch (glb) {
+	case SOF_IPC_GLB_REPLY:
+		str = "GLB_REPLY"; break;
+	case SOF_IPC_GLB_COMPOUND:
+		str = "GLB_COMPOUND"; break;
+	case SOF_IPC_GLB_TPLG_MSG:
+		switch (type) {
+		case SOF_IPC_TPLG_COMP_NEW:
+			str = "GLB_TPLG_MSG: COMP_NEW"; break;
+		case SOF_IPC_TPLG_COMP_FREE:
+			str = "GLB_TPLG_MSG: COMP_FREE"; break;
+		case SOF_IPC_TPLG_COMP_CONNECT:
+			str = "GLB_TPLG_MSG: COMP_CONNECT"; break;
+		case SOF_IPC_TPLG_PIPE_NEW:
+			str = "GLB_TPLG_MSG: PIPE_NEW"; break;
+		case SOF_IPC_TPLG_PIPE_FREE:
+			str = "GLB_TPLG_MSG: PIPE_FREE"; break;
+		case SOF_IPC_TPLG_PIPE_CONNECT:
+			str = "GLB_TPLG_MSG: PIPE_CONNECT"; break;
+		case SOF_IPC_TPLG_PIPE_COMPLETE:
+			str = "GLB_TPLG_MSG: PIPE_COMPLETE"; break;
+		case SOF_IPC_TPLG_BUFFER_NEW:
+			str = "GLB_TPLG_MSG: BUFFER_NEW"; break;
+		case SOF_IPC_TPLG_BUFFER_FREE:
+			str = "GLB_TPLG_MSG: BUFFER_FREE"; break;
+		default:
+			str = "GLB_TPLG_MSG: unknown type"; break;
+		}
+		break;
+	case SOF_IPC_GLB_PM_MSG:
+		switch (type) {
+		case SOF_IPC_PM_CTX_SAVE:
+			str = "GLB_PM_MSG: CTX_SAVE"; break;
+		case SOF_IPC_PM_CTX_RESTORE:
+			str = "GLB_PM_MSG: CTX_RESTORE"; break;
+		case SOF_IPC_PM_CTX_SIZE:
+			str = "GLB_PM_MSG: CTX_SIZE"; break;
+		case SOF_IPC_PM_CLK_SET:
+			str = "GLB_PM_MSG: CLK_SET"; break;
+		case SOF_IPC_PM_CLK_GET:
+			str = "GLB_PM_MSG: CLK_GET"; break;
+		case SOF_IPC_PM_CLK_REQ:
+			str = "GLB_PM_MSG: CLK_REQ"; break;
+		default:
+			str = "GLB_PM_MSG: unknown type"; break;
+		}
+		break;
+	case SOF_IPC_GLB_COMP_MSG:
+		switch (type) {
+		case SOF_IPC_COMP_SET_VALUE:
+			str = "GLB_COMP_MSG: SET_VALUE"; break;
+		case SOF_IPC_COMP_GET_VALUE:
+			str = "GLB_COMP_MSG: GET_VALUE"; break;
+		case SOF_IPC_COMP_SET_DATA:
+			str = "GLB_COMP_MSG: SET_DATA"; break;
+		case SOF_IPC_COMP_GET_DATA:
+			str = "GLB_COMP_MSG: GET_DATA"; break;
+		default:
+			str = "GLB_COMP_MSG: unknown type"; break;
+		}
+		break;
+	case SOF_IPC_GLB_STREAM_MSG:
+		switch (type) {
+		case SOF_IPC_STREAM_PCM_PARAMS:
+			str = "GLB_STREAM_MSG: PCM_PARAMS"; break;
+		case SOF_IPC_STREAM_PCM_PARAMS_REPLY:
+			str = "GLB_STREAM_MSG: PCM_REPLY"; break;
+		case SOF_IPC_STREAM_PCM_FREE:
+			str = "GLB_STREAM_MSG: PCM_FREE"; break;
+		case SOF_IPC_STREAM_TRIG_START:
+			str = "GLB_STREAM_MSG: TRIG_START"; break;
+		case SOF_IPC_STREAM_TRIG_STOP:
+			str = "GLB_STREAM_MSG: TRIG_STOP"; break;
+		case SOF_IPC_STREAM_TRIG_PAUSE:
+			str = "GLB_STREAM_MSG: TRIG_PAUSE"; break;
+		case SOF_IPC_STREAM_TRIG_RELEASE:
+			str = "GLB_STREAM_MSG: TRIG_RELEASE"; break;
+		case SOF_IPC_STREAM_TRIG_DRAIN:
+			str = "GLB_STREAM_MSG: TRIG_DRAIN"; break;
+		case SOF_IPC_STREAM_TRIG_XRUN:
+			str = "GLB_STREAM_MSG: TRIG_XRUN"; break;
+		case SOF_IPC_STREAM_POSITION:
+			str = "GLB_STREAM_MSG: POSITION"; break;
+		case SOF_IPC_STREAM_VORBIS_PARAMS:
+			str = "GLB_STREAM_MSG: VORBIS_PARAMS"; break;
+		case SOF_IPC_STREAM_VORBIS_FREE:
+			str = "GLB_STREAM_MSG: VORBIS_FREE"; break;
+		default:
+			str = "GLB_STREAM_MSG: unknown type"; break;
+		}
+		break;
+	case SOF_IPC_FW_READY:
+		str = "FW_READY"; break;
+	case SOF_IPC_GLB_DAI_MSG:
+		switch (type) {
+		case SOF_IPC_DAI_CONFIG:
+			str = "GLB_DAI_MSG: CONFIG"; break;
+		case SOF_IPC_DAI_LOOPBACK:
+			str = "GLB_DAI_MSG: LOOPBACK"; break;
+		default:
+			str = "GLB_DAI_MSG: unknown type"; break;
+		}
+		break;
+	case SOF_IPC_GLB_TRACE_MSG:
+		str = "GLB_TRACE_MSG"; break;
+	default:
+		str = "unknown GLB command"; break;
+	}
+
+	dev_dbg(dev, "%s: 0x%x: %s\n", text, cmd, str);
+}
+#else
+static inline void ipc_log_header(struct device *dev, u8 *text, u32 cmd)
+{
+	dev_dbg(dev, "%s: 0x%x\n", text, cmd);
+}
+#endif
+
 /* wait for IPC message reply */
 static int tx_wait_done(struct snd_sof_ipc *ipc, struct snd_sof_ipc_msg *msg,
 			void *reply_data)
@@ -111,7 +239,7 @@ static int tx_wait_done(struct snd_sof_ipc *ipc, struct snd_sof_ipc_msg *msg,
 			dev_err(sdev->dev, "error: ipc error for 0x%x size 0x%zx\n",
 				hdr->cmd, msg->reply_size);
 		else
-			dev_dbg(sdev->dev, "ipc: 0x%x succeeded\n", hdr->cmd);
+			ipc_log_header(sdev->dev, "ipc tx succeeded", hdr->cmd);
 	}
 
 	/* return message body to empty list */
@@ -157,7 +285,7 @@ int sof_ipc_tx_message(struct snd_sof_ipc *ipc, u32 header,
 	/* add message to transmit list */
 	list_add_tail(&msg->list, &ipc->tx_list);
 
-	/* schedule the messgae if not busy */
+	/* schedule the message if not busy */
 	if (snd_sof_dsp_is_ready(sdev))
 		schedule_work(&ipc->tx_kwork);
 
@@ -187,8 +315,7 @@ static void ipc_tx_next_msg(struct work_struct *work)
 	list_move(&msg->list, &ipc->reply_list);
 	snd_sof_dsp_send_msg(sdev, msg);
 
-	dev_dbg(sdev->dev, "ipc: send 0x%x\n", msg->header);
-
+	ipc_log_header(sdev->dev, "ipc tx", msg->header);
 out:
 	spin_unlock_irq(&sdev->ipc_lock);
 }
@@ -278,6 +405,7 @@ static void ipc_msgs_rx(struct work_struct *work)
 
 	/* read back header */
 	snd_sof_dsp_mailbox_read(sdev, sdev->dsp_box.offset, &hdr, sizeof(hdr));
+	ipc_log_header(sdev->dev, "ipc rx", hdr.cmd);
 
 	cmd = hdr.cmd & SOF_GLB_TYPE_MASK;
 	type = hdr.cmd & SOF_CMD_TYPE_MASK;
@@ -320,7 +448,7 @@ static void ipc_msgs_rx(struct work_struct *work)
 		break;
 	}
 
-	dev_dbg(sdev->dev, "ipc rx: 0x%x done\n", hdr.cmd);
+	ipc_log_header(sdev->dev, "ipc rx done", hdr.cmd);
 
 	/* tell DSP we are done */
 	snd_sof_dsp_cmd_done(sdev, SOF_IPC_HOST_REPLY);

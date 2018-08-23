@@ -208,7 +208,7 @@ static int load_modules(struct snd_sof_dev *sdev, const struct firmware *fw)
 }
 
 int snd_sof_load_firmware_memcpy(struct snd_sof_dev *sdev,
-				 const struct firmware *fw)
+				 const struct firmware *fw, bool first_boot)
 {
 	int ret;
 
@@ -238,12 +238,12 @@ int snd_sof_load_firmware_memcpy(struct snd_sof_dev *sdev,
 EXPORT_SYMBOL(snd_sof_load_firmware_memcpy);
 
 int snd_sof_load_firmware(struct snd_sof_dev *sdev,
-			  const struct firmware *fw)
+			  const struct firmware *fw, bool first_boot)
 {
 	dev_dbg(sdev->dev, "loading firmware\n");
 
 	if (sdev->ops->load_firmware)
-		return sdev->ops->load_firmware(sdev, fw);
+		return sdev->ops->load_firmware(sdev, fw, first_boot);
 	return 0;
 }
 EXPORT_SYMBOL(snd_sof_load_firmware);

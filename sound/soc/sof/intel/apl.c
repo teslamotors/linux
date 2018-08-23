@@ -96,5 +96,9 @@ struct snd_sof_dsp_ops sof_apl_ops = {
 	/* DAI drivers */
 	.drv		= skl_dai,
 	.num_drv	= SOF_SKL_NUM_DAIS,
+
+	/* PM */
+	.suspend	= hda_dsp_suspend,
+	.resume		= hda_dsp_resume,
 };
 EXPORT_SYMBOL(sof_apl_ops);

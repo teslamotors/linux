@@ -56,5 +56,14 @@ config SND_SOC_SOF_DEBUG_XRUN_STOP
 	  Say Y if you are debugging SOF FW pipeline XRUNs.
           If unsure select "N".
 
+config SND_SOC_SOF_DEBUG_VERBOSE_IPC
+	bool "SOF verbose IPC logs"
+	depends on SND_SOC_SOF_DEBUG
+	help
+	  This option enables more verbose IPC logs, with command types in
+	  human-readable form instead of just 32-bit hex dumps. This is useful
+	  if you are trying to debug IPC with the DSP firmware.
+          If unsure select "N".
+
 source "sound/soc/sof/intel/Kconfig"
 source "sound/soc/sof/xtensa/Kconfig"
