@@ -747,6 +747,7 @@ static int sr_probe(struct device *dev)
 	disk->flags |= GENHD_FL_REMOVABLE;
 	device_add_disk(&sdev->sdev_gendev, disk);
 
+	sdev->add_change_reason = 1; /* Let SCSI add change reason to uevent */
 	sdev_printk(KERN_DEBUG, sdev,
 		    "Attached scsi CD-ROM %s\n", cd->cdi.name);
 	scsi_autopm_put_device(cd->device);
