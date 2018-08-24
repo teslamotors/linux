@@ -653,6 +653,7 @@ ipu_isys_csi2_get_current_field(struct ipu_isys_pipeline *ip,
 	if (!msg_matched)
 		/* We have walked through the whole buffer. */
 		dev_dbg(&isys->adev->dev, "No matched trace message found.\n");
+	update_timer_base(isys);
 	return field;
 }
 
