@@ -32,6 +32,7 @@
 #include <linux/virtio.h>
 #include <linux/virtio_ids.h>
 #include <linux/virtio_config.h>
+#include <linux/workqueue.h>
 #include "../hyper_dmabuf_msg.h"
 #include "../hyper_dmabuf_drv.h"
 #include "hyper_dmabuf_virtio_common.h"
@@ -222,14 +223,20 @@ static void virtio_hdma_fe_remove(struct virtio_device *vdev)
 	virtio_hdma_fe_remove_common(vdev);
 }
 
+struct virtio_hdma_restore_work
+{
+	struct work_struct work;
+	struct virtio_device *dev;
+};
+
 /*
  * Queues empty requests buffers to backend,
  * which will be used by it to send requests back to frontend.
  */
-static void virtio_hdma_fe_scan(struct virtio_device *vdev)
+static void virtio_hdma_query_vmid(struct virtio_device *vdev)
 {
-	struct virtio_hdma_fe_priv *priv =
-		(struct virtio_hdma_fe_priv *) vdev->priv;
+        struct virtio_hdma_fe_priv *priv =
+                (struct virtio_hdma_fe_priv *) vdev->priv;
 	struct hyper_dmabuf_req *rx_req;
 	int timeout = 1000;
 
@@ -266,6 +273,29 @@ static void virtio_hdma_fe_scan(struct virtio_device *vdev)
 	}
 }
 
+/*
+ * Queues empty requests buffers to backend,
+ * which will be used by it to send requests back to frontend.
+ */
+static void virtio_hdma_fe_scan(struct virtio_device *vdev)
+{
+	virtio_hdma_query_vmid(vdev);
+}
+
+static void virtio_hdma_restore_bh(struct work_struct *w)
+{
+	struct virtio_hdma_restore_work *work =
+		(struct virtio_hdma_restore_work *) w;
+
+	while (!(VIRTIO_CONFIG_S_DRIVER_OK &
+		 work->dev->config->get_status(work->dev))) {
+		usleep_range(100, 120);
+	}
+
+	virtio_hdma_query_vmid(work->dev);
+	kfree(w);
+}
+
 #ifdef CONFIG_PM_SLEEP
 static int virtio_hdma_fe_freeze(struct virtio_device *vdev)
 {
@@ -275,7 +305,18 @@ static int virtio_hdma_fe_freeze(struct virtio_device *vdev)
 
 static int virtio_hdma_fe_restore(struct virtio_device *vdev)
 {
-	return virtio_hdma_fe_probe_common(vdev);
+	struct virtio_hdma_restore_work *work;
+	int ret;
+
+	ret = virtio_hdma_fe_probe_common(vdev);
+	if (!ret) {
+		work = kmalloc(sizeof(*work), GFP_KERNEL);
+		INIT_WORK(&work->work, virtio_hdma_restore_bh);
+		work->dev = vdev;
+		schedule_work(&work->work);
+	}
+
+	return ret;
 }
 #endif
 
