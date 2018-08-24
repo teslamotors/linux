@@ -338,13 +338,6 @@ static int vbs_k_release(struct inode *inode, struct file *f)
 {
 	struct virtio_be_priv *priv =
 		(struct virtio_be_priv *) f->private_data;
-	int i;
-
-//	virtio_dev_stop(&priv->dev);
-//	virtio_dev_cleanup(&priv->dev, false);
-
-	for (i = 0; i < HDMA_VIRTIO_QUEUE_MAX; i++)
-		virtio_vq_reset(&priv->vqs[i]);
 
 	kfree(priv->pending_tx_req);
 	virtio_comm_ring_free(&priv->tx_ring);
@@ -355,8 +348,23 @@ static int vbs_k_release(struct inode *inode, struct file *f)
 	 */
 	virtio_fe_foreach(cleanup_fe, priv);
 
+	virtio_dev_reset(&priv->dev);
+
 	kfree(priv);
 	return 0;
+}
+
+static int vbs_k_reset(struct virtio_be_priv *priv)
+{
+	virtio_comm_ring_free(&priv->tx_ring);
+
+	virtio_fe_foreach(cleanup_fe, priv);
+
+	virtio_dev_reset(&priv->dev);
+
+	virtio_comm_ring_init(&priv->tx_ring,
+			      sizeof(struct virtio_be_tx_data),
+			      REQ_RING_SIZE);
 }
 
 static long vbs_k_ioctl(struct file *f, unsigned int ioctl,
@@ -374,19 +382,25 @@ static long vbs_k_ioctl(struct file *f, unsigned int ioctl,
 		return -EINVAL;
 	}
 
-	if (ioctl == VBS_SET_VQ) {
-		/* Overridden to call additionally
-		 * virtio_be_register_vhm_client */
-		r = virtio_vqs_ioctl(&priv->dev, ioctl, argp);
-		if (r == -ENOIOCTLCMD)
-			return -EFAULT;
-
-		if (virtio_be_register_vhm_client(&priv->dev) < 0)
-			return -EFAULT;
-	} else {
-		r = virtio_dev_ioctl(&priv->dev, ioctl, argp);
-		if (r == -ENOIOCTLCMD)
+	switch(ioctl) {
+		case VBS_SET_VQ:
+			/* Overridden to call additionally
+			 * virtio_be_register_vhm_client */
 			r = virtio_vqs_ioctl(&priv->dev, ioctl, argp);
+			if (r == -ENOIOCTLCMD)
+				return -EFAULT;
+
+			if (virtio_be_register_vhm_client(&priv->dev) < 0)
+				return -EFAULT;
+			break;
+		case VBS_RESET_DEV:
+			vbs_k_reset(priv);
+			break;
+		default:
+			r = virtio_dev_ioctl(&priv->dev, ioctl, argp);
+			if (r == -ENOIOCTLCMD)
+				r = virtio_vqs_ioctl(&priv->dev, ioctl, argp);
+			break;
 	}
 
 	return r;
