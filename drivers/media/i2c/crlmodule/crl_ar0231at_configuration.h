@@ -2060,6 +2060,22 @@ static struct crl_dynamic_register_access ar0231at_t4expotime_regs[] = {
 	},
 };
 
+static struct crl_dynamic_register_access ar0231at_test_pattern_regs[] = {
+	{
+		.address = 0x3070,
+		.len = CRL_REG_LEN_16BIT,
+		.ops_items = 0,
+		.ops = 0,
+		.mask = 0xffff,
+	},
+};
+
+static const char * const ar0231at_test_patterns[] = {
+	"Disabled",
+	"Solid Color",
+	"100% Vertical Color Bar",
+};
+
 struct crl_v4l2_ctrl ar0231at_v4l2_ctrls[] = {
 	{
 		.sd_type = CRL_SUBDEV_TYPE_BINNER,
@@ -2310,6 +2326,23 @@ struct crl_v4l2_ctrl ar0231at_v4l2_ctrls[] = {
 		.dep_items = 0,
 		.dep_ctrls = 0,
 		.v4l2_type = V4L2_CTRL_TYPE_INTEGER,
+	},
+	{
+		.sd_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.op_type = CRL_V4L2_CTRL_SET_OP,
+		.context = SENSOR_POWERED_ON,
+		.ctrl_id = V4L2_CID_TEST_PATTERN,
+		.name = "V4L2_CID_TEST_PATTERN",
+		.type = CRL_V4L2_CTRL_TYPE_MENU_ITEMS,
+		.data.v4l2_menu_items.menu = ar0231at_test_patterns,
+		.data.v4l2_menu_items.size = ARRAY_SIZE(ar0231at_test_patterns)-1,
+		.flags = V4L2_CTRL_FLAG_UPDATE,
+		.impact = CRL_IMPACTS_NO_IMPACT,
+		.ctrl = 0,
+		.regs_items = ARRAY_SIZE(ar0231at_test_pattern_regs),
+		.regs = ar0231at_test_pattern_regs,
+		.dep_items = 0,
+		.dep_ctrls = 0,
 	},
 };
 
