@@ -103,6 +103,7 @@ struct tdf8532_priv {
 	u8 channels;
 	u8 pkt_id;
 	u8 sw_major;
+	_Bool state_flag;
 };
 
 #endif
