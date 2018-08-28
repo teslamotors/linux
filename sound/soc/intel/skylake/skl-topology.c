@@ -1005,20 +1005,6 @@ static int skl_tplg_set_module_init_data(struct snd_soc_dapm_widget *w)
 	return 0;
 }
 
-static int skl_tplg_module_prepare(struct skl_sst *ctx, struct skl_pipe *pipe,
-		struct snd_soc_dapm_widget *w, struct skl_module_cfg *mcfg)
-{
-	switch (mcfg->dev_type) {
-	case SKL_DEVICE_HDAHOST:
-		return skl_pcm_host_dma_prepare(ctx->dev, pipe->p_params);
-
-	case SKL_DEVICE_HDALINK:
-		return skl_pcm_link_dma_prepare(ctx->dev, pipe->p_params);
-	}
-
-	return 0;
-}
-
 /*
  * Inside a pipe instance, we can have various modules. These modules need
  * to instantiated in DSP by invoking INIT_MODULE IPC, which is achieved by
@@ -1063,11 +1049,6 @@ skl_tplg_init_pipe_modules(struct skl *skl, struct skl_pipe *pipe)
 
 			mconfig->m_state = SKL_MODULE_LOADED;
 		}
-
-		/* prepare the DMA if the module is gateway cpr */
-		ret = skl_tplg_module_prepare(ctx, pipe, w, mconfig);
-		if (ret < 0)
-			return ret;
 
 		/* update blob if blob is null for be with default value */
 		skl_tplg_update_be_blob(w, ctx);
@@ -2509,7 +2490,7 @@ static void skl_tplg_fill_dma_id(struct skl_module_cfg *mcfg,
 static int skl_probe_set_tlv_ext(struct snd_kcontrol *kcontrol)
 {
 	struct snd_soc_dapm_context *dapm =
-			snd_soc_dapm_kcontrol_dapm(kcontrol);
+		snd_soc_dapm_kcontrol_dapm(kcontrol);
 	struct snd_soc_dapm_widget *w = snd_soc_dapm_kcontrol_widget(kcontrol);
 	struct skl_module_cfg *mconfig = w->priv;
 	struct soc_bytes_ext *sb = (void *) kcontrol->private_value;
