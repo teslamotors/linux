@@ -221,7 +221,7 @@ static inline struct nhlt_specific_cfg
 {
 	return NULL;
 }
-void skl_dbg_event(struct skl_sst *ctx, int type)
+static inline void skl_dbg_event(struct skl_sst *ctx, int type)
 {
 }
 #endif
