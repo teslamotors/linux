@@ -226,10 +226,14 @@ static int __tdf8532_wait_state(struct tdf8532_priv *dev_data, u8 req_state,
 	u8 state;
 	int ret;
 
+	dev_data->state_flag = false;
+
 	do {
 		ret = tdf8532_get_state(dev_data, &state);
-		if (ret < 0)
+		if (ret < 0) {
+			dev_data->state_flag = true;
 			goto out;
+		}
 
 	} while (time_before(jiffies, timeout) && state != req_state);
 
@@ -242,11 +246,13 @@ static int __tdf8532_wait_state(struct tdf8532_priv *dev_data, u8 req_state,
 	}
 
 out:
+	dev_data->state_flag = true;
 	return ret;
 out_timeout:
 	ret = -ETIME;
 	dev_err(dev, "State: %u, req_state: %u, ret: %d\n", state,
 			req_state, ret);
+	dev_data->state_flag = true;
 	return ret;
 }
 
@@ -333,12 +339,20 @@ static int tdf8532_mute(struct snd_soc_dai *dai, int mute)
 
 	dev_dbg(codec->dev, "%s\n", __func__);
 
-	if (mute)
-		return tdf8532_amp_write(tdf8532, SET_CHNL_MUTE,
+	if (mute) {
+		if(tdf8532->state_flag == false) {
+			dev_dbg(codec->dev, "dirty codec state %s\n", __func__);
+			mdelay(180);
+			return tdf8532_amp_write(tdf8532, SET_CHNL_MUTE,
 						CHNL_MASK(CHNL_MAX));
-	else
-		return tdf8532_amp_write(tdf8532, SET_CHNL_UNMUTE,
+		} else {
+			return tdf8532_amp_write(tdf8532, SET_CHNL_MUTE,
+                                                CHNL_MASK(CHNL_MAX));
+		}
+	} else {
+	  	return tdf8532_amp_write(tdf8532, SET_CHNL_UNMUTE,
 						CHNL_MASK(CHNL_MAX));
+	}
 }
 
 static const struct snd_soc_dai_ops tdf8532_dai_ops = {
