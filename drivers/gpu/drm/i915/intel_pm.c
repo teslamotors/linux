@@ -4893,19 +4893,25 @@ static void skl_pv_write_plane_wm(struct intel_crtc *intel_crtc,
 	}
 	tmp_plane_wm.plane_trans_wm_level = skl_calc_wm_level(&wm->trans_wm);
 
-	entry = &ddb->plane[pipe][plane_id];
+	if (wm->is_planar)
+		entry = &ddb->uv_plane[pipe][plane_id];
+	else
+		entry = &ddb->plane[pipe][plane_id];
+
 	if (entry->end)
 		tmp_plane_wm.plane_buf_cfg =
 			(entry->end - 1) << 16 | entry->start;
 	else
 		tmp_plane_wm.plane_buf_cfg = 0;
 
-	spin_lock(&dev_priv->shared_page_lock);
-	for (i = 0; i < sizeof(struct pv_plane_wm_update) / 4; i++)
-		writel(*((u32 *)(&tmp_plane_wm) + i), pv_plane_wm + i);
-	skl_ddb_entry_write(dev_priv, PLANE_NV12_BUF_CFG(pipe, plane_id),
-			    &ddb->y_plane[pipe][plane_id]);
-	spin_unlock(&dev_priv->shared_page_lock);
+	if (wm->is_planar) {
+		spin_lock(&dev_priv->shared_page_lock);
+		for (i = 0; i < sizeof(struct pv_plane_wm_update) / 4; i++)
+			writel(*((u32 *)(&tmp_plane_wm) + i), pv_plane_wm + i);
+		skl_ddb_entry_write(dev_priv, PLANE_NV12_BUF_CFG(pipe, plane_id),
+				    &ddb->plane[pipe][plane_id]);
+		spin_unlock(&dev_priv->shared_page_lock);
+	}
 }
 
 static void skl_write_plane_wm(struct intel_crtc *intel_crtc,

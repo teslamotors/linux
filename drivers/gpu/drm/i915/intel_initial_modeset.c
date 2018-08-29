@@ -128,8 +128,8 @@ intel_splash_screen_fb(struct drm_device *dev,
 	mode_cmd.width = splash_info->width;
 	mode_cmd.height = splash_info->height;
 
-	mode_cmd.pitches[0] = splash_info->pitch;
-	mode_cmd.pixel_format = DRM_FORMAT_C8;
+	mode_cmd.pitches[0] = splash_info->pitch * 4;
+	mode_cmd.pixel_format = DRM_FORMAT_ARGB8888;
 
 	mutex_lock(&dev->struct_mutex);
 	fb = intel_framebuffer_create(splash_info->obj, &mode_cmd);
@@ -398,12 +398,6 @@ static int update_primary_plane_state(struct drm_atomic_state *state,
 {
 	int hdisplay, vdisplay;
 	struct drm_plane_state *primary_state;
-	struct drm_property_blob *blob = NULL;
-	struct drm_color_lut *blob_data;
-	struct drm_crtc_state *crtc_state;
-	struct drm_device *dev = crtc->dev;
-	uint32_t i, palette_size;
-	const char *palette_data;
 	int ret;
 
 	primary_state = drm_atomic_get_plane_state(state, crtc->primary);
@@ -427,40 +421,6 @@ static int update_primary_plane_state(struct drm_atomic_state *state,
 	primary_state->src_h = ((splash_info->height) ?
 		splash_info->height : vdisplay) << 16;
 	primary_state->rotation = DRM_MODE_ROTATE_0;
-
-	crtc_state = drm_atomic_get_crtc_state(state, crtc);
-
-	/* Color palette is appended after image data, it uses 24-bits for each index entry */
-	palette_size = (splash_info->fw->size - (splash_info->width * splash_info->height)) / 3;
-	printk("Splash size %zu, palette size %u\n", splash_info->fw->size, palette_size);
-	if (0 == palette_size) {
-		DRM_ERROR("Splash image does not contain color palette data\n");
-		return -1;
-	}
-
-	if (palette_size > 256) {
-		DRM_ERROR("Splash image color palette too big\n");
-		return -1;
-	}
-
-	/* i915 expects that palette color will be of 256 size */
-	blob = drm_property_create_blob(dev, sizeof(struct drm_color_lut) * 256, NULL);
-
-	if (IS_ERR(blob)) {
-		blob = NULL;
-		return -1;
-	}
-
-	palette_data = &splash_info->fw->data[splash_info->width * splash_info->height];
-
-	blob_data = (struct drm_color_lut *) blob->data;
-	for (i = 0; i < palette_size; i++) {
-		blob_data[i].red = (*palette_data++) << 8;
-		blob_data[i].green = (*palette_data++) << 8;
-		blob_data[i].blue = (*palette_data++) << 8;
-	}
-
-	drm_atomic_crtc_set_property(crtc, crtc_state, state->dev->mode_config.gamma_lut_property, blob->base.id);
 
 	return 0;
 }

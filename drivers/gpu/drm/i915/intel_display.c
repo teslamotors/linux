@@ -4044,6 +4044,16 @@ static void intel_update_background_color(struct intel_crtc *crtc)
 		    | DRM_RGBA_GREENBITS(background, 10) << 10
 		    | DRM_RGBA_BLUEBITS(background, 10);
 
+		/*
+		 * Set CSC and gamma for bottom color.
+		 *
+		 * FIXME:  We turn these on unconditionally for now to match
+		 * how we've setup the various planes.  Once the color
+		 * management framework lands, it may or may not choose to
+		 * set these bits.
+		 */
+		val |= PIPE_BOTTOM_CSC_ENABLE;
+		val |= PIPE_BOTTOM_GAMMA_ENABLE;
 
 		I915_WRITE(PIPE_BOTTOM_COLOR(crtc->pipe), val);
 	}

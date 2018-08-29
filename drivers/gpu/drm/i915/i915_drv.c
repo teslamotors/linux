@@ -1431,8 +1431,8 @@ int i915_driver_load(struct pci_dev *pdev, const struct pci_device_id *ent)
 
 	intel_runtime_pm_put(dev_priv);
 
-	printk(KERN_INFO "IOTG i915 driver 2018y-07m-10d-11h-32m-25s -0700\n");
-	printk(KERN_INFO "40 patches carried on top of PK commit e304288f\n");
+	printk(KERN_INFO "IOTG i915 driver 2018y-08m-27d-09h-59m-48s -0700\n");
+	printk(KERN_INFO "42 patches carried on top of PK commit 032e009f\n");
 
 	return 0;
 
