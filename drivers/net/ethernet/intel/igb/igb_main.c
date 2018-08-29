@@ -5590,6 +5590,7 @@ static void igb_tx_ctxtdesc(struct igb_ring *tx_ring,
 	struct e1000_adv_tx_context_desc *context_desc;
 	u16 i = tx_ring->next_to_use;
 	struct timespec64 ts;
+	struct igb_adapter *adapter = netdev_priv(tx_ring->netdev);
 
 	context_desc = IGB_TX_CTXTDESC(tx_ring, i);
 
