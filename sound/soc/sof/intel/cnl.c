@@ -40,6 +40,8 @@ static const struct snd_sof_debugfs_map cnl_dsp_debugfs[] = {
 	{"dsp", HDA_DSP_BAR,  0, 0x10000},
 };
 
+static int cnl_ipc_cmd_done(struct snd_sof_dev *sdev, int dir);
+
 static irqreturn_t cnl_ipc_irq_thread(int irq, void *context)
 {
 	struct snd_sof_dev *sdev = (struct snd_sof_dev *)context;
@@ -51,7 +53,6 @@ static irqreturn_t cnl_ipc_irq_thread(int irq, void *context)
 		return ret;
 
 	hipcida = snd_sof_dsp_read(sdev, HDA_DSP_BAR, CNL_DSP_REG_HIPCIDA);
-	hipctdr = snd_sof_dsp_read(sdev, HDA_DSP_BAR, CNL_DSP_REG_HIPCTDR);
 
 	/* reply message from DSP */
 	if (hipcida & CNL_DSP_REG_HIPCIDA_DONE) {
@@ -69,20 +70,15 @@ static irqreturn_t cnl_ipc_irq_thread(int irq, void *context)
 					CNL_DSP_REG_HIPCCTL,
 					CNL_DSP_REG_HIPCCTL_DONE, 0);
 
-		/* handle immediate reply from DSP core */
-		snd_sof_ipc_reply(sdev, msg);
-
-		/* clear DONE bit - tell DSP we have completed the operation */
-		snd_sof_dsp_update_bits_forced(sdev, HDA_DSP_BAR,
-					       CNL_DSP_REG_HIPCIDA,
-					       CNL_DSP_REG_HIPCIDA_DONE,
-					       CNL_DSP_REG_HIPCIDA_DONE);
-
-		/* unmask Done interrupt */
-		snd_sof_dsp_update_bits(sdev, HDA_DSP_BAR,
-					CNL_DSP_REG_HIPCCTL,
-					CNL_DSP_REG_HIPCCTL_DONE,
-					CNL_DSP_REG_HIPCCTL_DONE);
+		/*
+		 * handle immediate reply from DSP core. If the msg is
+		 * found, set done bit in cmd_done which is called at the
+		 * end of message processing function, else set it here
+		 * because the done bit can't be set in cmd_done function
+		 * which is triggered by msg
+		 */
+		if (snd_sof_ipc_reply(sdev, msg))
+			cnl_ipc_cmd_done(sdev, SOF_IPC_DSP_REPLY);
 
 		ret = IRQ_HANDLED;
 	}
@@ -108,8 +104,10 @@ static irqreturn_t cnl_ipc_irq_thread(int irq, void *context)
 			snd_sof_ipc_msgs_rx(sdev);
 		}
 
-		/* clear busy interrupt to tell dsp controller this */
-		/* interrupt has been accepted, not trigger it again */
+		/*
+		 * clear busy interrupt to tell dsp controller this
+		 * interrupt has been accepted, not trigger it again
+		 */
 		snd_sof_dsp_update_bits_forced(sdev, HDA_DSP_BAR,
 					       CNL_DSP_REG_HIPCTDR,
 					       CNL_DSP_REG_HIPCTDR_BUSY,
@@ -132,23 +130,45 @@ static irqreturn_t cnl_ipc_irq_thread(int irq, void *context)
 	return ret;
 }
 
-static int cnl_ipc_cmd_done(struct snd_sof_dev *sdev)
+static int cnl_ipc_cmd_done(struct snd_sof_dev *sdev, int dir)
 {
-	/* set done bit to ack dsp the msg has been processed */
-	snd_sof_dsp_update_bits_forced(sdev, HDA_DSP_BAR,
-				       CNL_DSP_REG_HIPCTDA,
-				       CNL_DSP_REG_HIPCTDA_DONE,
-				       CNL_DSP_REG_HIPCTDA_DONE);
+	if (dir == SOF_IPC_HOST_REPLY) {
+		/*
+		 * set done bit to ack dsp the msg has been
+		 * processed and send reply msg to dsp
+		 */
+		snd_sof_dsp_update_bits_forced(sdev, HDA_DSP_BAR,
+					       CNL_DSP_REG_HIPCTDA,
+					       CNL_DSP_REG_HIPCTDA_DONE,
+					       CNL_DSP_REG_HIPCTDA_DONE);
+	} else {
+		/*
+		 * set DONE bit - tell DSP we have received the reply msg
+		 * from DSP, and processed it, don't send more reply to host
+		 */
+		snd_sof_dsp_update_bits_forced(sdev, HDA_DSP_BAR,
+					       CNL_DSP_REG_HIPCIDA,
+					       CNL_DSP_REG_HIPCIDA_DONE,
+					       CNL_DSP_REG_HIPCIDA_DONE);
+
+		/* unmask Done interrupt */
+		snd_sof_dsp_update_bits(sdev, HDA_DSP_BAR,
+					CNL_DSP_REG_HIPCCTL,
+					CNL_DSP_REG_HIPCCTL_DONE,
+					CNL_DSP_REG_HIPCCTL_DONE);
+	}
 
 	return 0;
 }
 
 static int cnl_ipc_is_ready(struct snd_sof_dev *sdev)
 {
-	u64 val;
+	u64 busy, done;
 
-	val = snd_sof_dsp_read(sdev, HDA_DSP_BAR, CNL_DSP_REG_HIPCIDR);
-	if (val & CNL_DSP_REG_HIPCIDR_BUSY)
+	busy = snd_sof_dsp_read(sdev, HDA_DSP_BAR, CNL_DSP_REG_HIPCIDR);
+	done = snd_sof_dsp_read(sdev, HDA_DSP_BAR, CNL_DSP_REG_HIPCIDA);
+	if ((busy & CNL_DSP_REG_HIPCIDR_BUSY) ||
+	    (done & CNL_DSP_REG_HIPCIDA_DONE))
 		return 0;
 
 	return 1;
@@ -205,10 +225,10 @@ struct snd_sof_dsp_ops sof_cnl_ops = {
 	.dbg_dump	= hda_dsp_dump,
 
 	/* stream callbacks */
-	.host_stream_open = hda_dsp_pcm_open,
-	.host_stream_close = hda_dsp_pcm_close,
-	.host_stream_hw_params = hda_dsp_pcm_hw_params,
-	.host_stream_trigger = hda_dsp_pcm_trigger,
+	.pcm_open	= hda_dsp_pcm_open,
+	.pcm_close	= hda_dsp_pcm_close,
+	.pcm_hw_params	= hda_dsp_pcm_hw_params,
+	.pcm_trigger	= hda_dsp_pcm_trigger,
 
 	/* firmware loading */
 	.load_firmware = hda_dsp_cl_load_fw,
@@ -222,6 +242,7 @@ struct snd_sof_dsp_ops sof_cnl_ops = {
 	.trace_trigger = hda_dsp_trace_trigger,
 
 	/* DAI drivers */
-	.dai_drv		= &hda_dai_drv,
+	.drv		= skl_dai,
+	.num_drv	= SOF_SKL_NUM_DAIS,
 };
 EXPORT_SYMBOL(sof_cnl_ops);

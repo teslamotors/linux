@@ -185,10 +185,11 @@ static inline int snd_sof_dsp_is_ready(struct snd_sof_dev *sdev)
 		return 0;
 }
 
-static inline int snd_sof_dsp_cmd_done(struct snd_sof_dev *sdev)
+static inline int snd_sof_dsp_cmd_done(struct snd_sof_dev *sdev,
+				       int dir)
 {
 	if (sdev->ops->cmd_done)
-		return sdev->ops->cmd_done(sdev);
+		return sdev->ops->cmd_done(sdev, dir);
 	else
 		return 0;
 }
@@ -215,6 +216,51 @@ static inline int snd_sof_dma_trace_trigger(struct snd_sof_dev *sdev, int cmd)
 {
 	if (sdev->ops->trace_trigger)
 		return sdev->ops->trace_trigger(sdev, cmd);
+	else
+		return 0;
+}
+
+/* host PCM ops */
+static inline int
+snd_sof_pcm_platform_open(struct snd_sof_dev *sdev,
+			  struct snd_pcm_substream *substream)
+{
+	if (sdev->ops && sdev->ops->pcm_open)
+		return sdev->ops->pcm_open(sdev, substream);
+	else
+		return 0;
+}
+
+/* disconnect pcm substream to a host stream */
+static inline int
+snd_sof_pcm_platform_close(struct snd_sof_dev *sdev,
+			   struct snd_pcm_substream *substream)
+{
+	if (sdev->ops && sdev->ops->pcm_close)
+		return sdev->ops->pcm_close(sdev, substream);
+	else
+		return 0;
+}
+
+/* host stream hw params */
+static inline int
+snd_sof_pcm_platform_hw_params(struct snd_sof_dev *sdev,
+			       struct snd_pcm_substream *substream,
+			       struct snd_pcm_hw_params *params)
+{
+	if (sdev->ops && sdev->ops->pcm_hw_params)
+		return sdev->ops->pcm_hw_params(sdev, substream, params);
+	else
+		return 0;
+}
+
+/* host stream trigger */
+static inline int
+snd_sof_pcm_platform_trigger(struct snd_sof_dev *sdev,
+			     struct snd_pcm_substream *substream, int cmd)
+{
+	if (sdev->ops && sdev->ops->pcm_trigger)
+		return sdev->ops->pcm_trigger(sdev, substream, cmd);
 	else
 		return 0;
 }

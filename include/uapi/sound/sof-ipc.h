@@ -198,6 +198,22 @@ struct sof_ipc_compound_hdr {
 #define SOF_DAI_FMT_INV_MASK		0x0f00
 #define SOF_DAI_FMT_MASTER_MASK		0xf000
 
+ /* ssc1: TINTE */
+#define SOF_DAI_INTEL_SSP_QUIRK_TINTE		(1 << 0)
+ /* ssc1: PINTE */
+#define SOF_DAI_INTEL_SSP_QUIRK_PINTE		(1 << 1)
+ /* ssc2: SMTATF */
+#define SOF_DAI_INTEL_SSP_QUIRK_SMTATF		(1 << 2)
+ /* ssc2: MMRATF */
+#define SOF_DAI_INTEL_SSP_QUIRK_MMRATF		(1 << 3)
+ /* ssc2: PSPSTWFDFD */
+#define SOF_DAI_INTEL_SSP_QUIRK_PSPSTWFDFD	(1 << 4)
+ /* ssc2: PSPSRWFDFD */
+#define SOF_DAI_INTEL_SSP_QUIRK_PSPSRWFDFD	(1 << 5)
+ /* here is the possibility to define others aux macros */
+
+#define SOF_DAI_INTEL_SSP_FRAME_PULSE_WIDTH_MAX		38
+
 /* types of DAI */
 enum sof_ipc_dai_type {
 	SOF_DAI_INTEL_NONE = 0,
@@ -231,8 +247,10 @@ struct sof_ipc_dai_ssp_params {
 	uint32_t bclk_keep_active;
 	uint32_t fs_keep_active;
 
-	//uint32_t quirks; // FIXME: is 32 bits enough ?
+	uint16_t frame_pulse_width;
+	uint32_t quirks; // FIXME: is 32 bits enough ?
 
+	uint16_t padding;
 	/* private data, e.g. for quirks */
 	//uint32_t pdata[10]; // FIXME: would really need ~16 u32
 } __attribute__((packed));
@@ -252,6 +270,7 @@ struct sof_ipc_dai_dmic_pdm_ctrl {
 	uint16_t polarity_mic_b; /* Optionally invert mic B signal (0 or 1) */
 	uint16_t clk_edge; /* Optionally swap data clock edge (0 or 1) */
 	uint16_t skew; /* Adjust PDM data sampling vs. clock (0..15) */
+	uint16_t pad; /* Make sure the total size is 4 bytes aligned */
 } __attribute__((packed));
 
 /* DMIC Configuration Request - SOF_IPC_DAI_DMIC_CONFIG */
@@ -274,7 +293,7 @@ struct sof_ipc_dai_dmic_params {
 struct sof_ipc_dai_config {
 	struct sof_ipc_hdr hdr;
 	enum sof_ipc_dai_type type;
-	uint32_t id;	/* physical number if more than 1 of this type */
+	uint32_t dai_index; /* index of this type dai */
 
 	/* physical protocol and clocking */
 	uint16_t format;	/* SOF_DAI_FMT_ */
@@ -599,7 +618,7 @@ struct sof_ipc_comp_dai {
 	struct sof_ipc_comp comp;
 	struct sof_ipc_comp_config config;
 	enum sof_ipc_stream_direction direction;
-	uint32_t index;
+	uint32_t dai_index; /* index of this type dai */
 	enum sof_ipc_dai_type type;
 	uint32_t dmac_config; /* DMA engine specific */
 }  __attribute__((packed));
@@ -765,6 +784,7 @@ struct sof_ipc_fw_version {
 	uint8_t date[12];
 	uint8_t time[10];
 	uint8_t tag[6];
+	uint8_t pad[2]; /* Make sure the total size is 4 bytes aligned */
 } __attribute__((packed));
 
 /* FW ready Message - sent by firmware when boot has completed */

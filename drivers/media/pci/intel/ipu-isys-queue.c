@@ -1,4 +1,4 @@
-// SPDX-License_Identifier: GPL-2.0
+// SPDX-License-Identifier: GPL-2.0
 // Copyright (C) 2013 - 2018 Intel Corporation
 
 #include <linux/completion.h>
@@ -495,6 +495,10 @@ void ipu_isys_buffer_list_to_ipu_fw_isys_frame_buff_set(
 	set->send_resp_sof = 1;
 	set->send_irq_eof = 1;
 	set->send_resp_eof = 1;
+#if defined(CONFIG_VIDEO_INTEL_IPU4) || defined(CONFIG_VIDEO_INTEL_IPU4P)
+	set->send_irq_capture_ack = 1;
+	set->send_irq_capture_done = 1;
+#endif
 
 	list_for_each_entry(ib, &bl->head, head) {
 		if (ib->type == IPU_ISYS_VIDEO_BUFFER) {
@@ -667,7 +671,7 @@ static int ipu_isys_stream_start(struct ipu_isys_pipeline *ip,
 					buf, to_dma_addr(msg),
 					sizeof(*buf),
 					IPU_FW_ISYS_SEND_TYPE_STREAM_CAPTURE);
-		ipu_put_fw_mgs_buffer(pipe_av->isys, (u64) buf);
+		ipu_put_fw_mgs_buffer(pipe_av->isys, (uintptr_t) buf);
 	} while (!WARN_ON(rval));
 
 	return 0;
@@ -792,7 +796,7 @@ static void __buf_queue(struct vb2_buffer *vb, bool force)
 				       buf, to_dma_addr(msg),
 				       sizeof(*buf),
 				       IPU_FW_ISYS_SEND_TYPE_STREAM_CAPTURE);
-	ipu_put_fw_mgs_buffer(pipe_av->isys, (u64) buf);
+	ipu_put_fw_mgs_buffer(pipe_av->isys, (uintptr_t) buf);
 	/*
 	 * FIXME: mark the buffers in the buffer list if the queue
 	 * operation fails.
@@ -1327,6 +1331,10 @@ int ipu_isys_req_prepare(struct media_device *mdev,
 	set->send_resp_sof = 1;
 	set->send_irq_eof = 1;
 	set->send_resp_eof = 1;
+#if defined(CONFIG_VIDEO_INTEL_IPU4) || defined(CONFIG_VIDEO_INTEL_IPU4P)
+	set->send_irq_capture_ack = 1;
+	set->send_irq_capture_done = 1;
+#endif
 
 	spin_lock_irqsave(&ireq->lock, flags);
 
@@ -1366,7 +1374,7 @@ ipu_isys_req_dispatch(struct media_device *mdev,
 				       ip->stream_handle,
 				       set, dma_addr, sizeof(*set),
 				       IPU_FW_ISYS_SEND_TYPE_STREAM_CAPTURE);
-	ipu_put_fw_mgs_buffer(pipe_av->isys, (u64) set);
+	ipu_put_fw_mgs_buffer(pipe_av->isys, (uintptr_t) set);
 
 	WARN_ON(rval);
 }

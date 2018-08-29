@@ -229,6 +229,68 @@ void intel_pipe_update_end(struct intel_crtc *crtc)
 #endif
 }
 
+static void pv_update_plane_reg(struct intel_plane *plane,
+		u32 stride, uint32_t src_w, uint32_t src_h,
+		uint32_t crtc_w, uint32_t crtc_h, u32 aux_stride,
+		const struct intel_crtc_state *crtc_state,
+		const struct intel_plane_state *plane_state)
+{
+	int i;
+	struct pv_plane_update tmp_plane;
+	uint32_t x = plane_state->main.x;
+	uint32_t y = plane_state->main.y;
+	struct drm_i915_private *dev_priv = to_i915(plane->base.dev);
+	u32 __iomem *pv_plane = (u32 *)&(dev_priv->shared_page->pv_plane);
+
+	memset(&tmp_plane, 0, sizeof(struct pv_plane_update));
+	if (IS_GEMINILAKE(dev_priv) || IS_CANNONLAKE(dev_priv)) {
+		tmp_plane.flags |= PLANE_COLOR_CTL_BIT;
+		tmp_plane.plane_color_ctl = PLANE_COLOR_PIPE_GAMMA_ENABLE |
+		      PLANE_COLOR_PIPE_CSC_ENABLE |
+		      PLANE_COLOR_PLANE_GAMMA_DISABLE;
+	}
+
+	if (plane_state->ckey.flags) {
+		tmp_plane.flags |= PLANE_KEY_BIT;
+		tmp_plane.plane_key_val = plane_state->ckey.min_value;
+		tmp_plane.plane_key_max = plane_state->ckey.max_value;
+		tmp_plane.plane_key_msk = plane_state->ckey.channel_mask;
+	}
+
+	tmp_plane.plane_offset = (y << 16) | x;
+	tmp_plane.plane_stride = stride;
+	tmp_plane.plane_size = (src_h << 16) | src_w;
+	tmp_plane.plane_aux_dist =
+		(plane_state->aux.offset - plane_state->main.offset) |
+		aux_stride;
+	tmp_plane.plane_aux_offset =
+		(plane_state->aux.y << 16) | plane_state->aux.x;
+
+	/* program plane scaler */
+	if (plane_state->scaler_id >= 0) {
+		tmp_plane.flags |= PLANE_SCALER_BIT;
+		tmp_plane.ps_ctrl = PS_SCALER_EN | PS_PLANE_SEL(plane->id) |
+		  crtc_state->scaler_state.scalers[plane_state->scaler_id].mode;
+		tmp_plane.ps_pwr_gate = 0;
+		tmp_plane.ps_win_ps =
+		  (plane_state->base.dst.x1 << 16) | plane_state->base.dst.y1;
+		tmp_plane.ps_win_sz = ((crtc_w + 1) << 16) | (crtc_h + 1);
+		tmp_plane.plane_pos = 0;
+	} else {
+		tmp_plane.plane_pos =
+		  (plane_state->base.dst.y1 << 16) | plane_state->base.dst.x1;
+	}
+
+	tmp_plane.plane_ctl = plane_state->ctl;
+
+	spin_lock(&dev_priv->shared_page_lock);
+	for (i = 0; i < sizeof(struct pv_plane_update) / 4; i++)
+		writel(*((u32 *)(&tmp_plane) + i), pv_plane + i);
+	I915_WRITE_FW(PLANE_SURF(plane->pipe, plane->id),
+	      intel_plane_ggtt_offset(plane_state) + plane_state->main.offset);
+	spin_unlock(&dev_priv->shared_page_lock);
+}
+
 void
 skl_update_plane(struct intel_plane *plane,
 		 const struct intel_crtc_state *crtc_state,
@@ -264,6 +326,13 @@ skl_update_plane(struct intel_plane *plane,
 	src_h--;
 	crtc_w--;
 	crtc_h--;
+
+	if (intel_vgpu_active(dev_priv) &&
+	    i915_modparams.enable_pvmmio & PVMMIO_PLANE_UPDATE) {
+		pv_update_plane_reg(plane, stride, src_w, src_h,
+			crtc_w, crtc_h, aux_stride, crtc_state, plane_state);
+		return;
+	}
 
 	spin_lock_irqsave(&dev_priv->uncore.lock, irqflags);
 

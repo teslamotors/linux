@@ -1362,7 +1362,7 @@ static int mmc_blk_rpmb_process(struct mmc_blk_data *md,
 		return -EINVAL;
 
 	if (!(md->flags & MMC_BLK_CMD23) ||
-	    (md->part_type != EXT_CSD_PART_CONFIG_ACC_RPMB))
+	    md->part_type != EXT_CSD_PART_CONFIG_ACC_RPMB)
 		return -EOPNOTSUPP;
 
 	card = md->queue.card;
@@ -1404,7 +1404,7 @@ out:
 	return ret;
 }
 
-static int mmc_blk_rpmb_cmd_seq(struct device *dev,
+static int mmc_blk_rpmb_cmd_seq(struct device *dev, u8 target,
 				struct rpmb_cmd *cmds, u32 ncmds)
 {
 	struct mmc_blk_data *md;
@@ -1424,9 +1424,24 @@ static int mmc_blk_rpmb_cmd_seq(struct device *dev,
 	return ret;
 }
 
+static int mmc_blk_rpmb_get_capacity(struct device *dev, u8 target)
+{
+	struct mmc_blk_data *md;
+	struct mmc_card *card;
+
+	md = mmc_blk_get(dev_to_disk(dev));
+	if (!md)
+		return -ENODEV;
+
+	card = md->queue.card;
+	return card->ext_csd.raw_rpmb_size_mult;
+}
+
 static struct rpmb_ops mmc_rpmb_dev_ops = {
 	.cmd_seq = mmc_blk_rpmb_cmd_seq,
+	.get_capacity = mmc_blk_rpmb_get_capacity,
 	.type = RPMB_TYPE_EMMC,
+	.auth_method = RPMB_HMAC_ALGO_SHA_256,
 };
 
 static struct mmc_blk_data *mmc_blk_rpmb_part_get(struct mmc_blk_data *md)
@@ -1465,8 +1480,8 @@ static int mmc_blk_rpmb_set_dev_id(struct rpmb_ops *ops, struct mmc_card *card)
 	return 0;
 }
 
-static void mmc_blk_rpmb_set_rel_wr_cnt(struct rpmb_ops *ops,
-					struct mmc_card *card)
+static void mmc_blk_rpmb_set_cap(struct rpmb_ops *ops,
+				 struct mmc_card *card)
 {
 	u16 rel_wr_cnt;
 
@@ -1479,7 +1494,10 @@ static void mmc_blk_rpmb_set_rel_wr_cnt(struct rpmb_ops *ops,
 		else
 			rel_wr_cnt = 2;
 	}
-	ops->reliable_wr_cnt = rel_wr_cnt;
+
+	ops->wr_cnt_max = rel_wr_cnt;
+	ops->rd_cnt_max = card->host->max_blk_count;
+	ops->block_size = 1; /* 256B */
 }
 
 static void mmc_blk_rpmb_add(struct mmc_card *card)
@@ -1492,9 +1510,9 @@ static void mmc_blk_rpmb_add(struct mmc_card *card)
 		return;
 
 	mmc_blk_rpmb_set_dev_id(&mmc_rpmb_dev_ops, card);
-	mmc_blk_rpmb_set_rel_wr_cnt(&mmc_rpmb_dev_ops, card);
+	mmc_blk_rpmb_set_cap(&mmc_rpmb_dev_ops, card);
 
-	rdev = rpmb_dev_register(disk_to_dev(part_md->disk),
+	rdev = rpmb_dev_register(disk_to_dev(part_md->disk), 0,
 				 &mmc_rpmb_dev_ops);
 	if (IS_ERR(rdev)) {
 		pr_warn("%s: cannot register to rpmb %ld\n",
@@ -1508,7 +1526,7 @@ static void mmc_blk_rpmb_remove(struct mmc_card *card)
 	struct mmc_blk_data *part_md = mmc_blk_rpmb_part_get(md);
 
 	if (part_md)
-		rpmb_dev_unregister(disk_to_dev(part_md->disk));
+		rpmb_dev_unregister_by_device(disk_to_dev(part_md->disk), 0);
 
 	mmc_blk_rpmb_unset_dev_id(&mmc_rpmb_dev_ops);
 }
@@ -2787,10 +2805,11 @@ static int mmc_blk_probe(struct mmc_card *card)
 			goto out;
 	}
 
+	/* add rpmb layer */
+	mmc_blk_rpmb_add(card);
+
 	/* Add two debugfs entries */
 	mmc_blk_add_debugfs(card, md);
-	/* Add rpmb layer */
-	mmc_blk_rpmb_add(card);
 
 	pm_runtime_set_autosuspend_delay(&card->dev, 3000);
 	pm_runtime_use_autosuspend(&card->dev);

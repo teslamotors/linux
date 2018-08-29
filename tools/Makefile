@@ -92,7 +92,7 @@ kvm_stat: FORCE
 	$(call descend,kvm/$@)
 
 all: acpi cgroup cpupower gpio hv firewire liblockdep \
-		perf rpmb selftests spi turbostat usb \
+		perf selftests rpmb spi turbostat usb \
 		virtio vm net x86_energy_perf_policy \
 		tmon freefall iio objtool kvm_stat
 
@@ -173,7 +173,7 @@ build_clean:
 	$(call descend,build,clean)
 
 clean: acpi_clean cgroup_clean cpupower_clean hv_clean firewire_clean \
-		perf_clean rpmb_clean selftests_clean turbostat_clean spi_clean usb_clean virtio_clean \
+		perf_clean selftests_clean turbostat_clean rpmb_clean spi_clean usb_clean virtio_clean \
 		vm_clean net_clean iio_clean x86_energy_perf_policy_clean tmon_clean \
 		freefall_clean build_clean libbpf_clean libsubcmd_clean liblockdep_clean \
 		gpio_clean objtool_clean leds_clean

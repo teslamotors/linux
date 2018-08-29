@@ -19,6 +19,7 @@ IPU_ISYSLIB_INC = \
 	-I$(IPU_ISYSLIB_ROOT)/regmem/src \
 	-I$(IPU_ISYSLIB_ROOT)/support \
 	-I$(IPU_ISYSLIB_ROOT)/syscom/interface \
+	-I$(IPU_ISYSLIB_ROOT)/syscom/src \
 	-I$(IPU_ISYSLIB_ROOT)/trace/interface \
 	-I$(IPU_ISYSLIB_ROOT)/utils/system_defs/ \
 	-I$(IPU_ISYSLIB_ROOT)/vied \

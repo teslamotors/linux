@@ -13,135 +13,21 @@
 
 #include <linux/delay.h>
 #include <linux/module.h>
-#include "libcsspsys2600.h"
-#include <vied_nci_psys_resource_model.h>
-#include <ia_css_psys_device.h>
-#include <ipu_device_cell_properties_func.h>
 
 #include <uapi/linux/ipu-psys.h>
 
 #include "ipu.h"
-#include "ipu-fw-psys.h"
-#include "ipu-psys.h"
-#include "ipu-wrapper.h"
 #include "ipu-mmu.h"
+#include "ipu-psys.h"
+#include "ipu-fw-psys.h"
+#include "ipu-wrapper.h"
+#include "libcsspsys2600.h"
 
-#include <ia_css_psys_process_group_cmd_impl.h>
-#include <ia_css_psys_process_private_types.h>
-#include <ia_css_psys_init.h>
-#include <ia_css_psys_transport.h>
-#include <ia_css_terminal_base_types.h>
-#include <ia_css_terminal_types.h>
-#include <ia_css_program_group_param_types.h>
-#include <ia_css_psys_terminal_private_types.h>
-#include <ia_css_program_group_data.h>
+#include <vied_nci_psys_resource_model.h>
+#include <ia_css_psys_device.h>
+#include <ipu_device_cell_properties_func.h>
 #include <ia_css_psys_program_group_private.h>
-
-#define BASIC_ABI_CHECK
-
-#ifndef BASIC_ABI_CHECK
-#define ABI_CHECK(a, b, field)					\
-	{								\
-	if (offsetof(typeof(*a), field) != offsetof(typeof(*b), field))	\
-		pr_err("intel_ipu4 psys ABI mismatch %s\n",		\
-		       __stringify(field));		    \
-	}
-#else
-#define ABI_CHECK(a, b, field) { }
-#endif
-
-#define SIZE_OF_CHECK(a, b) \
-	{		    \
-	if (sizeof(*a) != sizeof(*b))\
-		pr_err("intel_ipu4 psys ABI size of mismatch %s\n",	\
-		       __stringify(a));					\
-	}								\
-
-static void abi_sanity_checker(void)
-{
-	struct ipu_fw_psys_process_group *ipu_fw_psys_pg;
-	struct ia_css_process_group_s *ia_css_pg;
-
-	struct ipu_fw_psys_process *ipu_fw_psys_ps;
-	struct ia_css_process_s *ia_css_ps;
-
-	struct ipu_fw_psys_srv_init *ipu_fw_psys_init;
-	struct ia_css_psys_server_init *ia_css_psys_init;
-
-	struct ipu_fw_psys_cmd *ipu_fw_psys_cmd;
-	struct ia_css_psys_cmd_s *ia_css_psys_cmd;
-
-	struct ipu_fw_psys_event *ipu_fw_psys_event;
-	struct ia_css_psys_event_s *ia_css_psys_event;
-
-	struct ipu_fw_psys_terminal *ipu_fw_psys_terminal;
-	struct ia_css_terminal_s *ia_css_terminal;
-
-	struct ipu_fw_psys_param_terminal *ipu_fw_psys_param_terminal;
-	struct ia_css_param_terminal_s *ia_css_param_terminal;
-
-	struct ipu_fw_psys_param_payload *ipu_fw_psys_param_payload;
-	struct ia_css_param_payload_s *ia_css_param_payload;
-
-	struct ipu_fw_psys_data_terminal *ipu_fw_psys_data_terminal;
-	struct ia_css_data_terminal_s *ia_css_data_terminal;
-
-	struct ipu_fw_psys_frame *ipu_fw_psys_frame;
-	struct ia_css_frame_s *ia_css_frame;
-
-	struct ipu_fw_psys_frame_descriptor *ipu_fw_psys_frame_descriptor;
-	struct ia_css_frame_descriptor_s *ia_css_frame_descriptor;
-
-	struct ipu_fw_psys_stream *ipu_fw_psys_stream;
-	struct ia_css_stream_s *ia_css_stream;
-
-	SIZE_OF_CHECK(ipu_fw_psys_pg, ia_css_pg);
-	ABI_CHECK(ipu_fw_psys_pg, ia_css_pg, ID);
-	ABI_CHECK(ipu_fw_psys_pg, ia_css_pg, process_count);
-	ABI_CHECK(ipu_fw_psys_pg, ia_css_pg, processes_offset);
-	ABI_CHECK(ipu_fw_psys_pg, ia_css_pg, routing_bitmap);
-
-	SIZE_OF_CHECK(ipu_fw_psys_ps, ia_css_ps);
-	ABI_CHECK(ipu_fw_psys_ps, ia_css_ps, ID);
-	ABI_CHECK(ipu_fw_psys_ps, ia_css_ps, dev_chn_offset);
-	ABI_CHECK(ipu_fw_psys_ps, ia_css_ps, cell_id);
-
-	SIZE_OF_CHECK(ipu_fw_psys_init, ia_css_psys_init);
-	ABI_CHECK(ipu_fw_psys_init, ia_css_psys_init, icache_prefetch_sp);
-	ABI_CHECK(ipu_fw_psys_init, ia_css_psys_init, icache_prefetch_isp);
-
-	SIZE_OF_CHECK(ipu_fw_psys_cmd, ia_css_psys_cmd);
-	ABI_CHECK(ipu_fw_psys_cmd, ia_css_psys_cmd, command);
-	ABI_CHECK(ipu_fw_psys_cmd, ia_css_psys_cmd, msg);
-	ABI_CHECK(ipu_fw_psys_cmd, ia_css_psys_cmd, context_handle);
-
-	SIZE_OF_CHECK(ipu_fw_psys_event, ia_css_psys_event);
-	ABI_CHECK(ipu_fw_psys_event, ia_css_psys_event, status);
-	ABI_CHECK(ipu_fw_psys_event, ia_css_psys_event, token);
-
-	SIZE_OF_CHECK(ipu_fw_psys_terminal, ia_css_terminal);
-	ABI_CHECK(ipu_fw_psys_terminal, ia_css_terminal, terminal_type);
-
-	SIZE_OF_CHECK(ipu_fw_psys_param_terminal, ia_css_param_terminal);
-	ABI_CHECK(ipu_fw_psys_param_terminal, ia_css_param_terminal,
-		  param_payload);
-
-	SIZE_OF_CHECK(ipu_fw_psys_param_payload, ia_css_param_payload);
-	ABI_CHECK(ipu_fw_psys_param_payload, ia_css_param_payload, buffer);
-
-	SIZE_OF_CHECK(ipu_fw_psys_data_terminal, ia_css_data_terminal);
-	ABI_CHECK(ipu_fw_psys_data_terminal, ia_css_data_terminal, frame);
-	ABI_CHECK(ipu_fw_psys_data_terminal, ia_css_data_terminal,
-		  connection_type);
-
-	SIZE_OF_CHECK(ipu_fw_psys_frame, ia_css_frame);
-	ABI_CHECK(ipu_fw_psys_frame, ia_css_frame, data_bytes);
-	ABI_CHECK(ipu_fw_psys_frame, ia_css_frame, data);
-	ABI_CHECK(ipu_fw_psys_frame, ia_css_frame, buffer_state);
-
-	SIZE_OF_CHECK(ipu_fw_psys_frame_descriptor, ia_css_frame_descriptor);
-	SIZE_OF_CHECK(ipu_fw_psys_stream, ia_css_stream);
-}
+#include <ia_css_psys_process_private_types.h>
 
 int ipu_fw_psys_pg_start(struct ipu_psys_kcmd *kcmd)
 {
@@ -438,45 +324,6 @@ u64 ipu_fw_psys_pg_get_token(struct ipu_psys_kcmd *kcmd)
 }
 EXPORT_SYMBOL_GPL(ipu_fw_psys_pg_get_token);
 
-int ipu_fw_psys_ppg_set_buffer_set(struct ipu_psys_kcmd *kcmd,
-				    struct ipu_fw_psys_terminal *terminal,
-				    int terminal_idx, u32 buffer)
-{
-	return 0;
-}
-EXPORT_SYMBOL_GPL(ipu_fw_psys_ppg_set_buffer_set);
-
-size_t
-ipu_fw_psys_ppg_get_buffer_set_size(struct ipu_psys_kcmd *kcmd)
-{
-	return 0;
-}
-EXPORT_SYMBOL_GPL(ipu_fw_psys_ppg_get_buffer_set_size);
-
-int
-ipu_fw_psys_ppg_buffer_set_vaddress(struct ipu_fw_psys_buffer_set *buf_set,
-				     u32 vaddress)
-{
-	return 0;
-}
-EXPORT_SYMBOL_GPL(ipu_fw_psys_ppg_buffer_set_vaddress);
-
-struct ipu_fw_psys_buffer_set *
-ipu_fw_psys_ppg_create_buffer_set(struct ipu_psys_kcmd *kcmd,
-				   void *kaddr, u32 frame_counter)
-{
-	return NULL;
-}
-EXPORT_SYMBOL_GPL(ipu_fw_psys_ppg_create_buffer_set);
-
-int
-ipu_fw_psys_ppg_enqueue_bufs(struct ipu_psys_kcmd *kcmd,
-			      unsigned int queue_offset)
-{
-	return 0;
-}
-EXPORT_SYMBOL_GPL(ipu_fw_psys_ppg_enqueue_bufs);
-
 static const struct ipu_fw_resource_definitions default_defs = {
 	.cells = vied_nci_cell_type,
 	.num_cells = VIED_NCI_N_CELL_ID,
@@ -490,63 +337,46 @@ static const struct ipu_fw_resource_definitions default_defs = {
 
 	.cell_mem_row = VIED_NCI_N_MEM_TYPE_ID,
 	.cell_mem = (enum ipu_mem_id *)vied_nci_cell_mem,
-	.process.ext_mem_id = offsetof(struct ia_css_process_s,
-				       ext_mem_id[0]),
-	.process.ext_mem_offset = offsetof(struct ia_css_process_s,
-					   ext_mem_offset[0]),
-	.process.dev_chn_offset = offsetof(struct ia_css_process_s,
-					   dev_chn_offset[0]),
-	.process.cell_id = offsetof(struct ia_css_process_s, cell_id),
 };
 
 const struct ipu_fw_resource_definitions *res_defs = &default_defs;
 EXPORT_SYMBOL_GPL(res_defs);
 
-/*
- * Extension library gives byte offsets to its internal structures.
- * use those offsets to update fields. Without extension lib access
- * structures directly.
- */
-void ipu_fw_psys_set_process_cell_id(struct ipu_fw_psys_process *ptr, u8 index,
-				u8 value)
+int ipu_fw_psys_set_process_cell_id(struct ipu_fw_psys_process *ptr, u8 index,
+				    u8 value)
 {
-	/* Byte offset */
-	*((u8 *)ptr + res_defs->process.cell_id) = value;
+	return ia_css_process_set_cell((ia_css_process_t *)ptr,
+				       (vied_nci_cell_ID_t)value);
 }
 EXPORT_SYMBOL_GPL(ipu_fw_psys_set_process_cell_id);
 
 u8 ipu_fw_psys_get_process_cell_id(struct ipu_fw_psys_process *ptr, u8 index)
 {
-	/* Byte offset */
-	return *((u8 *)ptr + res_defs->process.cell_id);
+	return ia_css_process_get_cell((ia_css_process_t *)ptr);
 }
 EXPORT_SYMBOL_GPL(ipu_fw_psys_get_process_cell_id);
 
-void ipu_fw_psys_set_process_dev_chn_offset(struct ipu_fw_psys_process *ptr,
-				       u16 offset, u16 value)
+int ipu_fw_psys_clear_process_cell(struct ipu_fw_psys_process *ptr)
 {
-	/* dev_chn_offset is a byte offset, offset is u16 index */
-	*((u16 *)((u8 *)ptr + res_defs->process.dev_chn_offset) +
-		 offset) = value;
+	return ia_css_process_clear_cell((ia_css_process_t *)ptr);
+}
+EXPORT_SYMBOL_GPL(ipu_fw_psys_clear_process_cell);
+
+int ipu_fw_psys_set_process_dev_chn_offset(struct ipu_fw_psys_process *ptr,
+					   u16 offset, u16 value)
+{
+	return ia_css_process_set_dev_chn((ia_css_process_t *)ptr,
+					  (vied_nci_dev_chn_ID_t)offset,
+					  (vied_nci_resource_size_t)value);
 }
 EXPORT_SYMBOL_GPL(ipu_fw_psys_set_process_dev_chn_offset);
 
-void ipu_fw_psys_set_process_ext_mem_offset(struct ipu_fw_psys_process *ptr,
-				       u16 offset, u16 value)
+int ipu_fw_psys_set_process_ext_mem(struct ipu_fw_psys_process *ptr,
+				    u16 type_id, u16 mem_id, u16 offset)
 {
-	/* ext_mem_offset is a byte offset, offset is u16 index */
-	*((u16 *)((u8 *)ptr + res_defs->process.ext_mem_offset) +
-		  offset) = value;
+	return ia_css_process_set_ext_mem((ia_css_process_t *)ptr, mem_id, offset);
 }
-EXPORT_SYMBOL_GPL(ipu_fw_psys_set_process_ext_mem_offset);
-
-void ipu_fw_psys_set_process_ext_mem_id(struct ipu_fw_psys_process *ptr,
-				   u16 offset, u8 value)
-{
-	/* ext_mem_id is a byte offset, offset parameter is u8 index */
-	*((u8 *)ptr + res_defs->process.ext_mem_id + offset) = value;
-}
-EXPORT_SYMBOL_GPL(ipu_fw_psys_set_process_ext_mem_id);
+EXPORT_SYMBOL_GPL(ipu_fw_psys_set_process_ext_mem);
 
 int ipu_fw_psys_get_program_manifest_by_process(
 	struct ipu_fw_generic_program_manifest *gen_pm,
@@ -590,15 +420,15 @@ static int __init libcsspsys2600_init(void)
 	if (!syscom_buffer)
 		return -ENOMEM;
 
-	syscom_config = kzalloc(
-		sizeof(struct ia_css_syscom_config), GFP_KERNEL);
+	syscom_config = kzalloc(sizeof(struct ia_css_syscom_config),
+				GFP_KERNEL);
 	if (!syscom_config) {
 		rval = -ENOMEM;
 		goto out_syscom_buffer_free;
 	}
 
-	server_init = kzalloc(
-		sizeof(struct ia_css_psys_server_init), GFP_KERNEL);
+	server_init = kzalloc(sizeof(struct ia_css_psys_server_init),
+			      GFP_KERNEL);
 	if (!server_init) {
 		rval = -ENOMEM;
 		goto out_syscom_config_free;
@@ -610,17 +440,13 @@ static int __init libcsspsys2600_init(void)
 
 	*syscom_config = *ia_css_psys_specify();
 	syscom_config->specific_addr = server_init;
-	syscom_config->specific_size =
-		sizeof(struct ia_css_psys_server_init);
+	syscom_config->specific_size = sizeof(struct ia_css_psys_server_init);
 	syscom_config->ssid = PSYS_SSID;
 	syscom_config->mmid = PSYS_MMID;
-	syscom_config->regs_addr =
-		ipu_device_cell_memory_address(
-			SPC0, IPU_DEVICE_SP2600_CONTROL_REGS);
-	syscom_config->dmem_addr =
-		ipu_device_cell_memory_address(
-			SPC0, IPU_DEVICE_SP2600_CONTROL_DMEM);
-	abi_sanity_checker();
+	syscom_config->regs_addr = ipu_device_cell_memory_address(SPC0,
+					IPU_DEVICE_SP2600_CONTROL_REGS);
+	syscom_config->dmem_addr = ipu_device_cell_memory_address(SPC0,
+					IPU_DEVICE_SP2600_CONTROL_DMEM);
 
 	return 0;
 

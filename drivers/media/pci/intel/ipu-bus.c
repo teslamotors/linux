@@ -1,4 +1,4 @@
-// SPDX-License_Identifier: GPL-2.0
+// SPDX-License-Identifier: GPL-2.0
 // Copyright (C) 2013 - 2018 Intel Corporation
 
 #include <linux/delay.h>
@@ -155,7 +155,7 @@ out_err:
 	return -EBUSY;
 }
 
-const struct dev_pm_ops ipu_bus_pm_ops = {
+static const struct dev_pm_ops ipu_bus_pm_ops = {
 	.runtime_suspend = bus_pm_runtime_suspend,
 	.runtime_resume = bus_pm_runtime_resume,
 };
@@ -189,11 +189,13 @@ static struct ipu_dma_mapping *alloc_dma_mapping(struct device *dev)
 		return NULL;
 	}
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 0, 0)
-	init_iova_domain(&dmap->iovad,
-#else
+	init_iova_domain(&dmap->iovad, dma_get_mask(dev) >> PAGE_SHIFT);
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 15, 0)
 	init_iova_domain(&dmap->iovad, SZ_4K, 1,
-#endif
 			 dma_get_mask(dev) >> PAGE_SHIFT);
+#else
+	init_iova_domain(&dmap->iovad, SZ_4K, 1);
+#endif
 
 	kref_init(&dmap->ref);
 

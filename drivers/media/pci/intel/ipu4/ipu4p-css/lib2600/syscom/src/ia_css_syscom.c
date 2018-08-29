@@ -349,6 +349,7 @@ ia_css_syscom_open(
 	ia_css_cpu_mem_cache_flush((void *)HOST_ADDRESS(ctx->config_host_addr),
 				    sizeof(struct ia_css_syscom_config_fw));
 
+#if !HAS_DUAL_CMD_CTX_SUPPORT
 	/* store syscom uninitialized state */
 	IA_CSS_TRACE_3(SYSCOM, INFO, "ia_css_syscom_open store STATE_REG (%#x) @ dmem_addr %#x ssid %d\n",
 		       SYSCOM_STATE_UNINIT, ctx->cell_dmem_addr, cfg->ssid);
@@ -364,16 +365,6 @@ ia_css_syscom_open(
 		       ctx->config_vied_addr, ctx->cell_dmem_addr, cfg->ssid);
 	regmem_store_32(ctx->cell_dmem_addr, SYSCOM_CONFIG_REG,
 			ctx->config_vied_addr, cfg->ssid);
-#if HAS_DUAL_CMD_CTX_SUPPORT
-	/* clear IRQ status */
-	regmem_store_32(ctx->cell_dmem_addr, SYSCOM_IRQ_REG, 0x0, cfg->ssid);
-
-	if (cfg->secure) {
-		/* store VTL0 address mask in 'secure' context */
-		IA_CSS_TRACE_3(SYSCOM, INFO, "ia_css_syscom_open store VTL0_ADDR_MASK (%#x) @ dmem_addr %#x ssid %d\n",
-			      cfg->vtl0_addr_mask, ctx->cell_dmem_addr, cfg->ssid);
-		regmem_store_32(ctx->cell_dmem_addr, SYSCOM_VTL0_ADDR_MASK, cfg->vtl0_addr_mask, cfg->ssid);
-	}
 #endif
 
 	/* Indicate if ctx is created for secure stream purpose */
@@ -572,3 +563,88 @@ ia_css_syscom_recv_port_transfer(
 
 	return recv_port_transfer(ctx->recv_port + port, token);
 }
+
+#if HAS_DUAL_CMD_CTX_SUPPORT
+/*
+ * store subsystem context information in DMEM
+ */
+int
+ia_css_syscom_store_dmem(
+	struct ia_css_syscom_context *ctx,
+	unsigned int ssid,
+	unsigned int vtl0_addr_mask
+)
+{
+	unsigned int read_back;
+
+	NOT_USED(vtl0_addr_mask);
+	NOT_USED(read_back);
+
+	if (ctx->secure) {
+		/* store VTL0 address mask in 'secure' context */
+		IA_CSS_TRACE_3(SYSCOM, INFO, "ia_css_syscom_store_dmem VTL0_ADDR_MASK (%#x) @ dmem_addr %#x ssid %d\n",
+			      vtl0_addr_mask, ctx->cell_dmem_addr, ssid);
+		regmem_store_32(ctx->cell_dmem_addr, SYSCOM_VTL0_ADDR_MASK, vtl0_addr_mask, ssid);
+	}
+	/* store firmware configuration address */
+	IA_CSS_TRACE_3(SYSCOM, INFO, "ia_css_syscom_store_dmem CONFIG_REG (%#x) @ dmem_addr %#x ssid %d\n",
+		       ctx->config_vied_addr, ctx->cell_dmem_addr, ssid);
+	regmem_store_32(ctx->cell_dmem_addr, SYSCOM_CONFIG_REG,
+			ctx->config_vied_addr, ssid);
+	/* store syscom uninitialized state */
+	IA_CSS_TRACE_3(SYSCOM, INFO, "ia_css_syscom_store_dmem STATE_REG (%#x) @ dmem_addr %#x ssid %d\n",
+		       SYSCOM_STATE_UNINIT, ctx->cell_dmem_addr, ssid);
+	regmem_store_32(ctx->cell_dmem_addr, SYSCOM_STATE_REG,
+			SYSCOM_STATE_UNINIT, ssid);
+	/* store syscom uninitialized command */
+	IA_CSS_TRACE_3(SYSCOM, INFO, "ia_css_syscom_store_dmem COMMAND_REG (%#x) @ dmem_addr %#x ssid %d\n",
+		       SYSCOM_COMMAND_UNINIT, ctx->cell_dmem_addr, ssid);
+	regmem_store_32(ctx->cell_dmem_addr, SYSCOM_COMMAND_REG,
+			SYSCOM_COMMAND_UNINIT, ssid);
+
+	return 0;
+}
+
+/*
+ * store truslet configuration status setting
+ */
+void
+ia_css_syscom_set_trustlet_status(
+	unsigned int dmem_addr,
+	unsigned int ssid,
+	bool trustlet_exist
+)
+{
+	unsigned int value;
+
+	value = trustlet_exist ? TRUSTLET_EXIST : TRUSTLET_NOT_EXIST;
+	IA_CSS_TRACE_3(SYSCOM, INFO,
+		       "ia_css_syscom_set_trustlet_status TRUSTLET_STATUS (%#x) @ dmem_addr %#x ssid %d\n",
+		       value, dmem_addr, ssid);
+	regmem_store_32(dmem_addr, TRUSTLET_STATUS, value, ssid);
+}
+
+/*
+ * check if SPC access blocker programming is completed
+ */
+bool
+ia_css_syscom_is_ab_spc_ready(
+	struct ia_css_syscom_context *ctx
+)
+{
+	unsigned int value;
+
+	/* We only expect the call from non-secure context only */
+	if (ctx->secure) {
+		IA_CSS_TRACE_0(SYSCOM, ERROR, "ia_css_syscom_is_spc_ab_ready - Please call from non-secure context\n");
+		return false;
+	}
+
+	value = regmem_load_32(ctx->cell_dmem_addr, AB_SPC_STATUS, ctx->env.ssid);
+	IA_CSS_TRACE_3(SYSCOM, INFO,
+		       "ia_css_syscom_is_spc_ab_ready AB_SPC_STATUS @ dmem_addr %#x ssid %d - value %#x\n",
+		       ctx->cell_dmem_addr, ctx->env.ssid, value);
+
+	return (value == AB_SPC_READY);
+}
+#endif /* HAS_DUAL_CMD_CTX_SUPPORT */

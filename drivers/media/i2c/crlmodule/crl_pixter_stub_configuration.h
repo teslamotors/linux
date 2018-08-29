@@ -1,4 +1,4 @@
-/* SPDX-License_Identifier: GPL-2.0 */
+/* SPDX-License-Identifier: GPL-2.0 */
 /* Copyright (C) 2016 - 2018 Intel Corporation
  *
  * Author: Wang, Zaikuo <zaikuo.wang@intel.com>
@@ -493,7 +493,7 @@ static struct crl_v4l2_ctrl pixter_stub_v4l2_ctrls[] = {
 		.name = "V4L2_CID_PIXEL_RATE_PA",
 		.type = CRL_V4L2_CTRL_TYPE_INTEGER,
 		.data.std_data.min = 0,
-		.data.std_data.max = 0,
+		.data.std_data.max = 800000000,
 		.data.std_data.step = 1,
 		.data.std_data.def = 0,
 		.flags = 0,
@@ -512,7 +512,7 @@ static struct crl_v4l2_ctrl pixter_stub_v4l2_ctrls[] = {
 		.name = "V4L2_CID_PIXEL_RATE_CSI",
 		.type = CRL_V4L2_CTRL_TYPE_INTEGER,
 		.data.std_data.min = 0,
-		.data.std_data.max = 0,
+		.data.std_data.max = 800000000,
 		.data.std_data.step = 1,
 		.data.std_data.def = 0,
 		.flags = 0,

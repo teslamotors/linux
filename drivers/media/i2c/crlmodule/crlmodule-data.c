@@ -1,4 +1,4 @@
-// SPDX-License_Identifier: GPL-2.0
+// SPDX-License-Identifier: GPL-2.0
 /* Copyright (C) 2014 - 2018 Intel Corporation
  *
  * Author: Vinod Govindapillai <vinod.govindapillai@intel.com>
@@ -31,6 +31,7 @@
 #include "crl_ov9281_configuration.h"
 #include "crl_magna_configuration.h"
 #include "crl_ar023z_configuration.h"
+#include "crl_ov2775_configuration.h"
 
 static const struct crlmodule_sensors supported_sensors[] = {
 	{ "i2c-OVTIF858:00", "ov13858", &ov13858_crl_configuration},
@@ -54,6 +55,8 @@ static const struct crlmodule_sensors supported_sensors[] = {
 	{ "ADV7481 HDMI", "adv7481_hdmi", &adv7481_hdmi_crl_configuration },
 	{ "ADV7481_EVAL", "adv7481_eval", &adv7481_eval_crl_configuration },
 	{ "ADV7481B_EVAL", "adv7481b_eval", &adv7481b_eval_crl_configuration },
+	{ "i2c-ADV7481A:00", "adv7481_hdmi", &adv7481_hdmi_crl_configuration },
+	{ "i2c-ADV7481B:00", "adv7481_cvbs", &adv7481_cvbs_crl_configuration },
 	{ "SONY318A", "imx318", &imx318_crl_configuration },
 	{ "OV10635", "ov10635", &ov10635_crl_configuration },
 	{ "AR0231AT", "ar0231at", &ar0231at_crl_configuration },
@@ -72,6 +75,7 @@ static const struct crlmodule_sensors supported_sensors[] = {
 	{ "INT3474", "ov2740", &ov2740_crl_configuration },
 	{ "MAGNA", "magna", &magna_crl_configuration },
 	{ "AR023Z", "ar023z", &ar023z_crl_configuration },
+	{ "OV2775", "ov2775", &ov2775_crl_configuration },
 };
 
 /*

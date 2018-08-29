@@ -6,6 +6,8 @@
  * Copyright(c) 2017 Intel Corporation. All rights reserved.
  *
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ *
+ * Generic firmware loader.
  */
 
 #include <linux/delay.h>
@@ -42,6 +44,7 @@ static int get_ext_windows(struct snd_sof_dev *sdev,
 	return ret;
 }
 
+/* parse the extended FW boot data structures from FW boot message */
 int snd_sof_fw_parse_ext_data(struct snd_sof_dev *sdev, u32 offset)
 {
 	struct sof_ipc_ext_data_hdr *ext_hdr;
@@ -205,7 +208,7 @@ static int load_modules(struct snd_sof_dev *sdev, const struct firmware *fw)
 }
 
 int snd_sof_load_firmware_memcpy(struct snd_sof_dev *sdev,
-				 const struct firmware *fw)
+				 const struct firmware *fw, bool first_boot)
 {
 	int ret;
 
@@ -235,12 +238,12 @@ int snd_sof_load_firmware_memcpy(struct snd_sof_dev *sdev,
 EXPORT_SYMBOL(snd_sof_load_firmware_memcpy);
 
 int snd_sof_load_firmware(struct snd_sof_dev *sdev,
-			  const struct firmware *fw)
+			  const struct firmware *fw, bool first_boot)
 {
 	dev_dbg(sdev->dev, "loading firmware\n");
 
 	if (sdev->ops->load_firmware)
-		return sdev->ops->load_firmware(sdev, fw);
+		return sdev->ops->load_firmware(sdev, fw, first_boot);
 	return 0;
 }
 EXPORT_SYMBOL(snd_sof_load_firmware);
@@ -279,5 +282,6 @@ EXPORT_SYMBOL(snd_sof_run_firmware);
 
 void snd_sof_fw_unload(struct snd_sof_dev *sdev)
 {
+	/* TODO: support module unloading at runtime */
 }
 EXPORT_SYMBOL(snd_sof_fw_unload);

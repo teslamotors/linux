@@ -10,6 +10,7 @@
 
 #include <sound/pcm_params.h>
 #include "../sof-priv.h"
+#include "hda.h"
 
 #define SKL_FORMATS (SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE | \
 	SNDRV_PCM_FMTBIT_S32_LE)
@@ -19,7 +20,7 @@
  * some products who use this DAI array only physically have a subset of
  * the DAIs, but no harm is done here by adding the whole set.
  */
-static struct snd_soc_dai_driver skl_dai[] = {
+struct snd_soc_dai_driver skl_dai[] = {
 {
 	.name = "SSP0 Pin",
 	.playback = SOF_DAI_STREAM("ssp0 Tx", 1, 8,
@@ -38,7 +39,7 @@ static struct snd_soc_dai_driver skl_dai[] = {
 	.name = "SSP2 Pin",
 	.playback = SOF_DAI_STREAM("ssp2 Tx", 1, 8,
 				   SNDRV_PCM_RATE_8000_192000, SKL_FORMATS),
-	.capture = SOF_DAI_STREAM("ssp2 Rx", 1, 16,
+	.capture = SOF_DAI_STREAM("ssp2 Rx", 1, 8,
 				  SNDRV_PCM_RATE_8000_192000, SKL_FORMATS),
 },
 {
@@ -109,10 +110,3 @@ static struct snd_soc_dai_driver skl_dai[] = {
 				   SNDRV_PCM_RATE_8000_192000, SKL_FORMATS),
 },
 };
-
-struct snd_sof_dai_drv hda_dai_drv = {
-	.drv = skl_dai,
-	.num_drv = ARRAY_SIZE(skl_dai)
-};
-EXPORT_SYMBOL(hda_dai_drv);
-

@@ -101,7 +101,7 @@ struct ioreq_client {
 	/*
 	 *   this req records the req number this client need handle
 	 */
-	atomic_t req;
+	DECLARE_BITMAP(ioreqs_map, VHM_REQUEST_MAX);
 
 	/*
 	 * client ioreq handler:
@@ -204,7 +204,7 @@ int acrn_ioreq_create_client(unsigned long vmid, ioreq_handler_t handler,
 
 	client->vmid = vmid;
 	if (name)
-		strncpy(client->name, name, 16);
+		strncpy(client->name, name, sizeof(client->name) - 1);
 	spin_lock_init(&client->range_lock);
 	INIT_LIST_HEAD(&client->range_list);
 	init_waitqueue_head(&client->wq);
@@ -434,7 +434,7 @@ static inline bool is_destroying(struct ioreq_client *client)
 static inline bool has_pending_request(struct ioreq_client *client)
 {
 	if (client)
-		return (atomic_read(&client->req) > 0);
+		return !bitmap_empty(client->ioreqs_map, VHM_REQUEST_MAX);
 	else
 		return false;
 }
@@ -482,7 +482,7 @@ static int ioreq_client_thread(void *data)
 		if (has_pending_request(client)) {
 			if (client->handler) {
 				ret = client->handler(client->id,
-					client->req.counter);
+					client->ioreqs_map);
 				if (ret < 0)
 					BUG();
 			} else {
@@ -707,7 +707,8 @@ static int handle_cf8cfc(struct vhm_vm *vm, struct vhm_request *req, int vcpu)
 	}
 
 	if (req_handled) {
-		req->processed = REQ_STATE_SUCCESS;
+		smp_mb();
+		atomic_set(&req->processed, REQ_STATE_COMPLETE);
 		if (hcall_notify_req_finish(vm->vmid, vcpu) < 0) {
 			pr_err("vhm-ioreq: failed to "
 				"notify request finished !\n");
@@ -783,12 +784,16 @@ int acrn_ioreq_distribute_request(struct vhm_vm *vm)
 	struct vhm_request *req;
 	struct list_head *pos;
 	struct ioreq_client *client;
-	int i;
+	int i, vcpu_num;
 
-	/* TODO: replace VHM_REQUEST_MAX with vcpu num get at runtime */
-	for (i = 0; i < VHM_REQUEST_MAX; i++) {
+	vcpu_num = atomic_read(&vm->vcpu_num);
+	for (i = 0; i < vcpu_num; i++) {
 		req = vm->req_buf->req_queue + i;
-		if (req->valid && (req->processed == REQ_STATE_PENDING)) {
+
+		/* This function is called in tasklet only on SOS CPU0. Thus it
+		 * is safe to read the state first and update it later as long
+		 * as the update is atomic. */
+		if (atomic_read(&req->processed) == REQ_STATE_PENDING) {
 			if (handle_cf8cfc(vm, req, i))
 				continue;
 			client = acrn_ioreq_find_client_by_request(vm, req);
@@ -798,9 +803,9 @@ int acrn_ioreq_distribute_request(struct vhm_vm *vm)
 						"BUG\n");
 				BUG();
 			} else {
-				req->processed = REQ_STATE_PROCESSING;
 				req->client = client->id;
-				atomic_inc(&client->req);
+				atomic_set(&req->processed, REQ_STATE_PROCESSING);
+				set_bit(i, client->ioreqs_map);
 			}
 		}
 	}
@@ -831,7 +836,7 @@ int acrn_ioreq_complete_request(int client_id, uint64_t vcpu)
 		return -EINVAL;
 	}
 
-	atomic_dec(&client->req);
+	clear_bit(vcpu, client->ioreqs_map);
 	ret = hcall_notify_req_finish(client->vmid, vcpu);
 	if (ret < 0) {
 		pr_err("vhm-ioreq: failed to notify request finished !\n");
@@ -876,7 +881,7 @@ int acrn_ioreq_init(struct vhm_vm *vm, unsigned long vma)
 	int ret;
 
 	if (vm->req_buf)
-		BUG();
+		return -EEXIST;
 
 	ret = get_user_pages_fast(vma, 1, 1, &page);
 	if (unlikely(ret != 1) || (page == NULL)) {

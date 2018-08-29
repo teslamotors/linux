@@ -1,4 +1,4 @@
-// SPDX-License_Identifier: GPL-2.0
+// SPDX-License-Identifier: GPL-2.0
 // Copyright (C) 2014 - 2018 Intel Corporation
 
 #include <linux/device.h>
@@ -92,7 +92,8 @@ ipu_isys_csi2_be_soc_set_sel(struct v4l2_subdev *sd,
 		int i;
 
 		for (i = 0; i < asd->nstreams; i++) {
-			if (!asd->route[i].flags & V4L2_SUBDEV_ROUTE_FL_ACTIVE)
+			if (!(asd->route[i].flags &
+			      V4L2_SUBDEV_ROUTE_FL_ACTIVE))
 				continue;
 			if (asd->route[i].source == sel->pad) {
 				sink_pad = asd->route[i].sink;
