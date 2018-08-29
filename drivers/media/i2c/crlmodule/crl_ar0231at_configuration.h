@@ -423,6 +423,7 @@ static struct crl_register_write_rep ar0231at_1920_1088_10bit_linear_mode[] = {
 	{ 0x340C, CRL_REG_LEN_16BIT, 0x0080, 0x10 },
 	{ 0x30CE, CRL_REG_LEN_16BIT, 0x0120, 0x10 },
 	{ 0x301A, CRL_REG_LEN_16BIT, 0x19DC, 0x10 },
+	{ 0x3370, CRL_REG_LEN_16BIT, 0x0231, 0x10 },
 };
 
 static struct crl_register_write_rep ar0231at_1920_1088_linear_mode[] = {
@@ -738,6 +739,7 @@ static struct crl_register_write_rep ar0231at_1920_1088_linear_mode[] = {
 	{ 0x340C, CRL_REG_LEN_16BIT, 0x0080, 0x10 },
 	{ 0x30CE, CRL_REG_LEN_16BIT, 0x0120, 0x10 },
 	{ 0x301A, CRL_REG_LEN_16BIT, 0x19DC, 0x10 },
+	{ 0x3370, CRL_REG_LEN_16BIT, 0x0231, 0x10 },
 };
 
 static struct crl_register_write_rep ar0231at_1920_1088_2hdr_mode[] = {
@@ -1085,6 +1087,7 @@ static struct crl_register_write_rep ar0231at_1920_1088_2hdr_mode[] = {
 	{ 0x340C, CRL_REG_LEN_16BIT, 0x0080, 0x10 },
 	{ 0x30CE, CRL_REG_LEN_16BIT, 0x0120, 0x10 },
 	{ 0x301A, CRL_REG_LEN_16BIT, 0x19DC, 0x10 },
+	{ 0x3370, CRL_REG_LEN_16BIT, 0x0231, 0x10 },
 };
 
 static struct crl_register_write_rep ar0231at_1920_1088_3hdr_mode[] = {
@@ -1437,6 +1440,7 @@ static struct crl_register_write_rep ar0231at_1920_1088_3hdr_mode[] = {
 	{ 0x340C, CRL_REG_LEN_16BIT, 0x0080, 0x10 },
 	{ 0x30CE, CRL_REG_LEN_16BIT, 0x0120, 0x10 },
 	{ 0x301A, CRL_REG_LEN_16BIT, 0x19DC, 0x10 },
+	{ 0x3370, CRL_REG_LEN_16BIT, 0x0231, 0x10 },
 };
 
 static struct crl_register_write_rep ar0231at_1920_1088_4hdr_mode[] = {
@@ -1790,6 +1794,7 @@ static struct crl_register_write_rep ar0231at_1920_1088_4hdr_mode[] = {
 	{ 0x340C, CRL_REG_LEN_16BIT, 0x0080, 0x10 },
 	{ 0x30CE, CRL_REG_LEN_16BIT, 0x0120, 0x10 },
 	{ 0x301A, CRL_REG_LEN_16BIT, 0x19DC, 0x10 },
+	{ 0x3370, CRL_REG_LEN_16BIT, 0x0231, 0x10 },
 };
 
 struct crl_mode_rep ar0231at_modes[] = {
