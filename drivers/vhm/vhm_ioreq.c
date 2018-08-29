@@ -483,8 +483,10 @@ static int ioreq_client_thread(void *data)
 			if (client->handler) {
 				ret = client->handler(client->id,
 					client->ioreqs_map);
-				if (ret < 0)
-					BUG();
+				if (ret < 0) {
+					pr_err("vhm-ioreq: err:%d\n", ret);
+					break;
+				}
 			} else {
 				pr_err("vhm-ioreq: no ioreq handler\n");
 				break;
@@ -799,9 +801,8 @@ int acrn_ioreq_distribute_request(struct vhm_vm *vm)
 			client = acrn_ioreq_find_client_by_request(vm, req);
 			if (client == NULL) {
 				pr_err("vhm-ioreq: failed to "
-						"find ioreq client -> "
-						"BUG\n");
-				BUG();
+						"find ioreq client\n");
+				return -EINVAL;
 			} else {
 				req->client = client->id;
 				atomic_set(&req->processed, REQ_STATE_PROCESSING);
