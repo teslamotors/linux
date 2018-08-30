@@ -43,13 +43,31 @@
 /* max number of FE PCMs before BEs */
 #define SOF_BE_PCM_BASE		16
 
+#define SOF_IPC_DSP_REPLY		0
+#define SOF_IPC_HOST_REPLY		1
+
+/* convenience constructor for DAI driver streams */
+#define SOF_DAI_STREAM(sname, scmin, scmax, srates, sfmt) \
+	{.stream_name = sname, .channels_min = scmin, .channels_max = scmax, \
+	 .rates = srates, .formats = sfmt}
+
+#define SOF_FORMATS (SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE | \
+	SNDRV_PCM_FMTBIT_S32_LE | SNDRV_PCM_FMTBIT_FLOAT)
+
 struct snd_sof_dev;
 struct snd_sof_ipc_msg;
 struct snd_sof_ipc;
 struct snd_sof_debugfs_map;
 struct snd_soc_tplg_ops;
 struct snd_soc_component;
+struct sof_intel_hda_dev;
+struct snd_sof_pdata;
 
+/*
+ * SOF DSP HW abstraction operations.
+ * Used to abstract DSP HW architecture and any IO busses between host CPU
+ * and DSP device(s).
+ */
 struct snd_sof_dsp_ops {
 	/* probe and remove */
 	int (*remove)(struct snd_sof_dev *sof_dev);
@@ -87,9 +105,9 @@ struct snd_sof_dsp_ops {
 
 	/* mailbox */
 	void (*mailbox_read)(struct snd_sof_dev *sof_dev, u32 offset,
-			     void __iomem *addr, size_t bytes);
+			     void *addr, size_t bytes);
 	void (*mailbox_write)(struct snd_sof_dev *sof_dev, u32 offset,
-			      void __iomem *addr, size_t bytes);
+			      void *addr, size_t bytes);
 
 	/* ipc */
 	int (*send_msg)(struct snd_sof_dev *sof_dev,
@@ -97,7 +115,7 @@ struct snd_sof_dsp_ops {
 	int (*get_reply)(struct snd_sof_dev *sof_dev,
 			 struct snd_sof_ipc_msg *msg);
 	int (*is_ready)(struct snd_sof_dev *sof_dev);
-	int (*cmd_done)(struct snd_sof_dev *sof_dev);
+	int (*cmd_done)(struct snd_sof_dev *sof_dev, int dir);
 
 	/* debug */
 	const struct snd_sof_debugfs_map *debug_map;
@@ -105,25 +123,24 @@ struct snd_sof_dsp_ops {
 	void (*dbg_dump)(struct snd_sof_dev *sof_dev, u32 flags);
 
 	/* connect pcm substream to a host stream */
-	int (*host_stream_open)(struct snd_sof_dev *sdev,
-				struct snd_pcm_substream *substream);
+	int (*pcm_open)(struct snd_sof_dev *sdev,
+			struct snd_pcm_substream *substream);
 	/* disconnect pcm substream to a host stream */
-	int (*host_stream_close)(struct snd_sof_dev *sdev,
-				 struct snd_pcm_substream *substream);
+	int (*pcm_close)(struct snd_sof_dev *sdev,
+			 struct snd_pcm_substream *substream);
 
-	/* host stream prepare */
-	int (*host_stream_prepare)(struct snd_sof_dev *sdev,
-				   struct snd_pcm_substream *substream,
-				   struct snd_pcm_hw_params *params);
+	/* host stream hw params */
+	int (*pcm_hw_params)(struct snd_sof_dev *sdev,
+			     struct snd_pcm_substream *substream,
+			     struct snd_pcm_hw_params *params);
 
 	/* host stream trigger */
-	int (*host_stream_trigger)(struct snd_sof_dev *sdev,
-				   struct snd_pcm_substream *substream,
-				   int cmd);
+	int (*pcm_trigger)(struct snd_sof_dev *sdev,
+			   struct snd_pcm_substream *substream, int cmd);
 
 	/* FW loading */
 	int (*load_firmware)(struct snd_sof_dev *sof_dev,
-			     const struct firmware *fw);
+			     const struct firmware *fw, bool first_boot);
 	int (*load_module)(struct snd_sof_dev *sof_dev,
 			   struct snd_sof_mod_hdr *hdr);
 	int (*fw_ready)(struct snd_sof_dev *sdev, u32 msg_id);
@@ -132,6 +149,10 @@ struct snd_sof_dsp_ops {
 	int (*trace_init)(struct snd_sof_dev *sdev, u32 *stream_tag);
 	int (*trace_release)(struct snd_sof_dev *sdev);
 	int (*trace_trigger)(struct snd_sof_dev *sdev, int cmd);
+
+	/* DAI ops */
+	struct snd_soc_dai_driver *drv;
+	int num_drv;
 };
 
 struct snd_sof_pdata;
@@ -142,20 +163,15 @@ struct sof_ops_table {
 	struct platform_device *(*new_data)(struct snd_sof_pdata *pdata);
 };
 
-struct snd_sof_chip_info {
-	int id;
-	int cores_num;
-	int cores_mask;
-	int ipc_req;
-	int ipc_req_mask;
-	int ipc_ack;
-	int ipc_ack_mask;
-	int ipc_ctl;
-
-	irqreturn_t (*irq_thread)(int irq, void *context);
+/* FS entry for debug files that can expose DSP memories, registers */
+struct snd_sof_dfsentry_io {
+	struct dentry *dfsentry;
+	size_t size;
+	void __iomem *buf;
+	struct snd_sof_dev *sdev;
 };
 
-struct snd_sof_dfsentry {
+struct snd_sof_dfsentry_buf {
 	struct dentry *dfsentry;
 	size_t size;
 	void *buf;
@@ -186,8 +202,10 @@ struct snd_sof_pcm {
 	struct snd_soc_tplg_pcm pcm;
 	struct snd_sof_pcm_stream stream[2];
 	u32 posn_offset[2];
-	struct mutex mutex;	/* TODO: not used ? remove ? */
+	struct mutex mutex;	/* access mutex */
 	struct list_head list;	/* list in sdev pcm list */
+	struct snd_pcm_hw_params params[2];
+	int restore_stream[2]; /* restore hw_params for paused stream */
 };
 
 struct snd_sof_control {
@@ -199,7 +217,7 @@ struct snd_sof_control {
 	u32 size;	/* cdata size */
 	enum sof_ipc_ctrl_cmd cmd;
 
-	struct mutex mutex;	/* TODO: not used ? remove ? */
+	struct mutex mutex;	/* access mutex */
 	struct list_head list;	/* list in sdev control list */
 };
 
@@ -211,12 +229,23 @@ struct snd_sof_widget {
 	int id;
 
 	struct snd_soc_dapm_widget *widget;
-	struct mutex mutex;	/* TODO: not used ? remove ? */
+	struct mutex mutex;	/* access mutex */
 	struct list_head list;	/* list in sdev widget list */
 
 	void *private;			/* core does not touch this */
 };
 
+/* ASoC SOF DAPM route */
+struct snd_sof_route {
+	struct snd_sof_dev *sdev;
+
+	struct snd_soc_dapm_route *route;
+	struct list_head list;	/* list in sdev route list */
+
+	void *private;
+};
+
+/* ASoC DAI device */
 struct snd_sof_dai {
 	struct snd_sof_dev *sdev;
 	const char *name;
@@ -359,6 +388,7 @@ struct snd_sof_dev {
 	struct list_head kcontrol_list;
 	struct list_head widget_list;
 	struct list_head dai_list;
+	struct list_head route_list;
 	struct snd_soc_component *component;
 
 	/* FW configuration */
@@ -381,8 +411,18 @@ struct snd_sof_dev {
 	wait_queue_head_t trace_sleep;
 	u32 host_offset;
 	bool dtrace_is_enabled;
+	bool dtrace_error;
 
 	void *private;			/* core does not touch this */
+};
+
+/*
+ * SOF platform private struct used as drvdata of
+ * platform dev (e.g. pci/acpi/spi...) drvdata.
+ */
+struct sof_platform_priv {
+	struct snd_sof_pdata *sof_pdata;
+	struct platform_device *pdev_pcm;
 };
 
 /*
@@ -406,9 +446,9 @@ int snd_sof_create_page_table(struct snd_sof_dev *sdev,
  * Firmware loading.
  */
 int snd_sof_load_firmware(struct snd_sof_dev *sdev,
-			  const struct firmware *fw);
+			  const struct firmware *fw, bool first_boot);
 int snd_sof_load_firmware_memcpy(struct snd_sof_dev *sdev,
-				 const struct firmware *fw);
+				 const struct firmware *fw, bool first_boot);
 int snd_sof_run_firmware(struct snd_sof_dev *sdev);
 int snd_sof_parse_module_memcpy(struct snd_sof_dev *sdev,
 				struct snd_sof_mod_hdr *module);
@@ -420,7 +460,7 @@ int snd_sof_fw_parse_ext_data(struct snd_sof_dev *sdev, u32 offset);
  */
 struct snd_sof_ipc *snd_sof_ipc_init(struct snd_sof_dev *sdev);
 void snd_sof_ipc_free(struct snd_sof_dev *sdev);
-void snd_sof_ipc_reply(struct snd_sof_dev *sdev, u32 msg_id);
+int snd_sof_ipc_reply(struct snd_sof_dev *sdev, u32 msg_id);
 void snd_sof_ipc_msgs_rx(struct snd_sof_dev *sdev);
 void snd_sof_ipc_msgs_tx(struct snd_sof_dev *sdev);
 int snd_sof_ipc_stream_pcm_params(struct snd_sof_dev *sdev,
@@ -443,6 +483,7 @@ struct snd_sof_pcm *snd_sof_find_spcm_comp(struct snd_sof_dev *sdev,
 					   int *direction);
 struct snd_sof_pcm *snd_sof_find_spcm_pcm_id(struct snd_sof_dev *sdev,
 					     unsigned int pcm_id);
+void sof_ipc_drop_all(struct snd_sof_ipc *ipc);
 
 /*
  * Stream IPC
@@ -470,6 +511,8 @@ int snd_sof_init_topology(struct snd_sof_dev *sdev,
 			  struct snd_soc_tplg_ops *ops);
 int snd_sof_load_topology(struct snd_sof_dev *sdev, const char *file);
 void snd_sof_free_topology(struct snd_sof_dev *sdev);
+int snd_sof_complete_pipeline(struct snd_sof_dev *sdev,
+			      struct snd_sof_widget *swidget);
 
 /*
  * Trace/debug
@@ -487,6 +530,7 @@ void snd_sof_trace_notify_for_error(struct snd_sof_dev *sdev);
 int snd_sof_get_status(struct snd_sof_dev *sdev, u32 panic_code,
 		       u32 tracep_code, void *oops, void *stack,
 		       size_t stack_size);
+int snd_sof_init_trace_ipc(struct snd_sof_dev *sdev);
 
 /*
  * Platform specific ops.

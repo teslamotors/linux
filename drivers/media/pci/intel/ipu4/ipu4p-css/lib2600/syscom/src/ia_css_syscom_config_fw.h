@@ -33,6 +33,24 @@ enum {
 	SYSCOM_COMMAND_INACTIVE = 0x57A7F001
 };
 
+#if HAS_DUAL_CMD_CTX_SUPPORT
+enum {
+	/* Program load or explicit host setting should init to this */
+	TRUSTLET_UNINIT    = 0x57A8E000,
+	/* Host Syscom informs SP that Trustlet exists */
+	TRUSTLET_EXIST     = 0x57A8E001,
+	/* Host Syscom informs SP that Trustlet does not exist */
+	TRUSTLET_NOT_EXIST = 0x57A8E002
+};
+
+enum {
+	/* Program load or explicit setting initialized by SP */
+	AB_SPC_NOT_READY = 0x57A8F000,
+	/* SP informs host that SPC access programming is completed */
+	AB_SPC_READY     = 0x57A8F001
+};
+#endif
+
 /* firmware config: data that sent from the host to SP via DDR */
 /* Cell copies data into a context */
 

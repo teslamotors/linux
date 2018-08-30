@@ -93,6 +93,8 @@ static const struct snd_sof_debugfs_map cht_debugfs[] = {
 	{"shim", BYT_DSP_BAR, SHIM_OFFSET, SHIM_SIZE},
 };
 
+static int byt_cmd_done(struct snd_sof_dev *sdev, int dir);
+
 /*
  * Register IO
  */
@@ -138,12 +140,12 @@ static void byt_block_write(struct snd_sof_dev *sdev, u32 offset, void *src,
 	n = size % 4;
 
 	/* __iowrite32_copy use 32bit size values so divide by 4 */
-	__iowrite32_copy((void *)dest, src, m);
+	__iowrite32_copy(dest, src, m);
 
 	if (n) {
 		for (i = 0; i < n; i++)
 			tmp |= (u32)*(src_byte + m * 4 + i) << (i * 8);
-		__iowrite32_copy((void *)(dest + m * 4), &tmp, 1);
+		__iowrite32_copy(dest + m * 4, &tmp, 1);
 	}
 }
 
@@ -374,16 +376,15 @@ static irqreturn_t byt_irq_thread(int irq, void *context)
 
 	/* reply message from DSP */
 	if (ipcx & SHIM_BYT_IPCX_DONE) {
-		/* Handle Immediate reply from DSP Core */
-		snd_sof_ipc_reply(sdev, ipcx);
-
-		/* clear DONE bit - tell DSP we have completed */
-		snd_sof_dsp_update_bits64_unlocked(sdev, BYT_DSP_BAR, SHIM_IPCX,
-						   SHIM_BYT_IPCX_DONE, 0);
-
-		/* unmask Done interrupt */
-		snd_sof_dsp_update_bits64_unlocked(sdev, BYT_DSP_BAR, SHIM_IMRX,
-						   SHIM_IMRX_DONE, 0);
+		/*
+		 * handle immediate reply from DSP core. If the msg is
+		 * found, set done bit in cmd_done which is called at the
+		 * end of message processing function, else set it here
+		 * because the done bit can't be set in cmd_done function
+		 * which is triggered by msg
+		 */
+		if (snd_sof_ipc_reply(sdev, ipcx))
+			byt_cmd_done(sdev, SOF_IPC_DSP_REPLY);
 	}
 
 	/* new message from DSP */
@@ -408,10 +409,10 @@ static irqreturn_t byt_irq_thread(int irq, void *context)
 
 static int byt_is_ready(struct snd_sof_dev *sdev)
 {
-	u64 imrx;
+	u64 ipcx;
 
-	imrx = snd_sof_dsp_read64(sdev, BYT_DSP_BAR, SHIM_IMRX);
-	if (imrx & SHIM_IMRX_DONE)
+	ipcx = snd_sof_dsp_read64(sdev, BYT_DSP_BAR, SHIM_IPCX);
+	if ((ipcx & SHIM_BYT_IPCX_BUSY) || (ipcx & SHIM_BYT_IPCX_DONE))
 		return 0;
 
 	return 1;
@@ -461,17 +462,27 @@ static int byt_get_reply(struct snd_sof_dev *sdev, struct snd_sof_ipc_msg *msg)
 	return ret;
 }
 
-static int byt_cmd_done(struct snd_sof_dev *sdev)
+static int byt_cmd_done(struct snd_sof_dev *sdev, int dir)
 {
-	/* clear BUSY bit and set DONE bit - accept new messages */
-	snd_sof_dsp_update_bits64_unlocked(sdev, BYT_DSP_BAR, SHIM_IPCD,
-					   SHIM_BYT_IPCD_BUSY |
-					   SHIM_BYT_IPCD_DONE,
-					   SHIM_BYT_IPCD_DONE);
+	if (dir == SOF_IPC_HOST_REPLY) {
+		/* clear BUSY bit and set DONE bit - accept new messages */
+		snd_sof_dsp_update_bits64_unlocked(sdev, BYT_DSP_BAR, SHIM_IPCD,
+						   SHIM_BYT_IPCD_BUSY |
+						   SHIM_BYT_IPCD_DONE,
+						   SHIM_BYT_IPCD_DONE);
 
-	/* unmask busy interrupt */
-	snd_sof_dsp_update_bits64_unlocked(sdev, BYT_DSP_BAR, SHIM_IMRX,
-					   SHIM_IMRX_BUSY, 0);
+		/* unmask busy interrupt */
+		snd_sof_dsp_update_bits64_unlocked(sdev, BYT_DSP_BAR, SHIM_IMRX,
+						   SHIM_IMRX_BUSY, 0);
+	} else {
+		/* clear DONE bit - tell DSP we have completed */
+		snd_sof_dsp_update_bits64_unlocked(sdev, BYT_DSP_BAR, SHIM_IPCX,
+						   SHIM_BYT_IPCX_DONE, 0);
+
+		/* unmask Done interrupt */
+		snd_sof_dsp_update_bits64_unlocked(sdev, BYT_DSP_BAR, SHIM_IMRX,
+						   SHIM_IMRX_DONE, 0);
+	}
 
 	return 0;
 }
@@ -750,6 +761,55 @@ static int byt_remove(struct snd_sof_dev *sdev)
 		return byt_acpi_remove(sdev);
 }
 
+#define BYT_FORMATS (SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE | \
+	SNDRV_PCM_FMTBIT_S32_LE)
+
+/* Baytrail DAIs */
+static struct snd_soc_dai_driver byt_dai[] = {
+{
+	.name = "ssp0-port",
+	.playback = SOF_DAI_STREAM("ssp0 Tx", 1, 8,
+				   SNDRV_PCM_RATE_8000_192000, BYT_FORMATS),
+	.capture = SOF_DAI_STREAM("ssp0 Rx", 1, 8,
+				  SNDRV_PCM_RATE_8000_192000, BYT_FORMATS),
+},
+{
+	.name = "ssp1-port",
+	.playback = SOF_DAI_STREAM("ssp1 Tx", 1, 8,
+				   SNDRV_PCM_RATE_8000_192000, BYT_FORMATS),
+	.capture = SOF_DAI_STREAM("ssp1 Rx", 1, 8,
+				  SNDRV_PCM_RATE_8000_192000, BYT_FORMATS),
+},
+{
+	.name = "ssp2-port",
+	.playback = SOF_DAI_STREAM("ssp2 Tx", 1, 8,
+				   SNDRV_PCM_RATE_8000_192000, BYT_FORMATS),
+	.capture = SOF_DAI_STREAM("ssp2 Rx", 1, 8,
+				  SNDRV_PCM_RATE_8000_192000, BYT_FORMATS),
+},
+{
+	.name = "ssp3-port",
+	.playback = SOF_DAI_STREAM("ssp3 Tx", 1, 8,
+				   SNDRV_PCM_RATE_8000_192000, BYT_FORMATS),
+	.capture = SOF_DAI_STREAM("ssp3 Rx", 1, 8,
+				  SNDRV_PCM_RATE_8000_192000, BYT_FORMATS),
+},
+{
+	.name = "ssp4-port",
+	.playback = SOF_DAI_STREAM("ssp4 Tx", 1, 8,
+				   SNDRV_PCM_RATE_8000_192000, BYT_FORMATS),
+	.capture = SOF_DAI_STREAM("ssp4 Rx", 1, 8,
+				  SNDRV_PCM_RATE_8000_192000, BYT_FORMATS),
+},
+{
+	.name = "ssp5-port",
+	.playback = SOF_DAI_STREAM("ssp5 Tx", 1, 8,
+				   SNDRV_PCM_RATE_8000_192000, BYT_FORMATS),
+	.capture = SOF_DAI_STREAM("ssp5 Rx", 1, 8,
+				  SNDRV_PCM_RATE_8000_192000, BYT_FORMATS),
+},
+};
+
 /* baytrail ops */
 struct snd_sof_dsp_ops snd_sof_byt_ops = {
 	/* device init */
@@ -795,6 +855,10 @@ struct snd_sof_dsp_ops snd_sof_byt_ops = {
 
 	/*Firmware loading */
 	.load_firmware	= snd_sof_load_firmware_memcpy,
+
+	/* DAI drivers */
+	.drv = byt_dai,
+	.num_drv = 3, /* we have only 3 SSPs on byt*/
 };
 EXPORT_SYMBOL(snd_sof_byt_ops);
 
@@ -843,6 +907,11 @@ struct snd_sof_dsp_ops snd_sof_cht_ops = {
 
 	/*Firmware loading */
 	.load_firmware	= snd_sof_load_firmware_memcpy,
+
+	/* DAI drivers */
+	.drv = byt_dai,
+	/* all 6 SSPs may be available for cherrytrail */
+	.num_drv = ARRAY_SIZE(byt_dai),
 };
 EXPORT_SYMBOL(snd_sof_cht_ops);
 

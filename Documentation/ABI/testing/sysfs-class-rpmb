@@ -1,35 +1,37 @@
 What:		/sys/class/rpmb/
-Date:		Jun 2017
-KernelVersion:	4.12
+Date:		Jun 2018
+KernelVersion:	4.17
 Contact:	Tomas Winkler <tomas.winkler@intel.com>
 Description:
 		The rpmb/ class sub-directory belongs to RPMB device class.
 
 		Few storage technologies such is EMMC, UFS, and NVMe support
 		Replay Protected Memory Block (RPMB) hardware partition with
-		common protocol and frame layout.
+		common protocol and similar frame layout.
 		Such a partition provides authenticated and replay protected access,
 		hence suitable as a secure storage.
 
 What:		/sys/class/rpmb/rpmbN/
-Date:		Jun 2017
-KernelVersion:	4.12
+Date:		Jun 2018
+KernelVersion:	4.17
 Contact:	Tomas Winkler <tomas.winkler@intel.com>
 Description:
 		The /sys/class/rpmb/rpmbN directory is created for
 		each RPMB registered device.
 
 What:		/sys/class/rpmb/rpmbN/type
-Date:		Jun 2017
-KernelVersion:	4.12
+Date:		Jun 2018
+KernelVersion:	4.17
 Contact:	Tomas Winkler <tomas.winkler@intel.com>
 Description:
 		The /sys/class/rpmb/rpmbN/type file contains device
-		underlaying storage type technology: EMMC, UFS, SIM.
+		underlying storage type technology: EMMC, UFS, NVMe.
+		In case of simulated device it will have :SIM suffix
+		i.e EMMC:SIM.
 
 What:		/sys/class/rpmb/rpmbN/id
-Date:		Jun 2017
-KernelVersion:	4.12
+Date:		Jun 2018
+KernelVersion:	4.17
 Contact:	Tomas Winkler <tomas.winkler@intel.com>
 Description:
 		The /sys/class/rpmb/rpmbN/id file contains unique device id
@@ -38,10 +40,18 @@ Description:
 		device.
 		The content can be parsed according the storage device type.
 
-What:		/sys/class/rpmb/rpmbN/reliable_wr_cnt
-Date:		Jun 2017
-KernelVersion:	4.12
+What:		/sys/class/rpmb/rpmbN/wr_cnt_max
+Date:		Jun 2018
+KernelVersion:	4.17
 Contact:	Tomas Winkler <tomas.winkler@intel.com>
 Description:
-		The /sys/class/rpmb/rpmbN/reliable_wr_cnt file contains
+		The /sys/class/rpmb/rpmbN/wr_cnt_max file contains
 		number of blocks that can be reliable written in a single request.
+
+What:		/sys/class/rpmb/rpmbN/rd_cnt_max
+Date:		Jun 2018
+KernelVersion:	4.17
+Contact:	Tomas Winkler <tomas.winkler@intel.com>
+Description:
+		The /sys/class/rpmb/rpmbN/rd_cnt_max file contains
+		number of blocks that can be read in a single request.

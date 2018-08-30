@@ -1,4 +1,4 @@
-// SPDX-License_Identifier: GPL-2.0
+// SPDX-License-Identifier: GPL-2.0
 // Copyright (C) 2013 - 2018 Intel Corporation
 
 #include <linux/debugfs.h>
@@ -14,6 +14,7 @@
 #include <linux/version.h>
 
 #include <media/ipu-isys.h>
+#include <media/ipu4-acpi.h>
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 6, 0)
 #include <media/v4l2-mc.h>
 #endif
@@ -330,6 +331,40 @@ i2c_client *isys_find_i2c_subdev(struct i2c_adapter *adapter,
 	return test.client;
 }
 
+static struct v4l2_subdev *
+register_acpi_i2c_subdev(struct v4l2_device *v4l2_dev,
+                        struct ipu_isys_subdev_info *sd_info,
+                        struct i2c_client *client)
+{
+       struct i2c_board_info *info = &sd_info->i2c.board_info;
+       struct v4l2_subdev *sd;
+
+       request_module(I2C_MODULE_PREFIX "%s", info->type);
+
+       /* ACPI overwrite with platform data */
+       client->dev.platform_data = info->platform_data;
+       /* Change I2C client name to one in temporary platform data */
+       strlcpy(client->name, info->type, sizeof(client->name));
+
+       if (device_reprobe(&client->dev))
+               return NULL;
+
+       if (!client->dev.driver)
+               return NULL;
+
+       if (!try_module_get(client->dev.driver->owner))
+               return NULL;
+
+       sd = i2c_get_clientdata(client);
+
+       if (v4l2_device_register_subdev(v4l2_dev, sd))
+               sd = NULL;
+
+       module_put(client->dev.driver->owner);
+
+       return sd;
+}
+
 static int
 isys_complete_ext_device_registration(struct ipu_isys *isys,
 				      struct v4l2_subdev *sd,
@@ -369,7 +404,8 @@ skip_unregister_subdev:
 }
 
 static int isys_register_ext_subdev(struct ipu_isys *isys,
-				    struct ipu_isys_subdev_info *sd_info)
+				    struct ipu_isys_subdev_info *sd_info,
+				    bool acpi_only)
 {
 	struct i2c_adapter *adapter =
 	    i2c_get_adapter(sd_info->i2c.i2c_adapter_id);
@@ -402,14 +438,45 @@ static int isys_register_ext_subdev(struct ipu_isys *isys,
 
 	client = isys_find_i2c_subdev(adapter, sd_info);
 
-	if (client) {
+	if (acpi_only) {
+		if (!client) {
+			dev_dbg(&isys->adev->dev, "Matching ACPI device not found - postpone\n");
+			rval = 0;
+			goto skip_put_adapter;
+		}
+		if (!sd_info->acpiname) {
+			dev_dbg(&isys->adev->dev, "No name in platform data\n");
+			rval = 0;
+			goto skip_put_adapter;
+		}
+		if (strcmp(dev_name(&client->dev), sd_info->acpiname)) {
+			dev_dbg(&isys->adev->dev, "Names don't match: %s != %s",
+                               dev_name(&client->dev), sd_info->acpiname);
+			rval = 0;
+			goto skip_put_adapter;
+		}
+               /* Acpi match found. Continue to reprobe */
+	} else if (client) {
 		dev_dbg(&isys->adev->dev, "Device exists\n");
+		rval = 0;
+		goto skip_put_adapter;
+	} else if (sd_info->acpiname) {
+		dev_dbg(&isys->adev->dev, "ACPI name don't match: %s\n",
+                       sd_info->acpiname);
 		rval = 0;
 		goto skip_put_adapter;
 	}
 
-	sd = v4l2_i2c_new_subdev_board(&isys->v4l2_dev, adapter,
-				       &sd_info->i2c.board_info, 0);
+        if (!client) {
+                dev_info(&isys->adev->dev,
+                         "i2c device not found in ACPI table\n");
+                sd = v4l2_i2c_new_subdev_board(&isys->v4l2_dev, adapter,
+                                               &sd_info->i2c.board_info, 0);
+        } else {
+                dev_info(&isys->adev->dev, "i2c device found in ACPI table\n");
+                sd = register_acpi_i2c_subdev(&isys->v4l2_dev,
+                                              sd_info, client);
+        }
 
 	if (!sd) {
 		dev_warn(&isys->adev->dev, "can't create new i2c subdev\n");
@@ -427,17 +494,69 @@ skip_put_adapter:
 	return rval;
 }
 
+static int isys_acpi_add_device(struct device *dev, void *priv,
+                               struct ipu_isys_csi2_config *csi2,
+                               bool reprobe)
+{
+       struct ipu_isys *isys = priv;
+       struct i2c_client *client = i2c_verify_client(dev);
+       struct v4l2_subdev *sd;
+
+       if (!client)
+               return -ENODEV;
+
+       if (reprobe)
+               if (device_reprobe(&client->dev))
+                       return -ENODEV;
+
+       if (!client->dev.driver)
+               return -ENODEV;
+
+       /* Lock the module so we can safely get the v4l2_subdev pointer */
+       if (!try_module_get(client->dev.driver->owner))
+               return -ENODEV;
+
+       sd = i2c_get_clientdata(client);
+
+       if (v4l2_device_register_subdev(&isys->v4l2_dev, sd)) {
+               dev_warn(&isys->adev->dev, "can't create new i2c subdev\n");
+               goto leave_module_put;
+       }
+       module_put(client->dev.driver->owner);
+
+       if (!csi2)
+               return 0;
+
+       return isys_complete_ext_device_registration(isys, sd, csi2);
+
+leave_module_put:
+       module_put(client->dev.driver->owner);
+       return -ENODEV;
+}
+
 static void isys_register_ext_subdevs(struct ipu_isys *isys)
 {
 	struct ipu_isys_subdev_pdata *spdata = isys->pdata->spdata;
 	struct ipu_isys_subdev_info **sd_info;
 
-	if (!spdata) {
+        if (spdata) {
+                /* Scan spdata first to possibly override ACPI data */
+                /* ACPI created devices */
+                for (sd_info = spdata->subdevs; *sd_info; sd_info++)
+                        isys_register_ext_subdev(isys, *sd_info, true);
+ 
+                /* Scan non-acpi devices */
+                for (sd_info = spdata->subdevs; *sd_info; sd_info++)
+                        isys_register_ext_subdev(isys, *sd_info, false);
+        } else {
 		dev_info(&isys->adev->dev, "no subdevice info provided\n");
-		return;
 	}
-	for (sd_info = spdata->subdevs; *sd_info; sd_info++)
-		isys_register_ext_subdev(isys, *sd_info);
+
+        /* Handle real ACPI stuff */
+        request_module("ipu4-acpi");
+        ipu_get_acpi_devices(isys, &isys->adev->dev,
+                                    isys_acpi_add_device);
+
 }
 
 static void isys_unregister_subdevices(struct ipu_isys *isys)
@@ -625,7 +744,7 @@ fail:
 	return rval;
 }
 
-struct media_device_ops isys_mdev_ops = {
+static struct media_device_ops isys_mdev_ops = {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
 	.link_notify = ipu_pipeline_link_notify,
 #else
@@ -804,7 +923,8 @@ static void isys_remove(struct ipu_bus_device *adev)
 	struct isys_fw_msgs *fwmsg, *safe;
 
 	dev_info(&adev->dev, "removed\n");
-	debugfs_remove_recursive(isys->debugfsdir);
+	if (isp->ipu_dir)
+		debugfs_remove_recursive(isys->debugfsdir);
 
 	list_for_each_entry_safe(fwmsg, safe, &isys->framebuflist, head) {
 		dma_free_attrs(&adev->dev, sizeof(struct isys_fw_msgs),
@@ -1005,7 +1125,7 @@ void ipu_cleanup_fw_msg_bufs(struct ipu_isys *isys)
 void ipu_put_fw_mgs_buffer(struct ipu_isys *isys, u64 data)
 {
 	struct isys_fw_msgs *msg;
-	u64 *ptr = (u64 *) data;
+	u64 *ptr = (u64 *)(unsigned long)data;
 
 	if (!ptr)
 		return;

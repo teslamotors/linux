@@ -23,7 +23,7 @@ int snd_sof_pci_update_bits_unlocked(struct snd_sof_dev *sdev, u32 offset,
 {
 	bool change;
 	unsigned int old, new;
-	u32 ret;
+	u32 ret = ~0; /* explicit init to remove uninitialized use warnings */
 
 	pci_read_config_dword(sdev->pci, offset, &ret);
 	dev_dbg(sdev->dev, "Debug PCIR: %8.8x at  %8.8x\n",
@@ -188,3 +188,23 @@ int snd_sof_dsp_register_poll(struct snd_sof_dev *sdev, u32 bar, u32 offset,
 	return ret;
 }
 EXPORT_SYMBOL(snd_sof_dsp_register_poll);
+
+void snd_sof_dsp_panic(struct snd_sof_dev *sdev, u32 offset)
+{
+	dev_err(sdev->dev, "error : DSP panic!\n");
+
+	/* check if DSP is not ready and did not set the dsp_oops_offset.
+	 * if the dsp_oops_offset is not set, set it from the panic message.
+	 * Also add a check to memory window setting with panic message.
+	 */
+	if (!sdev->dsp_oops_offset)
+		sdev->dsp_oops_offset = offset;
+	else
+		dev_dbg(sdev->dev, "panic: dsp_oops_offset %zu offset %d\n",
+			sdev->dsp_oops_offset, offset);
+
+	snd_sof_dsp_dbg_dump(sdev, SOF_DBG_REGS | SOF_DBG_MBOX);
+	snd_sof_trace_notify_for_error(sdev);
+	snd_sof_dsp_cmd_done(sdev, SOF_IPC_HOST_REPLY);
+}
+EXPORT_SYMBOL(snd_sof_dsp_panic);

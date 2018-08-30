@@ -35,22 +35,18 @@ int sof_nocodec_setup(struct device *dev,
 	mach->sof_fw_filename = desc->nocodec_fw_filename;
 	mach->sof_tplg_filename = desc->nocodec_tplg_filename;
 
-	return 0;
-}
-EXPORT_SYMBOL(sof_nocodec_setup);
+	/* create dummy BE dai_links */
+	links = devm_kzalloc(dev, sizeof(struct snd_soc_dai_link) *
+			     ops->num_drv, GFP_KERNEL);
+	if (!links)
+		return -ENOMEM;
 
-static int sof_nocodec_codec_fixup(struct snd_soc_pcm_runtime *rtd,
-				   struct snd_pcm_hw_params *params)
-{
-	// TODO: read this from topology
-	return 0;
-}
-
-static struct snd_soc_ops sof_nocodec_ops = {};
-
-static int nocodec_rtd_init(struct snd_soc_pcm_runtime *rtd)
-{
-	snd_soc_set_dmi_name(rtd->card, NULL);
+	ret = sof_bes_setup(dev, ops, links, ops->num_drv,
+			    &sof_nocodec_card);
+	if (ret) {
+		kfree(links);
+		return ret;
+	}
 
 	return 0;
 }

@@ -162,7 +162,7 @@ static int max9286_set_stream(struct v4l2_subdev *subdev, int enable)
 	struct v4l2_subdev *sd;
 	int i, rval;
 	unsigned int val;
-	u8 slval = 0;
+	u8 slval = 0xE0;
 
 	dev_dbg(max->v4l2_sd.dev, "MAX9286 set stream. enable = %d\n", enable);
 
@@ -182,8 +182,8 @@ static int max9286_set_stream(struct v4l2_subdev *subdev, int enable)
 
 		if (!remote_pad)
 			continue;
-
-		slval = 0xEF;
+		/* Enable link */
+		slval |= (0x0F & (1 << i));
 		rval = regmap_write(max->regmap8, DS_LINK_ENABLE, slval);
 		if (rval) {
 			dev_err(max->v4l2_sd.dev,
@@ -205,7 +205,6 @@ static int max9286_set_stream(struct v4l2_subdev *subdev, int enable)
 				sd->name, enable);
 			return rval;
 		}
-		break;
 	}
 
 	/* Enable I2C ACK */
@@ -232,6 +231,31 @@ static int max9286_set_stream(struct v4l2_subdev *subdev, int enable)
 	/* Set preemphasis settings for all serializers (set to 3.3dB)*/
 	max96705_write_register(max, S_ADDR_MAX96705_BROADCAST -
 		S_ADDR_MAX96705, S_CMLLVL_PREEMP, 0xAA);
+	usleep_range(5000, 6000);
+
+	/* Set VSYNC Delay */
+	max96705_write_register(max, S_ADDR_MAX96705_BROADCAST -
+		S_ADDR_MAX96705, S_SYNC_GEN_CONFIG, 0x21);
+	usleep_range(5000, 6000);
+
+	max96705_write_register(max, S_ADDR_MAX96705_BROADCAST -
+		S_ADDR_MAX96705, S_VS_DLY_2, 0x06);
+	usleep_range(5000, 6000);
+
+	max96705_write_register(max, S_ADDR_MAX96705_BROADCAST -
+		S_ADDR_MAX96705, S_VS_DLY_1, 0xD8);
+	usleep_range(5000, 6000);
+
+	max96705_write_register(max, S_ADDR_MAX96705_BROADCAST -
+		S_ADDR_MAX96705, S_VS_H_2, 0x26);
+	usleep_range(5000, 6000);
+
+	max96705_write_register(max, S_ADDR_MAX96705_BROADCAST -
+		S_ADDR_MAX96705, S_VS_H_1, 0x00);
+	usleep_range(5000, 6000);
+
+	max96705_write_register(max, S_ADDR_MAX96705_BROADCAST -
+		S_ADDR_MAX96705, S_VS_H_0, 0x00);
 	usleep_range(5000, 6000);
 
 	/* Enable link equalizers */
@@ -655,7 +679,7 @@ static const struct v4l2_ctrl_ops max9286_ctrl_ops = {
 	.s_ctrl = max9286_s_ctrl,
 };
 
-static const s64 max9286_op_sys_clock[] = { 264000000, };
+static const s64 max9286_op_sys_clock[] = { 87750000, };
 static const struct v4l2_ctrl_config max9286_controls[] = {
 	{
 		.ops = &max9286_ctrl_ops,

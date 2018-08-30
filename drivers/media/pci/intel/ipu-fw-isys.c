@@ -1,4 +1,4 @@
-// SPDX-License_Identifier: GPL-2.0
+// SPDX-License-Identifier: GPL-2.0
 // Copyright (C) 2013 - 2018 Intel Corporation
 
 #include <asm/cacheflush.h>
@@ -80,7 +80,8 @@ extracted_bits_per_pixel_per_mipi_data_type[N_IPU_FW_ISYS_MIPI_DATA_TYPE] = {
 	IPU_FW_UNSUPPORTED_DATA_TYPE	/* [0x3F] */
 };
 
-const char send_msg_types[N_IPU_FW_ISYS_SEND_TYPE][32] = {
+#ifndef CONFIG_VIDEO_INTEL_IPU_FW_LIB
+static const char send_msg_types[N_IPU_FW_ISYS_SEND_TYPE][32] = {
 	"STREAM_OPEN",
 	"STREAM_START",
 	"STREAM_START_AND_CAPTURE",
@@ -90,6 +91,338 @@ const char send_msg_types[N_IPU_FW_ISYS_SEND_TYPE][32] = {
 	"STREAM_CLOSE"
 };
 
+static int handle_proxy_response(struct ipu_isys *isys, unsigned int req_id)
+{
+	struct ipu_fw_isys_proxy_resp_info_abi *resp;
+	int rval = -EIO;
+
+	resp = (struct ipu_fw_isys_proxy_resp_info_abi *)
+	    ipu_recv_get_token(isys->fwcom, IPU_BASE_PROXY_RECV_QUEUES);
+	if (!resp)
+		return 1;
+
+	dev_dbg(&isys->adev->dev,
+		"Proxy response: id 0x%x, error %d, details %d\n",
+		resp->request_id, resp->error_info.error,
+		resp->error_info.error_details);
+
+	if (req_id == resp->request_id)
+		rval = 0;
+
+	ipu_recv_put_token(isys->fwcom, IPU_BASE_PROXY_RECV_QUEUES);
+	return rval;
+}
+
+/* Simple blocking proxy send function */
+int ipu_fw_isys_send_proxy_token(struct ipu_isys *isys,
+				 unsigned int req_id,
+				 unsigned int index,
+				 unsigned int offset, u32 value)
+{
+	struct ipu_fw_com_context *ctx = isys->fwcom;
+	struct ipu_fw_proxy_send_queue_token *token;
+	unsigned int timeout = 1000;
+	int rval = -EBUSY;
+
+	dev_dbg(&isys->adev->dev,
+		"proxy send token: req_id 0x%x, index %d, offset 0x%x, value 0x%x\n",
+		req_id, index, offset, value);
+
+	mutex_lock(&isys->mutex);
+	token = ipu_send_get_token(ctx, IPU_BASE_PROXY_SEND_QUEUES);
+	if (!token)
+		goto leave;
+
+	token->request_id = req_id;
+	token->region_index = index;
+	token->offset = offset;
+	token->value = value;
+	ipu_send_put_token(ctx, IPU_BASE_PROXY_SEND_QUEUES);
+
+	/* Currently proxy doesn't support irq based service. Poll */
+	do {
+		usleep_range(100, 110);
+		rval = handle_proxy_response(isys, req_id);
+		if (!rval)
+			break;
+		if (rval == -EIO) {
+			dev_err(&isys->adev->dev,
+				"Proxy response received with unexpected id\n");
+			break;
+		}
+		timeout--;
+	} while (rval && timeout);
+
+	if (!timeout)
+		dev_err(&isys->adev->dev, "Proxy response timed out\n");
+leave:
+	mutex_unlock(&isys->mutex);
+	return rval;
+}
+
+int
+ipu_fw_isys_complex_cmd(struct ipu_isys *isys,
+			const unsigned int stream_handle,
+			void *cpu_mapped_buf,
+			dma_addr_t dma_mapped_buf,
+			size_t size, enum ipu_fw_isys_send_type send_type)
+{
+	struct ipu_fw_com_context *ctx = isys->fwcom;
+	struct ipu_fw_send_queue_token *token;
+
+	if (send_type >= N_IPU_FW_ISYS_SEND_TYPE)
+		return -EINVAL;
+
+	dev_dbg(&isys->adev->dev, "send_token: %s\n",
+		send_msg_types[send_type]);
+
+	/*
+	 * Time to flush cache in case we have some payload. Not all messages
+	 * have that
+	 */
+	if (cpu_mapped_buf)
+		clflush_cache_range(cpu_mapped_buf, size);
+
+	token = ipu_send_get_token(ctx,
+				   stream_handle + IPU_BASE_MSG_SEND_QUEUES);
+	if (!token)
+		return -EBUSY;
+
+	token->payload = dma_mapped_buf;
+	token->buf_handle = (unsigned long)cpu_mapped_buf;
+	token->send_type = send_type;
+
+	ipu_send_put_token(ctx, stream_handle + IPU_BASE_MSG_SEND_QUEUES);
+
+	return 0;
+}
+
+int ipu_fw_isys_simple_cmd(struct ipu_isys *isys,
+			   const unsigned int stream_handle,
+			   enum ipu_fw_isys_send_type send_type)
+{
+	return ipu_fw_isys_complex_cmd(isys, stream_handle, NULL, 0, 0,
+				       send_type);
+}
+
+int ipu_fw_isys_close(struct ipu_isys *isys)
+{
+	struct device *dev = &isys->adev->dev;
+	int timeout = IPU_ISYS_TURNOFF_TIMEOUT;
+	int rval;
+	unsigned long flags;
+
+	/*
+	 * Stop the isys fw. Actual close takes
+	 * some time as the FW must stop its actions including code fetch
+	 * to SP icache.
+	 */
+	spin_lock_irqsave(&isys->power_lock, flags);
+	rval = ipu_fw_com_close(isys->fwcom);
+	spin_unlock_irqrestore(&isys->power_lock, flags);
+	if (rval)
+		dev_err(dev, "Device close failure: %d\n", rval);
+
+	/* release probably fails if the close failed. Let's try still */
+	do {
+		usleep_range(IPU_ISYS_TURNOFF_DELAY_US,
+			     2 * IPU_ISYS_TURNOFF_DELAY_US);
+		rval = ipu_fw_com_release(isys->fwcom, 0);
+		timeout--;
+	} while (rval != 0 && timeout);
+
+	/* Spin lock to wait the interrupt handler to be finished */
+	spin_lock_irqsave(&isys->power_lock, flags);
+	if (!rval)
+		isys->fwcom = NULL;	/* No further actions needed */
+	else
+		dev_err(dev, "Device release time out %d\n", rval);
+	spin_unlock_irqrestore(&isys->power_lock, flags);
+	return rval;
+}
+
+void ipu_fw_isys_cleanup(struct ipu_isys *isys)
+{
+	ipu_fw_com_release(isys->fwcom, 1);
+	isys->fwcom = NULL;
+}
+
+static void start_sp(struct ipu_bus_device *adev)
+{
+	struct ipu_isys *isys = ipu_bus_get_drvdata(adev);
+	void __iomem *spc_regs_base = isys->pdata->base +
+	    isys->pdata->ipdata->hw_variant.spc_offset;
+	u32 val = 0;
+
+	val |= IPU_ISYS_SPC_STATUS_START |
+	    IPU_ISYS_SPC_STATUS_RUN |
+	    IPU_ISYS_SPC_STATUS_CTRL_ICACHE_INVALIDATE;
+	val |= isys->icache_prefetch ? IPU_ISYS_SPC_STATUS_ICACHE_PREFETCH : 0;
+
+	writel(val, spc_regs_base + IPU_ISYS_REG_SPC_STATUS_CTRL);
+}
+
+static int query_sp(struct ipu_bus_device *adev)
+{
+	struct ipu_isys *isys = ipu_bus_get_drvdata(adev);
+	void __iomem *spc_regs_base = isys->pdata->base +
+	    isys->pdata->ipdata->hw_variant.spc_offset;
+	u32 val = readl(spc_regs_base + IPU_ISYS_REG_SPC_STATUS_CTRL);
+
+	/* return true when READY == 1, START == 0 */
+	val &= IPU_ISYS_SPC_STATUS_READY | IPU_ISYS_SPC_STATUS_START;
+
+	return val == IPU_ISYS_SPC_STATUS_READY;
+}
+
+int ipu_fw_isys_init(struct ipu_isys *isys, unsigned int num_streams)
+{
+	int retry = IPU_ISYS_OPEN_RETRY;
+	int num_in_message_queues = clamp_t(unsigned int, num_streams, 1,
+					    IPU_ISYS_NUM_STREAMS);
+	int num_out_message_queues = 1;
+	int type_proxy = IPU_FW_ISYS_QUEUE_TYPE_PROXY;
+	int type_dev = IPU_FW_ISYS_QUEUE_TYPE_DEV;
+	int type_msg = IPU_FW_ISYS_QUEUE_TYPE_MSG;
+	int base_dev_send = IPU_BASE_DEV_SEND_QUEUES;
+	int base_msg_send = IPU_BASE_MSG_SEND_QUEUES;
+	int base_msg_recv = IPU_BASE_MSG_RECV_QUEUES;
+
+	struct ipu_fw_syscom_queue_config
+	    input_queue_cfg[IPU_N_MAX_SEND_QUEUES];
+	struct ipu_fw_syscom_queue_config
+	    output_queue_cfg[IPU_N_MAX_RECV_QUEUES];
+
+	struct ipu_fw_com_cfg fwcom = {
+		.input = input_queue_cfg,
+		.output = output_queue_cfg,
+		.cell_start = start_sp,
+		.cell_ready = query_sp,
+	};
+
+	struct ipu_fw_isys_fw_config isys_fw_cfg = {
+		.num_send_queues[IPU_FW_ISYS_QUEUE_TYPE_PROXY] =
+		    IPU_N_MAX_PROXY_SEND_QUEUES,
+		.num_send_queues[IPU_FW_ISYS_QUEUE_TYPE_DEV] =
+		    IPU_N_MAX_DEV_SEND_QUEUES,
+		.num_send_queues[IPU_FW_ISYS_QUEUE_TYPE_MSG] =
+		    num_in_message_queues,
+		.num_recv_queues[IPU_FW_ISYS_QUEUE_TYPE_PROXY] =
+		    IPU_N_MAX_PROXY_RECV_QUEUES,
+		/* Common msg/dev return queue */
+		.num_recv_queues[IPU_FW_ISYS_QUEUE_TYPE_DEV] = 0,
+		.num_recv_queues[IPU_FW_ISYS_QUEUE_TYPE_MSG] =
+		    num_out_message_queues,
+	};
+	struct device *dev = &isys->adev->dev;
+	int rval, i;
+
+	fwcom.num_input_queues =
+	    isys_fw_cfg.num_send_queues[type_proxy] +
+	    isys_fw_cfg.num_send_queues[type_dev] +
+	    isys_fw_cfg.num_send_queues[type_msg];
+
+	fwcom.num_output_queues =
+	    isys_fw_cfg.num_recv_queues[type_proxy] +
+	    isys_fw_cfg.num_recv_queues[type_dev] +
+	    isys_fw_cfg.num_recv_queues[type_msg];
+
+	/*
+	 * SRAM partitioning. Initially equal partitioning is set
+	 * TODO: Fine tune the partitining based on the stream pixel load
+	 */
+	for (i = 0; i < IPU_NOF_SRAM_BLOCKS_MAX; i++) {
+		if (i < num_in_message_queues)
+			isys_fw_cfg.buffer_partition.num_gda_pages[i] =
+			    (IPU_DEVICE_GDA_NR_PAGES *
+			     IPU_DEVICE_GDA_VIRT_FACTOR) /
+			    num_in_message_queues;
+		else
+			isys_fw_cfg.buffer_partition.num_gda_pages[i] = 0;
+	}
+
+	/* FW assumes proxy interface at fwcom queue 0 */
+	for (i = 0; i < isys_fw_cfg.num_send_queues[type_proxy]; i++) {
+		input_queue_cfg[i].token_size =
+		    sizeof(struct ipu_fw_proxy_send_queue_token);
+		input_queue_cfg[i].queue_size = IPU_ISYS_SIZE_PROXY_SEND_QUEUE;
+	}
+
+	for (i = 0; i < isys_fw_cfg.num_send_queues[type_dev]; i++) {
+		input_queue_cfg[base_dev_send + i].token_size =
+		    sizeof(struct ipu_fw_send_queue_token);
+		input_queue_cfg[base_dev_send + i].queue_size =
+		    IPU_DEV_SEND_QUEUE_SIZE;
+	}
+
+	for (i = 0; i < isys_fw_cfg.num_send_queues[type_msg]; i++) {
+		input_queue_cfg[base_msg_send + i].token_size =
+		    sizeof(struct ipu_fw_send_queue_token);
+		input_queue_cfg[base_msg_send + i].queue_size =
+		    IPU_ISYS_SIZE_SEND_QUEUE;
+	}
+
+	for (i = 0; i < isys_fw_cfg.num_recv_queues[type_proxy]; i++) {
+		output_queue_cfg[i].token_size =
+		    sizeof(struct ipu_fw_proxy_resp_queue_token);
+		output_queue_cfg[i].queue_size = IPU_ISYS_SIZE_PROXY_RECV_QUEUE;
+	}
+	/* There is no recv DEV queue */
+	for (i = 0; i < isys_fw_cfg.num_recv_queues[type_msg]; i++) {
+		output_queue_cfg[base_msg_recv + i].token_size =
+		    sizeof(struct ipu_fw_resp_queue_token);
+		output_queue_cfg[base_msg_recv + i].queue_size =
+		    IPU_ISYS_SIZE_RECV_QUEUE;
+	}
+
+	fwcom.dmem_addr = isys->pdata->ipdata->hw_variant.dmem_offset;
+	fwcom.specific_addr = &isys_fw_cfg;
+	fwcom.specific_size = sizeof(isys_fw_cfg);
+
+	isys->fwcom = ipu_fw_com_prepare(&fwcom, isys->adev, isys->pdata->base);
+	if (!isys->fwcom) {
+		dev_err(dev, "isys fw com prepare failed\n");
+		return -EIO;
+	}
+
+	rval = ipu_fw_com_open(isys->fwcom);
+	if (rval) {
+		dev_err(dev, "isys fw com open failed %d\n", rval);
+		return rval;
+	}
+
+	do {
+		usleep_range(IPU_ISYS_OPEN_TIMEOUT_US,
+			     IPU_ISYS_OPEN_TIMEOUT_US + 10);
+		rval = ipu_fw_com_ready(isys->fwcom);
+		if (!rval)
+			break;
+		retry--;
+	} while (retry > 0);
+
+	if (!retry && rval) {
+		dev_err(dev, "isys port open ready failed %d\n", rval);
+		ipu_fw_isys_close(isys);
+	}
+
+	return rval;
+}
+
+struct ipu_fw_isys_resp_info_abi *ipu_fw_isys_get_resp(void *context,
+						       unsigned int queue,
+						       struct
+						       ipu_fw_isys_resp_info_abi
+						       *response)
+{
+	return (struct ipu_fw_isys_resp_info_abi *)
+	    ipu_recv_get_token(context, queue);
+}
+
+void ipu_fw_isys_put_resp(void *context, unsigned int queue)
+{
+	ipu_recv_put_token(context, queue);
+}
+#endif
 
 void ipu_fw_isys_set_params(struct ipu_fw_isys_stream_cfg_data_abi *stream_cfg)
 {
@@ -217,4 +550,11 @@ void ipu_fw_isys_dump_frame_buff_set(struct device *dev,
 	dev_dbg(dev, "send_irq_eof 0x%x\n", buf->send_irq_eof);
 	dev_dbg(dev, "send_resp_sof 0x%x\n", buf->send_resp_sof);
 	dev_dbg(dev, "send_resp_eof 0x%x\n", buf->send_resp_eof);
+#if defined(CONFIG_VIDEO_INTEL_IPU4) || defined(CONFIG_VIDEO_INTEL_IPU4P)
+	dev_dbg(dev, "send_irq_capture_ack 0x%x\n", buf->send_irq_capture_ack);
+	dev_dbg(dev, "send_irq_capture_done 0x%x\n", buf->send_irq_capture_done);
+#endif
+#ifdef IPU_OTF_SUPPORT
+	dev_dbg(dev, "frame_counter 0x%x\n", buf->frame_counter);
+#endif
 }

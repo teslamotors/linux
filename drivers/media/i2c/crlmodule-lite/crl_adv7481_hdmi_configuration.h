@@ -158,7 +158,7 @@ static struct crl_register_write_rep adv7481_hdmi_mode_rgb888[] = {
 };
 
 
-static struct crl_register_write_rep adv7481_hdmi_mode_yuv[] = {
+static struct crl_register_write_rep adv7481_hdmi_mode_uyvy[] = {
 	{0x04, CRL_REG_LEN_08BIT, 0x00, 0xE0}, //YCrCb output
 	{0x12, CRL_REG_LEN_08BIT, 0xF2, 0xE0}, //CSC Depends on ip Packets - SDR422 set
 	{0x17, CRL_REG_LEN_08BIT, 0x80, 0xE0}, //Luma & Chroma Values Can Reach 254d
@@ -171,6 +171,27 @@ static struct crl_register_write_rep adv7481_hdmi_mode_yuv[] = {
 	{0x00, CRL_REG_LEN_08BIT, 0xA4, 0x94}, //Set Auto DPHY Timing
 	{0xDB, CRL_REG_LEN_08BIT, 0x10, 0x94}, //ADI Required Write
 	{0x7E, CRL_REG_LEN_08BIT, 0x00, 0x94}, //ADI Required Write
+};
+
+static struct crl_register_write_rep adv7481_hdmi_mode_yuyv[] = {
+	{0x1C, CRL_REG_LEN_08BIT, 0x3A, 0xE0}, /* Enable Interrupt*/
+	{0x04, CRL_REG_LEN_08BIT, 0x40, 0xE0}, /* YCrCb output good=0xE0*/
+	/* CSC Depends on ip Packets - SDR422 set */
+	{0x12, CRL_REG_LEN_08BIT, 0xF2, 0xE0},
+	/* Luma & Chroma Values Can Reach 254d */
+	{0x17, CRL_REG_LEN_08BIT, 0x80, 0xE0},
+	{0x7C, CRL_REG_LEN_08BIT, 0x00, 0x44}, /* ADI Required Write */
+	{0x3E, CRL_REG_LEN_08BIT, 0x08, 0x44}, /* Invert order of Cb and Cr*/
+	/* Enable LLC_DLL & Double LLC Timing */
+	{0x0C, CRL_REG_LEN_08BIT, 0xE0, 0xE0},
+	/* LLC/PIX/SPI PINS TRISTATED AUD Outputs Enabled */
+	{0x0E, CRL_REG_LEN_08BIT, 0xDD, 0xE0},
+	{0x10, CRL_REG_LEN_08BIT | CRL_REG_READ_AND_UPDATE, 0xA0, 0xE0},
+	/* Enable 4-lane CSI TXB & Pixel Port */
+	{0x00, CRL_REG_LEN_08BIT, 0x84, 0x94}, /* Enable 4-lane MIPI */
+	{0x00, CRL_REG_LEN_08BIT, 0xA4, 0x94}, /* Set Auto DPHY Timing */
+	{0xDB, CRL_REG_LEN_08BIT, 0x10, 0x94}, /* ADI Required Write */
+	{0x7E, CRL_REG_LEN_08BIT, 0x00, 0x94}, /* ADI Required Write */
 };
 
 static struct crl_register_write_rep adv7481_hdmi_powerup_regset[] = {
@@ -540,8 +561,15 @@ static struct crl_csi_data_fmt adv7481_hdmi_crl_csi_data_fmt[] = {
 		.code = ICI_FORMAT_UYVY,
 		.pixel_order = CRL_PIXEL_ORDER_GRBG,
 		.bits_per_pixel = 16,
-		.regs_items = ARRAY_SIZE(adv7481_hdmi_mode_yuv),
-		.regs = adv7481_hdmi_mode_yuv,
+		.regs_items = ARRAY_SIZE(adv7481_hdmi_mode_uyvy),
+		.regs = adv7481_hdmi_mode_uyvy,
+	},
+	{
+		.code = ICI_FORMAT_YUYV,
+		.pixel_order = CRL_PIXEL_ORDER_GRBG,
+		.bits_per_pixel = 16,
+		.regs_items = ARRAY_SIZE(adv7481_hdmi_mode_yuyv),
+		.regs = adv7481_hdmi_mode_yuyv,
 	},
 	{
 		.code = ICI_FORMAT_RGB888,

@@ -211,6 +211,7 @@ static void cx_auto_reboot_notify(struct hda_codec *codec)
 	struct conexant_spec *spec = codec->spec;
 
 	switch (codec->core.vendor_id) {
+	case 0x14f12008: /* CX8200 */
 	case 0x14f150f2: /* CX20722 */
 	case 0x14f150f4: /* CX20724 */
 		break;
@@ -218,13 +219,14 @@ static void cx_auto_reboot_notify(struct hda_codec *codec)
 		return;
 	}
 
-	/* Turn the CX20722 codec into D3 to avoid spurious noises
+	/* Turn the problematic codec into D3 to avoid spurious noises
 	   from the internal speaker during (and after) reboot */
 	cx_auto_turn_eapd(codec, spec->num_eapds, spec->eapds, false);
 
 	snd_hda_codec_set_power_to_all(codec, codec->core.afg, AC_PWRST_D3);
 	snd_hda_codec_write(codec, codec->core.afg, 0,
 			    AC_VERB_SET_POWER_STATE, AC_PWRST_D3);
+	msleep(10);
 }
 
 static void cx_auto_free(struct hda_codec *codec)
@@ -965,6 +967,7 @@ static const struct snd_pci_quirk cxt5066_fixups[] = {
 	SND_PCI_QUIRK(0x103c, 0x8115, "HP Z1 Gen3", CXT_FIXUP_HP_GATE_MIC),
 	SND_PCI_QUIRK(0x103c, 0x814f, "HP ZBook 15u G3", CXT_FIXUP_MUTE_LED_GPIO),
 	SND_PCI_QUIRK(0x103c, 0x822e, "HP ProBook 440 G4", CXT_FIXUP_MUTE_LED_GPIO),
+	SND_PCI_QUIRK(0x103c, 0x836e, "HP ProBook 455 G5", CXT_FIXUP_MUTE_LED_GPIO),
 	SND_PCI_QUIRK(0x103c, 0x8299, "HP 800 G3 SFF", CXT_FIXUP_HP_MIC_NO_PRESENCE),
 	SND_PCI_QUIRK(0x103c, 0x829a, "HP 800 G3 DM", CXT_FIXUP_HP_MIC_NO_PRESENCE),
 	SND_PCI_QUIRK(0x103c, 0x8455, "HP Z2 G4", CXT_FIXUP_HP_MIC_NO_PRESENCE),

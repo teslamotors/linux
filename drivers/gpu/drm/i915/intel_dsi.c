@@ -1133,8 +1133,14 @@ static void bxt_dsi_get_pipe_config(struct intel_encoder *encoder,
 	 * encoder->get_hw_state() returns true.
 	 */
 	for_each_dsi_port(port, intel_dsi->ports) {
-		if (I915_READ(BXT_MIPI_PORT_CTRL(port)) & DPI_ENABLE)
+		u32 val = I915_READ(BXT_MIPI_PORT_CTRL(port));
+		if (val & DPI_ENABLE) {
+			DRM_DEBUG_KMS("DSI-%d: dual_link = %d, dl mode = %d\n",
+				      port,
+				      val & LANE_CONFIGURATION_DUAL_LINK_A,
+				      val & DUAL_LINK_MODE_MASK);
 			break;
+		}
 	}
 
 	fmt = I915_READ(MIPI_DSI_FUNC_PRG(port)) & VID_MODE_FORMAT_MASK;

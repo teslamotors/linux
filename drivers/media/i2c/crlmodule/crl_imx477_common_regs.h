@@ -1,4 +1,4 @@
-/* SPDX-License_Identifier: GPL-2.0 */
+/* SPDX-License-Identifier: GPL-2.0 */
 /* Copyright (C) 2017 - 2018 Intel Corporation
  *
  * Author: Alexei Zavjalov <alexei.zavjalov@intel.com>
@@ -10,7 +10,7 @@
 
 #include "crlmodule-sensor-ds.h"
 
-#define IMX477_CAPTURE_MODE_MAX	3
+#define IMX477_CAPTURE_MODE_MAX	10
 
 static struct crl_dynamic_register_access imx477_fll_regs[] = {
 	{
@@ -756,6 +756,131 @@ static struct crl_subdev_rect_rep imx477_4056_3040_rects[] = {
 		.out_rect.top = 0,
 		.out_rect.width = 4056,
 		.out_rect.height = 3040,
+	}
+};
+
+static struct crl_subdev_rect_rep imx477_4056_2288_rects[] = {
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.in_rect.left = 0,
+		.in_rect.top = 0,
+		.in_rect.width = 4056,
+		.in_rect.height = 3040,
+		.out_rect.left = 0,
+		.out_rect.top = 0,
+		.out_rect.width = 4056,
+		.out_rect.height = 3040,
+	},
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_BINNER,
+		.in_rect.left = 0,
+		.in_rect.top = 0,
+		.in_rect.width = 4056,
+		.in_rect.height = 3040,
+		.out_rect.left = 0,
+		.out_rect.top = 0,
+		.out_rect.width = 4056,
+		.out_rect.height = 2288,
+	}
+};
+
+static struct crl_subdev_rect_rep imx477_2832_1632_rects[] = {
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.in_rect.left = 0,
+		.in_rect.top = 0,
+		.in_rect.width = 4056,
+		.in_rect.height = 3040,
+		.out_rect.left = 0,
+		.out_rect.top = 0,
+		.out_rect.width = 4056,
+		.out_rect.height = 3040,
+	},
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_BINNER,
+		.in_rect.left = 0,
+		.in_rect.top = 0,
+		.in_rect.width = 4056,
+		.in_rect.height = 3040,
+		.out_rect.left = 0,
+		.out_rect.top = 0,
+		.out_rect.width = 2832,
+		.out_rect.height = 1632,
+	}
+};
+
+static struct crl_subdev_rect_rep imx477_2028_1128_rects[] = {
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.in_rect.left = 0,
+		.in_rect.top = 0,
+		.in_rect.width = 4056,
+		.in_rect.height = 3040,
+		.out_rect.left = 0,
+		.out_rect.top = 0,
+		.out_rect.width = 4056,
+		.out_rect.height = 3040,
+	},
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_BINNER,
+		.in_rect.left = 0,
+		.in_rect.top = 0,
+		.in_rect.width = 4056,
+		.in_rect.height = 3040,
+		.out_rect.left = 0,
+		.out_rect.top = 0,
+		.out_rect.width = 2028,
+		.out_rect.height = 1128,
+	}
+};
+
+static struct crl_subdev_rect_rep imx477_1296_768_rects[] = {
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.in_rect.left = 0,
+		.in_rect.top = 0,
+		.in_rect.width = 4056,
+		.in_rect.height = 3040,
+		.out_rect.left = 0,
+		.out_rect.top = 0,
+		.out_rect.width = 4056,
+		.out_rect.height = 3040,
+	},
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_BINNER,
+		.in_rect.left = 0,
+		.in_rect.top = 0,
+		.in_rect.width = 4056,
+		.in_rect.height = 3040,
+		.out_rect.left = 0,
+		.out_rect.top = 0,
+		.out_rect.width = 1296,
+		.out_rect.height = 768,
+	}
+};
+
+static struct crl_subdev_rect_rep imx477_656_512_rects[] = {
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
+		.in_rect.left = 0,
+		.in_rect.top = 0,
+		.in_rect.width = 4056,
+		.in_rect.height = 3040,
+		.out_rect.left = 0,
+		.out_rect.top = 0,
+		.out_rect.width = 4056,
+		.out_rect.height = 3040,
+	},
+	{
+		.subdev_type = CRL_SUBDEV_TYPE_BINNER,
+		.in_rect.left = 0,
+		.in_rect.top = 0,
+		.in_rect.width = 4056,
+		.in_rect.height = 3040,
+		.out_rect.left = 0,
+		.out_rect.top = 0,
+		.out_rect.width = 656,
+		.out_rect.height = 512,
 	}
 };
 

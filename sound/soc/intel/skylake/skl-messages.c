@@ -2592,7 +2592,9 @@ int skl_create_pipeline(struct skl_sst *ctx, struct skl_pipe *pipe)
 
 /*
  * A pipeline needs to be deleted on cleanup. If a pipeline is running, then
- * pause the pipeline first and then delete it
+ * pause the pipeline first and then delete it. There is also case in which
+ * pipeline needs to be reset before deletion, so always reset as it doesn't
+ * change anything in other cases.
  * The pipe delete is done by sending delete pipeline IPC. DSP will stop the
  * DMA engines and releases resources
  */
@@ -2601,6 +2603,10 @@ int skl_delete_pipe(struct skl_sst *ctx, struct skl_pipe *pipe)
 	int ret;
 
 	dev_dbg(ctx->dev, "%s: pipe = %d\n", __func__, pipe->ppl_id);
+
+	/* If pipe was not created in FW, do not try to delete it */
+	if (pipe->state < SKL_PIPE_CREATED)
+		return 0;
 
 	/* If pipe is started, do stop the pipe in FW. */
 	if (pipe->state >= SKL_PIPE_STARTED) {
@@ -2613,9 +2619,14 @@ int skl_delete_pipe(struct skl_sst *ctx, struct skl_pipe *pipe)
 		pipe->state = SKL_PIPE_PAUSED;
 	}
 
-	/* If pipe was not created in FW, do not try to delete it */
-	if (pipe->state < SKL_PIPE_CREATED)
-		return 0;
+	/* reset pipe state before deletion */
+	ret = skl_set_pipe_state(ctx, pipe, PPL_RESET);
+	if (ret < 0) {
+		dev_err(ctx->dev, "Failed to reset pipe ret=%d\n", ret);
+		return ret;
+	}
+
+	pipe->state = SKL_PIPE_RESET;
 
 	ret = skl_ipc_delete_pipeline(&ctx->ipc, pipe->ppl_id);
 	if (ret < 0) {

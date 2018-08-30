@@ -1,4 +1,4 @@
-// SPDX-License_Identifier: GPL-2.0
+// SPDX-License-Identifier: GPL-2.0
 // Copyright (C) 2013 - 2018 Intel Corporation
 
 #include <linux/compat.h>
@@ -6,6 +6,8 @@
 #include <linux/uaccess.h>
 
 #include <uapi/linux/ipu-psys.h>
+
+#include "ipu-psys.h"
 
 static long native_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {

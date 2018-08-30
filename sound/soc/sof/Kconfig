@@ -4,19 +4,14 @@ config SND_SOC_SOF_PCI
 config SND_SOC_SOF_ACPI
 	tristate
 
-config SND_SOC_SOF_PLATFORM
-	tristate
-
-
 config SND_SOC_SOF
 	tristate "Sound Open Firmware Support"
-	default m
-	depends on SND_DMA_SGBUF
 	select SND_SOC_TOPOLOGY
 	select SND_SOC_COMPRESS
 	help
-          This adds support for SOF
-          Say Y if you have such a device.
+          This adds support for Sound Open Firmware (SOF). SOF is a free and
+	  generic open source audio DSP firmware for multiple devices.
+          Say Y if you have such a device that is supported by SOF.
           If unsure select "N".
 
 config SND_SOC_SOF_NOCODEC
@@ -30,9 +25,19 @@ config SND_SOC_SOF_NOCODEC
           Say Y if you need this nocodec fallback option
           If unsure select "N".
 
+config SND_SOC_SOF_DEBUG
+	bool "SOF debugging features"
+	depends on SND_SOC_SOF
+	help
+	  This option can be used to enable or disable individual SOF firmware
+	  and driver debugging options.
+	  Say Y if you are debugging SOF FW or drivers.
+          If unsure select "N".
+
 config SND_SOC_SOF_FORCE_NOCODEC_MODE
-	tristate "SOF force nocodec Mode"
+	bool "SOF force nocodec Mode"
 	depends on SND_SOC_SOF_NOCODEC
+	depends on SND_SOC_SOF_DEBUG
 	help
           This forces SOF to use dummy/nocodec as machine driver, even
 	  though there is a codec detected on the real platform. This is
@@ -42,69 +47,23 @@ config SND_SOC_SOF_FORCE_NOCODEC_MODE
           Say Y if you need this force nocodec mode option
           If unsure select "N".
 
-config SND_SOC_SOF_INTEL
-	tristate "SOF support for Intel audio DSPs"
-	depends on SND_SOC_SOF
-	select SND_SOC_INTEL_MACH
+config SND_SOC_SOF_DEBUG_XRUN_STOP
+	bool "SOF stop on XRUN"
+	depends on SND_SOC_SOF_DEBUG
 	help
-          This adds support for Sound Open Firmware for Intel(R) platforms.
-          Say Y if you have such a device.
+	  This option forces PCMs to stop on any XRUN event. This is useful to
+	  preserve any trace data ond pipeline status prior to the XRUN.
+	  Say Y if you are debugging SOF FW pipeline XRUNs.
           If unsure select "N".
 
-if SND_SOC_SOF_INTEL
-
-config SND_SOC_SOF_BAYTRAIL
-	tristate "SOF support for Baytrail, Braswell and Cherrytrail"
-	select SND_SOC_SOF_ACPI
-	select SND_SOC_ACPI_INTEL_MATCH
+config SND_SOC_SOF_DEBUG_VERBOSE_IPC
+	bool "SOF verbose IPC logs"
+	depends on SND_SOC_SOF_DEBUG
 	help
-          This adds support for Sound Open Firmware for Intel(R) platforms
-          using the Baytrail, Braswell or Cherrytrail processors.
-          Say Y if you have such a device.
+	  This option enables more verbose IPC logs, with command types in
+	  human-readable form instead of just 32-bit hex dumps. This is useful
+	  if you are trying to debug IPC with the DSP firmware.
           If unsure select "N".
 
-config SND_SOC_SOF_HASWELL
-	tristate "SOF support for Haswell"
-	select SND_SOC_SOF_ACPI
-	select SND_SOC_ACPI_INTEL_MATCH
-	help
-          This adds support for Sound Open Firmware for Intel(R) platforms
-          using the Haswell processors.
-          Say Y if you have such a device.
-          If unsure select "N".
-
-config SND_SOC_SOF_BROADWELL
-	tristate "SOF support for Broadwell"
-	depends on SND_SOC_SOF_INTEL
-	select SND_SOC_SOF_ACPI
-	select SND_SOC_ACPI_INTEL_MATCH
-	help
-          This adds support for Sound Open Firmware for Intel(R) platforms
-          using the Broadwell processors.
-          Say Y if you have such a device.
-          If unsure select "N".
-
-config SND_SOC_SOF_APOLLOLAKE
-	tristate "SOF support for Apollolake"
-	select SND_SOC_SOF_HDA_COMMON
-	help
-          This adds support for Sound Open Firmware for Intel(R) platforms
-          using the Apollolake processors.
-          Say Y if you have such a device.
-          If unsure select "N".
-
-config SND_SOC_SOF_CANNONLAKE
-	tristate "SOF support for Cannonlake"
-	select SND_SOC_SOF_HDA_COMMON
-	help
-          This adds support for Sound Open Firmware for Intel(R) platforms
-          using the Cannonlake processors.
-          Say Y if you have such a device.
-          If unsure select "N".
-
-config SND_SOC_SOF_HDA_COMMON
-	tristate
-	select SND_SOC_SOF_PCI
-	select SND_SOC_ACPI_INTEL_MATCH
-
-endif ## SND_SOC_SOF_INTEL
+source "sound/soc/sof/intel/Kconfig"
+source "sound/soc/sof/xtensa/Kconfig"

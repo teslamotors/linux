@@ -53,6 +53,9 @@ obj-$(CONFIG_REGULATOR)		+= regulator/
 # reset controllers early, since gpu drivers might rely on them to initialize
 obj-$(CONFIG_RESET_CONTROLLER)	+= reset/
 
+# put mmc early as many morden devices use emm/sd card as rootfs storage
+obj-y				+= mmc/
+
 # tty/ comes before char/ so that the VT console is the boot-time
 # default.
 obj-y				+= tty/

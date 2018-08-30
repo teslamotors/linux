@@ -122,8 +122,8 @@ static int vbs_rng_hash_initialized = 0;
 static int vbs_rng_connection_cnt = 0;
 
 /* function declarations */
-static int handle_kick(int client_id, int req_cnt);
-static void vbs_rng_reset(struct vbs_rng *rng);
+static int handle_kick(int client_id, unsigned long *ioreqs_map);
+static long vbs_rng_reset(struct vbs_rng *rng);
 static void vbs_rng_stop(struct vbs_rng *rng);
 static void vbs_rng_flush(struct vbs_rng *rng);
 #ifdef RUNTIME_CTRL
@@ -251,13 +251,13 @@ static void handle_vq_kick(struct vbs_rng *rng, int vq_idx)
 	virtio_vq_endchains(vq, 1);	/* Generate interrupt if appropriate. */
 }
 
-static int handle_kick(int client_id, int req_cnt)
+static int handle_kick(int client_id, unsigned long *ioreqs_map)
 {
 	int val = -1;
 	struct vbs_rng *rng;
 
-	if (unlikely(req_cnt <= 0))
-		return -EINVAL;
+	if (unlikely(bitmap_empty(ioreqs_map, VHM_REQUEST_MAX)))
+		return 0;
 
 	pr_debug("%s: handle kick!\n", __func__);
 
@@ -268,7 +268,7 @@ static int handle_kick(int client_id, int req_cnt)
 		return -EINVAL;
 	}
 
-	val = virtio_vq_index_get(&rng->dev, req_cnt);
+	val = virtio_vq_index_get(&rng->dev, ioreqs_map);
 
 	if (val >= 0)
 		handle_vq_kick(rng, val);
@@ -319,7 +319,6 @@ static int vbs_rng_open(struct inode *inode, struct file *f)
 static int vbs_rng_release(struct inode *inode, struct file *f)
 {
 	struct vbs_rng *rng = f->private_data;
-	int i;
 
 	if (!rng)
 		pr_err("%s: UNLIKELY rng NULL!\n",
@@ -327,8 +326,6 @@ static int vbs_rng_release(struct inode *inode, struct file *f)
 
 	vbs_rng_stop(rng);
 	vbs_rng_flush(rng);
-	for (i = 0; i < VBS_K_RNG_VQ_MAX; i++)
-		virtio_vq_reset(&(rng->vqs[i]));
 
 	/* device specific release */
 	vbs_rng_reset(rng);
@@ -396,6 +393,12 @@ static long vbs_rng_ioctl(struct file *f, unsigned int ioctl,
 		/* Increment counter */
 		vbs_rng_connection_cnt++;
 		return r;
+	case VBS_RESET_DEV:
+		pr_debug("VBS_RESET_DEV ioctl:\n");
+		vbs_rng_stop(rng);
+		vbs_rng_flush(rng);
+		r = vbs_rng_reset(rng);
+		return r;
 	default:
 		/*mutex_lock(&n->dev.mutex);*/
 		pr_debug("VBS_K generic ioctls!\n");
@@ -410,8 +413,9 @@ static long vbs_rng_ioctl(struct file *f, unsigned int ioctl,
 }
 
 /* device specific function to cleanup itself */
-static void vbs_rng_reset(struct vbs_rng *rng)
+static long vbs_rng_reset(struct vbs_rng *rng)
 {
+	return virtio_dev_reset(&rng->dev);
 }
 
 /* device specific function */
