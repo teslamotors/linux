@@ -28,6 +28,15 @@ static struct apic apic_flat;
 struct apic *apic __ro_after_init = &apic_flat;
 EXPORT_SYMBOL_GPL(apic);
 
+int xapic_phys = 0;
+
+static int set_xapic_phys_mode(char *arg)
+{
+	xapic_phys = 1;
+	return 0;
+}
+early_param("xapic_phys", set_xapic_phys_mode);
+
 static int flat_acpi_madt_oem_check(char *oem_id, char *oem_table_id)
 {
 	return 1;
@@ -232,6 +241,9 @@ static void physflat_send_IPI_all(int vector)
 
 static int physflat_probe(void)
 {
+	if (xapic_phys == 1)
+		return 1;
+
 	if (apic == &apic_physflat || num_possible_cpus() > 8)
 		return 1;
 
