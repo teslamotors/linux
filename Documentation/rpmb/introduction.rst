@@ -1,4 +1,4 @@
-.. -*- coding: utf-8; mode: rst -*-
+.. SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 
 =============
 Introduction:
@@ -25,14 +25,11 @@ data, it creates an RPMB frame with requested data and computes HMAC of
 the frame, then it requests the storage device via RPMB layer to store
 the data.
 
-The layer provides two APIs, for :c:func:`rpmb_req_cmd()` for issuing one of RPMB
-specific commands and :c:func:`rpmb_seq_cmd()` for issuing of raw RPMB protocol
-frames, which is close to the functionality provided by emmc multi ioctl
-interface.
+The layer provides APIs, for :c:func:`rpmb_seq_cmd()` for issuing sequence
+of raw RPMB protocol frames, which is close to the functionality provided
+by emmc multi ioctl interface.
 
-.. c:function:: int rpmb_cmd_req(struct rpmb_dev *rdev, struct rpmb_data *data);
-
-.. c:function:: int rpmb_cmd_seq(struct rpmb_dev *rdev, struct rpmb_cmd *cmds, u32 ncmds);
+.. c:function:: int rpmb_cmd_seq(struct rpmb_dev *rdev, u8 target, struct rpmb_cmd *cmds, u32 ncmds);
 
 
 A TEE driver can claim the RPMB interface, for example, via
@@ -71,11 +68,10 @@ User space API
 
 A parallel user space API is provided via /dev/rpmbX character
 device with two IOCTL commands.
-Simplified one, ``RPMB_IOC_REQ_CMD``, were read result cycles is performed
-by the framework on behalf the user and second, ``RPMB_IOC_SEQ_CMD`` where
-the whole RPMB sequence, including ``RESULT_READ`` is supplied by the caller.
-The latter is intended for easier adjusting of the applications that
-use ``MMC_IOC_MULTI_CMD`` ioctl, such as
+- First ``RPMB_IOC_VER_CMD``, return driver protocol version,
+- second ``RPMB_IOC_CAP_CMD`` return capability structure,
+- last ``RPMB_IOC_SEQ_CMD`` where the whole RPMB sequence, and
+  including ``RESULT_READ`` is supplied by the caller.
 https://android.googlesource.com/trusty/app/storage/
 
 .. code-block:: c
@@ -99,4 +95,3 @@ API
 .. kernel-doc:: include/uapi/linux/rpmb.h
 
 .. kernel-doc:: drivers/char/rpmb/cdev.c
-

@@ -1992,41 +1992,6 @@ static void atmel_shutdown(struct uart_port *port)
 }
 
 /*
- * Power / Clock management.
- */
-static void atmel_serial_pm(struct uart_port *port, unsigned int state,
-			    unsigned int oldstate)
-{
-	struct atmel_uart_port *atmel_port = to_atmel_uart_port(port);
-
-	switch (state) {
-	case 0:
-		/*
-		 * Enable the peripheral clock for this serial port.
-		 * This is called on uart_open() or a resume event.
-		 */
-		clk_prepare_enable(atmel_port->clk);
-
-		/* re-enable interrupts if we disabled some on suspend */
-		atmel_uart_writel(port, ATMEL_US_IER, atmel_port->backup_imr);
-		break;
-	case 3:
-		/* Back up the interrupt mask and disable all interrupts */
-		atmel_port->backup_imr = atmel_uart_readl(port, ATMEL_US_IMR);
-		atmel_uart_writel(port, ATMEL_US_IDR, -1);
-
-		/*
-		 * Disable the peripheral clock for this serial port.
-		 * This is called on uart_close() or a suspend event.
-		 */
-		clk_disable_unprepare(atmel_port->clk);
-		break;
-	default:
-		dev_err(port->dev, "atmel_serial: unknown pm %d\n", state);
-	}
-}
-
-/*
  * Change the port parameters
  */
 static void atmel_set_termios(struct uart_port *port, struct ktermios *termios,
@@ -2354,7 +2319,6 @@ static const struct uart_ops atmel_pops = {
 	.request_port	= atmel_request_port,
 	.config_port	= atmel_config_port,
 	.verify_port	= atmel_verify_port,
-	.pm		= atmel_serial_pm,
 #ifdef CONFIG_CONSOLE_POLL
 	.poll_get_char	= atmel_poll_get_char,
 	.poll_put_char	= atmel_poll_put_char,

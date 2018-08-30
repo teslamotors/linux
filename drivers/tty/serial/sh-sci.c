@@ -2478,21 +2478,6 @@ done:
 		sci_enable_ms(port);
 }
 
-static void sci_pm(struct uart_port *port, unsigned int state,
-		   unsigned int oldstate)
-{
-	struct sci_port *sci_port = to_sci_port(port);
-
-	switch (state) {
-	case UART_PM_STATE_OFF:
-		sci_port_disable(sci_port);
-		break;
-	default:
-		sci_port_enable(sci_port);
-		break;
-	}
-}
-
 static const char *sci_type(struct uart_port *port)
 {
 	switch (port->type) {
@@ -2607,7 +2592,6 @@ static const struct uart_ops sci_uart_ops = {
 	.shutdown	= sci_shutdown,
 	.flush_buffer	= sci_flush_buffer,
 	.set_termios	= sci_set_termios,
-	.pm		= sci_pm,
 	.type		= sci_type,
 	.release_port	= sci_release_port,
 	.request_port	= sci_request_port,

@@ -1,20 +1,12 @@
+// SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0
 /*
  * Intel Host Storage Interface Linux driver
- * Copyright (c) 2015 - 2016, Intel Corporation.
- *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms and conditions of the GNU General Public License,
- * version 2, as published by the Free Software Foundation.
- *
- * This program is distributed in the hope it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
- * more details.
- *
+ * Copyright (c) 2015 - 2018, Intel Corporation.
  */
 
 #include "cmd.h"
 #include "spd.h"
+#include <linux/slab.h>
 
 static int mei_spd_rpmb_start(struct mei_spd *spd, struct rpmb_dev *rdev)
 {
@@ -155,10 +147,12 @@ void mei_spd_rpmb_exit(struct mei_spd *spd)
 	class_interface_unregister(&spd->rpmb_interface);
 }
 
-int mei_spd_rpmb_cmd_req(struct mei_spd *spd, u16 req_type, void *buf)
+int mei_spd_rpmb_cmd_req(struct mei_spd *spd, u16 req, void *buf)
 {
-	struct rpmb_data d;
-	struct rpmb_frame *frame = buf;
+	struct rpmb_cmd cmd[3];
+	struct rpmb_frame_jdec *frame_res = NULL;
+	u32 flags;
+	unsigned int i;
 	int ret;
 
 	if (!spd->rdev) {
@@ -166,14 +160,36 @@ int mei_spd_rpmb_cmd_req(struct mei_spd *spd, u16 req_type, void *buf)
 		return -ENODEV;
 	}
 
-	d.req_type = req_type;
-	d.icmd.nframes = 1;
-	d.icmd.frames  = frame;
-	d.ocmd.nframes = 1;
-	d.ocmd.frames  = frame;
-	ret = rpmb_cmd_req(spd->rdev, &d);
+	i = 0;
+	flags = RPMB_F_WRITE;
+	if (req == RPMB_WRITE_DATA || req == RPMB_PROGRAM_KEY)
+		flags |= RPMB_F_REL_WRITE;
+	cmd[i].flags = flags;
+	cmd[i].nframes = 1;
+	cmd[i].frames = buf;
+	i++;
+
+	if (req == RPMB_WRITE_DATA || req == RPMB_PROGRAM_KEY) {
+		frame_res = kzalloc(sizeof(*frame_res), GFP_KERNEL);
+		if (!frame_res)
+			return -ENOMEM;
+		frame_res->req_resp =  cpu_to_be16(RPMB_RESULT_READ);
+		cmd[i].flags = RPMB_F_WRITE;
+		cmd[i].nframes = 1;
+		cmd[i].frames = frame_res;
+		i++;
+	}
+
+	cmd[i].flags = 0;
+	cmd[i].nframes = 1;
+	cmd[i].frames = buf;
+	i++;
+
+	ret = rpmb_cmd_seq(spd->rdev, cmd, i);
 	if (ret)
 		spd_err(spd, "RPMB req failed ret = %d\n", ret);
+
+	kfree(frame_res);
 	return ret;
 }
 

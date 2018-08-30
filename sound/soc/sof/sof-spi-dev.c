@@ -19,14 +19,9 @@
 #include <linux/of_device.h>
 #include "sof-priv.h"
 
-struct sof_spi_priv {
-	struct snd_sof_pdata *sof_pdata;
-	struct platform_device *pdev_pcm;
-};
-
 static void sof_spi_fw_cb(const struct firmware *fw, void *context)
 {
-	struct sof_spi_priv *priv = context;
+	struct sof_platform_priv *priv = context;
 	struct snd_sof_pdata *sof_pdata = priv->sof_pdata;
 	const struct snd_sof_machine *mach = sof_pdata->machine;
 	struct device *dev = sof_pdata->dev;
@@ -61,7 +56,7 @@ static int sof_spi_probe(struct spi_device *spi)
 	const struct snd_sof_machine *mach;
 	struct snd_sof_machine *m;
 	struct snd_sof_pdata *sof_pdata;
-	struct sof_spi_priv *priv;
+	struct sof_platform_priv *priv;
 	int ret = 0;
 
 	dev_dbg(&spi->dev, "SPI DSP detected");
@@ -94,8 +89,8 @@ static int sof_spi_probe(struct spi_device *spi)
 	sof_pdata->machine = mach;
 	sof_pdata->desc = (struct sof_dev_desc *)pci_id->driver_data;
 	priv->sof_pdata = sof_pdata;
-	sof_pdata->spi = spi;
 	sof_pdata->dev = dev;
+	sof_pdata->type = SOF_DEVICE_SPI;
 
 	/* register machine driver */
 	sof_pdata->pdev_mach =
@@ -117,7 +112,7 @@ static int sof_spi_probe(struct spi_device *spi)
 
 static int sof_spi_remove(struct spi_device *spi)
 {
-	struct sof_spi_priv *priv = spi_get_drvdata(spi);
+	struct sof_platform_priv *priv = spi_get_drvdata(spi);
 	struct snd_sof_pdata *sof_pdata = priv->sof_pdata;
 
 	platform_device_unregister(sof_pdata->pdev_mach);
@@ -136,14 +131,14 @@ static struct spi_driver wm8731_spi_driver = {
 };
 
 static const struct snd_sof_machine sof_spi_machines[] = {
-	{ "INT343A", "bxt_alc298s_i2s", "intel/reef-spi.ri",
-		"intel/reef-spi.tplg", "0000:00:0e.0", &snd_sof_spi_ops },
+	{ "INT343A", "bxt_alc298s_i2s", "intel/sof-spi.ri",
+		"intel/sof-spi.tplg", "0000:00:0e.0", &snd_sof_spi_ops },
 };
 
 static const struct sof_dev_desc spi_desc = {
 	.machines		= sof_spi_machines,
-	.nocodec_fw_filename = "intel/reef-spi.ri",
-	.nocodec_tplg_filename = "intel/reef-spi.tplg"
+	.nocodec_fw_filename = "intel/sof-spi.ri",
+	.nocodec_tplg_filename = "intel/sof-spi.tplg"
 };
 
 static int __init sof_spi_modinit(void)

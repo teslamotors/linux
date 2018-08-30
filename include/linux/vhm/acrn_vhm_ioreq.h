@@ -52,9 +52,7 @@
  */
 
 /**
- * @file acrn_vhm_ioreq.h
- *
- * @brief Virtio and Hypervisor Module(VHM) ioreq APIs
+ * DOC: Virtio and Hypervisor Module(VHM) ioreq APIs
  */
 
 #ifndef __ACRN_VHM_IOREQ_H__
@@ -63,7 +61,7 @@
 #include <linux/poll.h>
 #include <linux/vhm/vhm_vm_mngt.h>
 
-typedef	int (*ioreq_handler_t)(int client_id, int req);
+typedef	int (*ioreq_handler_t)(int client_id, unsigned long *ioreqs_map);
 
 /**
  * acrn_ioreq_create_client - create ioreq client

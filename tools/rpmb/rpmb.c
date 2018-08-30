@@ -1,60 +1,8 @@
-/******************************************************************************
- * This file is provided under a dual BSD/GPLv2 license.  When using or
- * redistributing this file, you may do so under either license.
- *
- * GPL LICENSE SUMMARY
- *
- * Copyright(c) 2016 Intel Corporation. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of version 2 of the GNU General Public License as
- * published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
- *
- * The full GNU General Public License is included in this distribution
- * in the file called LICENSE.GPL.
- *
- * Contact Information:
- *	Intel Corporation.
- *	linux-mei@linux.intel.com
- *	http://www.intel.com
- *
- * BSD LICENSE
- *
- * Copyright(c) 2016 Intel Corporation. All rights reserved.
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- *  * Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *  * Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- *  * Neither the name Intel Corporation nor the names of its
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
- * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- *****************************************************************************/
+// SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0
+/*
+ * Copyright (C) 2016-2018 Intel Corp. All rights reserved
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -82,6 +30,11 @@
 #define RPMB_KEY_SIZE 32
 #define RPMB_MAC_SIZE 32
 #define RPMB_NONCE_SIZE 16
+
+#define RPMB_FRAME_TYPE_JDEC 0
+#define RPMB_FRAME_TYPE_NVME 1
+#define RPMB_BLOCK_SIZE 256
+#define RPMB_SECTOR_SIZE 512
 
 bool verbose;
 #define rpmb_dbg(fmt, ARGS...) do {                     \
@@ -119,7 +72,7 @@ static const char *rpmb_result_str(enum rpmb_op_result result)
 	{ if (result & RPMB_ERR_COUNTER_EXPIRED)     \
 		return "COUNTER_EXPIRE:" str(_res);  \
 	else                                         \
-		return str(x);                       \
+		return str(_res);                    \
 	}
 
 	switch (result & 0x000F) {
@@ -166,43 +119,42 @@ dump_hex_buffer(const char *title, const void *buf, size_t len)
 		__dump_buffer(pbuf);
 }
 
-static void dbg_dump_frame(const char *title, const struct rpmb_frame *f)
+static int open_dev_file(const char *devfile, struct rpmb_ioc_cap_cmd *cap)
 {
-	uint16_t result, req_resp;
-
-	if (!verbose)
-		return;
-
-	if (!f)
-		return;
-
-	result = be16toh(f->result);
-	req_resp = be16toh(f->req_resp);
-	if (req_resp & 0xf00)
-		req_resp = RPMB_RESP2REQ(req_resp);
-
-	fprintf(stderr, "--------------- %s ---------------\n",
-		title ? title : "start");
-	fprintf(stderr, "ptr: %p\n", f);
-	dump_hex_buffer("key_mac: ", f->key_mac, 32);
-	dump_hex_buffer("data: ", f->data, 256);
-	dump_hex_buffer("nonce: ", f->nonce, 16);
-	fprintf(stderr, "write_counter: %u\n", be32toh(f->write_counter));
-	fprintf(stderr, "address:  %0X\n", be16toh(f->addr));
-	fprintf(stderr, "block_count: %u\n", be16toh(f->block_count));
-	fprintf(stderr, "result %s:%d\n", rpmb_result_str(result), result);
-	fprintf(stderr, "req_resp %s\n", rpmb_op_str(req_resp));
-	fprintf(stderr, "--------------- End ---------------\n");
-}
-
-static int open_dev_file(const char *devfile)
-{
+	struct rpmb_ioc_ver_cmd ver;
 	int fd;
+	int ret;
 
 	fd = open(devfile, O_RDWR);
 	if (fd < 0)
 		rpmb_err("Cannot open: %s: %s.\n", devfile, strerror(errno));
+
+	ret = ioctl(fd, RPMB_IOC_VER_CMD, &ver);
+	if (ret < 0) {
+		rpmb_err("ioctl failure %d: %s.\n", ret, strerror(errno));
+		goto err;
+	}
+
+	printf("RPMB API Version %X\n", ver.api_version);
+
+	ret = ioctl(fd, RPMB_IOC_CAP_CMD, cap);
+	if (ret < 0) {
+		rpmb_err("ioctl failure %d: %s.\n", ret, strerror(errno));
+		goto err;
+	}
+
+	rpmb_dbg("RPMB device_type = %hd\n", cap->device_type);
+	rpmb_dbg("RPMB rpmb_target = %hd\n", cap->target);
+	rpmb_dbg("RPMB capacity    = %hd\n", cap->capacity);
+	rpmb_dbg("RPMB block_size  = %hd\n", cap->block_size);
+	rpmb_dbg("RPMB wr_cnt_max  = %hd\n", cap->wr_cnt_max);
+	rpmb_dbg("RPMB rd_cnt_max  = %hd\n", cap->rd_cnt_max);
+	rpmb_dbg("RPMB auth_method = %hd\n", cap->auth_method);
+
 	return fd;
+err:
+	close(fd);
+	return -1;
 }
 
 static int open_rd_file(const char *datafile, const char *type)
@@ -292,29 +244,396 @@ static ssize_t write_file(int fd, unsigned char *data, size_t size)
 	return ret;
 }
 
-static struct rpmb_frame *rpmb_alloc_frames(unsigned int cnt)
+static void dbg_dump_frame_jdec(const char *title, const void *f, uint32_t cnt)
 {
-	return calloc(cnt, sizeof(struct rpmb_frame));
+	uint16_t result, req_resp;
+	const struct rpmb_frame_jdec *frame = f;
+
+	if (!verbose)
+		return;
+
+	if (!f)
+		return;
+
+	result = be16toh(frame->result);
+	req_resp = be16toh(frame->req_resp);
+	if (req_resp & 0xf00)
+		req_resp = RPMB_RESP2REQ(req_resp);
+
+	fprintf(stderr, "--------------- %s ---------------\n",
+		title ? title : "start");
+	fprintf(stderr, "ptr: %p\n", f);
+	dump_hex_buffer("key_mac: ", frame->key_mac, 32);
+	dump_hex_buffer("data: ", frame->data, 256);
+	dump_hex_buffer("nonce: ", frame->nonce, 16);
+	fprintf(stderr, "write_counter: %u\n", be32toh(frame->write_counter));
+	fprintf(stderr, "address:  %0X\n", be16toh(frame->addr));
+	fprintf(stderr, "block_count: %u\n", be16toh(frame->block_count));
+	fprintf(stderr, "result %s:%d\n", rpmb_result_str(result), result);
+	fprintf(stderr, "req_resp %s\n", rpmb_op_str(req_resp));
+	fprintf(stderr, "--------------- End ---------------\n");
 }
 
-static int rpmb_calc_hmac_sha256(struct rpmb_frame *frames, size_t blocks_cnt,
-				 const unsigned char key[],
-				 unsigned int key_size,
-				 unsigned char mac[],
-				 unsigned int mac_size)
+static void dbg_dump_frame_nvme(const char *title, const void *f, uint32_t cnt)
+{
+	uint16_t result, req_resp;
+	uint32_t keysize = 4;
+	uint32_t sector_count;
+	const struct rpmb_frame_nvme *frame = f;
+
+	if (!verbose)
+		return;
+
+	if (!f)
+		return;
+
+	result = le16toh(frame->result);
+	req_resp = le16toh(frame->req_resp);
+	if (req_resp & 0xf00)
+		req_resp = RPMB_RESP2REQ(req_resp);
+
+	sector_count = le32toh(frame->block_count);
+
+	fprintf(stderr, "--------------- %s ---------------\n",
+		title ? title : "start");
+	fprintf(stderr, "ptr: %p\n", f);
+	dump_hex_buffer("key_mac: ", &frame->key_mac[223 - keysize], keysize);
+	dump_hex_buffer("nonce: ", frame->nonce, 16);
+	fprintf(stderr, "rpmb_target: %u\n", frame->rpmb_target);
+	fprintf(stderr, "write_counter: %u\n", le32toh(frame->write_counter));
+	fprintf(stderr, "address:  %0X\n", le32toh(frame->addr));
+	fprintf(stderr, "block_count: %u\n", sector_count);
+	fprintf(stderr, "result %s:%d\n", rpmb_result_str(result), result);
+	fprintf(stderr, "req_resp %s\n", rpmb_op_str(req_resp));
+	dump_hex_buffer("data: ", frame->data, RPMB_SECTOR_SIZE * cnt);
+	fprintf(stderr, "--------------- End --------------\n");
+}
+
+static void dbg_dump_frame(uint8_t frame_type, const char *title, const void *f, uint32_t cnt)
+{
+	if (frame_type == RPMB_FRAME_TYPE_NVME)
+		dbg_dump_frame_nvme(title, f, cnt);
+	else
+		dbg_dump_frame_jdec(title, f, cnt);
+}
+
+static int rpmb_frame_set_key_mac_jdec(void *f, uint32_t block_count,
+				       uint8_t *key_mac, size_t key_mac_size)
+{
+	struct rpmb_frame_jdec *frames = f;
+
+	if (block_count == 0)
+		block_count = 1;
+
+	memcpy(&frames[block_count - 1].key_mac, key_mac, key_mac_size);
+
+	return 0;
+}
+
+static int rpmb_frame_set_key_mac_nvme(void *f, uint32_t block_count,
+				       uint8_t *key_mac, size_t key_mac_size)
+{
+	struct rpmb_frame_nvme *frame = f;
+
+	memcpy(&frame->key_mac[223 - key_mac_size], key_mac, key_mac_size);
+
+	return 0;
+}
+
+static int rpmb_frame_set_key_mac(uint8_t frame_type, void *f,
+				  uint32_t block_count,
+				  uint8_t *key_mac, size_t key_mac_size)
+{
+	if (frame_type == RPMB_FRAME_TYPE_NVME)
+		return rpmb_frame_set_key_mac_nvme(f, block_count,
+						   key_mac, key_mac_size);
+	else
+		return rpmb_frame_set_key_mac_jdec(f, block_count,
+						   key_mac, key_mac_size);
+}
+
+static uint8_t *rpmb_frame_get_key_mac_ptr_jdec(void *f, uint32_t block_count,
+						size_t key_size)
+{
+	struct rpmb_frame_jdec *frame = f;
+
+	if (block_count == 0)
+		block_count = 1;
+
+	return frame[block_count - 1].key_mac;
+}
+
+static uint8_t *rpmb_frame_get_key_mac_ptr_nvme(void *f, uint32_t block_count,
+						size_t key_size)
+{
+	struct rpmb_frame_nvme *frame = f;
+
+	return &frame->key_mac[223 - key_size];
+}
+
+static uint8_t *rpmb_frame_get_key_mac_ptr(uint8_t frame_type, void *f,
+					   uint32_t block_count,
+					   size_t key_size)
+{
+	if (frame_type == RPMB_FRAME_TYPE_NVME)
+		return rpmb_frame_get_key_mac_ptr_nvme(f, block_count,
+						       key_size);
+	else
+		return rpmb_frame_get_key_mac_ptr_jdec(f, block_count,
+						       key_size);
+}
+
+static uint8_t *rpmb_frame_get_nonce_ptr_jdec(void *f)
+{
+	struct rpmb_frame_jdec *frame = f;
+
+	return frame->nonce;
+}
+
+static uint8_t *rpmb_frame_get_nonce_ptr_nvme(void *f)
+{
+	struct rpmb_frame_nvme *frame = f;
+
+	return frame->nonce;
+}
+
+static uint8_t *rpmb_frame_get_nonce_ptr(uint8_t frame_type, void *f)
+{
+	return frame_type == RPMB_FRAME_TYPE_NVME ?
+		rpmb_frame_get_nonce_ptr_nvme(f) :
+		rpmb_frame_get_nonce_ptr_jdec(f);
+}
+
+static uint32_t rpmb_frame_get_write_counter_jdec(void *f)
+{
+	struct rpmb_frame_jdec *frame = f;
+
+	return be32toh(frame->write_counter);
+}
+
+static uint32_t rpmb_frame_get_write_counter_nvme(void *f)
+{
+	struct rpmb_frame_nvme *frame = f;
+
+	return le32toh(frame->write_counter);
+}
+
+static uint32_t rpmb_frame_get_write_counter(uint8_t frame_type, void *f)
+{
+	return (frame_type == RPMB_FRAME_TYPE_NVME) ?
+		rpmb_frame_get_write_counter_nvme(f) :
+		rpmb_frame_get_write_counter_jdec(f);
+}
+
+static uint32_t rpmb_frame_get_addr_jdec(void *f)
+{
+	struct rpmb_frame_jdec *frame = f;
+
+	return be16toh(frame->addr);
+}
+
+static uint32_t rpmb_frame_get_addr_nvme(void *f)
+{
+	struct rpmb_frame_nvme *frame = f;
+
+	return le32toh(frame->addr);
+}
+
+static uint32_t rpmb_frame_get_addr(uint8_t frame_type, void *f)
+{
+	return (frame_type == RPMB_FRAME_TYPE_NVME) ?
+		rpmb_frame_get_addr_nvme(f) :
+		rpmb_frame_get_addr_jdec(f);
+}
+
+static uint16_t rpmb_frame_get_result_jdec(void *f)
+{
+	struct rpmb_frame_jdec *frames = f;
+	uint16_t block_count = be16toh(frames[0].block_count);
+
+	if (block_count == 0)
+		block_count = 1;
+
+	return be16toh(frames[block_count - 1].result);
+}
+
+static uint16_t rpmb_frame_get_result_nvme(void *f)
+{
+	struct rpmb_frame_nvme *frame = f;
+
+	return le16toh(frame->result);
+}
+
+static uint16_t rpmb_frame_get_result(uint8_t frame_type, void *f)
+{
+	return (frame_type == RPMB_FRAME_TYPE_NVME) ?
+		rpmb_frame_get_result_nvme(f) :
+		rpmb_frame_get_result_jdec(f);
+}
+
+static uint16_t rpmb_frame_get_req_resp_jdec(void *f)
+{
+	struct rpmb_frame_jdec *frame = f;
+
+	return be16toh(frame->req_resp);
+}
+
+static uint16_t rpmb_frame_get_req_resp_nvme(void *f)
+{
+	struct rpmb_frame_nvme *frame = f;
+
+	return le16toh(frame->req_resp);
+}
+
+static uint16_t rpmb_frame_get_req_resp(uint8_t frame_type, void *f)
+{
+	return frame_type == RPMB_FRAME_TYPE_NVME ?
+		rpmb_frame_get_req_resp_nvme(f) :
+		rpmb_frame_get_req_resp_jdec(f);
+}
+
+static int rpmb_frame_set_jdec(void *f,
+			       uint16_t req_resp, uint32_t block_count,
+			       uint32_t addr, uint32_t write_counter)
+{
+	struct rpmb_frame_jdec *frames = f;
+	uint32_t i;
+	/* FIMXE validate overflow */
+	uint16_t __block_count = (uint16_t)block_count;
+	uint16_t __addr  = (uint16_t)addr;
+
+	for (i = 0; i < (block_count ?: 1); i++) {
+		frames[i].req_resp      = htobe16(req_resp);
+		frames[i].block_count   = htobe16(__block_count);
+		frames[i].addr          = htobe16(__addr);
+		frames[i].write_counter = htobe32(write_counter);
+	}
+
+	return 0;
+}
+
+static int rpmb_frame_set_nvme(void *f,
+			       uint16_t req_resp, uint32_t block_count,
+			       uint32_t addr, uint32_t write_counter)
+{
+	struct rpmb_frame_nvme *frame = f;
+
+	frame->req_resp      = htole16(req_resp);
+	frame->block_count   = htole32(block_count);
+	frame->addr          = htole32(addr);
+	frame->write_counter = htole32(write_counter);
+
+	return 0;
+}
+
+static int rpmb_frame_set(uint8_t frame_type, void *f,
+			  uint16_t req_resp, uint32_t block_count,
+			  uint32_t addr, uint32_t write_counter)
+{
+	if (frame_type == RPMB_FRAME_TYPE_NVME) {
+		return rpmb_frame_set_nvme(f, req_resp, block_count,
+					   addr, write_counter);
+	} else {
+		return rpmb_frame_set_jdec(f, req_resp, block_count,
+					   addr, write_counter);
+	}
+}
+
+static int rpmb_frame_write_data_jdec(int fd, void *f)
+{
+	struct rpmb_frame_jdec *frames = f;
+	uint16_t i, block_count = be16toh(frames[0].block_count);
+
+	for (i = 0; i < block_count; i++) {
+		int ret;
+
+		ret = write_file(fd, frames[i].data, sizeof(frames[i].data));
+		if (ret < 0)
+			return ret;
+	}
+	return 0;
+}
+
+static int rpmb_frame_write_data_nvme(int fd, void *f)
+{
+	struct rpmb_frame_nvme *frame = f;
+	uint32_t i, block_count = le32toh(frame->block_count);
+
+	for (i = 0; i < block_count; i++) {
+		int ret;
+
+		ret = write_file(fd, &frame->data[i], RPMB_SECTOR_SIZE);
+		if (ret < 0)
+			return ret;
+	}
+	return 0;
+}
+
+static int rpmb_frame_write_data(uint8_t frame_type, int fd, void *f)
+{
+	return frame_type == RPMB_FRAME_TYPE_NVME ?
+			rpmb_frame_write_data_nvme(fd, f) :
+			rpmb_frame_write_data_jdec(fd, f);
+}
+
+static int rpmb_frame_read_data_jdec(int fd, void *f)
+{
+	struct rpmb_frame_jdec *frames = f;
+	uint16_t i, block_count = be16toh(frames[0].block_count);
+
+	for (i = 0; i < block_count; i++) {
+		int ret = read_file(fd, frames[i].data,
+				sizeof(frames[0].data));
+		if (ret < 0)
+			return ret;
+	}
+
+	return 0;
+}
+
+static int rpmb_frame_read_data_nvme(int fd, void *f)
+{
+	struct rpmb_frame_nvme *frame = f;
+	uint32_t i, block_count = le32toh(frame->block_count);
+
+	for (i = 0; i < block_count; i++) {
+		int ret;
+
+		ret = read_file(fd, &frame->data[i], RPMB_SECTOR_SIZE);
+		if (ret < 0)
+			return ret;
+	}
+
+	return 0;
+}
+
+static int rpmb_frame_read_data(uint8_t frame_type, int fd, void *f)
+{
+	return frame_type == RPMB_FRAME_TYPE_NVME ?
+		rpmb_frame_read_data_nvme(fd, f) :
+		rpmb_frame_read_data_jdec(fd, f);
+}
+
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+static int rpmb_calc_hmac_sha256_jdec(struct rpmb_frame_jdec *frames,
+				      size_t blocks_cnt,
+				      const unsigned char key[],
+				      unsigned int key_size,
+				      unsigned char mac[],
+				      unsigned int mac_size)
 {
 	HMAC_CTX ctx;
 	int ret;
 	unsigned int i;
 
-	 /* SSL returns 1 on success 0 on failure */
+	/* SSL returns 1 on success 0 on failure */
 
 	HMAC_CTX_init(&ctx);
 	ret = HMAC_Init_ex(&ctx, key, key_size, EVP_sha256(), NULL);
 	if (ret == 0)
 		goto out;
-	for (i = 0; i < blocks_cnt; i++)
-		HMAC_Update(&ctx, frames[i].data, hmac_data_len);
+	for (i = 0; i < block_count; i++)
+		HMAC_Update(&ctx, frames[i].data, rpmb_jdec_hmac_data_len);
 
 	ret = HMAC_Final(&ctx, mac, &mac_size);
 	if (ret == 0)
@@ -328,35 +647,149 @@ out:
 	return ret == 1 ? 0 : -1;
 }
 
-static int rpmb_check_req_resp(uint16_t req, struct rpmb_frame *frame_out)
+static int rpmb_calc_hmac_sha256_nvme(struct rpmb_frame_nvme *frame,
+				      size_t block_count,
+				      const unsigned char key[],
+				      unsigned int key_size,
+				      unsigned char mac[],
+				      unsigned int mac_size)
 {
-	if (RPMB_REQ2RESP(req) != be16toh(frame_out->req_resp)) {
-		rpmb_err("RPMB response mismatch %04X != %04X\n.",
-			 RPMB_REQ2RESP(req), be16toh(frame_out->req_resp));
-		return -1;
-	}
-	return 0;
+	HMAC_CTX ctx;
+	int ret;
+	unsigned int i;
+
+	 /* SSL returns 1 on success 0 on failure */
+
+	HMAC_CTX_init(&ctx);
+	ret = HMAC_Init_ex(&ctx, key, key_size, EVP_sha256(), NULL);
+	if (ret == 0)
+		goto out;
+
+	HMAC_Update(&ctx, &frame->rpmb_target, hmac_nvme_data_len);
+	for (i = 0; i < block_count; i++)
+		HMAC_Update(&ctx, frames->data[i], RPMB_SECTOR_SIZE);
+
+	ret = HMAC_Final(&ctx, mac, &mac_size);
+	if (ret == 0)
+		goto out;
+	if (mac_size != RPMB_MAC_SIZE)
+		ret = 0;
+
+	ret = 1;
+out:
+	HMAC_CTX_cleanup(&ctx);
+	return ret == 1 ? 0 : -1;
+}
+#else
+static int rpmb_calc_hmac_sha256_jdec(struct rpmb_frame_jdec *frames,
+				      size_t blocks_cnt,
+				      const unsigned char key[],
+				      unsigned int key_size,
+				      unsigned char mac[],
+				      unsigned int mac_size)
+{
+	HMAC_CTX *ctx;
+	int ret;
+	unsigned int i;
+
+	 /* SSL returns 1 on success 0 on failure */
+
+	ctx = HMAC_CTX_new();
+
+	ret = HMAC_Init_ex(ctx, key, key_size, EVP_sha256(), NULL);
+	if (ret == 0)
+		goto out;
+	for (i = 0; i < blocks_cnt; i++)
+		HMAC_Update(ctx, frames[i].data, rpmb_jdec_hmac_data_len);
+
+	ret = HMAC_Final(ctx, mac, &mac_size);
+	if (ret == 0)
+		goto out;
+	if (mac_size != RPMB_MAC_SIZE)
+		ret = 0;
+
+	ret = 1;
+out:
+	HMAC_CTX_free(ctx);
+	return ret == 1 ? 0 : -1;
 }
 
-static int rpmb_check_mac(const unsigned char *key,
-			  struct rpmb_frame *frames_out,
-			  unsigned int cnt_out)
+static int rpmb_calc_hmac_sha256_nvme(struct rpmb_frame_nvme *frame,
+				      size_t block_count,
+				      const unsigned char key[],
+				      unsigned int key_size,
+				      unsigned char mac[],
+				      unsigned int mac_size)
+{
+	HMAC_CTX *ctx;
+	int ret;
+	unsigned int i;
+
+	/* SSL returns 1 on success 0 on failure */
+
+	ctx = HMAC_CTX_new();
+
+	ret = HMAC_Init_ex(ctx, key, key_size, EVP_sha256(), NULL);
+	if (ret == 0)
+		goto out;
+
+	HMAC_Update(ctx, &frame->rpmb_target, rpmb_nvme_hmac_data_len);
+	for (i = 0; i < block_count; i++)
+		HMAC_Update(ctx, &frame->data[i], RPMB_SECTOR_SIZE);
+
+	ret = HMAC_Final(ctx, mac, &mac_size);
+	if (ret == 0)
+		goto out;
+	if (mac_size != RPMB_MAC_SIZE)
+		ret = 0;
+
+	ret = 1;
+out:
+	HMAC_CTX_free(ctx);
+	return ret == 1 ? 0 : -1;
+}
+#endif
+
+static int rpmb_calc_hmac_sha256(uint8_t frame_type, void *f,
+				 size_t block_count,
+				 const unsigned char key[],
+				 unsigned int key_size,
+				 unsigned char mac[],
+				 unsigned int mac_size)
+{
+	if (frame_type == RPMB_FRAME_TYPE_NVME)
+		return rpmb_calc_hmac_sha256_nvme(f, block_count,
+						  key, key_size,
+						  mac, mac_size);
+	else
+		return rpmb_calc_hmac_sha256_jdec(f, block_count,
+						  key, key_size,
+						  mac, mac_size);
+}
+
+static int rpmb_check_mac(uint8_t frame_type,
+			  const unsigned char *key, size_t key_size,
+			  void *frames_out, unsigned int block_count)
 {
 	unsigned char mac[RPMB_MAC_SIZE];
+	unsigned char *mac_out;
+	int ret;
 
-	if (cnt_out == 0) {
+	if (block_count == 0) {
 		rpmb_err("RPMB 0 output frames.\n");
 		return -1;
 	}
 
-	rpmb_calc_hmac_sha256(frames_out, cnt_out,
-			      key, RPMB_KEY_SIZE,
-			      mac, RPMB_MAC_SIZE);
+	ret = rpmb_calc_hmac_sha256(frame_type, frames_out, block_count,
+				    key, key_size, mac, RPMB_MAC_SIZE);
+	if (ret)
+		return ret;
 
-	if (memcmp(mac, frames_out[cnt_out - 1].key_mac, RPMB_MAC_SIZE)) {
+	mac_out = rpmb_frame_get_key_mac_ptr(frame_type, frames_out,
+					     block_count, RPMB_MAC_SIZE);
+	if (memcmp(mac, mac_out, RPMB_MAC_SIZE)) {
 		rpmb_err("RPMB hmac mismatch:\n");
-		dump_hex_buffer("Result MAC: ",
-				frames_out[cnt_out - 1].key_mac, RPMB_MAC_SIZE);
+		dump_hex_buffer("Result MAC: ", mac_out, RPMB_MAC_SIZE);
 		dump_hex_buffer("Expected MAC: ", mac, RPMB_MAC_SIZE);
 		return -1;
 	}
@@ -364,29 +797,54 @@ static int rpmb_check_mac(const unsigned char *key,
 	return 0;
 }
 
-static int (*rpmb_ioctl)(int fd, uint16_t req,
-			 const struct rpmb_frame *frames_in,
-			 unsigned int cnt_in,
-			 struct rpmb_frame *frames_out,
-			 unsigned int cnt_out);
+static int rpmb_check_req_resp(uint8_t frame_type,
+			       uint16_t req, void *frame_out)
+{
+	uint16_t req_resp = rpmb_frame_get_req_resp(frame_type, frame_out);
 
-static int rpmb_ioctl_seq(int fd, uint16_t req,
-			  const struct rpmb_frame *frames_in,
-			  unsigned int cnt_in,
-			  struct rpmb_frame *frames_out,
-			  unsigned int cnt_out)
+	if (RPMB_REQ2RESP(req) != req_resp) {
+		rpmb_err("RPMB response mismatch %04X != %04X\n.",
+			 RPMB_REQ2RESP(req), req_resp);
+		return -1;
+	}
+
+	return 0;
+}
+
+static struct rpmb_frame_jdec *rpmb_frame_alloc_jdec(size_t block_count)
+{
+	return calloc(1, rpmb_ioc_frames_len_jdec(block_count));
+}
+
+static struct rpmb_frame_nvme *rpmb_frame_alloc_nvme(size_t sector_count)
+{
+	return calloc(1, rpmb_ioc_frames_len_nvme(sector_count));
+}
+
+static void *rpmb_frame_alloc(uint8_t type, size_t count)
+{
+	if (type == RPMB_FRAME_TYPE_NVME)
+		return rpmb_frame_alloc_nvme(count);
+	else
+		return rpmb_frame_alloc_jdec(count);
+}
+
+static int rpmb_ioctl(uint8_t frame_type, int fd, uint16_t req,
+		      const void *frames_in, unsigned int cnt_in,
+		      void *frames_out, unsigned int cnt_out)
 {
 	int ret;
-	struct {
+	struct __attribute__((packed)) {
 		struct rpmb_ioc_seq_cmd h;
 		struct rpmb_ioc_cmd cmd[3];
 	} iseq = {};
-	struct rpmb_frame *frame_res = NULL;
+
+	void *frame_res = NULL;
 	int i;
 	uint32_t flags;
 
 	rpmb_dbg("RPMB OP: %s\n", rpmb_op_str(req));
-	dbg_dump_frame("In Frame: ", frames_in);
+	dbg_dump_frame(frame_type, "In Frame: ", frames_in, cnt_in);
 
 	i = 0;
 	flags = RPMB_F_WRITE;
@@ -396,11 +854,12 @@ static int rpmb_ioctl_seq(int fd, uint16_t req,
 	i++;
 
 	if (req == RPMB_WRITE_DATA || req == RPMB_PROGRAM_KEY) {
-		frame_res = rpmb_alloc_frames(1);
+		frame_res = rpmb_frame_alloc(frame_type, 0);
 		if (!frame_res)
 			return -ENOMEM;
-		frame_res->req_resp =  htobe16(RPMB_RESULT_READ);
-		rpmb_ioc_cmd_set(iseq.cmd[i], RPMB_F_WRITE, frame_res, 1);
+		rpmb_frame_set(frame_type, frame_res,
+			       RPMB_RESULT_READ, 0, 0, 0);
+		rpmb_ioc_cmd_set(iseq.cmd[i], RPMB_F_WRITE, frame_res, 0);
 		i++;
 	}
 
@@ -412,51 +871,102 @@ static int rpmb_ioctl_seq(int fd, uint16_t req,
 	if (ret < 0)
 		rpmb_err("ioctl failure %d: %s.\n", ret, strerror(errno));
 
-	ret = rpmb_check_req_resp(req, frames_out);
+	ret = rpmb_check_req_resp(frame_type, req, frames_out);
 
-	dbg_dump_frame("Res Frame: ", frame_res);
-	dbg_dump_frame("Out Frame: ", frames_out);
+	dbg_dump_frame(frame_type, "Res Frame: ", frame_res, 1);
+	dbg_dump_frame(frame_type, "Out Frame: ", frames_out, cnt_out);
 	free(frame_res);
 	return ret;
 }
 
-static int rpmb_ioctl_req(int fd, uint16_t req,
-			  const struct rpmb_frame *frames_in,
-			  unsigned int cnt_in,
-			  struct rpmb_frame *frames_out,
-			  unsigned int cnt_out)
+static int op_get_info(int nargs, char *argv[])
 {
-	struct rpmb_ioc_req_cmd ireq;
+	int dev_fd;
+	struct rpmb_ioc_cap_cmd cap;
+
+	if (nargs != 1)
+		return -EINVAL;
+
+	memset(&cap, 0, sizeof(cap));
+	dev_fd = open_dev_file(argv[0], &cap);
+	if (dev_fd < 0)
+		return -errno;
+	argv++;
+
+	printf("RPMB device_type = %hd\n", cap.device_type);
+	printf("RPMB rpmb_target = %hd\n", cap.target);
+	printf("RPMB capacity    = %hd\n", cap.capacity);
+	printf("RPMB block_size  = %hd\n", cap.block_size);
+	printf("RPMB wr_cnt_max  = %hd\n", cap.wr_cnt_max);
+	printf("RPMB rd_cnt_max  = %hd\n", cap.rd_cnt_max);
+	printf("RPMB auth_method = %hd\n", cap.auth_method);
+
+	close(dev_fd);
+
+	return 0;
+}
+
+static int __rpmb_program_key(uint8_t frame_type, int dev_fd,
+			      uint8_t *key, size_t key_size)
+{
+	void *frame_in, *frame_out;
+	uint16_t req = RPMB_PROGRAM_KEY;
 	int ret;
 
-	ireq.req_type = req;
-	rpmb_ioc_cmd_set(ireq.icmd, RPMB_F_WRITE, frames_in, cnt_in);
-	rpmb_ioc_cmd_set(ireq.ocmd, 0, frames_out, cnt_out);
+	frame_in = rpmb_frame_alloc(frame_type, 0);
+	frame_out = rpmb_frame_alloc(frame_type, 0);
+	if (!frame_in || !frame_out) {
+		ret = -ENOMEM;
+		goto out;
+	}
 
-	rpmb_dbg("RPMB OP: %s\n", rpmb_op_str(req));
-	dbg_dump_frame("In Frame: ", frames_in);
-	ret = ioctl(fd, RPMB_IOC_REQ_CMD, &ireq);
-	if (ret < 0)
-		rpmb_err("ioctl failure %d: %s.\n", ret, strerror(errno));
+	rpmb_frame_set(frame_type, frame_in, req, 0, 0, 0);
 
-	ret = rpmb_check_req_resp(req, frames_out);
-	dbg_dump_frame("Out Frame: ", frames_out);
+	ret = rpmb_frame_set_key_mac(frame_type, frame_in, 0, key, key_size);
+	if (ret)
+		goto out;
 
-	return ret;
+	ret = rpmb_ioctl(frame_type, dev_fd, req, frame_in, 1, frame_out, 1);
+	if (ret)
+		goto out;
+
+	ret = rpmb_check_req_resp(frame_type, req, frame_out);
+	if (ret)
+		goto out;
+
+	ret = rpmb_frame_get_result(frame_type, frame_out);
+	if (ret)
+		rpmb_err("RPMB operation %s failed, %s[0x%04x].\n",
+			 rpmb_op_str(req), rpmb_result_str(ret), ret);
+
+out:
+	free(frame_in);
+	free(frame_out);
+
+	return 0;
+}
+
+static uint8_t rpmb_cap_get_frame_type(struct rpmb_ioc_cap_cmd *cap)
+{
+	if (cap->device_type == RPMB_TYPE_NVME)
+		return RPMB_FRAME_TYPE_NVME;
+	else
+		return RPMB_FRAME_TYPE_JDEC;
 }
 
 static int op_rpmb_program_key(int nargs, char *argv[])
 {
 	int ret;
 	int  dev_fd = -1, key_fd = -1;
-	uint16_t req = RPMB_PROGRAM_KEY;
-	struct rpmb_frame *frame_in = NULL, *frame_out = NULL;
+	uint8_t key[RPMB_KEY_SIZE];
+	uint8_t frame_type;
+	struct rpmb_ioc_cap_cmd cap;
 
 	ret = -EINVAL;
 	if (nargs != 2)
 		return ret;
 
-	dev_fd = open_dev_file(argv[0]);
+	dev_fd = open_dev_file(argv[0], &cap);
 	if (dev_fd < 0)
 		goto out;
 	argv++;
@@ -466,92 +976,78 @@ static int op_rpmb_program_key(int nargs, char *argv[])
 		goto out;
 	argv++;
 
-	frame_in = rpmb_alloc_frames(1);
-	frame_out = rpmb_alloc_frames(1);
-	if (!frame_in || !frame_out) {
-		ret = -ENOMEM;
-		goto out;
-	}
+	read_file(key_fd, key, RPMB_KEY_SIZE);
 
-	frame_in->req_resp = htobe16(req);
+	frame_type = rpmb_cap_get_frame_type(&cap);
 
-	read_file(key_fd, frame_in->key_mac, RPMB_KEY_SIZE);
-
-	ret = rpmb_ioctl(dev_fd, req, frame_in, 1, frame_out, 1);
-	if (ret)
-		goto out;
-
-	if (RPMB_REQ2RESP(req) != be16toh(frame_out->req_resp)) {
-		rpmb_err("RPMB response mismatch.\n");
-		ret = -1;
-		goto out;
-	}
-
-	ret = be16toh(frame_out->result);
-	if (ret)
-		rpmb_err("RPMB operation %s failed, %s[0x%04x].\n",
-			 rpmb_op_str(req), rpmb_result_str(ret), ret);
+	ret = __rpmb_program_key(frame_type, dev_fd, key, RPMB_KEY_SIZE);
 
 out:
-	free(frame_in);
-	free(frame_out);
 	close_fd(dev_fd);
 	close_fd(key_fd);
 
 	return ret;
 }
 
-static int rpmb_get_write_counter(int dev_fd, unsigned int *cnt,
-				  const unsigned char *key)
+static int rpmb_get_write_counter(uint8_t frame_type, int dev_fd,
+				  unsigned int *cnt, const unsigned char *key)
 {
 	int ret;
 	uint16_t res = 0x000F;
 	uint16_t req = RPMB_GET_WRITE_COUNTER;
-	struct rpmb_frame *frame_in = NULL;
-	struct rpmb_frame *frame_out = NULL;
+	void *frame_in = NULL;
+	void *frame_out = NULL;
+	uint8_t *nonce_in;
+	uint8_t *nonce_out;
 
-	frame_in = rpmb_alloc_frames(1);
-	frame_out = rpmb_alloc_frames(1);
+	frame_in = rpmb_frame_alloc(frame_type, 0);
+	frame_out = rpmb_frame_alloc(frame_type, 0);
 	if (!frame_in || !frame_out) {
 		ret = -ENOMEM;
 		goto out;
 	}
 
-	frame_in->req_resp = htobe16(req);
-	RAND_bytes(frame_in->nonce, RPMB_NONCE_SIZE);
+	rpmb_frame_set(frame_type, frame_in, req, 0, 0, 0);
+	nonce_in = rpmb_frame_get_nonce_ptr(frame_type, frame_in);
+	RAND_bytes(nonce_in, RPMB_NONCE_SIZE);
 
-	ret = rpmb_ioctl(dev_fd, req, frame_in, 1, frame_out, 1);
+	ret = rpmb_ioctl(frame_type, dev_fd, req, frame_in, 0, frame_out, 0);
 	if (ret)
 		goto out;
 
-	res = be16toh(frame_out->result);
+	ret = rpmb_check_req_resp(frame_type, req, frame_out);
+	if (ret)
+		goto out;
+
+	res = rpmb_frame_get_result(frame_type, frame_out);
 	if (res != RPMB_ERR_OK) {
 		ret = -1;
 		goto out;
 	}
 
-	if (memcmp(&frame_in->nonce, &frame_out->nonce, RPMB_NONCE_SIZE)) {
+	nonce_out = rpmb_frame_get_nonce_ptr(frame_type, frame_out);
+
+	if (memcmp(nonce_in, nonce_out, RPMB_NONCE_SIZE)) {
 		rpmb_err("RPMB NONCE mismatch\n");
-		dump_hex_buffer("Result NONCE:",
-				&frame_out->nonce, RPMB_NONCE_SIZE);
-		dump_hex_buffer("Expected NONCE: ",
-				&frame_in->nonce, RPMB_NONCE_SIZE);
+		dump_hex_buffer("Result NONCE:", nonce_out, RPMB_NONCE_SIZE);
+		dump_hex_buffer("Expected NONCE: ", nonce_in, RPMB_NONCE_SIZE);
 		ret = -1;
 		goto out;
 	}
 
 	if (key) {
-		ret = rpmb_check_mac(key, frame_out, 1);
+		ret = rpmb_check_mac(frame_type, key, RPMB_KEY_SIZE,
+				     frame_out, 1);
 		if (ret)
 			goto out;
 	}
 
-	*cnt = be32toh(frame_out->write_counter);
+	*cnt = rpmb_frame_get_write_counter(frame_type, frame_out);
 
 out:
 	if (ret)
-		rpmb_err("RPMB operation %s failed, %s[0x%04x]\n",
-			 rpmb_op_str(req), rpmb_result_str(res), res);
+		rpmb_err("RPMB operation %s failed=%d %s[0x%04x]\n",
+			 rpmb_op_str(req), ret, rpmb_result_str(res), res);
 	free(frame_in);
 	free(frame_out);
 	return ret;
@@ -562,8 +1058,10 @@ static int op_rpmb_get_write_counter(int nargs, char **argv)
 	int ret;
 	int dev_fd = -1, key_fd = -1;
 	bool has_key;
+	struct rpmb_ioc_cap_cmd cap;
 	unsigned char key[RPMB_KEY_SIZE];
-	unsigned int cnt;
+	unsigned int cnt = 0;
+	uint8_t frame_type;
 
 	if (nargs == 2)
 		has_key = true;
@@ -573,10 +1071,12 @@ static int op_rpmb_get_write_counter(int nargs, char **argv)
 		return -EINVAL;
 
 	ret = -EINVAL;
-	dev_fd = open_dev_file(argv[0]);
+	dev_fd = open_dev_file(argv[0], &cap);
 	if (dev_fd < 0)
 		return ret;
 	argv++;
+
+	frame_type = rpmb_cap_get_frame_type(&cap);
 
 	if (has_key) {
 		key_fd = open_rd_file(argv[0], "key file");
@@ -588,9 +1088,9 @@ static int op_rpmb_get_write_counter(int nargs, char **argv)
 		if (ret < 0)
 			goto out;
 
-		ret = rpmb_get_write_counter(dev_fd, &cnt, key);
+		ret = rpmb_get_write_counter(frame_type, dev_fd, &cnt, key);
 	} else {
-		ret = rpmb_get_write_counter(dev_fd, &cnt, NULL);
+		ret = rpmb_get_write_counter(frame_type, dev_fd, &cnt, NULL);
 	}
 
 	if (!ret)
@@ -604,16 +1104,18 @@ out:
 
 static int op_rpmb_read_blocks(int nargs, char **argv)
 {
-	int i, ret;
+	int ret;
 	int dev_fd = -1, data_fd = -1, key_fd = -1;
 	uint16_t req = RPMB_READ_DATA;
-	uint16_t addr, blocks_cnt;
+	uint32_t addr, block_count;
 	unsigned char key[RPMB_KEY_SIZE];
+	uint8_t *nonce_in;
 	unsigned long numarg;
 	bool has_key;
-	struct rpmb_frame *frame_in = NULL;
-	struct rpmb_frame *frames_out = NULL;
-	struct rpmb_frame *frame_out;
+	struct rpmb_ioc_cap_cmd cap;
+	void *frame_in = NULL;
+	void *frames_out = NULL;
+	uint8_t frame_type;
 
 	ret = -EINVAL;
 	if (nargs == 4)
@@ -623,30 +1125,30 @@ static int op_rpmb_read_blocks(int nargs, char **argv)
 	else
 		return ret;
 
-	dev_fd = open_dev_file(argv[0]);
+	dev_fd = open_dev_file(argv[0], &cap);
 	if (dev_fd < 0)
 		goto out;
 	argv++;
 
 	errno = 0;
 	numarg = strtoul(argv[0], NULL, 0);
-	if (errno || numarg > USHRT_MAX) {
+	if (errno || numarg > UINT_MAX) {
 		rpmb_err("wrong block address\n");
 		goto out;
 	}
-	addr = (uint16_t)numarg;
+	addr = (uint32_t)numarg;
 	argv++;
 
 	errno = 0;
 	numarg = strtoul(argv[0], NULL, 0);
-	if (errno || numarg > USHRT_MAX) {
+	if (errno || numarg > UINT_MAX) {
 		rpmb_err("wrong blocks count\n");
 		goto out;
 	}
-	blocks_cnt = (uint16_t)numarg;
+	block_count = (uint32_t)numarg;
 	argv++;
 
-	if (blocks_cnt == 0) {
+	if (block_count == 0) {
 		rpmb_err("wrong blocks count\n");
 		goto out;
 	}
@@ -667,28 +1169,30 @@ static int op_rpmb_read_blocks(int nargs, char **argv)
 			goto out;
 	}
 
+	frame_type = rpmb_cap_get_frame_type(&cap);
+
 	ret = 0;
-	frames_out = rpmb_alloc_frames(blocks_cnt);
-	frame_in = rpmb_alloc_frames(1);
+	frames_out = rpmb_frame_alloc(frame_type, block_count);
+	frame_in = rpmb_frame_alloc(frame_type, 0);
 	if (!frames_out || !frame_in) {
-		rpmb_err("Cannot allocate %d RPMB frames\n", blocks_cnt);
+		rpmb_err("Cannot allocate %d RPMB frames\n", block_count);
 		ret = -ENOMEM;
 		goto out;
 	}
 
-	frame_in->req_resp = htobe16(req);
-	frame_in->addr = htobe16(addr);
-	/* eMMc spec ask for 0 here this will be translated by the rpmb layer */
-	frame_in->block_count = htobe16(blocks_cnt);
-	if (has_key)
-		RAND_bytes(frame_in->nonce, RPMB_NONCE_SIZE);
+	/* eMMc spec ask for 0 block_count here
+	 * this will be translated by the rpmb layer
+	 */
+	rpmb_frame_set(frame_type, frame_in, req, block_count, addr, 0);
+	nonce_in = rpmb_frame_get_nonce_ptr(frame_type, frame_in);
+	RAND_bytes(nonce_in, RPMB_NONCE_SIZE);
 
-	ret = rpmb_ioctl(dev_fd, req, frame_in, 1, frames_out, blocks_cnt);
+	ret = rpmb_ioctl(frame_type, dev_fd, req, frame_in, 0,
+			 frames_out, block_count);
 	if (ret)
 		goto out;
 
-	frame_out = &frames_out[blocks_cnt - 1];
-	ret = be16toh(frame_out->result);
+	ret = rpmb_frame_get_result(frame_type, frames_out);
 	if (ret) {
 		rpmb_err("RPMB operation %s failed, %s[0x%04x]\n",
 			 rpmb_op_str(req), rpmb_result_str(ret), ret);
@@ -696,17 +1200,13 @@ static int op_rpmb_read_blocks(int nargs, char **argv)
 	}
 
 	if (has_key) {
-		ret = rpmb_check_mac(key, frames_out, blocks_cnt);
+		ret = rpmb_check_mac(frame_type, key, RPMB_KEY_SIZE,
+				     frames_out, block_count);
 		if (ret)
 			goto out;
 	}
 
-	for (i = 0; i < blocks_cnt; i++) {
-		ret = write_file(data_fd, frames_out[i].data,
-				 sizeof(frames_out[i].data));
-		if (ret < 0)
-			goto out;
-	}
+	ret = rpmb_frame_write_data(frame_type, data_fd, frames_out);
 
 out:
 	free(frame_in);
@@ -722,21 +1222,23 @@ static int op_rpmb_write_blocks(int nargs, char **argv)
 {
 	int ret;
 	int dev_fd = -1, key_fd = -1, data_fd = -1;
-	int i;
 	uint16_t req = RPMB_WRITE_DATA;
 	unsigned char key[RPMB_KEY_SIZE];
 	unsigned char mac[RPMB_MAC_SIZE];
 	unsigned long numarg;
-	uint16_t addr, blocks_cnt;
-	uint32_t write_counter;
-	struct rpmb_frame *frames_in = NULL;
-	struct rpmb_frame *frame_out = NULL;
+	struct rpmb_ioc_cap_cmd cap;
+	uint16_t addr, block_count;
+	uint32_t write_counter = 0;
+	uint32_t write_counter_out = 0;
+	void *frames_in = NULL;
+	void *frame_out = NULL;
+	uint8_t frame_type;
 
 	ret = -EINVAL;
 	if (nargs != 5)
 		goto out;
 
-	dev_fd = open_dev_file(argv[0]);
+	dev_fd = open_dev_file(argv[0], &cap);
 	if (dev_fd < 0)
 		goto out;
 	argv++;
@@ -756,10 +1258,10 @@ static int op_rpmb_write_blocks(int nargs, char **argv)
 		rpmb_err("wrong blocks count\n");
 		goto out;
 	}
-	blocks_cnt = (uint16_t)numarg;
+	block_count = (uint16_t)numarg;
 	argv++;
 
-	if (blocks_cnt == 0) {
+	if (block_count == 0) {
 		rpmb_err("wrong blocks count\n");
 		goto out;
 	}
@@ -778,60 +1280,64 @@ static int op_rpmb_write_blocks(int nargs, char **argv)
 	if (ret < 0)
 		goto out;
 
-	frames_in = rpmb_alloc_frames(blocks_cnt);
-	frame_out = rpmb_alloc_frames(1);
+	frame_type = rpmb_cap_get_frame_type(&cap);
+
+	frames_in = rpmb_frame_alloc(frame_type, block_count);
+	frame_out = rpmb_frame_alloc(frame_type, 0);
 	if (!frames_in || !frame_out) {
 		rpmb_err("can't allocate memory for RPMB outer frames\n");
 		ret = -ENOMEM;
 		goto out;
 	}
 
-	ret = rpmb_get_write_counter(dev_fd, &write_counter, key);
+	ret = rpmb_get_write_counter(frame_type, dev_fd, &write_counter, NULL);
 	if (ret)
 		goto out;
 
-	for (i = 0; i < blocks_cnt; i++) {
-		frames_in[i].req_resp      = htobe16(req);
-		frames_in[i].block_count   = htobe16(blocks_cnt);
-		frames_in[i].addr          = htobe16(addr);
-		frames_in[i].write_counter = htobe32(write_counter);
-	}
+	ret = rpmb_frame_set(frame_type, frames_in,
+			     req, block_count, addr, write_counter);
+	if (ret)
+		goto out;
 
-	for (i = 0; i < blocks_cnt; i++) {
-		ret = read_file(data_fd, frames_in[i].data,
-				sizeof(frames_in[0].data));
-		if (ret < 0)
-			goto out;
-	}
+	ret = rpmb_frame_read_data(frame_type, data_fd, frames_in);
+	if (ret)
+		goto out;
 
-	rpmb_calc_hmac_sha256(frames_in, blocks_cnt,
+	rpmb_calc_hmac_sha256(frame_type, frames_in,
+			      block_count,
 			      key, RPMB_KEY_SIZE,
 			      mac, RPMB_MAC_SIZE);
-	memcpy(frames_in[blocks_cnt - 1].key_mac, mac, RPMB_MAC_SIZE);
-	ret = rpmb_ioctl(dev_fd, req, frames_in, blocks_cnt, frame_out, 1);
+
+	rpmb_frame_set_key_mac(frame_type, frames_in, block_count,
+			       mac, RPMB_MAC_SIZE);
+
+	ret = rpmb_ioctl(frame_type, dev_fd, req,
+			 frames_in, block_count,
+			 frame_out, 0);
 	if (ret != 0)
 		goto out;
 
-	ret = be16toh(frame_out->result);
+	ret = rpmb_frame_get_result(frame_type, frame_out);
 	if (ret) {
 		rpmb_err("RPMB operation %s failed, %s[0x%04x]\n",
 			 rpmb_op_str(req), rpmb_result_str(ret), ret);
 		ret = -1;
 	}
 
-	if (be16toh(frame_out->addr) != addr) {
+	if (rpmb_frame_get_addr(frame_type, frame_out) != addr) {
 		rpmb_err("RPMB addr mismatchs res=%04x req=%04x\n",
-			 be16toh(frame_out->addr), addr);
+			 rpmb_frame_get_addr(frame_type, frame_out), addr);
 		ret = -1;
 	}
 
-	if (be32toh(frame_out->write_counter) <= write_counter) {
-		rpmb_err("RPMB write counter not incremeted res=%x req=%x\n",
-			 be32toh(frame_out->write_counter), write_counter);
+	write_counter_out = rpmb_frame_get_write_counter(frame_type, frame_out);
+	if (write_counter_out <= write_counter) {
+		rpmb_err("RPMB write counter not incremented res=%x req=%x\n",
+			 write_counter_out, write_counter);
 		ret = -1;
 	}
 
-	ret = rpmb_check_mac(key, frame_out, 1);
+	//ret = rpmb_check_mac(frame_type, key, RPMB_KEY_SIZE, frame_out, 1);
 out:
 	free(frames_in);
 	free(frame_out);
@@ -851,6 +1357,12 @@ struct rpmb_cmd {
 };
 
 static const struct rpmb_cmd cmds[] = {
+	{
+	 "get-info",
+	 op_get_info,
+	 "<RPMB_DEVICE>",
+	 "    Get RPMB device info\n",
+	},
 	{
 	 "program-key",
 	 op_rpmb_program_key,
@@ -900,15 +1412,13 @@ static void usage(const char *prog)
 	int i;
 
 	printf("\n");
-	printf("Usage: %s [-v] [-r|-s] <command> <args>\n\n", prog);
+	printf("Usage: %s [-v] <command> <args>\n\n", prog);
 	for (i = 0; cmds[i].op_name; i++)
 		printf("       %s %s %s\n",
 		       prog, cmds[i].op_name, cmds[i].usage);
 
 	printf("\n");
 	printf("      %s -v/--verbose: runs in verbose mode\n", prog);
-	printf("      %s -s/ --sequence: use RPMB_IOC_SEQ_CMD\n", prog);
-	printf("      %s -r/--request: use RPMB_IOC_REQ_CMD\n", prog);
 	printf("      %s help : shows this help\n", prog);
 	printf("      %s help <command>: shows detailed help\n", prog);
 }
@@ -924,18 +1434,6 @@ static bool parse_verbose(const char *arg)
 {
 	return !strcmp(arg, "-v") ||
 	       !strcmp(arg, "--verbose");
-}
-
-static bool parse_req(const char *arg)
-{
-	return !strcmp(arg, "-r") ||
-	       !strcmp(arg, "--request");
-}
-
-static bool parse_seq(const char *arg)
-{
-	return !strcmp(arg, "-s") ||
-	       !strcmp(arg, "--sequence");
 }
 
 static const
@@ -967,25 +1465,6 @@ struct rpmb_cmd *parse_args(const char *prog, int *_argc, char **_argv[])
 
 		verbose = true;
 	}
-
-	if (parse_req(argv[0])) {
-		argc--; argv++;
-		if (argc == 0)
-			goto out;
-
-		rpmb_ioctl = rpmb_ioctl_req;
-	}
-
-	if (parse_seq(argv[0])) {
-		argc--; argv++;
-		if (argc == 0)
-			goto out;
-
-		rpmb_ioctl = rpmb_ioctl_seq;
-	}
-
-	if (!rpmb_ioctl)
-		rpmb_ioctl = rpmb_ioctl_req;
 
 	for (i = 0; cmds[i].op_name; i++) {
 		if (!strncmp(argv[0], cmds[i].op_name,

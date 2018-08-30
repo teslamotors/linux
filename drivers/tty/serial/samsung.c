@@ -1079,39 +1079,6 @@ static int s3c64xx_serial_startup(struct uart_port *port)
 	return ret;
 }
 
-/* power power management control */
-
-static void s3c24xx_serial_pm(struct uart_port *port, unsigned int level,
-			      unsigned int old)
-{
-	struct s3c24xx_uart_port *ourport = to_ourport(port);
-	int timeout = 10000;
-
-	ourport->pm_level = level;
-
-	switch (level) {
-	case 3:
-		while (--timeout && !s3c24xx_serial_txempty_nofifo(port))
-			udelay(100);
-
-		if (!IS_ERR(ourport->baudclk))
-			clk_disable_unprepare(ourport->baudclk);
-
-		clk_disable_unprepare(ourport->clk);
-		break;
-
-	case 0:
-		clk_prepare_enable(ourport->clk);
-
-		if (!IS_ERR(ourport->baudclk))
-			clk_prepare_enable(ourport->baudclk);
-
-		break;
-	default:
-		dev_err(port->dev, "s3c24xx_serial: unknown pm %d\n", level);
-	}
-}
-
 /* baud rate calculation
  *
  * The UARTs on the S3C2410/S3C2440 can take their clocks from a number
@@ -1467,7 +1434,6 @@ static void s3c24xx_serial_put_poll_char(struct uart_port *port,
 #endif
 
 static struct uart_ops s3c24xx_serial_ops = {
-	.pm		= s3c24xx_serial_pm,
 	.tx_empty	= s3c24xx_serial_tx_empty,
 	.get_mctrl	= s3c24xx_serial_get_mctrl,
 	.set_mctrl	= s3c24xx_serial_set_mctrl,

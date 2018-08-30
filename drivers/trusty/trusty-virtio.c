@@ -150,7 +150,7 @@ static bool trusty_virtio_notify(struct virtqueue *vq)
 
 	if (api_ver < TRUSTY_API_VERSION_SMP_NOP) {
 		atomic_set(&tvr->needs_kick, 1);
-		queue_work(tctx->kick_wq, &tctx->kick_vqs);
+		queue_work_on(0, tctx->kick_wq, &tctx->kick_vqs);
 	} else {
 		trusty_enqueue_nop(tctx->dev->parent, &tvr->kick_nop);
 	}
@@ -685,7 +685,7 @@ static int trusty_virtio_probe(struct platform_device *pdev)
 	}
 
 	tctx->kick_wq = alloc_workqueue("trusty-kick-wq",
-					WQ_UNBOUND | WQ_CPU_INTENSIVE, 0);
+					WQ_CPU_INTENSIVE, 0);
 	if (!tctx->kick_wq) {
 		ret = -ENODEV;
 		dev_err(&pdev->dev, "Failed create trusty-kick-wq\n");

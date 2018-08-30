@@ -2172,10 +2172,13 @@ static void soc_check_tplg_fes(struct snd_soc_card *card)
 			continue;
 
 		/* for this machine ? */
+		if (!strcmp(platform->driver->ignore_machine,
+			    card->dev->driver->name))
+			goto match;
 		if (strcmp(platform->driver->ignore_machine,
-			   card->dev->driver->name))
+			   dev_name(card->dev)))
 			continue;
-
+match:
 		/* machine matches, so override the rtd data */
 		for (i = 0; i < card->num_links; i++) {
 
@@ -2192,12 +2195,9 @@ static void soc_check_tplg_fes(struct snd_soc_card *card)
 
 			/* override platform */
 			dai_link->platform_name = platform->component.name;
-			dai_link->cpu_dai_name = platform->component.name;
 
 			/* convert non BE into BE */
 			dai_link->no_pcm = 1;
-			dai_link->dpcm_playback = 1;
-			dai_link->dpcm_capture = 1;
 
 			/* override any BE fixups */
 			dai_link->be_hw_params_fixup =

@@ -301,6 +301,7 @@ static int setup_virtual_monitor(struct intel_vgpu *vgpu, int port_num,
 {
 	struct intel_vgpu_port *port = intel_vgpu_port(vgpu, port_num);
 	int valid_extensions = 1;
+	struct edid *tmp_edid = NULL;
 
 	if (WARN_ON(resolution >= GVT_EDID_NUM))
 		return -EINVAL;
@@ -325,6 +326,17 @@ static int setup_virtual_monitor(struct intel_vgpu *vgpu, int port_num,
 		memcpy(port->edid->edid_block,
 				virtual_dp_monitor_edid[resolution],
 				EDID_SIZE);
+
+	/* Sometimes the physical display will report the EDID with no
+	 * digital bit set, which will cause the guest fail to enumerate
+	 * the virtual HDMI monitor. So here we will set the digital
+	 * bit and re-calculate the checksum.
+	 */
+	tmp_edid = ((struct edid *)port->edid->edid_block);
+	if (!(tmp_edid->input & DRM_EDID_INPUT_DIGITAL)) {
+		tmp_edid->input += DRM_EDID_INPUT_DIGITAL;
+		tmp_edid->checksum -= DRM_EDID_INPUT_DIGITAL;
+	}
 
 	port->edid->data_valid = true;
 

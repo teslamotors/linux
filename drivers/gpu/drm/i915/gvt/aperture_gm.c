@@ -274,7 +274,7 @@ static int alloc_resource(struct intel_vgpu *vgpu,
 	avail = max - taken;
 	request = param->fence_sz;
 
-	if (request > avail)
+	if (request > avail || request > INTEL_GVT_MAX_NUM_FENCES)
 		goto no_enough_resource;
 
 	vgpu_fence_sz(vgpu) = request;

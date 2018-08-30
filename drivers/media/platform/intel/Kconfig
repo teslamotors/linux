@@ -100,7 +100,8 @@ config INTEL_IPU4_ADV7481
 	HDMI2MIPI convertor device ADV7481
 
 config INTEL_IPU4_ADV7481_I2C_ID
-	int
+	int "I2C bus ID for ADV7481"
+	range 0 8
 	default 0
 	---help---
 	I2C bus number of ADV7481 Mondello

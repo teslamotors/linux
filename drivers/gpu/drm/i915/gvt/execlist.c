@@ -605,7 +605,7 @@ static void read_guest_pdps(struct intel_vgpu *vgpu,
 	u64 gpa;
 	int i;
 
-	gpa = ring_context_gpa + RING_CTX_OFF(pdp3_UDW.val);
+	gpa = ring_context_gpa + RING_CTX_OFF(pdps[0].val);
 
 	for (i = 0; i < 8; i++)
 		intel_gvt_hypervisor_read_gpa(vgpu,
@@ -766,7 +766,7 @@ static int submit_context(struct intel_vgpu *vgpu, int ring_id,
 		intel_runtime_pm_put(dev_priv);
 	}
 
-	queue_workload(workload);
+	intel_vgpu_queue_workload(workload);
 	return 0;
 }
 

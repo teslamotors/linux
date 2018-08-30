@@ -391,7 +391,6 @@ static const struct uart_ops sn_console_ops = {
 	.startup = snp_startup,
 	.shutdown = snp_shutdown,
 	.set_termios = snp_set_termios,
-	.pm = NULL,
 	.type = snp_type,
 	.release_port = snp_release_port,
 	.request_port = snp_request_port,

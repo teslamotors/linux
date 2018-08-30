@@ -27,7 +27,8 @@
 #include <linux/trusty/trusty.h>
 
 #define EVMM_SMC_HC_ID 0x74727500
-#define ACRN_SMC_HC_ID 0x80000071
+#define ACRN_HC_SWITCH_WORLD 0x80000071
+#define ACRN_HC_SAVE_SWORLD_CONTEXT 0x80000072
 
 struct trusty_state;
 
@@ -70,7 +71,7 @@ static inline ulong smc_evmm(ulong r0, ulong r1, ulong r2, ulong r3)
 
 static inline ulong smc_acrn(ulong r0, ulong r1, ulong r2, ulong r3)
 {
-	register unsigned long smc_id asm("r8") = ACRN_SMC_HC_ID;
+	register unsigned long smc_id asm("r8") = ACRN_HC_SWITCH_WORLD;
 	__asm__ __volatile__(
 		"vmcall; \n"
 		: "=D"(r0)
@@ -79,6 +80,20 @@ static inline ulong smc_acrn(ulong r0, ulong r1, ulong r2, ulong r3)
 	);
 
 	return r0;
+}
+
+static void acrn_save_sworld_context(void *arg)
+{
+	long *save_ret = arg;
+	register signed long result asm("rax");
+	register unsigned long hc_id asm("r8") = ACRN_HC_SAVE_SWORLD_CONTEXT;
+	__asm__ __volatile__(
+		"vmcall; \n"
+		: "=r"(result)
+		: "r"(hc_id)
+	);
+
+	*save_ret = result;
 }
 
 static void trusty_fast_call32_remote(void *args)
@@ -270,7 +285,6 @@ static long trusty_std_call32_work(void *args)
 
 s32 trusty_std_call32(struct device *dev, u32 smcnr, u32 a0, u32 a1, u32 a2)
 {
-	const int cpu = 0;
 	struct trusty_std_call32_args args = {
 		.dev = dev,
 		.smcnr = smcnr,
@@ -280,7 +294,11 @@ s32 trusty_std_call32(struct device *dev, u32 smcnr, u32 a0, u32 a1, u32 a2)
 	};
 
 	/* bind cpu 0 for now since trusty OS is running on physical cpu #0*/
-	return work_on_cpu(cpu, trusty_std_call32_work, (void *) &args);
+	if((smcnr == SMC_SC_VDEV_KICK_VQ) || (smcnr == SMC_SC_LK_TIMER)
+		|| (smcnr == SMC_SC_LOCKED_NOP) || (smcnr == SMC_SC_NOP))
+		return trusty_std_call32_work((void *) &args);
+	else
+		return work_on_cpu(0, trusty_std_call32_work, (void *) &args);
 }
 
 EXPORT_SYMBOL(trusty_std_call32);
@@ -490,7 +508,7 @@ void trusty_enqueue_nop(struct device *dev, struct trusty_nop *nop)
 			list_add_tail(&nop->node, &s->nop_queue);
 		spin_unlock_irqrestore(&s->nop_lock, flags);
 	}
-	queue_work(s->nop_wq, &tw->work);
+	queue_work_on(0, s->nop_wq, &tw->work);
 	preempt_enable();
 }
 EXPORT_SYMBOL(trusty_enqueue_nop);
@@ -628,6 +646,25 @@ static int trusty_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static int trusty_suspend(struct platform_device *pdev, pm_message_t state)
+{
+	long ret = 0, save_ret = 0;
+	int cpu = 0;
+
+	dev_info(&pdev->dev, "%s() is called\n", __func__);
+
+	ret = smp_call_function_single(cpu, acrn_save_sworld_context, (void *)&save_ret, 1);
+	if (ret) {
+		pr_err("%s: smp_call_function_single failed: %ld\n", __func__, ret);
+	}
+	if(save_ret < 0) {
+		dev_err(&pdev->dev, "%s(): failed to save world context!\n", __func__);
+		return -EPERM;
+	}
+
+	return 0;
+}
+
 static const struct of_device_id trusty_of_match[] = {
 	{ .compatible = "android,trusty-smc-v1", },
 	{},
@@ -761,6 +798,11 @@ static int __init trusty_driver_init(void)
 		printk(KERN_ERR "%s(): platform_add_devices() failed, ret %d\n", __func__, ret);
 		return ret;
 	}
+
+	if(trusty_detect_vmm() == VMM_ID_ACRN) {
+		trusty_driver.suspend = trusty_suspend;
+	}
+
 	return platform_driver_register(&trusty_driver);
 }
 

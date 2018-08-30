@@ -483,28 +483,6 @@ static void omap_8250_set_termios(struct uart_port *port,
 		tty_termios_encode_baud_rate(termios, baud, baud);
 }
 
-/* same as 8250 except that we may have extra flow bits set in EFR */
-static void omap_8250_pm(struct uart_port *port, unsigned int state,
-			 unsigned int oldstate)
-{
-	struct uart_8250_port *up = up_to_u8250p(port);
-	u8 efr;
-
-	pm_runtime_get_sync(port->dev);
-	serial_out(up, UART_LCR, UART_LCR_CONF_MODE_B);
-	efr = serial_in(up, UART_EFR);
-	serial_out(up, UART_EFR, efr | UART_EFR_ECB);
-	serial_out(up, UART_LCR, 0);
-
-	serial_out(up, UART_IER, (state != 0) ? UART_IERX_SLEEP : 0);
-	serial_out(up, UART_LCR, UART_LCR_CONF_MODE_B);
-	serial_out(up, UART_EFR, efr);
-	serial_out(up, UART_LCR, 0);
-
-	pm_runtime_mark_last_busy(port->dev);
-	pm_runtime_put_autosuspend(port->dev);
-}
-
 static void omap_serial_fill_features_erratas(struct uart_8250_port *up,
 					      struct omap8250_priv *priv)
 {
@@ -1172,7 +1150,6 @@ static int omap8250_probe(struct platform_device *pdev)
 #endif
 	up.port.set_termios = omap_8250_set_termios;
 	up.port.set_mctrl = omap8250_set_mctrl;
-	up.port.pm = omap_8250_pm;
 	up.port.startup = omap_8250_startup;
 	up.port.shutdown = omap_8250_shutdown;
 	up.port.throttle = omap_8250_throttle;

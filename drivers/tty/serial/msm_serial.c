@@ -1387,25 +1387,6 @@ static int msm_verify_port(struct uart_port *port, struct serial_struct *ser)
 	return 0;
 }
 
-static void msm_power(struct uart_port *port, unsigned int state,
-		      unsigned int oldstate)
-{
-	struct msm_port *msm_port = UART_TO_MSM(port);
-
-	switch (state) {
-	case 0:
-		clk_prepare_enable(msm_port->clk);
-		clk_prepare_enable(msm_port->pclk);
-		break;
-	case 3:
-		clk_disable_unprepare(msm_port->clk);
-		clk_disable_unprepare(msm_port->pclk);
-		break;
-	default:
-		pr_err("msm_serial: Unknown PM state %d\n", state);
-	}
-}
-
 #ifdef CONFIG_CONSOLE_POLL
 static int msm_poll_get_char_single(struct uart_port *port)
 {
@@ -1525,7 +1506,6 @@ static struct uart_ops msm_uart_pops = {
 	.request_port = msm_request_port,
 	.config_port = msm_config_port,
 	.verify_port = msm_verify_port,
-	.pm = msm_power,
 #ifdef CONFIG_CONSOLE_POLL
 	.poll_get_char	= msm_poll_get_char,
 	.poll_put_char	= msm_poll_put_char,

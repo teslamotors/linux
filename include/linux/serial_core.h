@@ -64,8 +64,6 @@ struct uart_ops {
 	void		(*set_termios)(struct uart_port *, struct ktermios *new,
 				       struct ktermios *old);
 	void		(*set_ldisc)(struct uart_port *, struct ktermios *);
-	void		(*pm)(struct uart_port *, unsigned int state,
-			      unsigned int oldstate);
 
 	/*
 	 * Return a string describing the type of the port
@@ -265,25 +263,12 @@ static inline void serial_port_out(struct uart_port *up, int offset, int value)
 	up->serial_out(up, offset, value);
 }
 
-/**
- * enum uart_pm_state - power states for UARTs
- * @UART_PM_STATE_ON: UART is powered, up and operational
- * @UART_PM_STATE_OFF: UART is powered off
- * @UART_PM_STATE_UNDEFINED: sentinel
- */
-enum uart_pm_state {
-	UART_PM_STATE_ON = 0,
-	UART_PM_STATE_OFF = 3, /* number taken from ACPI */
-	UART_PM_STATE_UNDEFINED,
-};
-
 /*
  * This is the state information which is persistent across opens.
  */
 struct uart_state {
 	struct tty_port		port;
 
-	enum uart_pm_state	pm_state;
 	struct circ_buf		xmit;
 
 	atomic_t		refcount;
@@ -348,7 +333,8 @@ struct earlycon_device {
 };
 
 struct earlycon_id {
-	char	name[16];
+	char	name[15];
+	char	name_term;	/* In case compiler didn't '\0' term name */
 	char	compatible[128];
 	int	(*setup)(struct earlycon_device *, const char *options);
 };

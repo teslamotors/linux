@@ -1,16 +1,7 @@
+// SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0
 /*
- * Copyright (C) 2015-2016 Intel Corp. All rights reserved
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; version 2 of the License.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * General Public License for more details.
+ * Copyright(c) 2015 - 2018 Intel Corporation. All rights reserved.
  */
-
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/kernel.h>
@@ -46,77 +37,6 @@ void rpmb_dev_put(struct rpmb_dev *rdev)
 }
 EXPORT_SYMBOL_GPL(rpmb_dev_put);
 
-static int rpmb_request_verify(struct rpmb_dev *rdev, struct rpmb_data *rpmbd)
-{
-	u16 req_type, block_count;
-	struct rpmb_cmd *in_cmd = &rpmbd->icmd;
-	struct rpmb_cmd *out_cmd = &rpmbd->ocmd;
-
-	if (!in_cmd->frames || !in_cmd->nframes ||
-	    !out_cmd->frames || !out_cmd->nframes)
-		return -EINVAL;
-
-	req_type = be16_to_cpu(in_cmd->frames[0].req_resp);
-	block_count = be16_to_cpu(in_cmd->frames[0].block_count);
-
-	if (rpmbd->req_type != req_type) {
-		dev_err(&rdev->dev, "rpmb req type doesn't match 0x%04X = 0x%04X\n",
-			req_type, rpmbd->req_type);
-		return -EINVAL;
-	}
-
-	switch (req_type) {
-	case RPMB_PROGRAM_KEY:
-		dev_dbg(&rdev->dev, "rpmb program key = 0x%1x blk = %d\n",
-			req_type, block_count);
-		break;
-	case RPMB_GET_WRITE_COUNTER:
-		dev_dbg(&rdev->dev, "rpmb get write counter = 0x%1x blk = %d\n",
-			req_type, block_count);
-
-		break;
-	case RPMB_WRITE_DATA:
-		dev_dbg(&rdev->dev, "rpmb write data = 0x%1x blk = %d\n",
-			req_type, block_count);
-
-		if (rdev->ops->reliable_wr_cnt &&
-		    block_count > rdev->ops->reliable_wr_cnt) {
-			dev_err(&rdev->dev, "rpmb write data: block count %u > reliable wr count %u\n",
-				block_count, rdev->ops->reliable_wr_cnt);
-			return -EINVAL;
-		}
-
-		if (block_count > in_cmd->nframes) {
-			dev_err(&rdev->dev, "rpmb write data: block count %u > in frame count %u\n",
-				block_count, in_cmd->nframes);
-			return -EINVAL;
-		}
-		break;
-	case RPMB_READ_DATA:
-		dev_dbg(&rdev->dev, "rpmb read data = 0x%1x blk = %d\n",
-			req_type, block_count);
-
-		if (block_count > out_cmd->nframes) {
-			dev_err(&rdev->dev, "rpmb read data: block count %u > out frame count %u\n",
-				block_count, out_cmd->nframes);
-			return -EINVAL;
-		}
-		break;
-	case RPMB_RESULT_READ:
-		/* Internal command not supported */
-		dev_err(&rdev->dev, "NOTSUPPORTED rpmb resut read = 0x%1x blk = %d\n",
-			req_type, block_count);
-		return -EOPNOTSUPP;
-
-	default:
-		dev_err(&rdev->dev, "Error rpmb invalid command = 0x%1x blk = %d\n",
-			req_type, block_count);
-		return -EINVAL;
-	}
-
-	return 0;
-}
-
 /**
  * rpmb_cmd_fixup - fixup rpmb command
  *
@@ -130,7 +50,7 @@ static void rpmb_cmd_fixup(struct rpmb_dev *rdev,
 {
 	int i;
 
-	if (rdev->ops->type != RPMB_TYPE_EMMC)
+	if (RPMB_TYPE_HW(rdev->ops->type) != RPMB_TYPE_EMMC)
 		return;
 
 	/* Fixup RPMB_READ_DATA specific to eMMC
@@ -139,11 +59,14 @@ static void rpmb_cmd_fixup(struct rpmb_dev *rdev,
 	 * This is different then implementation for other protocol
 	 * standards.
 	 */
-	for (i = 0; i < ncmds; i++)
-		if (cmds->frames->req_resp == cpu_to_be16(RPMB_READ_DATA)) {
+	for (i = 0; i < ncmds; i++) {
+		struct rpmb_frame_jdec *frame = cmds[i].frames;
+
+		if (frame->req_resp == cpu_to_be16(RPMB_READ_DATA)) {
 			dev_dbg(&rdev->dev, "Fixing up READ_DATA frame to block_count=0\n");
-			cmds->frames->block_count = 0;
+			frame->block_count = 0;
 		}
+	}
 }
 
 /**
@@ -169,127 +92,31 @@ int rpmb_cmd_seq(struct rpmb_dev *rdev, struct rpmb_cmd *cmds, u32 ncmds)
 	err = -EOPNOTSUPP;
 	if (rdev->ops && rdev->ops->cmd_seq) {
 		rpmb_cmd_fixup(rdev, cmds, ncmds);
-		err = rdev->ops->cmd_seq(rdev->dev.parent, cmds, ncmds);
+		err = rdev->ops->cmd_seq(rdev->dev.parent, rdev->target,
+					 cmds, ncmds);
 	}
 	mutex_unlock(&rdev->lock);
+
 	return err;
 }
 EXPORT_SYMBOL_GPL(rpmb_cmd_seq);
 
-static void rpmb_cmd_set(struct rpmb_cmd *cmd, u32 flags,
-			 struct rpmb_frame *frames, u32 nframes)
+int rpmb_get_capacity(struct rpmb_dev *rdev)
 {
-	cmd->flags = flags;
-	cmd->frames = frames;
-	cmd->nframes = nframes;
-}
+	int err;
 
-/**
- * rpmb_cmd_req_write - setup cmd request write sequence
- *
- * @cmd: cmd sequence
- * @rpmbd: rpmb request data
- * @cnt_in: number of input frames
- * @cnt_out: number of output frames
- *
- * Return: 3 - number of commands in the sequence
- */
-static u32 rpmb_cmd_req_write(struct rpmb_cmd *cmd, struct rpmb_data *rpmbd,
-			      u32 cnt_in, u32 cnt_out)
-{
-	struct rpmb_frame *res_frame;
-
-	rpmb_cmd_set(&cmd[0], RPMB_F_WRITE | RPMB_F_REL_WRITE,
-		     rpmbd->icmd.frames, cnt_in);
-	res_frame = rpmbd->ocmd.frames;
-	memset(res_frame, 0, sizeof(*res_frame));
-	res_frame->req_resp = cpu_to_be16(RPMB_RESULT_READ);
-	rpmb_cmd_set(&cmd[1], RPMB_F_WRITE, res_frame, 1);
-
-	rpmb_cmd_set(&cmd[2], 0, rpmbd->ocmd.frames, cnt_out);
-
-	return  3;
-}
-
-/**
- * rpmb_cmd_req_read - setup cmd request read sequence
- *
- * @cmd: cmd sequence
- * @rpmbd: rpmb request data
- * @cnt_in: number of input frames
- * @cnt_out: number of output frames
- *
- * Return: 2 - number of commands in the sequence
- */
-static u32 rpmb_cmd_req_read(struct rpmb_cmd *cmd, struct rpmb_data *rpmbd,
-			     u32 cnt_in, u32 cnt_out)
-{
-	rpmb_cmd_set(&cmd[0], RPMB_F_WRITE, rpmbd->icmd.frames, cnt_in);
-	rpmb_cmd_set(&cmd[1], 0, rpmbd->ocmd.frames, cnt_out);
-
-	return 2;
-}
-
-/**
- * rpmb_cmd_req - send rpmb request command
- *
- * @rdev: rpmb device
- * @rpmbd: rpmb request data
- *
- * Return: 0 on success
- *         -EINVAL on wrong parameters
- *         -EOPNOTSUPP if device doesn't support the requested operation
- *         < 0 if the operation fails
- */
-int rpmb_cmd_req(struct rpmb_dev *rdev, struct rpmb_data *rpmbd)
-{
-	struct rpmb_cmd cmd[3];
-	u32 cnt_in, cnt_out;
-	u32 ncmds;
-	u16 type;
-	int ret;
-
-	if (!rdev || !rpmbd)
+	if (!rdev)
 		return -EINVAL;
-
-	ret = rpmb_request_verify(rdev, rpmbd);
-	if (ret)
-		return ret;
-
-	if (!rdev->ops || !rdev->ops->cmd_seq)
-		return -EOPNOTSUPP;
-
-	cnt_in = rpmbd->icmd.nframes;
-	cnt_out = rpmbd->ocmd.nframes;
-	type = rpmbd->req_type;
-	switch (type) {
-	case RPMB_PROGRAM_KEY:
-		ncmds = rpmb_cmd_req_write(cmd, rpmbd, 1, 1);
-		break;
-
-	case RPMB_WRITE_DATA:
-		ncmds = rpmb_cmd_req_write(cmd, rpmbd, cnt_in, cnt_out);
-		break;
-
-	case RPMB_GET_WRITE_COUNTER:
-		ncmds = rpmb_cmd_req_read(cmd, rpmbd, 1, 1);
-		break;
-
-	case RPMB_READ_DATA:
-		ncmds = rpmb_cmd_req_write(cmd, rpmbd, cnt_in, cnt_out);
-		break;
-
-	default:
-		return -EINVAL;
-	}
 
 	mutex_lock(&rdev->lock);
-	ret = rdev->ops->cmd_seq(rdev->dev.parent, cmd, ncmds);
+	err = -EOPNOTSUPP;
+	if (rdev->ops && rdev->ops->get_capacity)
+		err = rdev->ops->get_capacity(rdev->dev.parent, rdev->target);
 	mutex_unlock(&rdev->lock);
 
-	return ret;
+	return err;
 }
-EXPORT_SYMBOL_GPL(rpmb_cmd_req);
+EXPORT_SYMBOL_GPL(rpmb_get_capacity);
 
 static void rpmb_dev_release(struct device *dev)
 {
@@ -314,7 +141,8 @@ EXPORT_SYMBOL(rpmb_class);
  *
  * Return: matching rpmb device or NULL on failure
  */
-struct rpmb_dev *rpmb_dev_find_device(void *data,
+static
+struct rpmb_dev *rpmb_dev_find_device(const void *data,
 				      int (*match)(struct device *dev,
 						   const void *data))
 {
@@ -324,12 +152,11 @@ struct rpmb_dev *rpmb_dev_find_device(void *data,
 
 	return dev ? to_rpmb_dev(dev) : NULL;
 }
-EXPORT_SYMBOL_GPL(rpmb_dev_find_device);
 
 static int match_by_type(struct device *dev, const void *data)
 {
 	struct rpmb_dev *rdev = to_rpmb_dev(dev);
-	enum rpmb_type *type = (enum rpmb_type *)data;
+	const u32 *type = data;
 
 	return (*type == RPMB_TYPE_ANY || rdev->ops->type == *type);
 }
@@ -344,7 +171,7 @@ static int match_by_type(struct device *dev, const void *data)
  *
  * Return: matching rpmb device or NULL/ERR_PTR on failure
  */
-struct rpmb_dev *rpmb_dev_get_by_type(enum rpmb_type type)
+struct rpmb_dev *rpmb_dev_get_by_type(u32 type)
 {
 	if (type > RPMB_TYPE_MAX)
 		return ERR_PTR(-EINVAL);
@@ -353,26 +180,38 @@ struct rpmb_dev *rpmb_dev_get_by_type(enum rpmb_type type)
 }
 EXPORT_SYMBOL_GPL(rpmb_dev_get_by_type);
 
+struct device_with_target {
+	const struct device *dev;
+	u8 target;
+};
+
 static int match_by_parent(struct device *dev, const void *data)
 {
-	const struct device *parent = data;
+	const struct device_with_target *d = data;
+	struct rpmb_dev *rdev = to_rpmb_dev(dev);
 
-	return (parent && dev->parent == parent);
+	return (d->dev && dev->parent == d->dev && rdev->target == d->target);
 }
 
 /**
  * rpmb_dev_find_by_device - retrieve rpmb device from the parent device
  *
  * @parent: parent device of the rpmb device
+ * @target: RPMB target/region within the physical device
  *
  * Return: NULL if there is no rpmb device associated with the parent device
  */
-struct rpmb_dev *rpmb_dev_find_by_device(struct device *parent)
+struct rpmb_dev *rpmb_dev_find_by_device(struct device *parent, u8 target)
 {
+	struct device_with_target t;
+
 	if (!parent)
 		return NULL;
 
-	return rpmb_dev_find_device(parent, match_by_parent);
+	t.dev = parent;
+	t.target = target;
+
+	return rpmb_dev_find_device(&t, match_by_parent);
 }
 EXPORT_SYMBOL_GPL(rpmb_dev_find_by_device);
 
@@ -380,17 +219,19 @@ static ssize_t type_show(struct device *dev,
 			 struct device_attribute *attr, char *buf)
 {
 	struct rpmb_dev *rdev = to_rpmb_dev(dev);
+	const char *sim;
 	ssize_t ret;
 
-	switch (rdev->ops->type) {
+	sim = (rdev->ops->type & RPMB_TYPE_SIM) ? ":SIM" : "";
+	switch (RPMB_TYPE_HW(rdev->ops->type)) {
 	case RPMB_TYPE_EMMC:
-		ret = sprintf(buf, "EMMC\n");
+		ret = sprintf(buf, "EMMC%s\n", sim);
 		break;
 	case RPMB_TYPE_UFS:
-		ret = sprintf(buf, "UFS\n");
+		ret = sprintf(buf, "UFS%s\n", sim);
 		break;
-	case RPMB_TYPE_SIM:
-		ret = sprintf(buf, "SIM\n");
+	case RPMB_TYPE_NVME:
+		ret = sprintf(buf, "NVMe%s\n", sim);
 		break;
 	default:
 		ret = sprintf(buf, "UNKNOWN\n");
@@ -416,18 +257,28 @@ static ssize_t id_read(struct file *file, struct kobject *kobj,
 }
 static BIN_ATTR_RO(id, 0);
 
-static ssize_t reliable_wr_cnt_show(struct device *dev,
-				    struct device_attribute *attr, char *buf)
+static ssize_t wr_cnt_max_show(struct device *dev,
+			       struct device_attribute *attr, char *buf)
 {
 	struct rpmb_dev *rdev = to_rpmb_dev(dev);
 
-	return sprintf(buf, "%u\n", rdev->ops->reliable_wr_cnt);
+	return sprintf(buf, "%u\n", rdev->ops->wr_cnt_max);
 }
-static DEVICE_ATTR_RO(reliable_wr_cnt);
+static DEVICE_ATTR_RO(wr_cnt_max);
+
+static ssize_t rd_cnt_max_show(struct device *dev,
+			       struct device_attribute *attr, char *buf)
+{
+	struct rpmb_dev *rdev = to_rpmb_dev(dev);
+
+	return sprintf(buf, "%u\n", rdev->ops->rd_cnt_max);
+}
+static DEVICE_ATTR_RO(rd_cnt_max);
 
 static struct attribute *rpmb_attrs[] = {
 	&dev_attr_type.attr,
-	&dev_attr_reliable_wr_cnt.attr,
+	&dev_attr_wr_cnt_max.attr,
+	&dev_attr_rd_cnt_max.attr,
 	NULL,
 };
 
@@ -449,22 +300,12 @@ static const struct attribute_group *rpmb_attr_groups[] = {
 /**
  * rpmb_dev_unregister - unregister RPMB partition from the RPMB subsystem
  *
- * @dev: parent device of the rpmb device
+ * @rdev: the rpmb device to unregister
  */
-int rpmb_dev_unregister(struct device *dev)
+int rpmb_dev_unregister(struct rpmb_dev *rdev)
 {
-	struct rpmb_dev *rdev;
-
-	if (!dev)
+	if (!rdev)
 		return -EINVAL;
-
-	rdev = rpmb_dev_find_by_device(dev);
-	if (!rdev) {
-		dev_warn(dev, "no disk found %s\n", dev_name(dev->parent));
-		return -ENODEV;
-	}
-
-	rpmb_dev_put(rdev);
 
 	mutex_lock(&rdev->lock);
 	rpmb_cdev_del(rdev);
@@ -478,12 +319,64 @@ int rpmb_dev_unregister(struct device *dev)
 EXPORT_SYMBOL_GPL(rpmb_dev_unregister);
 
 /**
+ * rpmb_dev_unregister_by_device - unregister RPMB partition
+ *     from the RPMB subsystem
+ *
+ * @dev: the parent device of the rpmb device
+ * @target: RPMB target/region within the physical device
+ */
+int rpmb_dev_unregister_by_device(struct device *dev, u8 target)
+{
+	struct rpmb_dev *rdev;
+
+	if (!dev)
+		return -EINVAL;
+
+	rdev = rpmb_dev_find_by_device(dev, target);
+	if (!rdev) {
+		dev_warn(dev, "no disk found %s\n", dev_name(dev->parent));
+		return -ENODEV;
+	}
+
+	rpmb_dev_put(rdev);
+
+	return rpmb_dev_unregister(rdev);
+}
+EXPORT_SYMBOL_GPL(rpmb_dev_unregister_by_device);
+
+/**
+ * rpmb_dev_get_drvdata - driver data getter
+ *
+ * @rdev: rpmb device
+ *
+ * Return: driver private data
+ */
+void *rpmb_dev_get_drvdata(const struct rpmb_dev *rdev)
+{
+	return dev_get_drvdata(&rdev->dev);
+}
+EXPORT_SYMBOL_GPL(rpmb_dev_get_drvdata);
+
+/**
+ * rpmb_dev_set_drvdata - driver data setter
+ *
+ * @rdev: rpmb device
+ * @data: data to store
+ */
+void rpmb_dev_set_drvdata(struct rpmb_dev *rdev, void *data)
+{
+	dev_set_drvdata(&rdev->dev, data);
+}
+EXPORT_SYMBOL_GPL(rpmb_dev_set_drvdata);
+
+/**
  * rpmb_dev_register - register RPMB partition with the RPMB subsystem
  *
  * @dev: storage device of the rpmb device
+ * @target: RPMB target/region within the physical device
  * @ops: device specific operations
  */
-struct rpmb_dev *rpmb_dev_register(struct device *dev,
+struct rpmb_dev *rpmb_dev_register(struct device *dev, u8 target,
 				   const struct rpmb_ops *ops)
 {
 	struct rpmb_dev *rdev;
@@ -494,6 +387,9 @@ struct rpmb_dev *rpmb_dev_register(struct device *dev,
 		return ERR_PTR(-EINVAL);
 
 	if (!ops->cmd_seq)
+		return ERR_PTR(-EINVAL);
+
+	if (!ops->get_capacity)
 		return ERR_PTR(-EINVAL);
 
 	if (ops->type == RPMB_TYPE_ANY || ops->type > RPMB_TYPE_MAX)
@@ -512,6 +408,7 @@ struct rpmb_dev *rpmb_dev_register(struct device *dev,
 	mutex_init(&rdev->lock);
 	rdev->ops = ops;
 	rdev->id = id;
+	rdev->target = target;
 
 	dev_set_name(&rdev->dev, "rpmb%d", id);
 	rdev->dev.class = &rpmb_class;
@@ -526,7 +423,7 @@ struct rpmb_dev *rpmb_dev_register(struct device *dev,
 
 	rpmb_cdev_add(rdev);
 
-	dev_dbg(&rdev->dev, "registered disk\n");
+	dev_dbg(&rdev->dev, "registered device\n");
 
 	return rdev;
 
@@ -557,4 +454,4 @@ module_exit(rpmb_exit);
 
 MODULE_AUTHOR("Intel Corporation");
 MODULE_DESCRIPTION("RPMB class");
-MODULE_LICENSE("GPL");
+MODULE_LICENSE("Dual BSD/GPL");

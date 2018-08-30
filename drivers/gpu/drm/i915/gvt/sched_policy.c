@@ -104,10 +104,12 @@ static void gvt_balance_timeslice(struct gvt_sched_data *sched_data,
 
 		list_for_each(pos, &sched_data->lru_runq_head[ring_id]) {
 			vgpu_data = container_of(pos, struct vgpu_sched_data, lru_list);
-			fair_timeslice = ms_to_ktime(GVT_TS_BALANCE_PERIOD_MS) *
-						vgpu_data->sched_ctl.weight /
-						total_weight;
-
+			if (WARN_ON_ONCE(total_weight == 0)) {
+				fair_timeslice = 0;
+			} else {
+				fair_timeslice = ms_to_ktime(GVT_TS_BALANCE_PERIOD_MS) *
+					vgpu_data->sched_ctl.weight / total_weight;
+			}
 			vgpu_data->allocated_ts = fair_timeslice;
 			vgpu_data->left_ts = vgpu_data->allocated_ts;
 		}
@@ -413,6 +415,11 @@ void intel_vgpu_start_schedule(struct intel_vgpu *vgpu)
 	gvt_dbg_core("vgpu%d: start schedule\n", vgpu->id);
 
 	vgpu->gvt->scheduler.sched_ops->start_schedule(vgpu);
+}
+
+void intel_gvt_kick_schedule(struct intel_gvt *gvt)
+{
+	intel_gvt_request_service(gvt, INTEL_GVT_REQUEST_EVENT_SCHED);
 }
 
 void intel_vgpu_stop_schedule(struct intel_vgpu *vgpu)

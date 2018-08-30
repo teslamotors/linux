@@ -242,18 +242,6 @@ static int dw8250_handle_irq(struct uart_port *p)
 	return 0;
 }
 
-static void
-dw8250_do_pm(struct uart_port *port, unsigned int state, unsigned int old)
-{
-	if (!state)
-		pm_runtime_get_sync(port->dev);
-
-	serial8250_do_pm(port, state, old);
-
-	if (state)
-		pm_runtime_put_sync_suspend(port->dev);
-}
-
 static void dw8250_set_termios(struct uart_port *p, struct ktermios *termios,
 			       struct ktermios *old)
 {
@@ -410,10 +398,10 @@ static void dw8250_setup_port(struct uart_port *p)
 
 static int dw8250_probe(struct platform_device *pdev)
 {
-	struct uart_8250_port uart = {};
+	struct uart_8250_port uart = {}, *up = &uart;
 	struct resource *regs = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	int irq = platform_get_irq(pdev, 0);
-	struct uart_port *p = &uart.port;
+	struct uart_port *p = &up->port;
 	struct device *dev = &pdev->dev;
 	struct dw8250_data *data;
 	int err;
@@ -434,7 +422,6 @@ static int dw8250_probe(struct platform_device *pdev)
 	p->mapbase	= regs->start;
 	p->irq		= irq;
 	p->handle_irq	= dw8250_handle_irq;
-	p->pm		= dw8250_do_pm;
 	p->type		= PORT_8250;
 	p->flags	= UPF_SHARE_IRQ | UPF_FIXED_PORT;
 	p->dev		= dev;
@@ -552,16 +539,19 @@ static int dw8250_probe(struct platform_device *pdev)
 	if (p->fifosize) {
 		data->dma.rxconf.src_maxburst = p->fifosize / 4;
 		data->dma.txconf.dst_maxburst = p->fifosize / 4;
-		uart.dma = &data->dma;
+		up->dma = &data->dma;
 	}
 
-	data->line = serial8250_register_8250_port(&uart);
+	data->line = serial8250_register_8250_port(up);
 	if (data->line < 0) {
 		err = data->line;
 		goto err_reset;
 	}
 
 	platform_set_drvdata(pdev, data);
+
+	pm_runtime_use_autosuspend(dev);
+	pm_runtime_set_autosuspend_delay(dev, -1);
 
 	pm_runtime_set_active(dev);
 	pm_runtime_enable(dev);
@@ -585,8 +575,9 @@ err_clk:
 static int dw8250_remove(struct platform_device *pdev)
 {
 	struct dw8250_data *data = platform_get_drvdata(pdev);
+	struct device *dev = &pdev->dev;
 
-	pm_runtime_get_sync(&pdev->dev);
+	pm_runtime_get_sync(dev);
 
 	serial8250_unregister_port(data->line);
 
@@ -598,8 +589,8 @@ static int dw8250_remove(struct platform_device *pdev)
 	if (!IS_ERR(data->clk))
 		clk_disable_unprepare(data->clk);
 
-	pm_runtime_disable(&pdev->dev);
-	pm_runtime_put_noidle(&pdev->dev);
+	pm_runtime_disable(dev);
+	pm_runtime_put_noidle(dev);
 
 	return 0;
 }

@@ -594,32 +594,6 @@ static void siu_set_termios(struct uart_port *port, struct ktermios *new,
 	spin_unlock_irqrestore(&port->lock, flags);
 }
 
-static void siu_pm(struct uart_port *port, unsigned int state, unsigned int oldstate)
-{
-	switch (state) {
-	case 0:
-		switch (port->type) {
-		case PORT_VR41XX_SIU:
-			vr41xx_supply_clock(SIU_CLOCK);
-			break;
-		case PORT_VR41XX_DSIU:
-			vr41xx_supply_clock(DSIU_CLOCK);
-			break;
-		}
-		break;
-	case 3:
-		switch (port->type) {
-		case PORT_VR41XX_SIU:
-			vr41xx_mask_clock(SIU_CLOCK);
-			break;
-		case PORT_VR41XX_DSIU:
-			vr41xx_mask_clock(DSIU_CLOCK);
-			break;
-		}
-		break;
-	}
-}
-
 static const char *siu_type(struct uart_port *port)
 {
 	return siu_type_name(port);
@@ -693,7 +667,6 @@ static const struct uart_ops siu_uart_ops = {
 	.startup	= siu_startup,
 	.shutdown	= siu_shutdown,
 	.set_termios	= siu_set_termios,
-	.pm		= siu_pm,
 	.type		= siu_type,
 	.release_port	= siu_release_port,
 	.request_port	= siu_request_port,

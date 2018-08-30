@@ -45,11 +45,10 @@ static void set_context_pdp_root_pointer(
 		struct execlist_ring_context *ring_context,
 		u32 pdp[8])
 {
-	struct execlist_mmio_pair *pdp_pair = &ring_context->pdp3_UDW;
 	int i;
 
 	for (i = 0; i < 8; i++)
-		pdp_pair[i].val = pdp[7 - i];
+		ring_context->pdps[i].val = pdp[7 - i];
 }
 
 /*
@@ -926,4 +925,16 @@ int intel_vgpu_init_gvt_context(struct intel_vgpu *vgpu)
 	bitmap_zero(vgpu->shadow_ctx_desc_updated, I915_NUM_ENGINES);
 
 	return 0;
+}
+
+/**
+ * intel_vgpu_queue_workload - Qeue a vGPU workload
+ * @workload: the workload to queue in
+ */
+void intel_vgpu_queue_workload(struct intel_vgpu_workload *workload)
+{
+	list_add_tail(&workload->list,
+		workload_q_head(workload->vgpu, workload->ring_id));
+	intel_gvt_kick_schedule(workload->vgpu->gvt);
+	wake_up(&workload->vgpu->gvt->scheduler.waitq[workload->ring_id]);
 }
