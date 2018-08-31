@@ -46,7 +46,7 @@
 #include "acrn-gvt.h"
 
 MODULE_AUTHOR("Intel Corporation");
-MODULE_DESCRIPTION("ACRNGT mediated passthrough driver");
+MODULE_DESCRIPTION("AcrnGT mediated passthrough driver");
 MODULE_LICENSE("GPL");
 MODULE_VERSION("0.1");
 
