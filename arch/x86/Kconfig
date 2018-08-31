@@ -1,12 +1,4 @@
 # SPDX-License-Identifier: GPL-2.0
-#enable SPI node
-config APL_SPI_BRD
-	bool "PCI mode SPI support on APL"
-	depends on X86_INTEL_LPSS
-	---help---
-	  This option is needed if were to use Intel Apollo Lake SPI
-	  in PCI mode.
-
 # Select 32 or 64 bit
 config 64BIT
 	bool "64-bit kernel" if ARCH = "x86"
