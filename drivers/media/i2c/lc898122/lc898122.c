@@ -172,6 +172,7 @@ int lc898122_read_long(struct i2c_client *client, u16 reg, u32 *val)
 	return 0;
 }
 
+#ifdef CONFIG_PM
 static int lc898122_adjust_af_parameters(struct lc898122_device *lc898122_dev)
 {
 	struct i2c_client *client = lc898122_dev->client;
@@ -247,6 +248,9 @@ static int lc898122_adjust_af_parameters(struct lc898122_device *lc898122_dev)
 
 	return 0;
 }
+#else
+#define lc898122_adjust_af_parameters NULL
+#endif
 
 
 /*
@@ -512,6 +516,7 @@ static int lc898122_remove(struct i2c_client *client)
 	return 0;
 }
 
+#ifdef CONFIG_PM
 static int lc898122_poweron_init(struct lc898122_device *lc898122_dev)
 {
 	int rval = 0;
@@ -536,7 +541,6 @@ static int lc898122_poweron_init(struct lc898122_device *lc898122_dev)
 	return rval;
 }
 
-#ifdef CONFIG_PM
 static void lc898122_complete(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
@@ -598,6 +602,7 @@ static int lc898122_runtime_resume(struct device *dev)
 }
 
 #else
+#define lc898122_poweron_init		NULL
 #define lc898122_complete		NULL
 #define lc898122_runtime_suspend	NULL
 #define lc898122_runtime_resume		NULL

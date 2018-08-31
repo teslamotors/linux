@@ -321,8 +321,8 @@ static int dw9714_runtime_resume(struct device *dev)
 
 #else
 
-#define dw9714_suspend	NULL
-#define dw9714_resume	NULL
+#define dw9714_runtime_suspend	NULL
+#define dw9714_runtime_resume	NULL
 
 #endif /* CONFIG_PM */
 
