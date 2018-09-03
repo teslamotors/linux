@@ -66,4 +66,3 @@ config SND_SOC_SOF_DEBUG_VERBOSE_IPC
           If unsure select "N".
 
 source "sound/soc/sof/intel/Kconfig"
-source "sound/soc/sof/xtensa/Kconfig"

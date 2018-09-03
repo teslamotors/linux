@@ -2,7 +2,6 @@
 # Platform specific code goes here
 obj-y	+= apl/
 obj-y	+= atom/
-obj-y	+= bxt/
 obj-y	+= ce4100/
 obj-y	+= efi/
 obj-y	+= geode/
