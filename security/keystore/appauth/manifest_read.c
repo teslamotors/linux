@@ -87,9 +87,9 @@ int read_file(struct file *file, char **manifest_buf)
 	int manifest_len = 0;
 
 	ks_debug("DEBUG_APPAUTH: calling mutex_lock\n");
-	mutex_lock(&(inode->i_mutex));
+	mutex_lock(&(file->f_pos_lock));
 	manifest_len = appauth_read_buf(file, manifest_buf);
-	mutex_unlock(&(inode->i_mutex));
+	mutex_unlock(&(file->f_pos_lock));
 	return manifest_len;
 }
 
