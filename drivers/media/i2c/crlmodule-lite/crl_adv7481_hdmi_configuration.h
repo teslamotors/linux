@@ -225,8 +225,6 @@ static struct crl_register_write_rep adv7481_hdmi_streamoff_regs[] = {
 	{0xC1, CRL_REG_LEN_08BIT, 0x3B, 0x94},
 };
 
-static const s64 adv7481_hdmi_op_sys_clock[] =  {297000000, 445500000};
-
 static struct crl_pll_configuration adv7481_hdmi_pll_configurations[] = {
 	{
 		.input_clk = 24000000,
@@ -590,7 +588,6 @@ static struct crl_ctrl_data adv7481_hdmi_ctrls[] = {
 		.type = CRL_CTRL_TYPE_MENU_INT,
 		.data.int_menu.def = 0,
 		.data.int_menu.max = ARRAY_SIZE(adv7481_hdmi_pll_configurations) - 1,
-		.data.int_menu.menu = adv7481_hdmi_op_sys_clock,
 		.flags = 0,
 		.impact = CRL_IMPACTS_NO_IMPACT,
 		.regs_items = 0,
@@ -663,7 +660,6 @@ static struct crl_sensor_configuration adv7481_hdmi_crl_configuration = {
 
 	.pll_config_items = ARRAY_SIZE(adv7481_hdmi_pll_configurations),
 	.pll_configs = adv7481_hdmi_pll_configurations,
-	.op_sys_clk = adv7481_hdmi_op_sys_clock,
 
 	.modes_items = ARRAY_SIZE(adv7481_hdmi_modes),
 	.modes = adv7481_hdmi_modes,
