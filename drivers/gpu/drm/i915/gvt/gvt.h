@@ -520,6 +520,8 @@ void intel_vgpu_init_cfg_space(struct intel_vgpu *vgpu,
 		bool primary);
 void intel_vgpu_reset_cfg_space(struct intel_vgpu *vgpu);
 
+int set_pvmmio(struct intel_vgpu *vgpu, bool map);
+
 int intel_vgpu_emulate_cfg_read(struct intel_vgpu *vgpu, unsigned int offset,
 		void *p_data, unsigned int bytes);
 

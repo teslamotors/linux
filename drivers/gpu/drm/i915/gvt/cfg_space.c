@@ -444,6 +444,8 @@ void intel_vgpu_reset_cfg_space(struct intel_vgpu *vgpu)
 				INTEL_GVT_PCI_CLASS_VGA_OTHER;
 
 	if (cmd & PCI_COMMAND_MEMORY) {
+		if (VGPU_PVMMIO(vgpu))
+			set_pvmmio(vgpu, false);
 		trap_gttmmio(vgpu, false);
 		map_aperture(vgpu, false);
 	}

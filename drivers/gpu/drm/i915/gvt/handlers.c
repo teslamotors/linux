@@ -1375,7 +1375,7 @@ static int send_display_ready_uevent(struct intel_vgpu *vgpu, int ready)
 }
 
 #define INTEL_GVT_PCI_BAR_GTTMMIO 0
-static int set_pvmmio(struct intel_vgpu *vgpu, bool map)
+int set_pvmmio(struct intel_vgpu *vgpu, bool map)
 {
 	u64 start, end;
 	u64 val;
