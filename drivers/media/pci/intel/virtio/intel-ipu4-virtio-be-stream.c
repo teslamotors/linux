@@ -344,13 +344,14 @@ int process_stream_off(int domid, struct ipu4_virtio_req *req)
 		return -1;
 	}
 
-	as = dev_to_stream(strm_dev);
-	as->frame_done_notify_queue = NULL;
-
 	err = strm_dev->ipu_ioctl_ops->ici_stream_off(sn->f, strm_dev);
 
 	if (err)
 		pr_err("process_stream_off: stream off failed\n");
+
+	as = dev_to_stream(strm_dev);
+	as->frame_done_notify_queue();
+	as->frame_done_notify_queue = NULL;
 
 	return 0;
 }
