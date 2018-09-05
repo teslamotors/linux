@@ -206,6 +206,8 @@ struct intel_vgpu_gtt {
 	struct list_head post_shadow_list_head;
 	struct intel_vgpu_scratch_pt scratch_pt[GTT_TYPE_MAX];
 
+	/* indicate whether the PV mapped is enabled for ggtt */
+	bool ggtt_pv_mapped;
 };
 
 extern int intel_vgpu_init_gtt(struct intel_vgpu *vgpu);

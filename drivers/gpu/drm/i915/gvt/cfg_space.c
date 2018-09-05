@@ -155,6 +155,11 @@ int map_gttmmio(struct intel_vgpu *vgpu, bool map)
 	u64 start, end;
 	int ret = 0;
 
+	if (vgpu->gtt.ggtt_pv_mapped == map) {
+		/* If it is already set as the target state, skip it */
+		return ret;
+	}
+
 	start = *(u64 *)(vgpu_cfg_space(vgpu) + PCI_BASE_ADDRESS_0);
 	start &= ~GENMASK(3, 0);
 	start += vgpu->cfg_space.bar[INTEL_GVT_PCI_BAR_GTTMMIO].size >> 1;
@@ -178,6 +183,8 @@ int map_gttmmio(struct intel_vgpu *vgpu, bool map)
 			return ret;
 		start += sg->length >> PAGE_SHIFT;
 	}
+
+	vgpu->gtt.ggtt_pv_mapped = map;
 
 	return ret;
 }
