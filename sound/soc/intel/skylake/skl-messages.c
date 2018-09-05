@@ -301,7 +301,6 @@ static const struct skl_dsp_ops dsp_ops[] = {
 		.init = bxt_sst_dsp_init,
 		.init_fw = bxt_sst_init_fw,
 		.cleanup = bxt_sst_dsp_cleanup,
-		.do_recovery = skl_do_recovery,
 		.min_fw_ver = {9, 22, 1, 3132}
 	},
 	{
@@ -311,7 +310,6 @@ static const struct skl_dsp_ops dsp_ops[] = {
 		.init = bxt_sst_dsp_init,
 		.init_fw = bxt_sst_init_fw,
 		.cleanup = bxt_sst_dsp_cleanup,
-		.do_recovery = skl_do_recovery,
 		.min_fw_ver = {9, 22, 1, 3366}
 	},
 	{
@@ -321,7 +319,6 @@ static const struct skl_dsp_ops dsp_ops[] = {
 		.init = cnl_sst_dsp_init,
 		.init_fw = cnl_sst_init_fw,
 		.cleanup = cnl_sst_dsp_cleanup,
-		.do_recovery = skl_do_recovery,
 		.min_fw_ver = {10, 23, 0, 1233}
 	},
 	{
@@ -331,7 +328,6 @@ static const struct skl_dsp_ops dsp_ops[] = {
 		.init = cnl_sst_dsp_init,
 		.init_fw = cnl_sst_init_fw,
 		.cleanup = cnl_sst_dsp_cleanup,
-		.do_recovery = skl_do_recovery,
 		.min_fw_ver = {10, 23, 0, 1233}
 	},
 };

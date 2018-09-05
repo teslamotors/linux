@@ -209,7 +209,6 @@ struct skl_dsp_ops {
 			struct skl_sst **skl_sst, void *ptr);
 	int (*init_fw)(struct device *dev, struct skl_sst *ctx);
 	void (*cleanup)(struct device *dev, struct skl_sst *ctx);
-	void (*do_recovery)(struct skl *skl);
 };
 
 struct skl_dsp_fw_ops {
