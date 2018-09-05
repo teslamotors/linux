@@ -152,6 +152,17 @@ static int skl_load_base_firmware(struct sst_dsp *ctx)
 			goto transfer_firmware_failed;
 		}
 
+		ret = skl_get_firmware_configuration(ctx);
+		if (ret < 0) {
+			dev_err(ctx->dev, "FW version query failed\n");
+			goto skl_load_base_firmware_failed;
+		}
+
+		ret = skl_validate_fw_version(skl);
+		if (ret < 0) {
+			ret = -EIO;
+			goto skl_load_base_firmware_failed;
+		}
 		dev_dbg(ctx->dev, "Download firmware successful%d\n", ret);
 		skl->fw_loaded = true;
 	}
@@ -528,20 +539,23 @@ static struct sst_dsp_device skl_dev = {
 };
 
 int skl_sst_dsp_init(struct device *dev, void __iomem *mmio_base, int irq,
-			const char *fw_name, struct skl_dsp_loader_ops dsp_ops,
+			const char *fw_name, const struct skl_dsp_ops *dsp_ops,
 			struct skl_sst **dsp, void *ptr)
 {
 	struct skl_sst *skl;
 	struct sst_dsp *sst;
+	struct skl_dsp_loader_ops loader_ops;
 	int ret;
 
-	ret = skl_sst_ctx_init(dev, irq, fw_name, dsp_ops, dsp, &skl_dev);
+	loader_ops = dsp_ops->loader_ops();
+	ret = skl_sst_ctx_init(dev, irq, fw_name, loader_ops, dsp, &skl_dev);
 	if (ret < 0) {
 		dev_err(dev, "%s: no device\n", __func__);
 		return ret;
 	}
 
 	skl = *dsp;
+	skl->dsp_ops = dsp_ops;
 	sst = skl->dsp;
 	sst->addr.lpe = mmio_base;
 	sst->addr.shim = mmio_base;
