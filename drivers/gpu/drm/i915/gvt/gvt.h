@@ -82,6 +82,7 @@ struct intel_gvt_device_info {
 struct intel_vgpu_gm {
 	u64 aperture_sz;
 	u64 hidden_sz;
+	struct sg_table *st;
 	struct drm_mm_node low_gm_node;
 	struct drm_mm_node high_gm_node;
 };
@@ -519,11 +520,15 @@ void intel_vgpu_init_cfg_space(struct intel_vgpu *vgpu,
 		bool primary);
 void intel_vgpu_reset_cfg_space(struct intel_vgpu *vgpu);
 
+int set_pvmmio(struct intel_vgpu *vgpu, bool map);
+
 int intel_vgpu_emulate_cfg_read(struct intel_vgpu *vgpu, unsigned int offset,
 		void *p_data, unsigned int bytes);
 
 int intel_vgpu_emulate_cfg_write(struct intel_vgpu *vgpu, unsigned int offset,
 		void *p_data, unsigned int bytes);
+
+int map_gttmmio(struct intel_vgpu *vgpu, bool map);
 
 void intel_gvt_clean_opregion(struct intel_gvt *gvt);
 int intel_gvt_init_opregion(struct intel_gvt *gvt);

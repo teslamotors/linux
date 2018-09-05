@@ -46,7 +46,7 @@
 #include "acrn-gvt.h"
 
 MODULE_AUTHOR("Intel Corporation");
-MODULE_DESCRIPTION("ACRNGT mediated passthrough driver");
+MODULE_DESCRIPTION("AcrnGT mediated passthrough driver");
 MODULE_LICENSE("GPL");
 MODULE_VERSION("0.1");
 
@@ -898,6 +898,19 @@ static int acrngt_set_pvmmio(unsigned long handle, u64 start, u64 end, bool map)
 
 	} else {
 		mfn = acrngt_virt_to_mfn(info->vgpu->mmio.vreg);
+
+		/* Fix up the PVINFO page hole, then we can successfully unmap
+		 * the MMIO bar
+		 */
+		rc = acrngt_map_gfn_to_mfn(handle, pfn +
+				(VGT_PVINFO_PAGE >> PAGE_SHIFT),
+				mfn + (VGT_PVINFO_PAGE >> PAGE_SHIFT), 1, 1);
+		if (rc) {
+			gvt_err("acrn-gvt: map pfn %lx to mfn %lx fail with ret %d\n",
+					pfn, mfn, rc);
+			return rc;
+		}
+
 		rc = acrngt_map_gfn_to_mfn(handle, pfn, mfn, mmio_size_fn, map);
 		if (rc) {
 			gvt_err("acrn-gvt: map pfn %lx to mfn %lx fail with ret %d\n",

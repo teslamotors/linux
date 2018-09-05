@@ -169,6 +169,17 @@ void free_guest_mem(struct vhm_vm *vm);
  */
 int map_guest_memseg(struct vhm_vm *vm, struct vm_memmap *memmap);
 
+/**
+ * unmap_guest_memseg - unset guest mmapping of memory set by
+ * map_guest_memseg
+ *
+ * @vm: pointer to guest vm
+ * @memmap: pointer to guest memory mapping info
+ *
+ * Return:
+ */
+int unmap_guest_memseg(struct vhm_vm *vm, struct vm_memmap *memmap);
+
 int init_trusty(struct vhm_vm *vm);
 void deinit_trusty(struct vhm_vm *vm);
 
