@@ -177,6 +177,13 @@ enum skl_hw_info_type {
 	SKL_EBB_SIZE_BYTES,
 };
 
+struct skl_fw_version {
+	u16 major;
+	u16 minor;
+	u16 hotfix;
+	u16 build;
+};
+
 /* DSP Core state */
 enum skl_dsp_states {
 	SKL_DSP_RUNNING = 1,
@@ -190,6 +197,19 @@ enum skl_dsp_d0i3_states {
 	SKL_DSP_D0I3_NONE = -1, /* No D0i3 */
 	SKL_DSP_D0I3_NON_STREAMING = 0,
 	SKL_DSP_D0I3_STREAMING = 1,
+};
+
+struct skl_dsp_ops {
+	int id;
+	unsigned int num_cores;
+	struct skl_dsp_loader_ops (*loader_ops)(void);
+	struct skl_fw_version min_fw_ver;
+	int (*init)(struct device *dev, void __iomem *mmio_base, int irq,
+			const char *fw_name, const struct skl_dsp_ops *dsp_ops,
+			struct skl_sst **skl_sst, void *ptr);
+	int (*init_fw)(struct device *dev, struct skl_sst *ctx);
+	void (*cleanup)(struct device *dev, struct skl_sst *ctx);
+	void (*do_recovery)(struct skl *skl);
 };
 
 struct skl_dsp_fw_ops {
@@ -290,13 +310,13 @@ int skl_dsp_put_core(struct sst_dsp *ctx, unsigned int core_id);
 
 int skl_dsp_boot(struct sst_dsp *ctx);
 int skl_sst_dsp_init(struct device *dev, void __iomem *mmio_base, int irq,
-			const char *fw_name, struct skl_dsp_loader_ops dsp_ops,
+			const char *fw_name, const struct skl_dsp_ops *dsp_ops,
 			struct skl_sst **dsp, void *ptr);
 int kbl_sst_dsp_init(struct device *dev, void __iomem *mmio_base, int irq,
 		const char *fw_name, struct skl_dsp_loader_ops dsp_ops,
 		struct skl_sst **dsp, void *ptr);
 int bxt_sst_dsp_init(struct device *dev, void __iomem *mmio_base, int irq,
-			const char *fw_name, struct skl_dsp_loader_ops dsp_ops,
+			const char *fw_name, const struct skl_dsp_ops *dsp_ops,
 			struct skl_sst **dsp, void *ptr);
 int skl_sst_init_fw(struct device *dev, struct skl_sst *ctx);
 int bxt_sst_init_fw(struct device *dev, struct skl_sst *ctx);
@@ -329,6 +349,8 @@ void skl_release_library(struct skl_lib_info *linfo, int lib_count);
 int skl_get_firmware_configuration(struct sst_dsp *ctx);
 int skl_get_hardware_configuration(struct sst_dsp *ctx);
 
+int skl_validate_fw_version(struct skl_sst *skl);
+
 int bxt_set_dsp_D0i0(struct sst_dsp *ctx);
 
 int bxt_schedule_dsp_D0i3(struct sst_dsp *ctx);
@@ -342,4 +364,5 @@ void skl_module_sysfs_exit(struct skl_sst *ctx);
 int skl_dsp_cb_event(struct skl_sst *ctx, unsigned int event,
 				struct skl_notify_data *notify_data);
 
+const struct skl_dsp_ops *skl_get_dsp_ops(int pci_id);
 #endif /*__SKL_SST_DSP_H__*/
