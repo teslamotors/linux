@@ -282,7 +282,8 @@ static const struct skl_dsp_ops dsp_ops[] = {
 		.loader_ops = skl_get_loader_ops,
 		.init = skl_sst_dsp_init,
 		.init_fw = skl_sst_init_fw,
-		.cleanup = skl_sst_dsp_cleanup
+		.cleanup = skl_sst_dsp_cleanup,
+		.min_fw_ver = {9, 21, 0, 3173}
 	},
 	{
 		.id = 0x9d71,
@@ -290,7 +291,8 @@ static const struct skl_dsp_ops dsp_ops[] = {
 		.loader_ops = skl_get_loader_ops,
 		.init = skl_sst_dsp_init,
 		.init_fw = skl_sst_init_fw,
-		.cleanup = skl_sst_dsp_cleanup
+		.cleanup = skl_sst_dsp_cleanup,
+		.min_fw_ver = {9, 21, 0, 3173}
 	},
 	{
 		.id = 0x5a98,
@@ -298,7 +300,9 @@ static const struct skl_dsp_ops dsp_ops[] = {
 		.loader_ops = bxt_get_loader_ops,
 		.init = bxt_sst_dsp_init,
 		.init_fw = bxt_sst_init_fw,
-		.cleanup = bxt_sst_dsp_cleanup
+		.cleanup = bxt_sst_dsp_cleanup,
+		.do_recovery = skl_do_recovery,
+		.min_fw_ver = {9, 22, 1, 3132}
 	},
 	{
 		.id = 0x3198,
@@ -306,7 +310,9 @@ static const struct skl_dsp_ops dsp_ops[] = {
 		.loader_ops = bxt_get_loader_ops,
 		.init = bxt_sst_dsp_init,
 		.init_fw = bxt_sst_init_fw,
-		.cleanup = bxt_sst_dsp_cleanup
+		.cleanup = bxt_sst_dsp_cleanup,
+		.do_recovery = skl_do_recovery,
+		.min_fw_ver = {9, 22, 1, 3366}
 	},
 	{
 		.id = 0x9dc8,
@@ -314,7 +320,9 @@ static const struct skl_dsp_ops dsp_ops[] = {
 		.loader_ops = bxt_get_loader_ops,
 		.init = cnl_sst_dsp_init,
 		.init_fw = cnl_sst_init_fw,
-		.cleanup = cnl_sst_dsp_cleanup
+		.cleanup = cnl_sst_dsp_cleanup,
+		.do_recovery = skl_do_recovery,
+		.min_fw_ver = {10, 23, 0, 1233}
 	},
 	{
 		.id = 0x34c8,
@@ -322,7 +330,9 @@ static const struct skl_dsp_ops dsp_ops[] = {
 		.loader_ops = bxt_get_loader_ops,
 		.init = cnl_sst_dsp_init,
 		.init_fw = cnl_sst_init_fw,
-		.cleanup = cnl_sst_dsp_cleanup
+		.cleanup = cnl_sst_dsp_cleanup,
+		.do_recovery = skl_do_recovery,
+		.min_fw_ver = {10, 23, 0, 1233}
 	},
 };
 
@@ -1215,7 +1225,6 @@ int skl_init_dsp(struct skl *skl)
 	void __iomem *mmio_base;
 	struct hdac_ext_bus *ebus = &skl->ebus;
 	struct hdac_bus *bus = ebus_to_hbus(ebus);
-	struct skl_dsp_loader_ops loader_ops;
 	int irq = bus->irq;
 	const struct skl_dsp_ops *ops;
 	struct skl_dsp_cores *cores;
@@ -1238,14 +1247,12 @@ int skl_init_dsp(struct skl *skl)
 		goto unmap_mmio;
 	}
 
-	loader_ops = ops->loader_ops();
-	ret = ops->init(bus->dev, mmio_base, irq, skl->fw_name, loader_ops,
+	ret = ops->init(bus->dev, mmio_base, irq, skl->fw_name, ops,
 					&skl->skl_sst, &cnl_sdw_bra_ops);
 
 	if (ret < 0)
 		goto unmap_mmio;
 
-	skl->skl_sst->dsp_ops = ops;
 	cores = &skl->skl_sst->cores;
 	cores->count = ops->num_cores;
 

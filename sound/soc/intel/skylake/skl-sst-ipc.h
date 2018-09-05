@@ -152,13 +152,6 @@ struct bra_conf {
 	struct skl_pipe *cp_pipe;
 };
 
-struct skl_fw_version {
-	u16 major;
-	u16 minor;
-	u16 hotfix;
-	u16 build;
-};
-
 struct skl_dma_buff_config {
 	u32 min_size_bytes;
 	u32 max_size_bytes;

@@ -157,18 +157,6 @@ struct skl_machine_pdata {
 	bool use_tplg_pcm; /* use total dais and dai links from topology*/
 };
 
-struct skl_dsp_ops {
-	int id;
-	unsigned int num_cores;
-	struct skl_dsp_loader_ops (*loader_ops)(void);
-	int (*init)(struct device *dev, void __iomem *mmio_base, int irq,
-			const char *fw_name,
-			struct skl_dsp_loader_ops loader_ops,
-			struct skl_sst **skl_sst, void *ptr);
-	int (*init_fw)(struct device *dev, struct skl_sst *ctx);
-	void (*cleanup)(struct device *dev, struct skl_sst *ctx);
-};
-
 int skl_platform_unregister(struct device *dev);
 int skl_platform_register(struct device *dev);
 
@@ -190,7 +178,6 @@ int skl_suspend_late_dsp(struct skl *skl);
 int skl_suspend_dsp(struct skl *skl);
 int skl_resume_dsp(struct skl *skl);
 void skl_cleanup_resources(struct skl *skl);
-const struct skl_dsp_ops *skl_get_dsp_ops(int pci_id);
 void skl_update_d0i3c(struct device *dev, bool enable);
 int skl_nhlt_create_sysfs(struct skl *skl);
 void skl_nhlt_remove_sysfs(struct skl *skl);
