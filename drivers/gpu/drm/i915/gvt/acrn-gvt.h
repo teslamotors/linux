@@ -61,7 +61,7 @@ struct acrngt_hvm_params {
 
 /*
  * struct gvt_acrngt should be a single instance to share global
- * information for ACRNGT module.
+ * information for AcrnGT module.
  */
 #define GVT_MAX_VGPU_INSTANCE 15
 struct gvt_acrngt {

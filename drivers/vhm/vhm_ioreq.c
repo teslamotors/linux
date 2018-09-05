@@ -149,6 +149,7 @@ static int alloc_client(void)
 	if (!client)
 		return -ENOMEM;
 	client->id = i;
+	client->kthread_exit = true;
 	clients[i] = client;
 
 	return i;
@@ -266,7 +267,7 @@ static void acrn_ioreq_destroy_client_pervm(struct ioreq_client *client,
 	/* the client thread will mark kthread_exit flag as true before exit,
 	 * so wait for it exited.
 	 */
-	while (!client->kthread_exit)
+	while (client->vhm_create_kthread && !client->kthread_exit)
 		msleep(10);
 
 	spin_lock_irqsave(&client->range_lock, flags);
@@ -281,10 +282,11 @@ static void acrn_ioreq_destroy_client_pervm(struct ioreq_client *client,
 	spin_lock_irqsave(&vm->ioreq_client_lock, flags);
 	list_del(&client->list);
 	spin_unlock_irqrestore(&vm->ioreq_client_lock, flags);
-	free_client(client->id);
 
 	if (client->id == vm->ioreq_fallback_client)
 		vm->ioreq_fallback_client = -1;
+
+	free_client(client->id);
 }
 
 void acrn_ioreq_destroy_client(int client_id)
@@ -483,8 +485,10 @@ static int ioreq_client_thread(void *data)
 			if (client->handler) {
 				ret = client->handler(client->id,
 					client->ioreqs_map);
-				if (ret < 0)
-					BUG();
+				if (ret < 0) {
+					pr_err("vhm-ioreq: err:%d\n", ret);
+					break;
+				}
 			} else {
 				pr_err("vhm-ioreq: no ioreq handler\n");
 				break;
@@ -531,7 +535,9 @@ int acrn_ioreq_attach_client(int client_id, bool check_kthread_stop)
 					"for client %s\n", client->name);
 			return -ENOMEM;
 		}
+		client->kthread_exit = false;
 	} else {
+		client->kthread_exit = false;
 		might_sleep();
 
 		if (check_kthread_stop) {
@@ -799,9 +805,8 @@ int acrn_ioreq_distribute_request(struct vhm_vm *vm)
 			client = acrn_ioreq_find_client_by_request(vm, req);
 			if (client == NULL) {
 				pr_err("vhm-ioreq: failed to "
-						"find ioreq client -> "
-						"BUG\n");
-				BUG();
+						"find ioreq client\n");
+				return -EINVAL;
 			} else {
 				req->client = client->id;
 				atomic_set(&req->processed, REQ_STATE_PROCESSING);

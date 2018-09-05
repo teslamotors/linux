@@ -312,6 +312,17 @@ create_vm_fail:
 		break;
 	}
 
+	case IC_UNSET_MEMSEG: {
+		struct vm_memmap memmap;
+
+		if (copy_from_user(&memmap, (void *)ioctl_param,
+			sizeof(struct vm_memmap)))
+			return -EFAULT;
+
+		ret = unmap_guest_memseg(vm, &memmap);
+		break;
+	}
+
 	case IC_SET_IOREQ_BUFFER: {
 		/* init ioreq buffer */
 		ret = acrn_ioreq_init(vm, (unsigned long)ioctl_param);
