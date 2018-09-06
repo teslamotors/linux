@@ -267,7 +267,7 @@ int check_usage_bits(uint32_t *required, uint32_t *available);
  * Returns: 0 if verified OK or negative error code (see errno).
  */
 int verify_x509_cert_against_manifest_keyring(
-	const struct asymmetric_key_ids *kids,
+	const struct asymmetric_key_id *kid,
 	unsigned int usage_bit);
 
 

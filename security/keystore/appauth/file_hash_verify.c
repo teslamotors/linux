@@ -205,9 +205,9 @@ static int process_file(struct file *file, appauth_digest *hash)
 
 	ks_debug("DEBUG_APPAUTH: appauth_calc_file_shash() started\n");
 	ks_debug("DEBUG_APPAUTH: calling mutex_lock\n");
-	mutex_lock(&(inode->i_mutex));
+	mutex_lock(&(file->f_pos_lock));
 	result = appauth_calc_file_shash(file, hash);
-	mutex_unlock(&(inode->i_mutex));
+	mutex_unlock(&(file->f_pos_lock));
 	ks_debug("DEBUG_APPAUTH: appauth_calc_file_shash() finished\n");
 	keystore_hexdump("", hash->digest, hash_digest_size[hash->algo]);
 	return result;

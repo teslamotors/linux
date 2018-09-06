@@ -152,6 +152,7 @@ static int data_sanity_check(char *buf, uint16_t max_len)
 	ks_debug("DEBUG_APPAUTH: app_id_len in manifest = %d\n", app_id_len);
 	if ((index + app_id_len + 1) > max_len)
 		return -1;
+
 	if (buf[index + app_id_len - 1] != 0)
 		return -1;
 
@@ -180,6 +181,8 @@ int manifest_sanity_check(char *manifest_buf, uint16_t manifest_len)
 	uint16_t max_len = 0;
 	uint16_t data_max_len = 0;
 	int index = 0;
+
+	keystore_hexdump ("Manifest File Content -->", manifest_buf, manifest_len);
 
 	ks_debug("DEBUG_APPAUTH: performing sanity check\n");
 	if (manifest_len < 3)

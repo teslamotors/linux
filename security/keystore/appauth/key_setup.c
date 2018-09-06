@@ -37,17 +37,15 @@ static void print_mpi(MPI a)
 }
 
 /**
- * Prints the public key components in hex form.
+ * Prints the public key in hex form.
  *
  * @param key    - public key to be printed.
  *
  */
 void debug_public_key(struct public_key *key)
 {
-	ks_debug("DEBUG_APPAUTH: key->rsa.e\n");
-	print_mpi(key->rsa.e);
-	ks_debug("DEBUG_APPAUTH: key->rsa.n\n");
-	print_mpi(key->rsa.n);
+	ks_debug("DEBUG_APPAUTH: Public key\n");
+	keystore_hexdump("", key->key, key->keylen);
 }
 #else
 void debug_public_key(struct public_key *key)

@@ -75,7 +75,6 @@ unsigned char oem_hardcode_key[] = {
 };
 #endif
 
-extern const struct public_key_algorithm RSA_public_key_algorithm;
 
 extern int public_key_verify_signature(const struct public_key *pk,
 				       const struct public_key_signature *sig);
@@ -262,9 +261,6 @@ int oem_key_verify_digest(void *digest, unsigned int digest_size,
 	struct public_key_signature sig_data;
 	struct oem_key_holder rsa_pub_key;
 
-	MPI n;   /* N part of RSA root public key */
-	MPI e;   /* E part of RSA root public key */
-	MPI sig; /* RSA signature of ECC key made using RSA root private key */
 	int res;
 
 	if (!oem_rsa_public_key.key) {
@@ -287,47 +283,25 @@ int oem_key_verify_digest(void *digest, unsigned int digest_size,
 	if (!rsa_pub_key.key)
 		return -rsa_pub_key.size;
 
-	/* prepare MPI with N */
-	n = mpi_read_raw_data(rsa_pub_key.key, rsa_key_N_BYTES + 1);
-	if (!n) {
-		pr_err(KBUILD_MODNAME ": mpi_read_raw_data() error while parsing RSA N in %s\n",
-		       __func__);
-		return -EINVAL;
-	}
-	/* prepare MPI with E */
-	e = mpi_read_raw_data(rsa_pub_key.key + rsa_key_N_BYTES + 1,
-			rsa_key_E_BYTES - 1);
-	if (!e) {
-		pr_err(KBUILD_MODNAME ": mpi_read_raw_data() error while parsing RSA E in %s\n",
-		       __func__);
-		mpi_free(n);
-		return -EINVAL;
-	}
-	/* prepare MPI with signature */
-	sig = mpi_read_raw_data(signature, signature_size);
-	if (!sig) {
-		pr_err(KBUILD_MODNAME ": mpi_read_raw_data() error while parsing RSA E in %s\n",
-		       __func__);
-		mpi_free(e);
-		mpi_free(n);
-		return -EINVAL;
-	}
 	/* prepare public key structure */
 	memset(&public_key_data, 0, sizeof(public_key_data));
 
-	public_key_data.algo = &RSA_public_key_algorithm;
-	public_key_data.capabilities = PKEY_CAN_VERIFY;
-	public_key_data.id_type = PKEY_ID_PGP;
-	public_key_data.rsa.n = n;
-	public_key_data.rsa.e = e;
+	/* TODO: Switch Sting assignments with #define or global variables */
+	public_key_data.key = rsa_pub_key.key;
+	public_key_data.keylen = rsa_pub_key.size;
+	public_key_data.id_type = "PGP";
+	public_key_data.pkey_algo = "rsa";
 
 	/* prepare signature structure */
 	memset(&sig_data, 0, sizeof(sig_data));
+
+	/* TODO: Find out the use of Identifier pointer in the public_key_signature struct */
+	sig_data.s = signature;
+	sig_data.s_size = signature_size;
 	sig_data.digest = digest;
 	sig_data.digest_size = digest_size;
-	sig_data.nr_mpi = 1;
-	sig_data.pkey_hash_algo = HASH_ALGO_SHA256;
-	sig_data.rsa.s = sig;
+	sig_data.pkey_algo = "rsa";
+	sig_data.hash_algo = "sha256";
 
 	/* Actual signature verification is done here. */
 	/* See also: Documentation/crypto/asymmetric-keys.txt */
@@ -342,9 +316,8 @@ int oem_key_verify_digest(void *digest, unsigned int digest_size,
 	}
 
 	/* clear local data */
-	mpi_free(sig);
-	mpi_free(e);
-	mpi_free(n);
+	public_key_free(&public_key_data);
+	public_key_signature_free(&sig_data);
 
 	return res;
 }

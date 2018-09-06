@@ -23,6 +23,7 @@
 #include <linux/key-type.h>
 #include <linux/mpi.h>
 #include <linux/kernel.h>
+#include <linux/sched/mm.h>
 #include <linux/string.h>
 #include <linux/errno.h>
 #include <crypto/hash.h>

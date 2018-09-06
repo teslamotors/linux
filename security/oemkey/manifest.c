@@ -74,6 +74,7 @@ uint8_t hardcode_manifest[] = {
 struct cred *manifest_keyring_cred;
 struct key *manifest_keyring;
 struct key_manifest_extension key_manifest_extension_data;
+struct key_restriction *restriction;
 
 static void debug_hexdump(const char *txt, const void *ptr, unsigned int size)
 {
@@ -239,6 +240,7 @@ static int calc_pubkey_digest(struct public_key *pk, uint8_t *digest)
 {
 	struct rsa_key rsa;
 	unsigned len_e_fixed = 0;
+	unsigned len_n_fixed = 0;
 	uint8_t *buf;
 	int res = 0;
 
@@ -249,19 +251,38 @@ static int calc_pubkey_digest(struct public_key *pk, uint8_t *digest)
 	if (res)
 		return -EINVAL;
 
+	debug_hexdump("RSA.N", rsa.n, rsa.n_sz);
+	debug_hexdump("RSA.E", rsa.e, rsa.e_sz);
+
 	/* mpi_get_buffer returns len_e == 3 and the digest
 	   must be calculated with the exponent length == 4 */
 	len_e_fixed = rsa.e_sz < 4 ? 4 : rsa.e_sz;
 
-	buf = kmalloc(rsa.n_sz + len_e_fixed, GFP_KERNEL);
+	/* rsa_parse_pub_key() uses ANS.1 encoding, therefore, the
+	 * returned value for the modolus (n) contains a leading
+	 * byte 0x00 that indicates that the integer is a positive
+	 * value. Ignore the sign when populating buf.
+	 */
+
+	if (rsa.n_sz == 0)
+		return -EINVAL;
+
+	len_n_fixed = rsa.n_sz - 1;
+
+	pr_debug(KBUILD_MODNAME ": Size of len_n_fixed = %d\n", len_n_fixed);
+	pr_debug(KBUILD_MODNAME ": Size of len_e_fixed = %d\n", len_e_fixed);
+
+	buf = kmalloc(len_n_fixed + len_e_fixed, GFP_KERNEL);
 	if (!buf)
 		return -ENOMEM;
-	memset(buf, 0, rsa.n_sz + len_e_fixed);
+	memset(buf, 0, len_n_fixed + len_e_fixed);
 
-	reverse_memcpy(buf, rsa.n, rsa.n_sz);
-	memcpy(buf + rsa.n_sz, rsa.e, rsa.e_sz);
+	reverse_memcpy(buf, (rsa.n) + 1, len_n_fixed);
+	memcpy(buf + len_n_fixed, rsa.e, rsa.e_sz);
 
-	res = sha256_digest(buf, rsa.n_sz + len_e_fixed, digest, SHA256_HASH_SIZE);
+	debug_hexdump("BUFF", buf, len_n_fixed + len_e_fixed);
+
+	res = sha256_digest(buf, len_n_fixed + len_e_fixed, digest, SHA256_HASH_SIZE);
 	if (res < 0)
 		pr_err(KBUILD_MODNAME ": sha256_digest() error %d in %s\n",
 		       res, __func__);
@@ -355,7 +376,7 @@ static struct key *get_verified_pubkey_from_keyring(char *id,
  * Returns: Pointer to the key if ok or an error pointer.
  */
 static struct key *get_verified_pubkey_from_keyring_by_keyid(
-					     const struct asymmetric_key_ids *kids,
+					     const struct asymmetric_key_id *kid,
 					     uint32_t *required_usage_bits)
 {
 	struct key *pubkey;
@@ -364,11 +385,11 @@ static struct key *get_verified_pubkey_from_keyring_by_keyid(
 	uint32_t usage_bits[MANIFEST_USAGE_SIZE];
 	const char *ptr;
 
-	if (!kids || !required_usage_bits)
+	if (!kid || !required_usage_bits)
 		return ERR_PTR(-EFAULT);
 
 	pubkey = find_asymmetric_key(get_manifest_keyring(),
-				     kids->id[0], kids->id[1], false);
+				     NULL, kid, false);
 	if (IS_ERR(pubkey))
 		return ERR_CAST(pubkey);
 
@@ -502,7 +523,7 @@ int verify_public_key_against_manifest(struct public_key *pub_key,
 }
 
 int verify_x509_cert_against_manifest_keyring(
-	const struct asymmetric_key_ids *kids,
+	const struct asymmetric_key_id *kid,
 	unsigned int usage_bit)
 {
 	struct key *pubkey;
@@ -510,7 +531,7 @@ int verify_x509_cert_against_manifest_keyring(
 	unsigned int usage_word;
 	unsigned int usage_sub_bit;
 
-	if (!kids)
+	if (!kid)
 		return -EINVAL;
 
 	/* Set the usage bits */
@@ -526,7 +547,7 @@ int verify_x509_cert_against_manifest_keyring(
 
 	usage_bits[usage_word] = (0x1 << usage_sub_bit);
 
-	pubkey = get_verified_pubkey_from_keyring_by_keyid(kids, usage_bits);
+	pubkey = get_verified_pubkey_from_keyring_by_keyid(kid, usage_bits);
 	if (IS_ERR(pubkey))
 		return PTR_ERR(pubkey);
 
@@ -576,10 +597,9 @@ static int manifest_key_restrict_link_func(struct key *dest_keyring,
 	uint32_t usage_bits[MANIFEST_USAGE_SIZE];
 	int ret;
 
-	pr_devel("==>%s()\n", __func__);
+	printk(KERN_DEBUG "RESTRICT_LINK_FUNC: Call back function begin\n");
 
-	if (!trust_keyring)
-		return -ENOKEY;
+	pr_devel("==>%s()\n", __func__);
 
 	if (type != &key_type_asymmetric)
 		return -EOPNOTSUPP;
@@ -610,7 +630,7 @@ static int manifest_key_restrict_link_func(struct key *dest_keyring,
 		return -EPERM;
 
 	/* Subject Key ID contains manifest key usage bits */
-	memcpy(usage_bits, skid + MANIFEST_SKID_PREFIX_LEN,
+	memcpy(usage_bits, (skid->data) + MANIFEST_SKID_PREFIX_LEN,
 	       MANIFEST_SKID_USAGE_LEN);
 
 	pr_devel("Cert usage bits: %*phN\n",
@@ -672,6 +692,7 @@ static int manifest_key_restrict_link_func(struct key *dest_keyring,
 
 		/* Get usage bits from the primary key description (hex) */
 		pr_devel("Key description: %s\n", signing_key->description);
+		memset(hexprefix, 0, sizeof(hexprefix));
 		bin2hex(hexprefix,
 			MANIFEST_SKID_PREFIX,
 			MANIFEST_SKID_PREFIX_LEN);
@@ -706,27 +727,10 @@ static int manifest_key_restrict_link_func(struct key *dest_keyring,
 	return ret;
 }
 
-/**
- * Allocate a struct key_restriction for the "manifest keyring"
- * keyring. Only for use in manifest_init().
- */
-static __init struct key_restriction *get_manifest_restriction(void)
-{
-	struct key_restriction *restriction;
-
-	restriction = kzalloc(sizeof(struct key_restriction), GFP_KERNEL);
-
-	if (!restriction)
-		panic("Can't allocate manifest trusted keyring restriction\n");
-
-	restriction->check = manifest_key_restrict_link_func;
-
-	return restriction;
-}
-
 static int __init manifest_init(void)
 {
 	int res = 0;
+	restriction = NULL;
 #ifndef CONFIG_MANIFEST_HARDCODE
 	struct manifest_offset moff;
 #endif
@@ -789,6 +793,15 @@ static int __init manifest_init(void)
 		goto err1;
 	}
 
+	restriction = kzalloc(sizeof(struct key_restriction), GFP_KERNEL);
+
+	if (!restriction) {
+		res = -ENOMEM;
+		goto err2;
+	}
+
+	restriction->check = manifest_key_restrict_link_func;
+
 	keyring = keyring_alloc(".manifest_keyring",              /* desc  */
 				GLOBAL_ROOT_UID,                  /* uid   */
 				GLOBAL_ROOT_GID,                  /* guid  */
@@ -797,7 +810,7 @@ static int __init manifest_init(void)
 				 KEY_USR_VIEW | KEY_USR_READ |
 				 KEY_USR_WRITE | KEY_USR_SEARCH), /* perm  */
 				KEY_ALLOC_NOT_IN_QUOTA,           /* flags */
-				get_manifest_restriction(),       /* rest  */
+				restriction,			  /* rest  */
 				NULL);                            /* dest  */
 
 	if (IS_ERR(keyring)) {
@@ -816,6 +829,9 @@ err2:
 	put_cred(cred);
 
 err1:
+	if (restriction)
+		kfree(restriction);
+
 	kfree(manifest.data);
 	return res;
 }
@@ -825,6 +841,7 @@ static void __exit manifest_exit(void)
 	key_put(manifest_keyring);
 	put_cred(manifest_keyring_cred);
 	kfree(manifest.data);
+	kfree(restriction);
 }
 
 module_init(manifest_init);

@@ -15,6 +15,7 @@
  *
  */
 #include <linux/kernel.h>
+#include <linux/slab.h>
 #include <linux/rtc.h>
 #include <linux/time.h>
 #include <security/manifest.h>
@@ -51,15 +52,27 @@ static int verify_manifest_signature(struct public_key *key, appauth_digest *has
 	debug_public_key(key);
 	memset(&pks, 0, sizeof(pks));
 
-	pks.pkey_algo = PKEY_ALGO_RSA;
-	pks.pkey_hash_algo = hash->algo;
+	switch (hash->algo) {
+
+	case HASH_ALGO_SHA1:
+		pks.hash_algo = "sha1";
+		break;
+	case HASH_ALGO_SHA256:
+		pks.hash_algo = "sha256";
+		break;
+	default:
+		break;
+	}
+
+	pks.pkey_algo = "rsa";
 	pks.digest = (u8 *)(hash->digest);
 	pks.digest_size = hash->len;
-	pks.nr_mpi = 1;
-	pks.rsa.s = mpi_read_raw_data(sig, sig_len);
+	pks.s = sig;
+	pks.s_size = sig_len;
+
 	ks_debug("DEBUG_APPAUTH: digest value\n");
 	keystore_hexdump("", pks.digest, pks.digest_size);
-	if (pks.rsa.s)
+	if (pks.s)
 		ret = public_key_verify_signature(key, &pks);
 	return ret;
 }
@@ -169,6 +182,7 @@ int verify_manifest(const char *sig, const char *cert, const char *data,
 			int sig_len, int cert_len, int data_len)
 {
 	struct x509_certificate *x509cert = NULL;
+	struct asymmetric_key_id *x509cert_akid_skid;
 	appauth_digest hash;
 	int res = 0;
 
@@ -184,8 +198,11 @@ int verify_manifest(const char *sig, const char *cert, const char *data,
 		goto exit;
 	}
 
+	x509cert_akid_skid = x509cert->sig->auth_ids[1];
+
 	res = verify_x509_cert_against_manifest_keyring(
-		x509cert->skid, ATTESTATION_KEY_USAGE_BIT);
+		 x509cert_akid_skid,
+		 ATTESTATION_KEY_USAGE_BIT);
 	if (res != 0) {
 		ks_err("Manifest cert verification failed (%d)\n", res);
 		res = -CERTIFICATE_FAILURE;
