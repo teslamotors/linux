@@ -234,12 +234,47 @@ static u64 tsc_time_to_tunit_time(struct ipu_isys *isys,
 	struct ipu_bus_device *adev = to_ipu_bus_device(isys->adev->iommu);
 	u64 isys_clk = IS_FREQ_SOURCE / adev->ctrl->divisor / 100000;
 	u64 tsc_clk = IPU_BUTTRESS_TSC_CLK / 100000;
-	u64 tunit_time;
 
-	tunit_time = (tsc_time - tsc_base) * isys_clk;
-	do_div(tunit_time, tsc_clk);
+	tsc_time *= isys_clk;
+	tsc_base *= isys_clk;
+	do_div(tsc_time, tsc_clk);
+	do_div(tsc_base, tsc_clk);
 
-	return tunit_time + tunit_base;
+	return tunit_base + tsc_time - tsc_base;
+}
+
+static int update_timer_base(struct ipu_isys *isys)
+{
+	int rval, i;
+	u64 time;
+
+	for (i = 0; i < CSI2_UPDATE_TIME_TRY_NUM; i++) {
+		rval = ipu_trace_get_timer(&isys->adev->dev, &time);
+		if (rval) {
+			dev_err(&isys->adev->dev,
+				"Failed to read Tunit timer.\n");
+			return rval;
+		}
+		rval = ipu_buttress_tsc_read(isys->adev->isp,
+					     &isys->tsc_timer_base);
+		if (rval) {
+			dev_err(&isys->adev->dev,
+				"Failed to read TSC timer.\n");
+			return rval;
+		}
+		rval = ipu_trace_get_timer(&isys->adev->dev,
+					   &isys->tunit_timer_base);
+		if (rval) {
+			dev_err(&isys->adev->dev,
+				"Failed to read Tunit timer.\n");
+			return rval;
+		}
+		if (tunit_time_to_us(isys, isys->tunit_timer_base - time) <
+		    CSI2_UPDATE_TIME_MAX_DIFF)
+			return 0;
+	}
+	dev_dbg(&isys->adev->dev, "Timer base values may not be accurate.\n");
+	return 0;
 }
 
 /* Extract the timestamp from trace message.
@@ -282,6 +317,8 @@ unsigned int ipu_isys_csi2_get_current_field(struct ipu_isys_pipeline *ip,
 	unsigned int i = ip->short_packet_trace_index;
 	bool msg_matched = false;
 	unsigned int monitor_id;
+
+	update_timer_base(isys);
 
 	if (ip->csi2->index >= IPU_ISYS_MAX_CSI2_LEGACY_PORTS)
 		monitor_id = TRACE_REG_CSI2_3PH_TM_MONITOR_ID;
