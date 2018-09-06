@@ -321,8 +321,6 @@ struct intel_gvt {
 	wait_queue_head_t service_thread_wq;
 	unsigned long service_request;
 	struct intel_gvt_pipe_info pipe_info[I915_MAX_PIPES];
-
-	struct skl_ddb_allocation ddb;
 };
 
 static inline struct intel_gvt *to_gvt(struct drm_i915_private *i915)
@@ -541,6 +539,8 @@ void populate_pvinfo_page(struct intel_vgpu *vgpu);
 int gvt_pause_user_domains(struct drm_i915_private *dev_priv);
 int gvt_unpause_user_domains(struct drm_i915_private *dev_priv);
 int gvt_dom0_ready(struct drm_i915_private *dev_priv);
+void intel_gvt_allocate_ddb(struct intel_gvt *gvt,
+		struct skl_ddb_allocation *ddb, unsigned int active_crtcs);
 
 int intel_gvt_scan_and_shadow_workload(struct intel_vgpu_workload *workload);
 
