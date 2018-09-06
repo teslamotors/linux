@@ -17,6 +17,8 @@
 #define SSP0_GPIO_VALUE2 0x44000600
 #define SSP1_GPIO_BASE 0xd0c40660
 #define SSP1_GPIO_VALUE1 0x44000400
+#define SSP2_GPIO_BASE 0xd0c40688
+#define SSP2_GPIO_VALUE1 0x44000400
 #define SSP4_GPIO_BASE 0xd0c705A0
 #define SSP4_GPIO_VALUE1 0x44000A00
 #define SSP4_GPIO_VALUE2 0x44000800
@@ -89,6 +91,25 @@ static int bxtp_ssp1_gpio_init(struct snd_soc_pcm_runtime *rtd)
 	u32 gpio_value1 = SSP1_GPIO_VALUE1;
 
 	gpio_addr = (void *)ioremap_nocache(SSP1_GPIO_BASE, 0x30);
+	if (gpio_addr == NULL)
+		return(-EIO);
+
+	memcpy_toio(gpio_addr + 0x8, &gpio_value1, sizeof(gpio_value1));
+	memcpy_toio(gpio_addr + 0x10, &gpio_value1, sizeof(gpio_value1));
+	memcpy_toio(gpio_addr + 0x18, &gpio_value1, sizeof(gpio_value1));
+	memcpy_toio(gpio_addr + 0x20, &gpio_value1, sizeof(gpio_value1));
+
+	iounmap(gpio_addr);
+	return 0;
+}
+
+static int bxtp_ssp2_gpio_init(struct snd_soc_pcm_runtime *rtd)
+{
+
+	char *gpio_addr;
+	u32 gpio_value1 = SSP2_GPIO_VALUE1;
+
+	gpio_addr = (void *)ioremap_nocache(SSP2_GPIO_BASE, 0x30);
 	if (gpio_addr == NULL)
 		return(-EIO);
 
@@ -250,7 +271,7 @@ static struct snd_soc_dai_link broxton_rt298_dais[] = {
 		.no_pcm = 1,
 		.codec_name = "snd-soc-dummy",
 		.codec_dai_name = "snd-soc-dummy-dai",
-		.init = NULL,
+		.init = bxtp_ssp2_gpio_init,
 		.dai_fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF |
 			SND_SOC_DAIFMT_CBS_CFS,
 		.ignore_suspend = 1,
