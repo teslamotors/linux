@@ -32,6 +32,7 @@
 #include <linux/virtio.h>
 #include <linux/virtio_ids.h>
 #include <linux/virtio_config.h>
+#include <linux/workqueue.h>
 #include "../hyper_dmabuf_msg.h"
 #include "../hyper_dmabuf_drv.h"
 #include "hyper_dmabuf_virtio_common.h"
@@ -53,6 +54,11 @@ struct virtio_hdma_fe_priv {
 	struct virtio_comm_ring tx_ring;
 	struct virtio_comm_ring rx_ring;
 	int vmid;
+	/*
+	 * Lock to protect operations on virtqueue
+	 * which are not safe to run concurrently
+	 */
+	spinlock_t lock;
 };
 
 /* Assuming there will be one FE instance per VM */
@@ -68,6 +74,7 @@ static void virtio_hdma_fe_tx_done(struct virtqueue *vq)
 	struct virtio_hdma_fe_priv *priv =
 		(struct virtio_hdma_fe_priv *) vq->vdev->priv;
 	int len;
+	unsigned long flags;
 
 	if (priv == NULL) {
 		dev_dbg(hy_drv_priv->dev,
@@ -75,6 +82,7 @@ static void virtio_hdma_fe_tx_done(struct virtqueue *vq)
 		return;
 	}
 
+	spin_lock_irqsave(&priv->lock, flags);
 	/* Make sure that all pending responses are processed */
 	while (virtqueue_get_buf(vq, &len)) {
 		if (len == sizeof(struct hyper_dmabuf_req)) {
@@ -83,6 +91,7 @@ static void virtio_hdma_fe_tx_done(struct virtqueue *vq)
 			virtio_comm_ring_pop(&priv->tx_ring);
 		}
 	}
+	spin_unlock_irqrestore(&priv->lock, flags);
 }
 
 /*
@@ -165,6 +174,8 @@ static int virtio_hdma_fe_probe_common(struct virtio_device *vdev)
 	/* Set vmid to -1 to mark that it is not initialized yet */
 	priv->vmid = -1;
 
+	spin_lock_init(&priv->lock);
+
 	vdev->priv = priv;
 
 	ret = virtio_find_vqs(vdev, HDMA_VIRTIO_QUEUE_MAX,
@@ -212,14 +223,20 @@ static void virtio_hdma_fe_remove(struct virtio_device *vdev)
 	virtio_hdma_fe_remove_common(vdev);
 }
 
+struct virtio_hdma_restore_work
+{
+	struct work_struct work;
+	struct virtio_device *dev;
+};
+
 /*
  * Queues empty requests buffers to backend,
  * which will be used by it to send requests back to frontend.
  */
-static void virtio_hdma_fe_scan(struct virtio_device *vdev)
+static void virtio_hdma_query_vmid(struct virtio_device *vdev)
 {
-	struct virtio_hdma_fe_priv *priv =
-		(struct virtio_hdma_fe_priv *) vdev->priv;
+        struct virtio_hdma_fe_priv *priv =
+                (struct virtio_hdma_fe_priv *) vdev->priv;
 	struct hyper_dmabuf_req *rx_req;
 	int timeout = 1000;
 
@@ -256,6 +273,29 @@ static void virtio_hdma_fe_scan(struct virtio_device *vdev)
 	}
 }
 
+/*
+ * Queues empty requests buffers to backend,
+ * which will be used by it to send requests back to frontend.
+ */
+static void virtio_hdma_fe_scan(struct virtio_device *vdev)
+{
+	virtio_hdma_query_vmid(vdev);
+}
+
+static void virtio_hdma_restore_bh(struct work_struct *w)
+{
+	struct virtio_hdma_restore_work *work =
+		(struct virtio_hdma_restore_work *) w;
+
+	while (!(VIRTIO_CONFIG_S_DRIVER_OK &
+		 work->dev->config->get_status(work->dev))) {
+		usleep_range(100, 120);
+	}
+
+	virtio_hdma_query_vmid(work->dev);
+	kfree(w);
+}
+
 #ifdef CONFIG_PM_SLEEP
 static int virtio_hdma_fe_freeze(struct virtio_device *vdev)
 {
@@ -265,7 +305,18 @@ static int virtio_hdma_fe_freeze(struct virtio_device *vdev)
 
 static int virtio_hdma_fe_restore(struct virtio_device *vdev)
 {
-	return virtio_hdma_fe_probe_common(vdev);
+	struct virtio_hdma_restore_work *work;
+	int ret;
+
+	ret = virtio_hdma_fe_probe_common(vdev);
+	if (!ret) {
+		work = kmalloc(sizeof(*work), GFP_KERNEL);
+		INIT_WORK(&work->work, virtio_hdma_restore_bh);
+		work->dev = vdev;
+		schedule_work(&work->work);
+	}
+
+	return ret;
 }
 #endif
 
@@ -317,6 +368,7 @@ static int virtio_hdma_fe_send_req(int vmid, struct hyper_dmabuf_req *req,
 	struct virtio_hdma_fe_priv *priv = hyper_dmabuf_virtio_fe;
 	struct hyper_dmabuf_req *tx_req;
 	int timeout = 1000;
+	unsigned long flags;
 
 	if (priv == NULL) {
 		dev_err(hy_drv_priv->dev,
@@ -337,6 +389,7 @@ static int virtio_hdma_fe_send_req(int vmid, struct hyper_dmabuf_req *req,
 		return -EBUSY;
 	}
 
+	spin_lock_irqsave(&priv->lock, flags);
 	/* Get free buffer for sending request from ring */
 	tx_req = (struct hyper_dmabuf_req *)
 			virtio_comm_ring_push(&priv->tx_ring);
@@ -348,6 +401,7 @@ static int virtio_hdma_fe_send_req(int vmid, struct hyper_dmabuf_req *req,
 	virtio_hdma_fe_queue_buffer(hyper_dmabuf_virtio_fe,
 			       HDMA_VIRTIO_TX_QUEUE,
 			       tx_req, sizeof(*tx_req));
+	spin_unlock_irqrestore(&priv->lock, flags);
 
 	if (wait) {
 		while (timeout--) {
