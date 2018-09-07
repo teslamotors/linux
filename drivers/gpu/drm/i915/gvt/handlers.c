@@ -845,9 +845,9 @@ static int skl_ps_mmio_write(struct intel_vgpu *vgpu, unsigned int offset,
 	if (!(vgpu_vreg(vgpu, PIPECONF(pipe)) & I965_PIPECONF_ACTIVE))
 		return 0;
 
-	if (offset == _PS_1A_CTRL || offset == _PS_2A_CTRL ||
+	if ((offset == _PS_1A_CTRL || offset == _PS_2A_CTRL ||
 	   offset == _PS_1B_CTRL || offset == _PS_2B_CTRL ||
-	   offset == _PS_1C_CTRL) {
+	   offset == _PS_1C_CTRL) && ((*(u32 *)p_data) & PS_SCALER_EN)) {
 		unsigned int plane;
 
 		if (SKL_PS_REG_VALUE_TO_PLANE(*(u32 *)p_data) == 0) {
