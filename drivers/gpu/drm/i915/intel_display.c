@@ -13563,10 +13563,7 @@ intel_skl_plane_create(struct drm_i915_private *dev_priv, enum pipe pipe,
 	intel_plane->id = plane;
 	plane_formats = skl_primary_formats;
 
-	if (pipe < PIPE_C)
-		modifiers = skl_format_modifiers_ccs;
-	else
-		modifiers = skl_format_modifiers_noccs;
+	modifiers = i9xx_format_modifiers;
 
 	num_formats = ARRAY_SIZE(skl_primary_formats);
 
