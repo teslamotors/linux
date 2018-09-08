@@ -272,13 +272,13 @@ create_vm_fail:
 	}
 
 	case IC_DESTROY_VM: {
-		if (vm->trusty_host_gpa)
-			deinit_trusty(vm);
 		ret = hcall_destroy_vm(vm->vmid);
 		if (ret < 0) {
 			pr_err("failed to destroy VM %ld\n", vm->vmid);
 			return -EFAULT;
 		}
+		if (vm->trusty_host_gpa)
+			deinit_trusty(vm);
 		vm->vmid = ACRN_INVALID_VMID;
 		break;
 	}
