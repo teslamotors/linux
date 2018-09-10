@@ -190,33 +190,40 @@ void intel_gvt_init_pipe_info(struct intel_gvt *gvt);
 /*
  * When enabling multi-plane in DomU, an issue is that the PLANE_BUF_CFG
  * register cannot be updated dynamically, since Dom0 has no idea of the
- * plane information of DomU's planes, so here we statically allocate the
+ * plane information of DomU's planes, so here we allocate the
  * ddb entries for all the possible enabled planes.
  */
-static void intel_gvt_init_ddb(struct intel_gvt *gvt)
+void intel_gvt_allocate_ddb(struct intel_gvt *gvt,
+		struct skl_ddb_allocation *ddb, unsigned int active_crtcs)
 {
 	struct drm_i915_private *dev_priv = gvt->dev_priv;
-	struct skl_ddb_allocation *ddb = &gvt->ddb;
 	unsigned int pipe_size, ddb_size, plane_size, plane_cnt;
 	u16 start, end;
 	enum pipe pipe;
 	enum plane_id plane;
+	int i = 0;
+	int num_active = hweight32(active_crtcs);
+
+	if (WARN_ON(!num_active))
+		return;
 
 	ddb_size = INTEL_INFO(dev_priv)->ddb_size;
 	ddb_size -= 4; /* 4 blocks for bypass path allocation */
-	pipe_size = ddb_size / INTEL_INFO(dev_priv)->num_pipes;
+	pipe_size = ddb_size / num_active;
 
 	memset(ddb, 0, sizeof(*ddb));
-	for_each_pipe(dev_priv, pipe) {
-		start = pipe * ddb_size / INTEL_INFO(dev_priv)->num_pipes;
+	for_each_pipe_masked(dev_priv, pipe, active_crtcs) {
+		start = pipe_size * (i++);
 		end = start + pipe_size;
+		ddb->plane[pipe][PLANE_CURSOR].start = end - 8;
+		ddb->plane[pipe][PLANE_CURSOR].end = end;
 
 		plane_cnt = (INTEL_INFO(dev_priv)->num_sprites[pipe] + 1);
-		plane_size = pipe_size / plane_cnt;
+		plane_size = (pipe_size - 8) / plane_cnt;
 
 		for_each_universal_plane(dev_priv, pipe, plane) {
 			ddb->plane[pipe][plane].start = start +
-				(plane * pipe_size / plane_cnt);
+				(plane * (pipe_size - 8) / plane_cnt);
 			ddb->plane[pipe][plane].end =
 				ddb->plane[pipe][plane].start + plane_size;
 		}
@@ -347,7 +354,6 @@ int intel_gvt_init_device(struct drm_i915_private *dev_priv)
 		goto out_clean_thread;
 
 	intel_gvt_init_pipe_info(gvt);
-	intel_gvt_init_ddb(gvt);
 
 	ret = intel_gvt_hypervisor_host_init(&dev_priv->drm.pdev->dev, gvt,
 				&intel_gvt_ops);
