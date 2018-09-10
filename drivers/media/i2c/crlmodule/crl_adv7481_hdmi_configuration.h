@@ -193,14 +193,14 @@ static struct crl_register_write_rep adv7481_hdmi_streamoff_regs[] = {
 
 static struct crl_pll_configuration adv7481_hdmi_pll_configurations[] = {
 	{
-		.input_clk = 24000000,
+		.input_clk = 286363636,
 		.op_sys_clk = 297000000,
 		.bitsperpixel = 16,
 		.pixel_rate_csi = 594000000,
 		.pixel_rate_pa = 594000000,
 	},
 	{
-		.input_clk = 24000000,
+		.input_clk = 286363636,
 		.op_sys_clk = 445500000,
 		.bitsperpixel = 24,
 		.pixel_rate_csi = 891000000,

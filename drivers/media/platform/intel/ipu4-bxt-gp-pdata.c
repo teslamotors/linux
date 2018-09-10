@@ -37,7 +37,7 @@
 
 
 static struct crlmodule_platform_data adv7481_cvbs_pdata = {
-	.ext_clk = 24000000,
+	.ext_clk = 286363636,
 	.xshutdown = GPIO_BASE + 64, /*dummy for now*/
 	.lanes = ADV7481_LANES,
 	.module_name = "ADV7481 CVBS"
@@ -62,7 +62,7 @@ static struct ipu_isys_subdev_info adv7481_cvbs_crl_sd = {
 
 static struct crlmodule_platform_data adv7481_hdmi_pdata = {
 	/* FIXME: may need to revisit */
-	.ext_clk = 24000000,
+	.ext_clk = 286363636,
 	.xshutdown = GPIO_BASE + 30,
 	.lanes = ADV7481_HDMI_LANES,
 	.module_name = "ADV7481 HDMI",

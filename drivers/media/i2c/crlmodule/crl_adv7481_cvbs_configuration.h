@@ -93,7 +93,7 @@ static struct crl_register_write_rep adv7481_cvbs_streamoff_regs[] = {
 
 static struct crl_pll_configuration adv7481_cvbs_pll_configurations[] = {
 	{
-		.input_clk = 24000000,
+		.input_clk = 286363636,
 		.op_sys_clk = 135000000,
 		.bitsperpixel = 16,
 		.pixel_rate_csi = 270000000,
