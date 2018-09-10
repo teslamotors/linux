@@ -291,8 +291,11 @@ static int cbc_device_release(struct inode *inode, struct file *file)
 	unsigned long flags;
 
 	if (file_data) {
-		spin_lock_irqsave(&file_data->cbc_device->cbc_device_lock, flags);
+		spin_lock_irqsave(
+			&file_data->cbc_device->cbc_device_lock, flags);
 		list_del(&file_data->list);
+		spin_unlock_irqrestore(
+			&file_data->cbc_device->cbc_device_lock, flags);
 
 		pr_debug("cbc-core: device_release: %d.%d %s\n",
 			MAJOR(inode->i_rdev), dev_idx,
@@ -303,7 +306,6 @@ static int cbc_device_release(struct inode *inode, struct file *file)
 
 		kfree(file_data);
 		file->private_data = NULL;
-		spin_unlock_irqrestore(&file_data->cbc_device->cbc_device_lock, flags);
 	}
 
 	return 0;
