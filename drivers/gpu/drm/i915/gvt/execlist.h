@@ -182,4 +182,5 @@ int intel_vgpu_submit_execlist(struct intel_vgpu *vgpu, int ring_id);
 void intel_vgpu_reset_execlist(struct intel_vgpu *vgpu,
 		unsigned long engine_mask);
 
+void clean_workloads(struct intel_vgpu *vgpu, unsigned long engine_mask);
 #endif /*_GVT_EXECLIST_H_*/
