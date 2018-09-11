@@ -160,6 +160,11 @@ int map_gttmmio(struct intel_vgpu *vgpu, bool map)
 		return ret;
 	}
 
+	if (!st) {
+		DRM_INFO("no scatter list, fallback to disable ggtt pv\n");
+		return -EINVAL;
+	}
+
 	start = *(u64 *)(vgpu_cfg_space(vgpu) + PCI_BASE_ADDRESS_0);
 	start &= ~GENMASK(3, 0);
 	start += vgpu->cfg_space.bar[INTEL_GVT_PCI_BAR_GTTMMIO].size >> 1;
