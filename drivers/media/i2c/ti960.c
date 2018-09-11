@@ -149,33 +149,6 @@ static int ti953_reg_write(struct ti960 *va, unsigned short rx_port,
 	return 0;
 }
 
-static int ti953_reg_read(struct ti960 *va, unsigned short rx_port,
-	unsigned char reg, unsigned char *val)
-{
-	int retry, timeout = 10;
-	struct i2c_client *client = v4l2_get_subdevdata(&va->sd);
-	unsigned short ser_alias = va->pdata->subdev_info[rx_port].ser_alias;
-
-	client->addr = ser_alias;
-	for (retry = 0; retry < timeout; retry++) {
-		*val = i2c_smbus_read_byte_data(client, reg);
-		if (*val < 0)
-			usleep_range(5000, 6000);
-		else
-			break;
-	}
-
-	client->addr = TI960_I2C_ADDRESS;
-	if (retry >= timeout) {
-		dev_err(va->sd.dev,
-			"%s:read reg failed: port=%2x, addr=%2x, reg=%2x\n",
-			__func__, rx_port, ser_alias, reg);
-		return -EREMOTEIO;
-	}
-
-	return 0;
-}
-
 static int ti960_reg_read(struct ti960 *va, unsigned char reg, unsigned int *val)
 {
 	int ret, retry, timeout = 10;
