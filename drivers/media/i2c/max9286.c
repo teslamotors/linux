@@ -179,7 +179,7 @@ static int max9286_set_stream(struct v4l2_subdev *subdev, int enable)
 	unsigned int val;
 	u8 slval = 0xE0;
 	u8 dtval = 0xF7;
-	struct max9286_register_write *max9286_byte_order_settings;
+	const struct max9286_register_write *max9286_byte_order_settings;
 
 	dev_dbg(max->v4l2_sd.dev, "MAX9286 set stream. enable = %d\n", enable);
 
