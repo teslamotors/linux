@@ -38,6 +38,7 @@
 #include <linux/delay.h>
 #include <linux/pm.h>
 #include <linux/i2c.h>
+#include <linux/acpi.h>
 #include <linux/gpio.h>
 #include <linux/regulator/consumer.h>
 #include <linux/of.h>
@@ -1767,6 +1768,14 @@ static const struct reg_sequence aic3007_class_d[] = {
 	{ AIC3X_PAGE_SELECT, 0x00 },
 };
 
+const struct acpi_device_id aic3x_acpi_match[] = {
+	{"INT345B", AIC3X_MODEL_3007},
+	{"INT345C", AIC3X_MODEL_3007},
+	{},
+};
+MODULE_DEVICE_TABLE(acpi, aic3x_acpi_match);
+EXPORT_SYMBOL_GPL(aic3x_acpi_match);
+
 /*
  * If the i2c layer weren't so broken, we could pass this kind of data
  * around
@@ -1780,6 +1789,7 @@ static int aic3x_i2c_probe(struct i2c_client *i2c,
 	struct device_node *np = i2c->dev.of_node;
 	int ret, i;
 	u32 value;
+	const struct acpi_device_id *acpi_id;
 
 	aic3x = devm_kzalloc(&i2c->dev, sizeof(struct aic3x_priv), GFP_KERNEL);
 	if (!aic3x)
@@ -1839,7 +1849,12 @@ static int aic3x_i2c_probe(struct i2c_client *i2c,
 		aic3x->gpio_reset = -1;
 	}
 
-	aic3x->model = id->driver_data;
+	acpi_id = acpi_match_device(aic3x_acpi_match,&i2c->dev);
+	if(acpi_id) {
+		aic3x->model = acpi_id->driver_data;
+	} else {
+		aic3x->model = id->driver_data;
+	}
 
 	if (gpio_is_valid(aic3x->gpio_reset) &&
 	    !aic3x_is_shared_reset(aic3x)) {
@@ -1917,6 +1932,7 @@ static struct i2c_driver aic3x_i2c_driver = {
 	.driver = {
 		.name = "tlv320aic3x-codec",
 		.of_match_table = of_match_ptr(tlv320aic3x_of_match),
+		.acpi_match_table = ACPI_PTR(aic3x_acpi_match),
 	},
 	.probe	= aic3x_i2c_probe,
 	.remove = aic3x_i2c_remove,

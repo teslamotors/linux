@@ -22,6 +22,7 @@
 #include <sound/pcm.h>
 #include <sound/soc.h>
 #include <linux/gpio.h>
+#include <linux/acpi.h>
 #include <sound/pcm_params.h>
 #include "../../codecs/tlv320aic3x.h"
 
@@ -283,7 +284,7 @@ static struct snd_soc_dai_link apli_lhcrb_aic3107_dais[] = {
 		.name = "SSP1-Codec",
 		.id = 0,
 		.cpu_dai_name = "SSP1 Pin",
-		.codec_name = "tlv320aic3x-codec.3-0018",
+		.codec_name = "i2c-INT345B:00",
 		.codec_dai_name = "tlv320aic3x-hifi",
 		.ignore_suspend = 1,
 		.ignore_pmdown_time = 1,
