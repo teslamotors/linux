@@ -46,9 +46,6 @@ FW_LOAD_NO_OF_REQUEST_SIZE_BYTES	= 4
 WA_HSD1304553438                 = 1
 
 # FW workaround for HSD 1404347241. Disable clock gating for CSI2 DPHY Receiver ports
-# This is also specified in the CNLB0 clock gating document:
-#     https://sharepoint.ger.ith.intel.com/sites/ICG_Arch/Shared%20Documents/
-#           IPU%20Specs/IPU4-P/HAS/CNL%20B0%20clock%20gating%20registers.xlsx
 DISABLE_CSI2_RX_DPHY_CLK_GATE    = 1
 
 # Larger than specified frames that complete mid-line
