@@ -23,6 +23,7 @@
 #include <sound/pcm.h>
 #include <sound/soc.h>
 #include <linux/gpio.h>
+#include <linux/acpi.h>
 #include <sound/pcm_params.h>
 #include "../../codecs/wm8731.h"
 
@@ -210,7 +211,7 @@ static struct snd_soc_dai_link apli_lhcrb_wm8731_dais[] = {
 		.name = "SSP4-Codec",
 		.id = 1,
 		.cpu_dai_name = "SSP4 Pin",
-		.codec_name = "wm8731.3-001a",
+		.codec_name = "i2c-INT345A:00",
 		.codec_dai_name = "wm8731-hifi",
 		.ignore_suspend = 1,
 		.ignore_pmdown_time = 1,
