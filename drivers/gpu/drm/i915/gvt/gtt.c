@@ -2374,6 +2374,7 @@ void intel_vgpu_clean_gtt(struct intel_vgpu *vgpu)
 
 	intel_vgpu_free_mm(vgpu, INTEL_GVT_MM_PPGTT);
 	intel_vgpu_free_mm(vgpu, INTEL_GVT_MM_GGTT);
+	intel_vgpu_reset_ggtt(vgpu);
 	kfree(vgpu->cached_guest_entry);
 }
 
