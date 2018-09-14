@@ -26,7 +26,7 @@
 #include <sound/pcm_params.h>
 #include "../../codecs/wm8731.h"
 
-static int apli_lfcrb_wm8731_startup(struct snd_pcm_substream *substream)
+static int apli_lhcrb_wm8731_startup(struct snd_pcm_substream *substream)
 {
 	int ret;
 	static unsigned int rates[] = { 48000 };
@@ -62,20 +62,18 @@ static int apli_lfcrb_wm8731_startup(struct snd_pcm_substream *substream)
 	return ret;
 }
 
-static struct snd_soc_ops apli_lfcrb_wm8731_ops = {
-	.startup = apli_lfcrb_wm8731_startup,
+static struct snd_soc_ops apli_lhcrb_wm8731_ops = {
+	.startup = apli_lhcrb_wm8731_startup,
 };
 
 static const struct snd_kcontrol_new apli_controls[] = {
-	SOC_DAPM_PIN_SWITCH("SSP2 Speaker"),
-	SOC_DAPM_PIN_SWITCH("SSP2 Mic"),
 	SOC_DAPM_PIN_SWITCH("Headphone Jack"),
 	SOC_DAPM_PIN_SWITCH("Mic Jack"),
 };
 
 static const struct snd_soc_dapm_widget apli_widgets[] = {
-	SND_SOC_DAPM_SPK("SSP2 Speaker", NULL),
-	SND_SOC_DAPM_MIC("SSP2 Mic", NULL),
+	SND_SOC_DAPM_SPK("SSP2 PbTestPin", NULL),
+	SND_SOC_DAPM_MIC("SSP2 CpTestPin", NULL),
 	SND_SOC_DAPM_SPK("SSP4 Speaker", NULL),
 	SND_SOC_DAPM_MIC("SSP4 Mic", NULL),
 	SND_SOC_DAPM_HP("Headphone Jack", NULL),
@@ -96,18 +94,18 @@ static const struct snd_soc_dapm_route apli_lhcrb_wm8731_map[] = {
 
 	/* Codec BE connections */
 	/* SSP2 follows Hardware pin naming */
-	{"SSP2 Speaker", NULL, "ssp1 Tx"},
-	{"ssp1 Tx", NULL, "codec0_out"},
+	{"SSP2 PbTestPin", NULL, "ssp2 Tx"},
+	{"ssp2 Tx", NULL, "codec0_out"},
 
-	{"codec0_in", NULL, "ssp1 Rx"},
-	{"ssp1 Rx", NULL, "SSP2 Mic"},
+	{"codec0_in", NULL, "ssp2 Rx"},
+	{"ssp2 Rx", NULL, "SSP2 CpTestPin"},
 
 	/* SSP4 follows Hardware pin naming */
-	{"SSP4 Speaker", NULL, "ssp3 Tx"},
-	{"ssp3 Tx", NULL, "codec1_out"},
+	{"SSP4 Speaker", NULL, "ssp4 Tx"},
+	{"ssp4 Tx", NULL, "codec1_out"},
 
-	{"codec1_in", NULL, "ssp3 Rx"},
-	{"ssp3 Rx", NULL, "SSP4 Mic"},
+	{"codec1_in", NULL, "ssp4 Rx"},
+	{"ssp4 Rx", NULL, "SSP4 Mic"},
 };
 
 
@@ -131,15 +129,16 @@ static struct snd_soc_ops apli_wm8731_ops = {
 	.hw_params = apli_wm8731_hw_params,
 };
 
+static const char pname[] = "0000:00:0e.0";
 
 /* apli digital audio interface glue - connects codec <--> CPU */
 static struct snd_soc_dai_link apli_lhcrb_wm8731_dais[] = {
 	/* Front End DAI links */
 	{
 		.name = "SSP2 Playback Port",
-		.stream_name = "SSP2 Speaker",
+		.stream_name = "SSP2 PbTestPin",
 		.cpu_dai_name = "System Pin",
-		.platform_name = "0000:00:0e.0",
+		.platform_name = pname,
 		.nonatomic = 1,
 		.dynamic = 1,
 		.codec_name = "snd-soc-dummy",
@@ -147,27 +146,27 @@ static struct snd_soc_dai_link apli_lhcrb_wm8731_dais[] = {
 		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 				SND_SOC_DPCM_TRIGGER_POST},
 		.dpcm_playback = 1,
-		.ops = &apli_lfcrb_wm8731_ops,
+		.ops = &apli_lhcrb_wm8731_ops,
 	},
 	{
 		.name = "SSP2 Capture Port",
-		.stream_name = "SSP2 Mic",
+		.stream_name = "SSP2 CpTestPin",
 		.cpu_dai_name = "System Pin",
 		.codec_name = "snd-soc-dummy",
 		.codec_dai_name = "snd-soc-dummy-dai",
-		.platform_name = "0000:00:0e.0",
+		.platform_name = pname,
 		.init = NULL,
 		.dpcm_capture = 1,
 		.ignore_suspend = 1,
 		.nonatomic = 1,
 		.dynamic = 1,
-		.ops = &apli_lfcrb_wm8731_ops,
+		.ops = &apli_lhcrb_wm8731_ops,
 	},
 	{
 		.name = "SSP4 Playback Port",
 		.stream_name = "wm8731 Headphone",
 		.cpu_dai_name = "Deepbuffer Pin",
-		.platform_name = "0000:00:0e.0",
+		.platform_name = pname,
 		.nonatomic = 1,
 		.dynamic = 1,
 		.codec_name = "snd-soc-dummy",
@@ -175,7 +174,7 @@ static struct snd_soc_dai_link apli_lhcrb_wm8731_dais[] = {
 		.trigger = {SND_SOC_DPCM_TRIGGER_POST
 			, SND_SOC_DPCM_TRIGGER_POST},
 		.dpcm_playback = 1,
-		.ops = &apli_lfcrb_wm8731_ops,
+		.ops = &apli_lhcrb_wm8731_ops,
 	},
 	{
 		.name = "SSP4 Capture Port",
@@ -183,23 +182,23 @@ static struct snd_soc_dai_link apli_lhcrb_wm8731_dais[] = {
 		.cpu_dai_name = "Reference Pin",
 		.codec_name = "snd-soc-dummy",
 		.codec_dai_name = "snd-soc-dummy-dai",
-		.platform_name = "0000:00:0e.0",
+		.platform_name = pname,
 		.init = NULL,
 		.dpcm_capture = 1,
 		.ignore_suspend = 1,
 		.nonatomic = 1,
 		.dynamic = 1,
-		.ops = &apli_lfcrb_wm8731_ops,
+		.ops = &apli_lhcrb_wm8731_ops,
 	},
 	/* Back End DAI links */
 	{
-		/* SSP1 - Codec */
-		.name = "SSP1-Codec",
-		.be_id = 0,
-		.cpu_dai_name = "SSP1 Pin",
+		/* SSP2 - Codec */
+		.name = "SSP2-Codec",
+		.id = 0,
+		.cpu_dai_name = "SSP2 Pin",
 		.codec_name = "snd-soc-dummy",
 		.codec_dai_name = "snd-soc-dummy-dai",
-		.platform_name = "0000:00:0e.0",
+		.platform_name = pname,
 		.ignore_suspend = 1,
 		.dpcm_playback = 1,
 		.dpcm_capture = 1,
@@ -207,10 +206,10 @@ static struct snd_soc_dai_link apli_lhcrb_wm8731_dais[] = {
 		.init = NULL,
 	},
 	{
-		/* SSP3 - Codec */
-		.name = "SSP3-Codec",
-		.be_id = 1,
-		.cpu_dai_name = "SSP3 Pin",
+		/* SSP4 - Codec */
+		.name = "SSP4-Codec",
+		.id = 1,
+		.cpu_dai_name = "SSP4 Pin",
 		.codec_name = "wm8731.3-001a",
 		.codec_dai_name = "wm8731-hifi",
 		.ignore_suspend = 1,
@@ -219,7 +218,7 @@ static struct snd_soc_dai_link apli_lhcrb_wm8731_dais[] = {
 		.dai_fmt = SND_SOC_DAIFMT_I2S |
 					SND_SOC_DAIFMT_NB_NF |
 					SND_SOC_DAIFMT_CBS_CFS,
-		.platform_name = "0000:00:0e.0",
+		.platform_name = pname,
 		.ignore_suspend = 1,
 		.dpcm_playback = 1,
 		.dpcm_capture = 1,
@@ -259,7 +258,7 @@ static struct platform_driver apli_audio = {
 	.probe = apli_audio_probe,
 	.remove = apli_audio_remove,
 	.driver = {
-		.name = "lfcrb_wm8731_i2s",
+		.name = "lhcrb_wm8731_i2s",
 	},
 };
 
@@ -268,4 +267,4 @@ module_platform_driver(apli_audio)
 /* Module information */
 MODULE_DESCRIPTION("Intel Audio WM8731 Machine driver for APL-I LH CRB");
 MODULE_LICENSE("GPL v2");
-MODULE_ALIAS("platform:lfcrb_wm8731_i2s");
+MODULE_ALIAS("platform:lhcrb_wm8731_i2s");
