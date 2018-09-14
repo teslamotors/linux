@@ -1,6 +1,6 @@
 config IGB_AVB
 	tristate "Avnu IGB AVB driver"
-	depends on IGB=n
+	depends on IGB=n && E1000=n && E1000E=n
 	select DCA
 	default n
 	---help---
@@ -13,6 +13,5 @@ config IGB_AVB
 		frame transmission, or test harnesses for measuring system
 		latencies and sampling events. It is exclusive with the
 		in-tree IGB driver, so only one of them can be enabled
-		at any point in time.
-
-		To build this as a module, say M, if not sure say N.
+		at any point in time.  There are also coexistance issues with
+		the e1000 and e1000e.
