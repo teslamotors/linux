@@ -1,4 +1,4 @@
-// SPDX-License_Identifier: GPL-2.0
+// SPDX-License-Identifier: GPL-2.0
 //  Copyright (C) 2018 Intel Corporation
 
 #include "ipu.h"
@@ -223,7 +223,9 @@ static u64 tunit_time_to_us(struct ipu_isys *isys, u64 time)
 	struct ipu_bus_device *adev = to_ipu_bus_device(isys->adev->iommu);
 	u64 isys_clk = IS_FREQ_SOURCE / adev->ctrl->divisor / 1000000;
 
-	return time / isys_clk;
+	do_div(time, isys_clk);
+
+	return time;
 }
 
 static u64 tsc_time_to_tunit_time(struct ipu_isys *isys,
@@ -232,8 +234,12 @@ static u64 tsc_time_to_tunit_time(struct ipu_isys *isys,
 	struct ipu_bus_device *adev = to_ipu_bus_device(isys->adev->iommu);
 	u64 isys_clk = IS_FREQ_SOURCE / adev->ctrl->divisor / 100000;
 	u64 tsc_clk = IPU_BUTTRESS_TSC_CLK / 100000;
+	u64 tunit_time;
 
-	return (tsc_time - tsc_base) * isys_clk / tsc_clk + tunit_base;
+	tunit_time = (tsc_time - tsc_base) * isys_clk;
+	do_div(tunit_time, tsc_clk);
+
+	return tunit_time + tunit_base;
 }
 
 /* Extract the timestamp from trace message.

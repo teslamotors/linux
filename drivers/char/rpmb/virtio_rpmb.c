@@ -21,15 +21,12 @@ static const char id[] = "RPMB:VIRTIO";
 #define	VIRTIO_ID_RPMB		0xFFFF
 #endif
 
-#define RPMB_MAX_FRAMES 255
-
-#define SEQ_CMD_MAX	3	/*support up to 3 cmds*/
+#define RPMB_SEQ_CMD_MAX 3  /* support up to 3 cmds */
 
 struct virtio_rpmb_info {
 	struct virtqueue *vq;
-	struct completion have_data;
-	unsigned long busy;
-	unsigned int data_avail;
+	struct mutex lock; /* info lock */
+	wait_queue_head_t have_data;
 	struct rpmb_dev *rdev;
 };
 
@@ -51,10 +48,7 @@ static void virtio_rpmb_recv_done(struct virtqueue *vq)
 		return;
 	}
 
-	if (!virtqueue_get_buf(vi->vq, &vi->data_avail))
-		dev_err(&vdev->dev, "Error: Buffer not found in vq.\n");
-
-	complete(&vi->have_data);
+	wake_up(&vi->have_data);
 }
 
 static int rpmb_virtio_cmd_seq(struct device *dev, u8 target,
@@ -63,32 +57,42 @@ static int rpmb_virtio_cmd_seq(struct device *dev, u8 target,
 	struct virtio_device *vdev = dev_to_virtio(dev);
 	struct virtio_rpmb_info *vi = vdev->priv;
 	unsigned int i;
-	struct virtio_rpmb_ioc vio_cmd;
-	struct rpmb_ioc_seq_cmd seq;
+	struct virtio_rpmb_ioc *vio_cmd;
+	struct rpmb_ioc_seq_cmd *seq_cmd;
+	size_t seq_cmd_sz;
 	struct scatterlist vio_ioc, vio_seq, frame[3];
 	struct scatterlist *sgs[5];
 	unsigned int num_out = 0, num_in = 0;
 	size_t sz;
 	int ret;
+	unsigned int len;
 
-	if (test_and_set_bit(0, &vi->busy)) {
-		dev_dbg(dev, "busy , do nothing\n");
-		return -EBUSY;
+	if (ncmds > RPMB_SEQ_CMD_MAX)
+		return -EINVAL;
+
+	mutex_lock(&vi->lock);
+
+	vio_cmd = kzalloc(sizeof(*vio_cmd), GFP_KERNEL);
+	seq_cmd_sz = sizeof(*seq_cmd) + sizeof(struct rpmb_ioc_cmd) * ncmds;
+	seq_cmd = kzalloc(seq_cmd_sz, GFP_KERNEL);
+	if (!vio_cmd || !seq_cmd) {
+		ret = -ENOMEM;
+		goto out;
 	}
 
-	vio_cmd.ioc_cmd = RPMB_IOC_SEQ_CMD;
-	vio_cmd.result = 0;
-	vio_cmd.target = target;
-	sg_init_one(&vio_ioc, &vio_cmd, sizeof(vio_cmd));
-	seq.num_of_cmds = ncmds;
+	vio_cmd->ioc_cmd = RPMB_IOC_SEQ_CMD;
+	vio_cmd->result = 0;
+	vio_cmd->target = target;
+	sg_init_one(&vio_ioc, vio_cmd, sizeof(*vio_cmd));
 	sgs[num_out + num_in++] = &vio_ioc;
 
+	seq_cmd->num_of_cmds = ncmds;
 	for (i = 0; i < ncmds; i++) {
-		seq.cmds[i].flags   = cmds[i].flags;
-		seq.cmds[i].nframes = cmds[i].nframes;
-		seq.cmds[i].frames_ptr = i;
+		seq_cmd->cmds[i].flags   = cmds[i].flags;
+		seq_cmd->cmds[i].nframes = cmds[i].nframes;
+		seq_cmd->cmds[i].frames_ptr = i;
 	}
-	sg_init_one(&vio_seq, &seq, sizeof(seq));
+	sg_init_one(&vio_seq, seq_cmd, seq_cmd_sz);
 	sgs[num_out + num_in++] = &vio_seq;
 
 	for (i = 0; i < ncmds; i++) {
@@ -97,24 +101,72 @@ static int rpmb_virtio_cmd_seq(struct device *dev, u8 target,
 		sgs[num_out + num_in++] = &frame[i];
 	}
 
-	virtqueue_add_sgs(vi->vq, sgs, num_out, num_in, vi, GFP_ATOMIC);
-
+	virtqueue_add_sgs(vi->vq, sgs, num_out, num_in, vi, GFP_KERNEL);
 	virtqueue_kick(vi->vq);
 
-	/* wait for completion from vq.*/
-	ret = wait_for_completion_killable(&vi->have_data);
-	if (ret < 0) {
-		dev_err(dev, "Error: completion done ret = %d.\n", ret);
-		goto out;
-	}
+	wait_event(vi->have_data, virtqueue_get_buf(vi->vq, &len));
 
-	if (vio_cmd.result != 0) {
-		dev_err(dev, "Error: command error = %d.\n", vio_cmd.result);
+	ret = 0;
+
+	if (vio_cmd->result != 0) {
+		dev_err(dev, "Error: command error = %d.\n", vio_cmd->result);
 		ret = -EIO;
 	}
 
 out:
-	clear_bit(0, &vi->busy);
+	kfree(vio_cmd);
+	kfree(seq_cmd);
+	mutex_unlock(&vi->lock);
+	return ret;
+}
+
+static int rpmb_virtio_cmd_cap(struct device *dev, u8 target)
+{
+	struct virtio_device *vdev = dev_to_virtio(dev);
+	struct virtio_rpmb_info *vi = vdev->priv;
+	struct virtio_rpmb_ioc *vio_cmd;
+	struct rpmb_ioc_cap_cmd *cap_cmd;
+	struct scatterlist vio_ioc, cap_ioc;
+	struct scatterlist *sgs[2];
+	unsigned int num_out = 0, num_in = 0;
+	unsigned int len;
+	int ret;
+
+	mutex_lock(&vi->lock);
+
+	vio_cmd = kzalloc(sizeof(*vio_cmd), GFP_KERNEL);
+	cap_cmd = kzalloc(sizeof(*cap_cmd), GFP_KERNEL);
+	if (!vio_cmd || !cap_cmd) {
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	vio_cmd->ioc_cmd = RPMB_IOC_CAP_CMD;
+	vio_cmd->result = 0;
+	vio_cmd->target = target;
+	sg_init_one(&vio_ioc, vio_cmd, sizeof(*vio_cmd));
+	sgs[num_out + num_in++] = &vio_ioc;
+
+	sg_init_one(&cap_ioc, cap_cmd, sizeof(*cap_cmd));
+	sgs[num_out + num_in++] = &cap_ioc;
+
+	virtqueue_add_sgs(vi->vq, sgs, num_out, num_in, vi, GFP_KERNEL);
+	virtqueue_kick(vi->vq);
+
+	wait_event(vi->have_data, virtqueue_get_buf(vi->vq, &len));
+
+	ret = 0;
+
+	if (vio_cmd->result != 0) {
+		dev_err(dev, "Error: command error = %d.\n", vio_cmd->result);
+		ret = -EIO;
+	}
+
+out:
+	kfree(vio_cmd);
+	kfree(cap_cmd);
+
+	mutex_unlock(&vi->lock);
 	return ret;
 }
 
@@ -160,9 +212,8 @@ static int virtio_rpmb_init(struct virtio_device *vdev)
 	if (!vi)
 		return -ENOMEM;
 
-	init_completion(&vi->have_data);
-
-	clear_bit(0, &vi->busy);
+	init_waitqueue_head(&vi->have_data);
+	mutex_init(&vi->lock);
 	vdev->priv = vi;
 
 	/* We expect a single virtqueue. */
@@ -197,10 +248,10 @@ static void virtio_rpmb_remove(struct virtio_device *vdev)
 	if (!vi)
 		return;
 
+	if (wq_has_sleeper(&vi->have_data))
+		wake_up(&vi->have_data);
+
 	rpmb_dev_unregister(vi->rdev);
-	complete(&vi->have_data);
-	vi->data_avail = 0;
-	clear_bit(0, &vi->busy);
 
 	if (vdev->config->reset)
 		vdev->config->reset(vdev);

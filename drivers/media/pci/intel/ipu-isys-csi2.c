@@ -1,4 +1,4 @@
-// SPDX-License_Identifier: GPL-2.0
+// SPDX-License-Identifier: GPL-2.0
 // Copyright (C) 2013 - 2018 Intel Corporation
 
 #include <linux/device.h>
@@ -19,6 +19,7 @@
 
 #define CREATE_TRACE_POINTS
 #define IPU_SOF_SEQID_TRACE
+#define IPU_EOF_SEQID_TRACE
 #include "ipu-trace-event.h"
 
 static const u32 csi2_supported_codes_pad_sink[] = {
@@ -75,10 +76,12 @@ static const u32 csi2_supported_codes_pad_source[] = {
 	0,
 };
 
+#ifdef IPU_META_DATA_SUPPORT
 static const u32 csi2_supported_codes_pad_meta[] = {
 	MEDIA_BUS_FMT_FIXED,
 	0,
 };
+#endif
 
 static const u32 *csi2_supported_codes[NR_OF_CSI2_PADS];
 
@@ -128,6 +131,7 @@ int ipu_isys_csi2_get_link_freq(struct ipu_isys_csi2 *csi2, __s64 *link_freq)
 	return 0;
 }
 
+#ifdef IPU_META_DATA_SUPPORT
 static int ipu_get_frame_desc_entry_by_dt(struct v4l2_subdev *sd,
 					  struct v4l2_mbus_frame_desc_entry
 					  *entry, u8 data_type)
@@ -187,18 +191,24 @@ static void csi2_meta_prepare_firmware_stream_cfg_default(
 		    entry.size.two_dim.height;
 	}
 }
+#endif
 
 static int subscribe_event(struct v4l2_subdev *sd, struct v4l2_fh *fh,
 			   struct v4l2_event_subscription *sub)
 {
 	struct ipu_isys_csi2 *csi2 = to_ipu_isys_csi2(sd);
 
-	if (sub->type != V4L2_EVENT_FRAME_SYNC)
+	dev_dbg(&csi2->isys->adev->dev, "subscribe event(type %u id %u)\n",
+		sub->type, sub->id);
+
+	switch (sub->type) {
+	case V4L2_EVENT_FRAME_SYNC:
+		return v4l2_event_subscribe(fh, sub, 10, NULL);
+	case V4L2_EVENT_CTRL:
+		return v4l2_ctrl_subscribe_event(fh, sub);
+	default:
 		return -EINVAL;
-
-	dev_dbg(&csi2->isys->adev->dev, "sub->id %u\n", sub->id);
-
-	return v4l2_event_subscribe(fh, sub, 10, NULL);
+	}
 }
 
 static const struct v4l2_subdev_core_ops csi2_sd_core_ops = {
@@ -206,11 +216,12 @@ static const struct v4l2_subdev_core_ops csi2_sd_core_ops = {
 	.unsubscribe_event = v4l2_event_subdev_unsubscribe,
 };
 
-struct ipu_isys_pixelformat csi2_meta_pfmts[] = {
+#ifdef IPU_META_DATA_SUPPORT
+static struct ipu_isys_pixelformat csi2_meta_pfmts[] = {
 	{V4L2_FMT_IPU_ISYS_META, 8, 8, 0, MEDIA_BUS_FMT_FIXED, 0},
 	{},
 };
-
+#endif
 /*
  * The input system CSI2+ receiver has several
  * parameters affecting the receiver timings. These depend
@@ -428,13 +439,13 @@ static int csi2_link_validate(struct media_link *link)
 	return 0;
 }
 
-bool csi2_has_route(struct media_entity *entity, unsigned int pad0,
-		    unsigned int pad1, int *stream)
+static bool csi2_has_route(struct media_entity *entity, unsigned int pad0,
+			   unsigned int pad1, int *stream)
 {
-	/* TODO: need to remove this when meta data node is removed */
+#ifdef IPU_META_DATA_SUPPORT
 	if (pad0 == CSI2_PAD_META || pad1 == CSI2_PAD_META)
 		return true;
-
+#endif
 	return ipu_isys_subdev_has_route(entity, pad0, pad1, stream);
 }
 
@@ -442,6 +453,7 @@ static const struct v4l2_subdev_video_ops csi2_sd_video_ops = {
 	.s_stream = set_stream,
 };
 
+#ifdef IPU_META_DATA_SUPPORT
 static int get_metadata_fmt(struct v4l2_subdev *sd,
 			    struct v4l2_subdev_pad_config *cfg,
 			    struct v4l2_subdev_format *fmt)
@@ -468,14 +480,16 @@ static int get_metadata_fmt(struct v4l2_subdev *sd,
 	}
 	return rval;
 }
+#endif
 
 static int ipu_isys_csi2_get_fmt(struct v4l2_subdev *sd,
 				 struct v4l2_subdev_pad_config *cfg,
 				 struct v4l2_subdev_format *fmt)
 {
+#ifdef IPU_META_DATA_SUPPORT
 	if (fmt->pad == CSI2_PAD_META)
 		return get_metadata_fmt(sd, cfg, fmt);
-
+#endif
 	return ipu_isys_subdev_get_ffmt(sd, cfg, fmt);
 }
 
@@ -483,9 +497,10 @@ static int ipu_isys_csi2_set_fmt(struct v4l2_subdev *sd,
 				 struct v4l2_subdev_pad_config *cfg,
 				 struct v4l2_subdev_format *fmt)
 {
+#ifdef IPU_META_DATA_SUPPORT
 	if (fmt->pad == CSI2_PAD_META)
 		return get_metadata_fmt(sd, cfg, fmt);
-
+#endif
 	return ipu_isys_subdev_set_ffmt(sd, cfg, fmt);
 }
 
@@ -547,6 +562,7 @@ static void csi2_set_ffmt(struct v4l2_subdev *sd,
 		return;
 	}
 
+#ifdef IPU_META_DATA_SUPPORT
 	if (fmt->pad == CSI2_PAD_META) {
 		struct v4l2_mbus_framefmt *ffmt =
 			__ipu_isys_get_ffmt(sd, cfg, fmt->pad,
@@ -579,7 +595,7 @@ static void csi2_set_ffmt(struct v4l2_subdev *sd,
 
 		return;
 	}
-
+#endif
 	if (sd->entity.pads[fmt->pad].flags & MEDIA_PAD_FL_SOURCE) {
 		ffmt->width = fmt->format.width;
 		ffmt->height = fmt->format.height;
@@ -628,7 +644,10 @@ void ipu_isys_csi2_cleanup(struct ipu_isys_csi2 *csi2)
 	ipu_isys_subdev_cleanup(&csi2->asd);
 	for (i = 0; i < NR_OF_CSI2_SOURCE_PADS; i++)
 		ipu_isys_video_cleanup(&csi2->av[i]);
+	
+#ifdef IPU_META_DATA_SUPPORT
 	ipu_isys_video_cleanup(&csi2->av_meta);
+#endif
 	csi2->isys = NULL;
 }
 
@@ -662,10 +681,12 @@ int ipu_isys_csi2_init(struct ipu_isys_csi2 *csi2,
 			   .height = 3072,
 			  },
 	};
+#ifdef IPU_META_DATA_SUPPORT
 	struct v4l2_subdev_format fmt_meta = {
 		.which = V4L2_SUBDEV_FORMAT_ACTIVE,
 		.pad = CSI2_PAD_META,
 	};
+#endif
 	int i, rval, src;
 
 	csi2->isys = isys;
@@ -694,7 +715,9 @@ int ipu_isys_csi2_init(struct ipu_isys_csi2 *csi2,
 	     i < (NR_OF_CSI2_SOURCE_PADS + CSI2_PAD_SOURCE(0)); i++)
 		csi2->asd.pad[i].flags = MEDIA_PAD_FL_SOURCE;
 
+#ifdef IPU_META_DATA_SUPPORT
 	csi2->asd.pad[CSI2_PAD_META].flags = MEDIA_PAD_FL_SOURCE;
+#endif
 	src = index;
 #ifdef CONFIG_VIDEO_INTEL_IPU4P
 	src = index ? (index + 5) : (index + 3);
@@ -704,7 +727,9 @@ int ipu_isys_csi2_init(struct ipu_isys_csi2 *csi2,
 
 	for (i = 0; i < NR_OF_CSI2_SOURCE_PADS; i++)
 		csi2_supported_codes[i + 1] = csi2_supported_codes_pad_source;
+#ifdef IPU_META_DATA_SUPPORT
 	csi2_supported_codes[CSI2_PAD_META] = csi2_supported_codes_pad_meta;
+#endif
 	csi2->asd.supported_codes = csi2_supported_codes;
 	csi2->asd.set_ffmt = csi2_set_ffmt;
 
@@ -723,7 +748,9 @@ int ipu_isys_csi2_init(struct ipu_isys_csi2 *csi2,
 	}
 
 	__ipu_isys_subdev_set_ffmt(&csi2->asd.sd, NULL, &fmt);
+#ifdef IPU_META_DATA_SUPPORT
 	__ipu_isys_subdev_set_ffmt(&csi2->asd.sd, NULL, &fmt_meta);
+#endif
 
 	/* create default route information */
 	for (i = 0; i < NR_OF_CSI2_STREAMS; i++) {
@@ -776,7 +803,7 @@ int ipu_isys_csi2_init(struct ipu_isys_csi2 *csi2,
 		}
 	}
 
-	/* TODO: remove meta data pad */
+#ifdef IPU_META_DATA_SUPPORT
 	snprintf(csi2->av_meta.vdev.name, sizeof(csi2->av_meta.vdev.name),
 		 IPU_ISYS_ENTITY_PREFIX " CSI-2 %u meta", index);
 	csi2->av_meta.isys = isys;
@@ -803,7 +830,7 @@ int ipu_isys_csi2_init(struct ipu_isys_csi2 *csi2,
 		dev_info(&isys->adev->dev, "can't init metadata node\n");
 		goto fail;
 	}
-
+#endif
 	return 0;
 
 fail:
@@ -875,6 +902,8 @@ void ipu_isys_csi2_eof_event(struct ipu_isys_csi2 *csi2, unsigned int vc)
 
 	if (ip) {
 		frame_sequence = atomic_read(&ip->sequence);
+
+		trace_ipu_eof_seqid(frame_sequence, csi2->index, vc);
 
 		dev_dbg(&csi2->isys->adev->dev,
 			"eof_event::csi2-%i sequence: %i, vc: %d, stream_id: %d\n",

@@ -92,6 +92,11 @@ inline long hcall_setup_sbuf(unsigned long sbuf_head)
 	return acrn_hypercall1(HC_SETUP_SBUF, sbuf_head);
 }
 
+inline long hcall_setup_hv_npk_log(unsigned long hv_npk_log)
+{
+	return acrn_hypercall1(HC_SETUP_HV_NPK_LOG, hv_npk_log);
+}
+
 inline long hcall_set_sstate_data(unsigned long sx_data_addr)
 {
 	return acrn_hypercall1(HC_PM_SET_SSTATE_DATA, sx_data_addr);
@@ -102,14 +107,14 @@ inline long hcall_get_cpu_state(unsigned long cmd, unsigned long state_pa)
 	return acrn_hypercall2(HC_PM_GET_CPU_STATE, cmd, state_pa);
 }
 
-inline long hcall_set_memmap(unsigned long vmid, unsigned long memmap)
+inline long hcall_set_memory_regions(unsigned long pa_regions)
 {
-	return acrn_hypercall2(HC_VM_SET_MEMMAP, vmid, memmap);
+	return acrn_hypercall1(HC_VM_SET_MEMORY_REGIONS, pa_regions);
 }
 
-inline long hcall_set_memmaps(unsigned long pa_memmaps)
+inline long hcall_write_protect_page(unsigned long vmid, unsigned long wp)
 {
-	return acrn_hypercall1(HC_VM_SET_MEMMAPS, pa_memmaps);
+	return acrn_hypercall2(HC_VM_WRITE_PROTECT_PAGE, vmid, wp);
 }
 
 inline long hcall_set_ioreq_buffer(unsigned long vmid, unsigned long buffer)

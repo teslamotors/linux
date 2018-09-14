@@ -45,6 +45,13 @@ extern int ia_css_isys_context_create(
 	HANDLE * context,
 	const struct ia_css_isys_device_cfg_data *config
 );
+extern int ia_css_isys_context_store_dmem(
+	const HANDLE *context,
+	const struct ia_css_isys_device_cfg_data *config
+);
+extern bool ia_css_isys_ab_spc_ready(
+	HANDLE *context
+);
 extern int ia_css_isys_device_open(
 	const struct ia_css_isys_device_cfg_data *config
 );

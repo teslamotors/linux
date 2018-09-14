@@ -1,4 +1,4 @@
-// SPDX-License_Identifier: GPL-2.0
+// SPDX-License-Identifier: GPL-2.0
 // Copyright (C) 2014 - 2018 Intel Corporation
 
 #include <linux/device.h>
@@ -8,6 +8,7 @@
 #include <media/ipu-isys.h>
 #include <media/media-entity.h>
 #include <media/v4l2-device.h>
+#include <media/v4l2-event.h>
 #include <media/v4l2-ioctl.h>
 #include <media/videobuf2-dma-contig.h>
 
@@ -98,7 +99,7 @@ static int isa_config_vidioc_g_fmt_vid_out_mplane(struct file *file, void *fh,
 	return 0;
 }
 
-const struct ipu_isys_pixelformat *
+static const struct ipu_isys_pixelformat *
 isa_config_try_fmt_vid_out_mplane(struct ipu_isys_video *av,
 				  struct v4l2_pix_format_mplane *mpix)
 {
@@ -171,6 +172,8 @@ static const struct v4l2_ioctl_ops isa_config_ioctl_ops = {
 };
 
 static const struct v4l2_subdev_core_ops isa_sd_core_ops = {
+	.subscribe_event = v4l2_ctrl_subdev_subscribe_event,
+	.unsubscribe_event = v4l2_event_subdev_unsubscribe,
 };
 
 static int set_stream(struct v4l2_subdev *sd, int enable)
@@ -208,7 +211,6 @@ static struct v4l2_subdev_ops isa_sd_ops = {
 
 static int isa_link_validate(struct media_link *link)
 {
-	struct ipu_isys_video *av;
 	struct ipu_isys_pipeline *ip;
 	struct media_pipeline *pipe;
 
@@ -216,7 +218,6 @@ static int isa_link_validate(struct media_link *link)
 	if (is_media_entity_v4l2_subdev(link->source->entity))
 		return v4l2_subdev_link_validate(link);
 
-	av = container_of(link->source, struct ipu_isys_video, pad);
 	pipe = link->sink->entity->pipe;
 	ip = to_ipu_isys_pipeline(pipe);
 	ip->nr_queues++;
@@ -922,7 +923,8 @@ int ipu_isys_isa_init(struct ipu_isys_isa *isa,
 				    NR_OF_ISA_PADS,
 				    NR_OF_ISA_STREAMS,
 				    NR_OF_ISA_SOURCE_PADS,
-				    NR_OF_ISA_SINK_PADS, 0);
+				    NR_OF_ISA_SINK_PADS,
+				    V4L2_SUBDEV_FL_HAS_EVENTS);
 	if (rval)
 		goto fail;
 

@@ -3162,6 +3162,9 @@ out:
 	/* once for the tree */
 	btrfs_put_ordered_extent(ordered_extent);
 
+	/* Try to release some metadata so we don't get an OOM but don't wait */
+	btrfs_btree_balance_dirty_nodelay(fs_info);
+
 	return ret;
 }
 
@@ -4737,7 +4740,10 @@ delete:
 						extent_num_bytes, 0,
 						btrfs_header_owner(leaf),
 						ino, extent_offset);
-			BUG_ON(ret);
+			if (ret) {
+				btrfs_abort_transaction(trans, ret);
+				break;
+			}
 			if (btrfs_should_throttle_delayed_refs(trans, fs_info))
 				btrfs_async_run_delayed_refs(fs_info,
 					trans->delayed_ref_updates * 2,
@@ -5496,13 +5502,18 @@ void btrfs_evict_inode(struct inode *inode)
 		trans->block_rsv = rsv;
 
 		ret = btrfs_truncate_inode_items(trans, root, inode, 0, 0);
-		if (ret != -ENOSPC && ret != -EAGAIN)
+		if (ret) {
+			trans->block_rsv = &fs_info->trans_block_rsv;
+			btrfs_end_transaction(trans);
+			btrfs_btree_balance_dirty(fs_info);
+			if (ret != -ENOSPC && ret != -EAGAIN) {
+				btrfs_orphan_del(NULL, BTRFS_I(inode));
+				btrfs_free_block_rsv(fs_info, rsv);
+				goto no_delete;
+			}
+		} else {
 			break;
-
-		trans->block_rsv = &fs_info->trans_block_rsv;
-		btrfs_end_transaction(trans);
-		trans = NULL;
-		btrfs_btree_balance_dirty(fs_info);
+		}
 	}
 
 	btrfs_free_block_rsv(fs_info, rsv);
@@ -5511,12 +5522,8 @@ void btrfs_evict_inode(struct inode *inode)
 	 * Errors here aren't a big deal, it just means we leave orphan items
 	 * in the tree.  They will be cleaned up on the next mount.
 	 */
-	if (ret == 0) {
-		trans->block_rsv = root->orphan_block_rsv;
-		btrfs_orphan_del(trans, BTRFS_I(inode));
-	} else {
-		btrfs_orphan_del(NULL, BTRFS_I(inode));
-	}
+	trans->block_rsv = root->orphan_block_rsv;
+	btrfs_orphan_del(trans, BTRFS_I(inode));
 
 	trans->block_rsv = &fs_info->trans_block_rsv;
 	if (!(root == fs_info->tree_root ||
@@ -6142,32 +6149,6 @@ err:
 	if (put)
 		btrfs_readdir_put_delayed_items(inode, &ins_list, &del_list);
 	btrfs_free_path(path);
-	return ret;
-}
-
-int btrfs_write_inode(struct inode *inode, struct writeback_control *wbc)
-{
-	struct btrfs_root *root = BTRFS_I(inode)->root;
-	struct btrfs_trans_handle *trans;
-	int ret = 0;
-	bool nolock = false;
-
-	if (test_bit(BTRFS_INODE_DUMMY, &BTRFS_I(inode)->runtime_flags))
-		return 0;
-
-	if (btrfs_fs_closing(root->fs_info) &&
-			btrfs_is_free_space_inode(BTRFS_I(inode)))
-		nolock = true;
-
-	if (wbc->sync_mode == WB_SYNC_ALL) {
-		if (nolock)
-			trans = btrfs_join_transaction_nolock(root);
-		else
-			trans = btrfs_join_transaction(root);
-		if (IS_ERR(trans))
-			return PTR_ERR(trans);
-		ret = btrfs_commit_transaction(trans);
-	}
 	return ret;
 }
 

@@ -293,6 +293,11 @@ static int sof_pci_probe(struct pci_dev *pci,
 		goto release_regions;
 	}
 
+	/* allow runtime_pm */
+	pm_runtime_set_autosuspend_delay(dev, SND_SOF_SUSPEND_DELAY);
+	pm_runtime_use_autosuspend(dev);
+	pm_runtime_allow(dev);
+
 	return ret;
 
 release_regions:
@@ -337,6 +342,11 @@ static const struct pci_device_id sof_pci_ids[] = {
 	{ PCI_DEVICE(0x8086, 0x1a98),
 		.driver_data = (unsigned long)&bxt_desc},
 #endif
+#if IS_ENABLED(CONFIG_SND_SOC_SOF_GEMINILAKE)
+	{ PCI_DEVICE(0x8086, 0x3198),
+		.driver_data = (unsigned long)&glk_desc},
+#endif
+
 #if IS_ENABLED(CONFIG_SND_SOC_SOF_BAYTRAIL)
 	{ PCI_DEVICE(0x8086, 0x119a),
 		.driver_data = (unsigned long)&byt_desc},

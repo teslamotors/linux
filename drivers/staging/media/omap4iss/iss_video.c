@@ -11,7 +11,6 @@
  * (at your option) any later version.
  */
 
-#include <asm/cacheflush.h>
 #include <linux/clk.h>
 #include <linux/mm.h>
 #include <linux/pagemap.h>
@@ -23,6 +22,8 @@
 #include <media/v4l2-dev.h>
 #include <media/v4l2-ioctl.h>
 #include <media/v4l2-mc.h>
+
+#include <asm/cacheflush.h>
 
 #include "iss_video.h"
 #include "iss.h"
@@ -220,7 +221,7 @@ iss_video_far_end(struct iss_video *video)
 		return NULL;
 	}
 
-	media_graph_walk_start(&graph, entity);
+	media_graph_walk_start(&graph, &entity->pads[0]);
 
 	while ((entity = media_graph_walk_next(&graph))) {
 		if (entity == &video->video.entity)
@@ -900,7 +901,7 @@ iss_video_streamon(struct file *file, void *fh, enum v4l2_buf_type type)
 	if (ret < 0)
 		goto err_media_pipeline_start;
 
-	media_graph_walk_start(&graph, entity);
+	media_graph_walk_start(&graph, &entity->pads[0]);
 	while ((entity = media_graph_walk_next(&graph)))
 		media_entity_enum_set(&pipe->ent_enum, entity);
 

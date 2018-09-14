@@ -1,4 +1,4 @@
-/* SPDX-License_Identifier: GPL-2.0 */
+/* SPDX-License-Identifier: GPL-2.0 */
 /* Copyright (C) 2015 - 2018 Intel Corporation */
 
 #undef TRACE_SYSTEM
@@ -11,6 +11,23 @@
 
 #ifdef IPU_SOF_SEQID_TRACE
 TRACE_EVENT(ipu_sof_seqid,
+	    TP_PROTO(unsigned int seqid, unsigned int csiport,
+		     unsigned int csivc),
+	    TP_ARGS(seqid, csiport, csivc),
+	    TP_STRUCT__entry(__field(unsigned int, seqid)
+			     __field(unsigned int, csiport)
+			     __field(unsigned int, csivc)
+	    ),
+	    TP_fast_assign(__entry->seqid = seqid;
+			   __entry->csiport = csiport;
+			   __entry->csivc = csivc;),
+	    TP_printk("seqid<%u>,csiport<%u>,csivc<%u>", __entry->seqid,
+		      __entry->csiport, __entry->csivc)
+	);
+#endif
+
+#ifdef IPU_EOF_SEQID_TRACE
+TRACE_EVENT(ipu_eof_seqid,
 	    TP_PROTO(unsigned int seqid, unsigned int csiport,
 		     unsigned int csivc),
 	    TP_ARGS(seqid, csiport, csivc),

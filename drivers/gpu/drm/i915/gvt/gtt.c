@@ -271,6 +271,17 @@ static inline int gtt_get_entry64(void *pt,
 		return -EINVAL;
 
 	if (hypervisor_access) {
+		if (vgpu->ge_cache_enable && vgpu->cached_guest_entry) {
+			if (index == 0) {
+				ret = intel_gvt_hypervisor_read_gpa(vgpu, gpa,
+				      vgpu->cached_guest_entry, GTT_PAGE_SIZE);
+				if (WARN_ON(ret))
+					return ret;
+			}
+			e->val64 = *(vgpu->cached_guest_entry + index);
+			return 0;
+
+		}
 		ret = intel_gvt_hypervisor_read_gpa(vgpu, gpa +
 				(index << info->gtt_entry_size_shift),
 				&e->val64, 8);
@@ -505,6 +516,7 @@ static int gtt_entry_p2m(struct intel_vgpu *vgpu, struct intel_gvt_gtt_entry *p,
 {
 	struct intel_gvt_gtt_pte_ops *ops = vgpu->gvt->gtt.pte_ops;
 	unsigned long gfn, mfn;
+	static unsigned long saved_gfn, saved_mfn;
 
 	*m = *p;
 
@@ -513,13 +525,19 @@ static int gtt_entry_p2m(struct intel_vgpu *vgpu, struct intel_gvt_gtt_entry *p,
 
 	gfn = ops->get_pfn(p);
 
-	mfn = intel_gvt_hypervisor_gfn_to_mfn(vgpu, gfn);
+	if (gfn != saved_gfn)
+		mfn = intel_gvt_hypervisor_gfn_to_mfn(vgpu, gfn);
+	else
+		mfn = saved_mfn;
+
 	if (mfn == INTEL_GVT_INVALID_ADDR) {
 		gvt_vgpu_err("fail to translate gfn: 0x%lx\n", gfn);
 		return -ENXIO;
 	}
 
 	ops->set_pfn(m, mfn);
+	saved_gfn = gfn;
+	saved_mfn = mfn;
 	return 0;
 }
 
@@ -1038,12 +1056,14 @@ static int ppgtt_populate_shadow_page(struct intel_vgpu_ppgtt_spt *spt)
 			spt->guest_page.gfn, spt->shadow_page.type);
 
 	if (gtt_type_is_pte_pt(spt->shadow_page.type)) {
+		vgpu->ge_cache_enable = true;
 		for_each_present_guest_entry(spt, &ge, i) {
 			ret = gtt_entry_p2m(vgpu, &ge, &se);
 			if (ret)
 				goto fail;
 			ppgtt_set_shadow_entry(spt, &se, i);
 		}
+		vgpu->ge_cache_enable = false;
 		return 0;
 	}
 
@@ -1475,6 +1495,104 @@ static int ppgtt_handle_guest_write_page_table_bytes(void *gp,
 	return 0;
 }
 
+static void free_ggtt_virtual_page_table(struct intel_vgpu_mm *mm)
+{
+	struct intel_vgpu_gm *gm = &mm->vgpu->gm;
+	struct sg_table *st = gm->st;
+	struct scatterlist *sg;
+
+	for (sg = st->sgl; sg; sg = __sg_next(sg)) {
+		if (sg_page(sg))
+			__free_pages(sg_page(sg), get_order(sg->length));
+	}
+
+	sg_free_table(st);
+	kfree(st);
+	vunmap(mm->virtual_page_table);
+}
+
+/*
+ * Alloc virtual page table for guest ggtt. If ggtt pv enabled, the
+ * physical pages behind virtual page table is also mapped to guest,
+ * guest can update its pte entries directly to avoid trap.
+ */
+static void *alloc_ggtt_virtual_page_table(struct intel_vgpu_mm *mm)
+{
+	struct intel_vgpu *vgpu = mm->vgpu;
+	unsigned int page_count = mm->page_table_entry_size >> PAGE_SHIFT;
+	struct intel_vgpu_gm *gm = &vgpu->gm;
+	struct page **pages = NULL;
+	struct page *p;
+	unsigned int i;
+	void *vaddr = NULL;
+	int order;
+	struct sg_table *st;
+	struct scatterlist *sg;
+	struct sgt_iter sgt_iter;
+	unsigned int npages = page_count;
+
+	/*
+	 * page_table_entry_size is bigger than the size alloc_pages can
+	 * allocate, We have to split it according to the PMD size (2M).
+	 * Head page is kept in scatter list so that we can free them later.
+	 */
+	order = get_order(1 << PMD_SHIFT);
+
+	st = kmalloc(sizeof(*st), GFP_KERNEL);
+	if (!st)
+		return ERR_PTR(-ENOMEM);
+
+	if (sg_alloc_table(st, page_count, GFP_KERNEL)) {
+		kfree(st);
+		return ERR_PTR(-ENOMEM);
+	}
+
+	sg = st->sgl;
+	st->nents = 0;
+	gm->st = st;
+	do {
+		p = alloc_pages(GFP_KERNEL, order);
+		if (!p)
+			goto fail;
+		gvt_dbg_mm("page=%p size=%ld\n", p, PAGE_SIZE << order);
+		sg_set_page(sg, p, PAGE_SIZE << order, 0);
+		st->nents++;
+		npages -= 1 << order;
+		if (!npages) {
+			sg_mark_end(sg);
+			break;
+		}
+		sg = __sg_next(sg);
+	} while (1);
+
+
+	/* keep all the pages for vmap */
+	pages = kmalloc_array(page_count, sizeof(struct page *), GFP_KERNEL);
+	if (!pages)
+		goto fail;
+
+	i = 0;
+	for_each_sgt_page(p, sgt_iter, st)
+		pages[i++] = p;
+
+	WARN_ON(i != page_count);
+
+	vaddr = vmap(pages, page_count, VM_MAP, PAGE_KERNEL);
+	if (!vaddr) {
+		gvt_vgpu_err("fail to vmap pages");
+		goto fail;
+	}
+	kfree(pages);
+	return vaddr;
+
+fail:
+	sg_set_page(sg, NULL, 0, 0);
+	sg_mark_end(sg);
+	free_ggtt_virtual_page_table(mm);
+	kfree(pages);
+	return NULL;
+}
+
 /*
  * mm page table allocation policy for bdw+
  *  - for ggtt, only virtual page table will be allocated.
@@ -1505,7 +1623,7 @@ static int gen8_mm_alloc_page_table(struct intel_vgpu_mm *mm)
 			(gvt_ggtt_gm_sz(gvt) >> GTT_PAGE_SHIFT);
 		mm->page_table_entry_size = mm->page_table_entry_cnt *
 			info->gtt_entry_size;
-		mem = vzalloc(mm->page_table_entry_size);
+		mem = alloc_ggtt_virtual_page_table(mm);
 		if (!mem)
 			return -ENOMEM;
 		mm->virtual_page_table = mem;
@@ -1518,10 +1636,37 @@ static void gen8_mm_free_page_table(struct intel_vgpu_mm *mm)
 	if (mm->type == INTEL_GVT_MM_PPGTT) {
 		kfree(mm->virtual_page_table);
 	} else if (mm->type == INTEL_GVT_MM_GGTT) {
-		if (mm->virtual_page_table)
-			vfree(mm->virtual_page_table);
+		if (mm->virtual_page_table) {
+			map_gttmmio(mm->vgpu, false);
+			free_ggtt_virtual_page_table(mm);
+		}
 	}
 	mm->virtual_page_table = mm->shadow_page_table = NULL;
+}
+
+static void invalidate_mm_pv(struct intel_vgpu_mm *mm)
+{
+	struct intel_vgpu *vgpu = mm->vgpu;
+	struct intel_gvt *gvt = vgpu->gvt;
+	struct intel_gvt_gtt *gtt = &gvt->gtt;
+	struct intel_gvt_gtt_pte_ops *ops = gtt->pte_ops;
+	struct intel_gvt_gtt_entry se;
+
+	if (WARN_ON(mm->page_table_level != 4))
+		return;
+
+	i915_ppgtt_close(&mm->ppgtt->base);
+	i915_ppgtt_put(mm->ppgtt);
+
+	ppgtt_get_shadow_root_entry(mm, &se, 0);
+	if (!ops->test_present(&se))
+		return;
+	trace_gpt_change(vgpu->id, "destroy root pointer",
+			NULL, se.type, se.val64, 0);
+	se.val64 = 0;
+	ppgtt_set_shadow_root_entry(mm, &se, 0);
+
+	mm->shadowed = false;
 }
 
 static void invalidate_mm(struct intel_vgpu_mm *mm)
@@ -1535,6 +1680,11 @@ static void invalidate_mm(struct intel_vgpu_mm *mm)
 
 	if (WARN_ON(!mm->has_shadow_page_table || !mm->shadowed))
 		return;
+
+	if (VGPU_PVMMIO(mm->vgpu) & PVMMIO_PPGTT_UPDATE) {
+		invalidate_mm_pv(mm);
+		return;
+	}
 
 	for (i = 0; i < mm->page_table_entry_cnt; i++) {
 		ppgtt_get_shadow_root_entry(mm, &se, i);
@@ -1579,6 +1729,36 @@ out:
 	kfree(mm);
 }
 
+static int shadow_mm_pv(struct intel_vgpu_mm *mm)
+{
+	struct intel_vgpu *vgpu = mm->vgpu;
+	struct intel_gvt *gvt = vgpu->gvt;
+	char name[16];
+	struct intel_gvt_gtt_entry se;
+
+	if (WARN_ON(mm->page_table_level != 4))
+		return -EINVAL;
+
+	snprintf(name, sizeof(name), "%p", mm);
+
+	mm->ppgtt = i915_ppgtt_create(gvt->dev_priv, NULL, name);
+	if (IS_ERR(mm->ppgtt)) {
+		gvt_vgpu_err("fail to create ppgtt for pdp 0x%llx\n",
+				px_dma(&mm->ppgtt->pml4));
+		return PTR_ERR(mm->ppgtt);
+	}
+
+	se.type = GTT_TYPE_PPGTT_ROOT_L4_ENTRY;
+	se.val64 = px_dma(&mm->ppgtt->pml4);
+	ppgtt_set_shadow_root_entry(mm, &se, 0);
+
+	trace_gpt_change(vgpu->id, "populate root pointer",
+			NULL, se.type, se.val64, 0);
+	mm->shadowed = true;
+
+	return 0;
+}
+
 static int shadow_mm(struct intel_vgpu_mm *mm)
 {
 	struct intel_vgpu *vgpu = mm->vgpu;
@@ -1592,6 +1772,9 @@ static int shadow_mm(struct intel_vgpu_mm *mm)
 
 	if (WARN_ON(!mm->has_shadow_page_table || mm->shadowed))
 		return 0;
+
+	if (VGPU_PVMMIO(mm->vgpu) & PVMMIO_PPGTT_UPDATE)
+		return shadow_mm_pv(mm);
 
 	mm->shadowed = true;
 
@@ -2137,6 +2320,12 @@ int intel_vgpu_init_gtt(struct intel_vgpu *vgpu)
 	}
 
 	gtt->ggtt_mm = ggtt_mm;
+	vgpu->cached_guest_entry = kzalloc(GTT_PAGE_SIZE, GFP_KERNEL);
+	if (!vgpu->cached_guest_entry) {
+		gvt_vgpu_err("fail to allocate cached_guest_entry page\n");
+		return -ENOMEM;
+	}
+	vgpu->ge_cache_enable = false;
 
 	return create_scratch_page_tree(vgpu);
 }
@@ -2174,6 +2363,7 @@ void intel_vgpu_clean_gtt(struct intel_vgpu *vgpu)
 
 	intel_vgpu_free_mm(vgpu, INTEL_GVT_MM_PPGTT);
 	intel_vgpu_free_mm(vgpu, INTEL_GVT_MM_GGTT);
+	kfree(vgpu->cached_guest_entry);
 }
 
 static void clean_spt_oos(struct intel_gvt *gvt)
@@ -2475,4 +2665,429 @@ void intel_vgpu_reset_gtt(struct intel_vgpu *vgpu)
 			memset(page_address(vgpu->gtt.scratch_pt[i].page),
 				0, PAGE_SIZE);
 	}
+}
+
+int intel_vgpu_g2v_pv_ppgtt_alloc_4lvl(struct intel_vgpu *vgpu,
+		int page_table_level)
+{
+	struct pv_ppgtt_update *pv_ppgtt = &vgpu->mmio.shared_page->pv_ppgtt;
+	struct intel_vgpu_mm *mm;
+	u64 pdp = pv_ppgtt->pdp;
+	int ret = 0;
+
+	if (WARN_ON(page_table_level != 4))
+		return -EINVAL;
+
+	gvt_dbg_mm("alloc_4lvl pdp=%llx start=%llx length=%llx\n",
+			pv_ppgtt->pdp, pv_ppgtt->start,
+			pv_ppgtt->length);
+
+	mm = intel_vgpu_find_ppgtt_mm(vgpu, page_table_level, &pdp);
+	if (!mm) {
+		gvt_vgpu_err("failed to find mm for pdp 0x%llx\n", pdp);
+		ret = -EINVAL;
+	} else {
+		ret = mm->ppgtt->base.allocate_va_range(&mm->ppgtt->base,
+			pv_ppgtt->start, pv_ppgtt->length);
+		if (ret)
+			gvt_vgpu_err("failed to alloc for pdp %llx\n", pdp);
+	}
+
+	return ret;
+}
+
+int intel_vgpu_g2v_pv_ppgtt_clear_4lvl(struct intel_vgpu *vgpu,
+		int page_table_level)
+{
+	struct pv_ppgtt_update *pv_ppgtt = &vgpu->mmio.shared_page->pv_ppgtt;
+	struct intel_vgpu_mm *mm;
+	u64 pdp = pv_ppgtt->pdp;
+	int ret = 0;
+
+	if (WARN_ON(page_table_level != 4))
+		return -EINVAL;
+
+	gvt_dbg_mm("clear_4lvl pdp=%llx start=%llx length=%llx\n",
+			pv_ppgtt->pdp, pv_ppgtt->start,
+			pv_ppgtt->length);
+
+	mm = intel_vgpu_find_ppgtt_mm(vgpu, page_table_level, &pdp);
+	if (!mm) {
+		gvt_vgpu_err("failed to find mm for pdp 0x%llx\n", pdp);
+		ret = -EINVAL;
+	} else {
+		mm->ppgtt->base.clear_range(&mm->ppgtt->base,
+			pv_ppgtt->start, pv_ppgtt->length);
+	}
+
+	return ret;
+}
+
+#define GEN8_PML4E_SIZE		(1UL << GEN8_PML4E_SHIFT)
+#define GEN8_PML4E_SIZE_MASK	(~(GEN8_PML4E_SIZE - 1))
+#define GEN8_PDPE_SIZE		(1UL << GEN8_PDPE_SHIFT)
+#define GEN8_PDPE_SIZE_MASK	(~(GEN8_PDPE_SIZE - 1))
+#define GEN8_PDE_SIZE		(1UL << GEN8_PDE_SHIFT)
+#define GEN8_PDE_SIZE_MASK	(~(GEN8_PDE_SIZE - 1))
+
+#define pml4_addr_end(addr, end)					\
+({	unsigned long __boundary = \
+			((addr) + GEN8_PML4E_SIZE) & GEN8_PML4E_SIZE_MASK; \
+	(__boundary < (end)) ? __boundary : (end);		\
+})
+
+#define pdp_addr_end(addr, end)						\
+({	unsigned long __boundary = \
+			((addr) + GEN8_PDPE_SIZE) & GEN8_PDPE_SIZE_MASK; \
+	(__boundary < (end)) ? __boundary : (end);		\
+})
+
+#define pd_addr_end(addr, end)						\
+({	unsigned long __boundary = \
+			((addr) + GEN8_PDE_SIZE) & GEN8_PDE_SIZE_MASK;	\
+	(__boundary < (end)) ? __boundary : (end);		\
+})
+
+struct ppgtt_walk {
+	unsigned long *mfns;
+	int mfn_index;
+	unsigned long *pt;
+};
+
+static int walk_pt_range(struct intel_vgpu *vgpu, u64 pt,
+				u64 start, u64 end, struct ppgtt_walk *walk)
+{
+	const struct intel_gvt_device_info *info = &vgpu->gvt->device_info;
+	struct intel_gvt_gtt_gma_ops *gma_ops = vgpu->gvt->gtt.gma_ops;
+	unsigned long start_index, end_index;
+	int ret;
+	int i;
+	unsigned long mfn, gfn;
+
+	start_index = gma_ops->gma_to_pte_index(start);
+	end_index = ((end - start) >> PAGE_SHIFT) + start_index;
+
+	gvt_dbg_mm("%s: %llx start=%llx end=%llx start_index=%lx end_index=%lx mfn_index=%x\n",
+			__func__, pt, start, end,
+			start_index, end_index, walk->mfn_index);
+	ret = intel_gvt_hypervisor_read_gpa(vgpu,
+		(pt & PAGE_MASK) + (start_index << info->gtt_entry_size_shift),
+		walk->pt + start_index,
+		(end_index - start_index) << info->gtt_entry_size_shift);
+	if (ret) {
+		gvt_vgpu_err("fail to read gpa %llx\n", pt);
+		return ret;
+	}
+
+	for (i = start_index; i < end_index; i++) {
+		gfn = walk->pt[i] >> PAGE_SHIFT;
+		mfn = intel_gvt_hypervisor_gfn_to_mfn(vgpu, gfn);
+		if (mfn == INTEL_GVT_INVALID_ADDR) {
+			gvt_vgpu_err("fail to translate gfn: 0x%lx\n", gfn);
+			return -ENXIO;
+		}
+		walk->mfns[walk->mfn_index++] = mfn << PAGE_SHIFT;
+	}
+
+	return 0;
+}
+
+
+static int walk_pd_range(struct intel_vgpu *vgpu, u64 pd,
+				u64 start, u64 end, struct ppgtt_walk *walk)
+{
+	const struct intel_gvt_device_info *info = &vgpu->gvt->device_info;
+	struct intel_gvt_gtt_gma_ops *gma_ops = vgpu->gvt->gtt.gma_ops;
+	unsigned long index;
+	u64 pt, next;
+	int ret  = 0;
+
+	do {
+		index = gma_ops->gma_to_pde_index(start);
+
+		ret = intel_gvt_hypervisor_read_gpa(vgpu,
+			(pd & PAGE_MASK) + (index <<
+			info->gtt_entry_size_shift), &pt, 8);
+		if (ret)
+			return ret;
+		next = pd_addr_end(start, end);
+		gvt_dbg_mm("%s: %llx start=%llx end=%llx next=%llx\n",
+			__func__, pd, start, end, next);
+		walk_pt_range(vgpu, pt, start, next, walk);
+
+		start = next;
+	} while (start != end);
+
+	return ret;
+}
+
+
+static int walk_pdp_range(struct intel_vgpu *vgpu, u64 pdp,
+				  u64 start, u64 end, struct ppgtt_walk *walk)
+{
+	const struct intel_gvt_device_info *info = &vgpu->gvt->device_info;
+	struct intel_gvt_gtt_gma_ops *gma_ops = vgpu->gvt->gtt.gma_ops;
+	unsigned long index;
+	u64 pd, next;
+	int ret  = 0;
+
+	do {
+		index = gma_ops->gma_to_l4_pdp_index(start);
+
+		ret = intel_gvt_hypervisor_read_gpa(vgpu,
+			(pdp & PAGE_MASK) + (index <<
+			info->gtt_entry_size_shift), &pd, 8);
+		if (ret)
+			return ret;
+		next = pdp_addr_end(start, end);
+		gvt_dbg_mm("%s: %llx start=%llx end=%llx next=%llx\n",
+			__func__, pdp, start, end, next);
+
+		walk_pd_range(vgpu, pd, start, next, walk);
+		start = next;
+	} while (start != end);
+
+	return ret;
+}
+
+
+static int walk_pml4_range(struct intel_vgpu *vgpu, u64 pml4,
+				u64 start, u64 end, struct ppgtt_walk *walk)
+{
+	const struct intel_gvt_device_info *info = &vgpu->gvt->device_info;
+	struct intel_gvt_gtt_gma_ops *gma_ops = vgpu->gvt->gtt.gma_ops;
+	unsigned long index;
+	u64 pdp, next;
+	int ret  = 0;
+
+	do {
+		index = gma_ops->gma_to_pml4_index(start);
+		ret = intel_gvt_hypervisor_read_gpa(vgpu,
+			(pml4 & PAGE_MASK) + (index <<
+			info->gtt_entry_size_shift), &pdp, 8);
+		if (ret)
+			return ret;
+		next = pml4_addr_end(start, end);
+		gvt_dbg_mm("%s: %llx start=%llx end=%llx next=%llx\n",
+			__func__, pml4, start, end, next);
+
+		walk_pdp_range(vgpu, pdp, start, next, walk);
+		start = next;
+	} while (start != end);
+
+	return ret;
+}
+
+int intel_vgpu_g2v_pv_ppgtt_insert_4lvl(struct intel_vgpu *vgpu,
+		int page_table_level)
+{
+	struct pv_ppgtt_update *pv_ppgtt = &vgpu->mmio.shared_page->pv_ppgtt;
+	struct intel_vgpu_mm *mm;
+	u64 pml4 = pv_ppgtt->pdp;
+	int ret = 0;
+	u64 start = pv_ppgtt->start;
+	u64 length = pv_ppgtt->length;
+	struct sg_table st;
+	struct scatterlist *sg = NULL;
+	int num_pages = length >> PAGE_SHIFT;
+	struct i915_vma vma;
+	struct ppgtt_walk walk;
+	int i;
+
+	if (WARN_ON(page_table_level != 4))
+		return -EINVAL;
+
+	gvt_dbg_mm("insert_4lvl pml4=%llx start=%llx length=%llx cache=%x\n",
+			pv_ppgtt->pdp, start, length, pv_ppgtt->cache_level);
+
+	mm = intel_vgpu_find_ppgtt_mm(vgpu, page_table_level, &pml4);
+	if (!mm) {
+		gvt_vgpu_err("fail to find mm for pml4 0x%llx\n", pml4);
+		return -EINVAL;
+	}
+
+	walk.mfn_index = 0;
+	walk.mfns = NULL;
+	walk.pt = NULL;
+
+	walk.mfns = kmalloc_array(num_pages,
+			sizeof(unsigned long), GFP_KERNEL);
+	if (!walk.mfns) {
+		ret = -ENOMEM;
+		goto fail;
+	}
+
+	walk.pt = (unsigned long *)__get_free_pages(GFP_KERNEL, 0);
+	if (!walk.pt) {
+		ret = -ENOMEM;
+		goto fail;
+	}
+
+	if (sg_alloc_table(&st, num_pages, GFP_KERNEL)) {
+		ret = -ENOMEM;
+		goto fail;
+	}
+
+	ret = walk_pml4_range(vgpu, pml4, start, start + length, &walk);
+	if (ret)
+		goto fail_free_sg;
+
+	WARN_ON(num_pages != walk.mfn_index);
+
+	for_each_sg(st.sgl, sg, num_pages, i) {
+		sg->offset = 0;
+		sg->length = PAGE_SIZE;
+		sg_dma_address(sg) = walk.mfns[i];
+		sg_dma_len(sg) = PAGE_SIZE;
+	}
+
+	/* fake vma for insert call*/
+	memset(&vma, 0, sizeof(vma));
+	vma.node.start = start;
+	vma.pages = &st;
+	mm->ppgtt->base.insert_entries(&mm->ppgtt->base, &vma,
+					pv_ppgtt->cache_level, 0);
+
+fail_free_sg:
+	sg_free_table(&st);
+fail:
+	kfree(walk.mfns);
+	free_page((unsigned long)walk.pt);
+
+	return ret;
+}
+
+static void validate_ggtt_range(struct intel_vgpu *vgpu,
+	u64 *start, u64 *length)
+{
+	u64 end;
+
+	if (WARN_ON(*start > vgpu->gvt->dev_priv->ggtt.base.total ||
+	     *length > vgpu->gvt->dev_priv->ggtt.base.total)) {
+		*length = 0;
+		return;
+	}
+
+	end = *start + *length - 1;
+
+	if (*start >= vgpu_aperture_gmadr_base(vgpu) &&
+	     end <= vgpu_aperture_gmadr_end(vgpu))
+		return;
+
+	if (*start >= vgpu_hidden_gmadr_base(vgpu) &&
+	     end <= vgpu_hidden_gmadr_end(vgpu))
+		return;
+
+	/* handle the cases with invalid ranges */
+	WARN_ON(1);
+
+	/* start is in aperture range, end is after apeture range */
+	if (*start >= vgpu_aperture_gmadr_base(vgpu) &&
+	    *start <= vgpu_aperture_gmadr_end(vgpu)) {
+		*length = vgpu_aperture_gmadr_end(vgpu) - *start + 1;
+		return;
+	}
+
+	/* start is before aperture range, end is in apeture range */
+	if (end >= vgpu_aperture_gmadr_base(vgpu) &&
+	    end <= vgpu_aperture_gmadr_end(vgpu)) {
+		*start = vgpu_aperture_gmadr_base(vgpu);
+		return;
+	}
+
+	/* start is in hidden range, end is after hidden range */
+	if (*start >= vgpu_hidden_gmadr_base(vgpu) &&
+	    *start <= vgpu_hidden_gmadr_end(vgpu)) {
+		*length = vgpu_hidden_gmadr_end(vgpu) - *start + 1;
+		return;
+	}
+
+	/* start is before hidden range, end is in hidden range */
+	if (end >= vgpu_hidden_gmadr_base(vgpu) &&
+	    end <= vgpu_hidden_gmadr_end(vgpu)) {
+		*start = vgpu_hidden_gmadr_base(vgpu);
+		return;
+	}
+
+	/* both start and end are not in valid range*/
+	*length = 0;
+
+	return;
+}
+
+int intel_vgpu_g2v_pv_ggtt_insert(struct intel_vgpu *vgpu)
+{
+	struct intel_vgpu_gtt *gtt = &vgpu->gtt;
+	struct gvt_shared_page *shared_page = vgpu->mmio.shared_page;
+	struct drm_i915_private *dev_priv = vgpu->gvt->dev_priv;
+	struct i915_ggtt *ggtt = &dev_priv->ggtt;
+	u64 start = shared_page->pv_ggtt.start;
+	u64 num_entries = shared_page->pv_ggtt.length;
+	u32 cache_level = shared_page->pv_ggtt.cache_level;
+	u64 length = num_entries << PAGE_SHIFT;
+	u64 *vaddr = gtt->ggtt_mm->virtual_page_table;
+	u64 gtt_entry_index;
+	u64 gtt_entry;
+	unsigned long mfn;
+	struct i915_vma vma;
+	struct sg_table st;
+	struct scatterlist *sg = NULL;
+	int ret = 0;
+	int i;
+
+	gvt_dbg_mm("ggtt_insert: start=%llx length=%llx cache=%x\n",
+		start, length, cache_level);
+	validate_ggtt_range(vgpu, &start, &length);
+	if (length == 0)
+		return 0;
+
+	num_entries = length >> PAGE_SHIFT;
+
+	if (sg_alloc_table(&st, num_entries, GFP_KERNEL))
+		return -ENOMEM;
+
+	for_each_sg(st.sgl, sg, num_entries, i) {
+		gtt_entry_index = (start >> PAGE_SHIFT) + i;
+		gtt_entry = vaddr[gtt_entry_index];
+		mfn = intel_gvt_hypervisor_gfn_to_mfn(vgpu,
+					gtt_entry >> PAGE_SHIFT);
+		if (mfn == INTEL_GVT_INVALID_ADDR) {
+			gvt_vgpu_err("fail to translate gfn: 0x%llx\n",
+					gtt_entry >> PAGE_SHIFT);
+			ret = -ENXIO;
+			goto fail;
+		}
+		sg->offset = 0;
+		sg->length = PAGE_SIZE;
+		sg_dma_address(sg) = mfn << PAGE_SHIFT;
+		sg_dma_len(sg) = PAGE_SIZE;
+	}
+
+	/* fake vma for insert call*/
+	memset(&vma, 0, sizeof(vma));
+	vma.node.start = start;
+	vma.pages = &st;
+	ggtt->base.insert_entries(&ggtt->base, &vma, cache_level, 0);
+
+fail:
+	sg_free_table(&st);
+	return ret;
+}
+
+int intel_vgpu_g2v_pv_ggtt_clear(struct intel_vgpu *vgpu)
+{
+	struct gvt_shared_page *shared_page = vgpu->mmio.shared_page;
+	u64 start = shared_page->pv_ggtt.start;
+	u64 length = shared_page->pv_ggtt.length;
+	struct i915_ggtt *ggtt = &vgpu->gvt->dev_priv->ggtt;
+
+	gvt_dbg_mm("ggtt_clear: start=%llx length=%llx\n",
+		start, length);
+	validate_ggtt_range(vgpu, &start, &length);
+	if (length == 0)
+		return 0;
+
+	ggtt->base.clear_range(&ggtt->base, start, length);
+
+	return 0;
 }

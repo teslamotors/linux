@@ -821,6 +821,8 @@ static void gen8_ppgtt_clear_4lvl(struct i915_address_space *vm,
 	struct i915_pml4 *pml4 = &ppgtt->pml4;
 	struct i915_page_directory_pointer *pdp;
 	unsigned int pml4e;
+	u64 orig_start = start;
+	u64 orig_length = length;
 
 	GEM_BUG_ON(!use_4lvl(vm));
 
@@ -833,6 +835,17 @@ static void gen8_ppgtt_clear_4lvl(struct i915_address_space *vm,
 		gen8_ppgtt_set_pml4e(pml4, vm->scratch_pdp, pml4e);
 
 		free_pdp(vm, pdp);
+	}
+
+	if (PVMMIO_LEVEL_ENABLE(vm->i915, PVMMIO_PPGTT_UPDATE)) {
+		struct drm_i915_private *dev_priv = vm->i915;
+		struct pv_ppgtt_update *pv_ppgtt =
+					&dev_priv->shared_page->pv_ppgtt;
+
+		writeq(px_dma(pml4), &pv_ppgtt->pdp);
+		writeq(orig_start, &pv_ppgtt->start);
+		writeq(orig_length, &pv_ppgtt->length);
+		I915_WRITE(vgtif_reg(g2v_notify), VGT_G2V_PPGTT_L4_CLEAR);
 	}
 }
 
@@ -944,6 +957,20 @@ static void gen8_ppgtt_insert_4lvl(struct i915_address_space *vm,
 	while (gen8_ppgtt_insert_pte_entries(ppgtt, pdps[idx.pml4e++], &iter,
 					     &idx, cache_level))
 		GEM_BUG_ON(idx.pml4e >= GEN8_PML4ES_PER_PML4);
+
+	if (PVMMIO_LEVEL_ENABLE(vm->i915, PVMMIO_PPGTT_UPDATE)) {
+
+		struct drm_i915_private *dev_priv = vm->i915;
+		struct pv_ppgtt_update *pv_ppgtt =
+					     &dev_priv->shared_page->pv_ppgtt;
+
+		writeq(px_dma(&ppgtt->pml4), &pv_ppgtt->pdp);
+		writeq(vma->node.start, &pv_ppgtt->start);
+		writeq(vma->node.size, &pv_ppgtt->length);
+		writel(cache_level, &pv_ppgtt->cache_level);
+		I915_WRITE(vgtif_reg(g2v_notify), VGT_G2V_PPGTT_L4_INSERT);
+	}
+
 }
 
 static void gen8_free_page_tables(struct i915_address_space *vm,
@@ -1181,6 +1208,8 @@ static int gen8_ppgtt_alloc_4lvl(struct i915_address_space *vm,
 	u64 from = start;
 	u32 pml4e;
 	int ret;
+	u64 orig_start = start;
+	u64 orig_length = length;
 
 	gen8_for_each_pml4e(pdp, pml4, start, length, pml4e) {
 		if (pml4->pdps[pml4e] == vm->scratch_pdp) {
@@ -1195,6 +1224,17 @@ static int gen8_ppgtt_alloc_4lvl(struct i915_address_space *vm,
 		ret = gen8_ppgtt_alloc_pdp(vm, pdp, start, length);
 		if (unlikely(ret))
 			goto unwind_pdp;
+	}
+
+	if (PVMMIO_LEVEL_ENABLE(vm->i915, PVMMIO_PPGTT_UPDATE)) {
+		struct drm_i915_private *dev_priv = vm->i915;
+		struct pv_ppgtt_update *pv_ppgtt =
+					&dev_priv->shared_page->pv_ppgtt;
+
+		writeq(px_dma(pml4), &pv_ppgtt->pdp);
+		writeq(orig_start, &pv_ppgtt->start);
+		writeq(orig_length, &pv_ppgtt->length);
+		I915_WRITE(vgtif_reg(g2v_notify), VGT_G2V_PPGTT_L4_ALLOC);
 	}
 
 	return 0;
@@ -2072,6 +2112,17 @@ static void gen8_set_pte(void __iomem *addr, gen8_pte_t pte)
 	writeq(pte, addr);
 }
 
+static void vgpu_ggtt_insert(struct drm_i915_private *dev_priv,
+	u64 start, int num_entries, enum i915_cache_level level)
+{
+	struct gvt_shared_page *shared_page = dev_priv->shared_page;
+
+	writeq(start, &shared_page->pv_ggtt.start);
+	writeq(num_entries, &shared_page->pv_ggtt.length);
+	writel(level, &shared_page->pv_ggtt.cache_level);
+	I915_WRITE(vgtif_reg(g2v_notify), VGT_G2V_GGTT_INSERT);
+}
+
 static void gen8_ggtt_insert_page(struct i915_address_space *vm,
 				  dma_addr_t addr,
 				  u64 offset,
@@ -2083,6 +2134,11 @@ static void gen8_ggtt_insert_page(struct i915_address_space *vm,
 		(gen8_pte_t __iomem *)ggtt->gsm + (offset >> PAGE_SHIFT);
 
 	gen8_set_pte(pte, gen8_pte_encode(addr, level));
+
+	if (PVMMIO_LEVEL_ENABLE(vm->i915, PVMMIO_GGTT_UPDATE)) {
+		vgpu_ggtt_insert(vm->i915, offset, 1, level);
+		return;
+	}
 
 	ggtt->invalidate(vm->i915);
 }
@@ -2100,10 +2156,23 @@ static void gen8_ggtt_insert_entries(struct i915_address_space *vm,
 
 	gtt_entries = (gen8_pte_t __iomem *)ggtt->gsm;
 	gtt_entries += vma->node.start >> PAGE_SHIFT;
+
 	for_each_sgt_dma(addr, sgt_iter, vma->pages)
 		gen8_set_pte(gtt_entries++, pte_encode | addr);
-
 	wmb();
+
+	if (PVMMIO_LEVEL_ENABLE(vm->i915, PVMMIO_GGTT_UPDATE)) {
+		int num_entries = gtt_entries -
+				   ((gen8_pte_t __iomem *)ggtt->gsm +
+				    (vma->node.start >> PAGE_SHIFT));
+		/*
+		 * Sometimes number of entries does not match vma node size.
+		 * Pass number of pte entries instead.
+		 */
+		vgpu_ggtt_insert(vm->i915, vma->node.start,
+				 num_entries, level);
+		return;
+	}
 
 	/* This next bit makes the above posting read even more important. We
 	 * want to flush the TLBs only after we're certain all the PTE updates
@@ -2179,6 +2248,16 @@ static void gen8_ggtt_clear_range(struct i915_address_space *vm,
 
 	for (i = 0; i < num_entries; i++)
 		gen8_set_pte(&gtt_base[i], scratch_pte);
+
+	if (PVMMIO_LEVEL_ENABLE(vm->i915, PVMMIO_GGTT_UPDATE)) {
+		struct drm_i915_private *dev_priv = vm->i915;
+		struct gvt_shared_page *shared_page = dev_priv->shared_page;
+
+		writeq(start, &shared_page->pv_ggtt.start);
+		writeq(length, &shared_page->pv_ggtt.length);
+		I915_WRITE(vgtif_reg(g2v_notify), VGT_G2V_GGTT_CLEAR);
+	}
+
 }
 
 static void bxt_vtd_ggtt_wa(struct i915_address_space *vm)

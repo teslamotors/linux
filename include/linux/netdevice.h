@@ -777,6 +777,7 @@ enum tc_setup_type {
 	TC_SETUP_CLSBPF,
 	TC_SETUP_BLOCK,
 	TC_SETUP_CBS,
+	TC_SETUP_QDISC_ETF,
 };
 
 /* These structures hold the attributes of xdp state that are being passed

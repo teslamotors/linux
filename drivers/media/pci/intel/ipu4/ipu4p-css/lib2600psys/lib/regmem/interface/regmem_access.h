@@ -30,8 +30,17 @@ enum regmem_id {
 	SYSCOM_IRQ_REG		= 4,
 	/* Store VTL0_ADDR_MASK in trusted secure regision - provided by host.*/
 	SYSCOM_VTL0_ADDR_MASK	= 5,
+#if HAS_DUAL_CMD_CTX_SUPPORT
+	/* Initialized if trustlet exists - updated by host */
+	TRUSTLET_STATUS		= 6,
+	/* identify if SPC access blocker programming is completed - updated by SP */
+	AB_SPC_STATUS		= 7,
+	/* first syscom queue pointer register */
+	SYSCOM_QPR_BASE_REG	= 8
+#else
 	/* first syscom queue pointer register */
 	SYSCOM_QPR_BASE_REG	= 6
+#endif
 };
 
 #if HAS_DUAL_CMD_CTX_SUPPORT

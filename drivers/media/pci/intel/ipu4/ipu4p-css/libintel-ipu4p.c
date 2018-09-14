@@ -1,4 +1,4 @@
-// SPDX-License_Identifier: GPL-2.0
+// SPDX-License-Identifier: GPL-2.0
 // Copyright (C) 2014 - 2018 Intel Corporation
 
 #include <linux/module.h>
@@ -7,7 +7,8 @@
 #include "ipu-isys.h"
 #include "ipu-wrapper.h"
 #include <ia_css_isysapi.h>
-#include "libintel-checker.h"
+
+#include "ipu-platform.h"
 
 #define ipu_lib_call_notrace_unlocked(func, isys, ...)		\
 	({								\
@@ -345,6 +346,8 @@ static void frame_buff_set_abi_to_api(
 
 	api->send_irq_sof = abi->send_irq_sof;
 	api->send_irq_eof = abi->send_irq_eof;
+	api->send_irq_capture_ack = abi->send_irq_capture_ack;
+	api->send_irq_capture_done = abi->send_irq_capture_done;
 }
 
 int ipu_fw_isys_complex_cmd(struct ipu_isys *isys,
@@ -385,19 +388,6 @@ int ipu_fw_isys_complex_cmd(struct ipu_isys *isys,
 	return rval;
 }
 EXPORT_SYMBOL_GPL(ipu_fw_isys_complex_cmd);
-
-static int __init library_init(void)
-{
-	ipu_isys_abi_checker();
-	return 0;
-}
-
-static void __exit library_exit(void)
-{
-}
-
-module_init(library_init);
-module_exit(library_exit);
 
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Intel ipu library");

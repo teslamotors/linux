@@ -135,33 +135,39 @@ err:
 
 long virtio_dev_deregister(struct virtio_dev_info *dev)
 {
+	if (dev->_ctx.vhm_client_id < 0)
+		return 0;
+
 	acrn_ioreq_del_iorange(dev->_ctx.vhm_client_id,
 			      dev->io_range_type ? REQ_MMIO : REQ_PORTIO,
 			      dev->io_range_start,
 			      dev->io_range_start + dev->io_range_len);
-
 	acrn_ioreq_destroy_client(dev->_ctx.vhm_client_id);
+	dev->_ctx.vhm_client_id = -1;
 
 	return 0;
 }
 
-int virtio_vq_index_get(struct virtio_dev_info *dev, int req_cnt)
+int virtio_vqs_index_get(struct virtio_dev_info *dev,
+						unsigned long *ioreqs_map,
+						int *vqs_index,
+						int max_vqs_index)
 {
-	int val = -1;
+	int idx = 0;
 	struct vhm_request *req;
-	int i;
-
-	if (unlikely(req_cnt <= 0))
-		return -EINVAL;
+	int vcpu;
 
 	if (dev == NULL) {
 		pr_err("%s: dev is NULL!\n", __func__);
 		return -EINVAL;
 	}
 
-	for (i = 0; i < dev->_ctx.max_vcpu; i++) {
-		req = &dev->_ctx.req_buf[i];
-		if (req->valid && req->processed == REQ_STATE_PROCESSING &&
+	while (1) {
+		vcpu = find_first_bit(ioreqs_map, dev->_ctx.max_vcpu);
+		if (vcpu == dev->_ctx.max_vcpu)
+			break;
+		req = &dev->_ctx.req_buf[vcpu];
+		if (atomic_read(&req->processed) == REQ_STATE_PROCESSING &&
 		    req->client == dev->_ctx.vhm_client_id) {
 			if (req->reqs.pio_request.direction == REQUEST_READ) {
 				/* currently we handle kick only,
@@ -175,17 +181,32 @@ int virtio_vq_index_get(struct virtio_dev_info *dev, int req_cnt)
 			} else {
 				pr_debug("%s: write request! type %d\n",
 						__func__, req->type);
+
+				if (idx == max_vqs_index) {
+					pr_warn("%s: The allocated vqs\n"
+						"size (%d) is smaller than the\n"
+						"number of vcpu (%d)! This\n"
+						"might caused the process of\n"
+						"some requests be delayed.",
+						__func__, max_vqs_index,
+						dev->_ctx.max_vcpu);
+					break;
+				}
+
 				if (dev->io_range_type == PIO_RANGE)
-					val = req->reqs.pio_request.value;
+					vqs_index[idx++] =
+						req->reqs.pio_request.value;
 				else
-					val = req->reqs.mmio_request.value;
+					vqs_index[idx++] =
+						req->reqs.mmio_request.value;
 			}
-			req->processed = REQ_STATE_SUCCESS;
-			acrn_ioreq_complete_request(dev->_ctx.vhm_client_id, i);
+			smp_mb();
+			atomic_set(&req->processed, REQ_STATE_COMPLETE);
+			acrn_ioreq_complete_request(req->client, vcpu);
 		}
 	}
 
-	return val;
+	return idx;
 }
 
 static long virtio_vqs_info_set(struct virtio_dev_info *dev,
@@ -299,9 +320,30 @@ long virtio_dev_init(struct virtio_dev_info *dev,
 	for (i = 0; i < nvq; i++)
 		virtio_vq_reset(&vqs[i]);
 
+	dev->_ctx.vhm_client_id = -1;
+
 	return 0;
 }
 EXPORT_SYMBOL_GPL(virtio_dev_init);
+
+long virtio_dev_reset(struct virtio_dev_info *dev)
+{
+	int i;
+
+	for (i = 0; i < dev->nvq; i++)
+		virtio_vq_reset(&dev->vqs[i]);
+
+	memset(dev->name, 0, sizeof(dev->name));
+	dev->_ctx.vmid = 0;
+	dev->nvq = 0;
+	dev->negotiated_features = 0;
+	dev->io_range_start = 0;
+	dev->io_range_len = 0;
+	dev->io_range_type = PIO_RANGE;
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(virtio_dev_reset);
 
 static int __init vbs_init(void)
 {

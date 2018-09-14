@@ -29,7 +29,7 @@
 #include <sound/sof.h>
 #include <sound/pcm_params.h>
 #include <linux/pm_runtime.h>
-
+#include <uapi/sound/sof-ipc.h>
 #include "../sof-priv.h"
 #include "../ops.h"
 #include "hda.h"
@@ -239,3 +239,18 @@ int hda_dsp_core_reset_power_down(struct snd_sof_dev *sdev,
 	return ret;
 }
 
+int hda_dsp_suspend(struct snd_sof_dev *sdev, int state)
+{
+	const struct sof_intel_dsp_desc *chip = sdev->hda->desc;
+
+	/* power down DSP */
+	return hda_dsp_core_reset_power_down(sdev, chip->cores_mask);
+}
+
+int hda_dsp_resume(struct snd_sof_dev *sdev)
+{
+	const struct sof_intel_dsp_desc *chip = sdev->hda->desc;
+
+	/* power up the DSP */
+	return hda_dsp_core_power_up(sdev, chip->cores_mask);
+}

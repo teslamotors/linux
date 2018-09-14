@@ -364,6 +364,8 @@ int intel_vgpu_init_mmio(struct intel_vgpu *vgpu)
 {
 	const struct intel_gvt_device_info *info = &vgpu->gvt->device_info;
 
+	BUILD_BUG_ON(sizeof(struct gvt_shared_page) != PAGE_SIZE);
+
 	vgpu->mmio.sreg = vzalloc(info->mmio_size);
 	vgpu->mmio.vreg = (void *)__get_free_pages(GFP_KERNEL,
 			info->mmio_size_order);

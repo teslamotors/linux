@@ -2172,10 +2172,13 @@ static void soc_check_tplg_fes(struct snd_soc_card *card)
 			continue;
 
 		/* for this machine ? */
+		if (!strcmp(platform->driver->ignore_machine,
+			    card->dev->driver->name))
+			goto match;
 		if (strcmp(platform->driver->ignore_machine,
-			   card->dev->driver->name))
+			   dev_name(card->dev)))
 			continue;
-
+match:
 		/* machine matches, so override the rtd data */
 		for (i = 0; i < card->num_links; i++) {
 

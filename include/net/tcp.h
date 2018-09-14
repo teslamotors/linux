@@ -372,7 +372,7 @@ ssize_t tcp_splice_read(struct socket *sk, loff_t *ppos,
 			struct pipe_inode_info *pipe, size_t len,
 			unsigned int flags);
 
-void tcp_enter_quickack_mode(struct sock *sk);
+void tcp_enter_quickack_mode(struct sock *sk, unsigned int max_quickacks);
 static inline void tcp_dec_quickack_mode(struct sock *sk,
 					 const unsigned int pkts)
 {
@@ -798,12 +798,6 @@ struct tcp_skb_cb {
 			u16	tcp_gso_segs;
 			u16	tcp_gso_size;
 		};
-
-		/* Used to stash the receive timestamp while this skb is in the
-		 * out of order queue, as skb->tstamp is overwritten by the
-		 * rbnode.
-		 */
-		ktime_t		swtstamp;
 	};
 	__u8		tcp_flags;	/* TCP header flags. (tcp[13])	*/
 
@@ -938,8 +932,6 @@ enum tcp_ca_event {
 	CA_EVENT_LOSS,		/* loss timeout */
 	CA_EVENT_ECN_NO_CE,	/* ECT set, but not CE marked */
 	CA_EVENT_ECN_IS_CE,	/* received CE marked IP packet */
-	CA_EVENT_DELAYED_ACK,	/* Delayed ack is sent */
-	CA_EVENT_NON_DELAYED_ACK,
 };
 
 /* Information about inbound ACK, passed to cong_ops->in_ack_event() */

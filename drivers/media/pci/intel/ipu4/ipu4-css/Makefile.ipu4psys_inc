@@ -43,6 +43,7 @@ IPU_PSYSLIB_INC = \
 	-I$(IPU_PSYSLIB_ROOT)/routing_bitmap/src \
 	-I$(IPU_PSYSLIB_ROOT)/support \
 	-I$(IPU_PSYSLIB_ROOT)/syscom/interface \
+	-I$(IPU_PSYSLIB_ROOT)/syscom/src \
 	-I$(IPU_PSYSLIB_ROOT)/trace/interface \
 	-I$(IPU_PSYSLIB_ROOT)/vied \
 	-I$(IPU_PSYSLIB_ROOT)/vied/vied/ \

@@ -1,11 +1,8 @@
-/* SPDX-License_Identifier: GPL-2.0 */
+/* SPDX-License-Identifier: GPL-2.0 */
 /* Copyright (C) 2016 - 2018 Intel Corporation */
 
 #ifndef IPU_FW_PSYS_H
 #define IPU_FW_PSYS_H
-
-#include <linux/errno.h>
-#include <linux/device.h>
 
 #include "ipu-platform-resources.h"
 
@@ -330,15 +327,14 @@ int ipu_fw_psys_open(struct ipu_psys *psys);
 int ipu_fw_psys_close(struct ipu_psys *psys);
 
 /* common resource interface for both abi and api mode */
-void ipu_fw_psys_set_process_cell_id(struct ipu_fw_psys_process *ptr, u8 index,
-				     u8 value);
+int ipu_fw_psys_set_process_cell_id(struct ipu_fw_psys_process *ptr, u8 index,
+				    u8 value);
 u8 ipu_fw_psys_get_process_cell_id(struct ipu_fw_psys_process *ptr, u8 index);
-void ipu_fw_psys_set_process_dev_chn_offset(struct ipu_fw_psys_process *ptr,
-					    u16 offset, u16 value);
-void ipu_fw_psys_set_process_ext_mem_offset(struct ipu_fw_psys_process *ptr,
-					    u16 offset, u16 value);
-void ipu_fw_psys_set_process_ext_mem_id(struct ipu_fw_psys_process *ptr,
-					u16 offset, u8 value);
+int ipu_fw_psys_clear_process_cell(struct ipu_fw_psys_process *ptr);
+int ipu_fw_psys_set_process_dev_chn_offset(struct ipu_fw_psys_process *ptr,
+					   u16 offset, u16 value);
+int ipu_fw_psys_set_process_ext_mem(struct ipu_fw_psys_process *ptr,
+				    u16 type_id, u16 mem_id, u16 offset);
 int ipu_fw_psys_get_program_manifest_by_process(
 	struct ipu_fw_generic_program_manifest *gen_pm,
 	const struct ipu_fw_psys_program_group_manifest *pg_manifest,

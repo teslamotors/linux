@@ -91,8 +91,10 @@
 
 /* Guest memory management */
 #define IC_ID_MEM_BASE                  0x40UL
+/* IC_ALLOC_MEMSEG not used */
 #define IC_ALLOC_MEMSEG                 _IC_ID(IC_ID, IC_ID_MEM_BASE + 0x00)
 #define IC_SET_MEMSEG                   _IC_ID(IC_ID, IC_ID_MEM_BASE + 0x01)
+#define IC_UNSET_MEMSEG                 _IC_ID(IC_ID, IC_ID_MEM_BASE + 0x02)
 
 /* PCI assignment*/
 #define IC_ID_PCI_BASE                  0x50UL

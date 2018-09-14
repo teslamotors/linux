@@ -272,6 +272,8 @@ struct ia_css_isys_frame_buff_set {
 	struct ia_css_isys_param_pin process_group_light;
 	unsigned int send_irq_sof;
 	unsigned int send_irq_eof;
+	unsigned int send_irq_capture_ack;
+	unsigned int send_irq_capture_done;
 	unsigned int send_resp_sof;
 	unsigned int send_resp_eof;
 	uint8_t      frame_counter;

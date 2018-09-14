@@ -574,13 +574,14 @@ static void delayed_unexport(struct work_struct *work)
 {
 	struct hyper_dmabuf_req *req;
 	struct hyper_dmabuf_bknd_ops *bknd_ops = hy_drv_priv->bknd_ops;
-	struct exported_sgt_info *exported =
-		container_of(work, struct exported_sgt_info, unexport.work);
+	struct exported_sgt_info *exported;
 	int op[4];
 	int i, ret;
 
-	if (!exported)
+	if (!work)
 		return;
+
+	exported = container_of(work, struct exported_sgt_info, unexport.work);
 
 	dev_dbg(hy_drv_priv->dev,
 		"Marking buffer {id:%d key:%d %d %d} as invalid\n",

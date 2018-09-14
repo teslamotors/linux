@@ -91,6 +91,7 @@
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
+#include <asm/unaligned.h>
 #include <linux/capability.h>
 #include <linux/errno.h>
 #include <linux/errqueue.h>
@@ -691,6 +692,7 @@ EXPORT_SYMBOL(sk_mc_loop);
 int sock_setsockopt(struct socket *sock, int level, int optname,
 		    char __user *optval, unsigned int optlen)
 {
+	struct sock_txtime sk_txtime;
 	struct sock *sk = sock->sk;
 	int val;
 	int valbool;
@@ -1059,6 +1061,26 @@ set_rcvbuf:
 			sock_valbool_flag(sk, SOCK_ZEROCOPY, valbool);
 		break;
 
+	case SO_TXTIME:
+		if (!ns_capable(sock_net(sk)->user_ns, CAP_NET_ADMIN)) {
+			ret = -EPERM;
+		} else if (optlen != sizeof(struct sock_txtime)) {
+			ret = -EINVAL;
+		} else if (copy_from_user(&sk_txtime, optval,
+			   sizeof(struct sock_txtime))) {
+			ret = -EFAULT;
+		} else if (sk_txtime.flags & ~SOF_TXTIME_FLAGS_MASK) {
+			ret = -EINVAL;
+		} else {
+			sock_valbool_flag(sk, SOCK_TXTIME, true);
+			sk->sk_clockid = sk_txtime.clockid;
+			sk->sk_txtime_deadline_mode =
+				!!(sk_txtime.flags & SOF_TXTIME_DEADLINE_MODE);
+			sk->sk_txtime_report_errors =
+				!!(sk_txtime.flags & SOF_TXTIME_REPORT_ERRORS);
+		}
+		break;
+
 	default:
 		ret = -ENOPROTOOPT;
 		break;
@@ -1104,6 +1126,7 @@ int sock_getsockopt(struct socket *sock, int level, int optname,
 		u64 val64;
 		struct linger ling;
 		struct timeval tm;
+		struct sock_txtime txtime;
 	} v;
 
 	int lv = sizeof(int);
@@ -1389,6 +1412,15 @@ int sock_getsockopt(struct socket *sock, int level, int optname,
 
 	case SO_ZEROCOPY:
 		v.val = sock_flag(sk, SOCK_ZEROCOPY);
+		break;
+
+	case SO_TXTIME:
+		lv = sizeof(v.txtime);
+		v.txtime.clockid = sk->sk_clockid;
+		v.txtime.flags |= sk->sk_txtime_deadline_mode ?
+				  SOF_TXTIME_DEADLINE_MODE : 0;
+		v.txtime.flags |= sk->sk_txtime_report_errors ?
+				  SOF_TXTIME_REPORT_ERRORS : 0;
 		break;
 
 	default:
@@ -2116,6 +2148,13 @@ int __sock_cmsg_send(struct sock *sk, struct msghdr *msg, struct cmsghdr *cmsg,
 
 		sockc->tsflags &= ~SOF_TIMESTAMPING_TX_RECORD_MASK;
 		sockc->tsflags |= tsflags;
+		break;
+	case SCM_TXTIME:
+		if (!sock_flag(sk, SOCK_TXTIME))
+			return -EINVAL;
+		if (cmsg->cmsg_len != CMSG_LEN(sizeof(u64)))
+			return -EINVAL;
+		sockc->transmit_time = get_unaligned((u64 *)CMSG_DATA(cmsg));
 		break;
 	/* SCM_RIGHTS and SCM_CREDENTIALS are semantically in SOL_UNIX. */
 	case SCM_RIGHTS:

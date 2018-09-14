@@ -1,4 +1,4 @@
-// SPDX-License_Identifier: GPL-2.0
+// SPDX-License-Identifier: GPL-2.0
 // Copyright (C) 2015 - 2018 Intel Corporation
 
 #include <linux/dma-mapping.h>
@@ -194,14 +194,11 @@ void *ipu_cpd_create_pkg_dir(struct ipu_bus_device *adev,
 			     dma_addr_t *dma_addr, unsigned int *pkg_dir_size)
 {
 	struct ipu_device *isp = adev->isp;
-	const struct ipu_cpd_hdr *hdr = src;
 	const struct ipu_cpd_ent *ent, *man_ent, *met_ent;
 	u64 *pkg_dir;
-	unsigned int man_sz, met_sz, hdr_sz;
+	unsigned int man_sz, met_sz;
 	void *pkg_dir_pos;
 	int ret;
-
-	hdr_sz = hdr->hdr_len;
 
 	man_ent = ipu_cpd_get_manifest(src);
 	man_sz = man_ent->len;

@@ -2485,10 +2485,16 @@ static int init_ext_sd(struct i2c_client *client,
 	struct ici_ext_subdev* sd = &ssd->sd;
 	struct crl_sensor *sensor = ssd->sensor;
 	char name[ICI_MAX_NODE_NAME];
-	snprintf(name,
-		sizeof(name), "%s %d-%4.4x",
-		sensor->sensor_ds->subdevs[idx].name,
-		i2c_adapter_id(client->adapter), client->addr);
+	if (sensor->platform_data->suffix)
+		snprintf(name,
+			sizeof(name), "%s %c",
+			sensor->sensor_ds->subdevs[idx].name,
+			sensor->platform_data->suffix);
+	else
+		snprintf(name,
+			sizeof(name), "%s",
+			sensor->sensor_ds->subdevs[idx].name);
+
 	sd->client = client;
 	sd->num_pads = ssd->npads;
 	sd->src_pad = ssd->source_pad;

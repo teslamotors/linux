@@ -158,6 +158,9 @@ static int sof_pcm_hw_params(struct snd_pcm_substream *substream,
 	spcm->posn_offset[substream->stream] =
 		sdev->stream_box.offset + posn_offset;
 
+	/* save pcm hw_params */
+	memcpy(&spcm->params[substream->stream], params, sizeof(*params));
+
 	return ret;
 }
 
@@ -190,6 +193,33 @@ static int sof_pcm_hw_free(struct snd_pcm_substream *substream)
 	return ret;
 }
 
+static int sof_restore_hw_params(struct snd_pcm_substream *substream,
+				 struct snd_sof_pcm *spcm,
+				 struct snd_sof_dev *sdev)
+{
+	snd_pcm_uframes_t host = 0;
+	u64 host_posn;
+	int ret = 0;
+
+	/* resume stream */
+	host_posn = spcm->stream[substream->stream].posn.host_posn;
+	host = bytes_to_frames(substream->runtime, host_posn);
+	dev_dbg(sdev->dev,
+		"PCM: resume stream %d dir %d DMA position %lu\n",
+		spcm->pcm.pcm_id, substream->stream, host);
+
+	/* set hw_params */
+	ret = sof_pcm_hw_params(substream,
+				&spcm->params[substream->stream]);
+	if (ret < 0) {
+		dev_err(sdev->dev,
+			"error: set pcm hw_params after resume\n");
+		return ret;
+	}
+
+	return 0;
+}
+
 static int sof_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
@@ -212,19 +242,66 @@ static int sof_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 	stream.comp_id = spcm->stream[substream->stream].comp_id;
 
 	switch (cmd) {
-	case SNDRV_PCM_TRIGGER_START:
-		stream.hdr.cmd |= SOF_IPC_STREAM_TRIG_START;
-		break;
-	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
-		stream.hdr.cmd |= SOF_IPC_STREAM_TRIG_RELEASE;
-		break;
 	case SNDRV_PCM_TRIGGER_STOP:
+
+		/*
+		 * Check if stream was marked for restore before suspend
+		 */
+		if (spcm->restore_stream[substream->stream]) {
+
+			/* unset restore_stream */
+			spcm->restore_stream[substream->stream] = 0;
+
+			/* do not send ipc as the stream hasn't been set up */
+			return 0;
+		}
+
 		stream.hdr.cmd |= SOF_IPC_STREAM_TRIG_STOP;
 		break;
 	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
 		stream.hdr.cmd |= SOF_IPC_STREAM_TRIG_PAUSE;
 		break;
+	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
+
+		/* check if the stream hw_params needs to be restored */
+		if (spcm->restore_stream[substream->stream]) {
+
+			/* restore hw_params */
+			ret = sof_restore_hw_params(substream, spcm, sdev);
+			if (ret < 0)
+				return ret;
+
+			/* unset restore_stream */
+			spcm->restore_stream[substream->stream] = 0;
+
+			/* trigger start */
+			stream.hdr.cmd |= SOF_IPC_STREAM_TRIG_START;
+		} else {
+
+			/* trigger pause release */
+			stream.hdr.cmd |= SOF_IPC_STREAM_TRIG_RELEASE;
+		}
+		break;
+	case SNDRV_PCM_TRIGGER_START:
+		/* fall through */
 	case SNDRV_PCM_TRIGGER_RESUME:
+
+		/* check if the stream hw_params needs to be restored */
+		if (spcm->restore_stream[substream->stream]) {
+
+			/* restore hw_params */
+			ret = sof_restore_hw_params(substream, spcm, sdev);
+			if (ret < 0)
+				return ret;
+
+			/* unset restore_stream */
+			spcm->restore_stream[substream->stream] = 0;
+		}
+
+		/* trigger stream */
+		stream.hdr.cmd |= SOF_IPC_STREAM_TRIG_START;
+
+		break;
 	case SNDRV_PCM_TRIGGER_SUSPEND:
 		break;
 	default:
@@ -586,7 +663,6 @@ static int sof_pcm_probe(struct snd_soc_platform *platform)
 	pm_runtime_use_autosuspend(platform->dev);
 	pm_runtime_enable(platform->dev);
 	pm_runtime_idle(platform->dev);
-
 err:
 	return ret;
 }

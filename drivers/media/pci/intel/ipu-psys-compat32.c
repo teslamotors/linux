@@ -1,4 +1,4 @@
-// SPDX-License_Identifier: GPL-2.0
+// SPDX-License-Identifier: GPL-2.0
 // Copyright (C) 2013 - 2018 Intel Corporation
 
 #include <linux/compat.h>
@@ -6,6 +6,8 @@
 #include <linux/uaccess.h>
 
 #include <uapi/linux/ipu-psys.h>
+
+#include "ipu-psys.h"
 
 static long native_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
@@ -40,6 +42,7 @@ struct ipu_psys_command32 {
 	u32 pg_manifest_size;
 	u32 bufcount;
 	u32 min_psys_freq;
+	u32 frame_counter;
 	u32 reserved[2];
 } __packed;
 
@@ -67,6 +70,7 @@ get_ipu_psys_command32(struct ipu_psys_command *kp,
 	    get_user(kp->pg_manifest_size, &up->pg_manifest_size) ||
 	    get_user(kp->bufcount, &up->bufcount) ||
 	    get_user(kp->min_psys_freq, &up->min_psys_freq)
+		|| get_user(kp->frame_counter, &up->frame_counter)
 	    )
 		return -EFAULT;
 

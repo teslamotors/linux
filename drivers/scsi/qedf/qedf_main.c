@@ -1649,6 +1649,15 @@ static int qedf_vport_destroy(struct fc_vport *vport)
 	struct Scsi_Host *shost = vport_to_shost(vport);
 	struct fc_lport *n_port = shost_priv(shost);
 	struct fc_lport *vn_port = vport->dd_data;
+	struct qedf_ctx *qedf = lport_priv(vn_port);
+
+	if (!qedf) {
+		QEDF_ERR(NULL, "qedf is NULL.\n");
+		goto out;
+	}
+
+	/* Set unloading bit on vport qedf_ctx to prevent more I/O */
+	set_bit(QEDF_UNLOADING, &qedf->flags);
 
 	mutex_lock(&n_port->lp_mutex);
 	list_del(&vn_port->list);
@@ -1675,6 +1684,7 @@ static int qedf_vport_destroy(struct fc_vport *vport)
 	if (vn_port->host)
 		scsi_host_put(vn_port->host);
 
+out:
 	return 0;
 }
 
@@ -3230,6 +3240,11 @@ static int __qedf_probe(struct pci_dev *pdev, int mode)
 
 	init_completion(&qedf->flogi_compl);
 
+	status = qed_ops->common->update_drv_state(qedf->cdev, true);
+	if (status)
+		QEDF_ERR(&(qedf->dbg_ctx),
+			"Failed to send drv state to MFW.\n");
+
 	memset(&link_params, 0, sizeof(struct qed_link_params));
 	link_params.link_up = true;
 	status = qed_ops->common->set_link(qedf->cdev, &link_params);
@@ -3278,6 +3293,7 @@ static int qedf_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 static void __qedf_remove(struct pci_dev *pdev, int mode)
 {
 	struct qedf_ctx *qedf;
+	int rc;
 
 	if (!pdev) {
 		QEDF_ERR(NULL, "pdev is NULL.\n");
@@ -3372,6 +3388,12 @@ static void __qedf_remove(struct pci_dev *pdev, int mode)
 		qed_ops->common->set_power_state(qedf->cdev, PCI_D0);
 		pci_set_drvdata(pdev, NULL);
 	}
+
+	rc = qed_ops->common->update_drv_state(qedf->cdev, false);
+	if (rc)
+		QEDF_ERR(&(qedf->dbg_ctx),
+			"Failed to send drv state to MFW.\n");
+
 	qed_ops->common->slowpath_stop(qedf->cdev);
 	qed_ops->common->remove(qedf->cdev);
 

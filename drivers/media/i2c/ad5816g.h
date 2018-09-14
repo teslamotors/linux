@@ -1,4 +1,4 @@
-/* SPDX-License_Identifier: GPL-2.0 */
+/* SPDX-License-Identifier: GPL-2.0 */
 /* Copyright (C) 2016 - 2018 Intel Corporation */
 #ifndef __AD5816G_H__
 #define __AD5816G_H__

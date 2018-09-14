@@ -1,4 +1,4 @@
-/* SPDX-License_Identifier: GPL-2.0 */
+/* SPDX-License-Identifier: GPL-2.0 */
 /* Copyright (C) 2016 - 2018 Intel Corporation */
 
 #ifndef UAPI_LINUX_CRLMODULE_H
@@ -60,11 +60,17 @@ struct crl_registers_info {
 #define CRL_CID_MSB_ALIGN		(V4L2_CID_CRLMODULE_BASE + 18)
 
 /* enable/disable auto exposure */
-#define CRL_CID_AUTO_EXPOSURE_DEBUG		(V4L2_CID_CRLMODULE_BASE + 19)
+#define CRL_CID_AUTO_EXPOSURE_DEBUG	(V4L2_CID_CRLMODULE_BASE + 19)
 
 /* set analog gain for HDR frames */
 #define CRL_CID_ANALOG_GAIN_L		(V4L2_CID_CRLMODULE_BASE + 20)
 #define CRL_CID_ANALOG_GAIN_S		(V4L2_CID_CRLMODULE_BASE + 21)
 #define CRL_CID_ANALOG_GAIN_VS		(V4L2_CID_CRLMODULE_BASE + 22)
+
+/* Set exposure mode: Linear mode or 2-/3-/4-HDR mode */
+#define CRL_CID_EXPOSURE_MODE		(V4L2_CID_CRLMODULE_BASE + 23)
+
+/* Set HDR mode exposure ratio */
+#define CRL_CID_EXPOSURE_HDR_RATIO	(V4L2_CID_CRLMODULE_BASE + 24)
 
 #endif /* UAPI_LINUX_CRLMODULE_H */

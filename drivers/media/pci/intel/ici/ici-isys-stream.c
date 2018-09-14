@@ -1343,6 +1343,28 @@ static int ici_isys_getbuf(struct file *file, void *fh,
 	return 0;
 }
 
+static int ici_isys_getbuf_virt(struct file *file, void *fh,
+	struct ici_frame_buf_wrapper *user_frame_buf, struct page **pages)
+{
+	int rval = 0;
+	struct ici_isys_stream *as = dev_to_stream(
+		file->private_data);
+	struct ici_isys *isys = as->isys;
+
+	rval = ici_isys_get_buf_virt(as, user_frame_buf, pages);
+	if (rval) {
+		dev_err(&isys->adev->dev, "failed to get buffer %d\n", rval);
+		return rval;
+	}
+
+	mutex_lock(&as->isys->stream_mutex);
+	if (as->ip.streaming) {
+		stream_buffers(as);
+	}
+	mutex_unlock(&as->isys->stream_mutex);
+	return 0;
+}
+
 static int ici_isys_putbuf(struct file *file, void *fh,
 	struct ici_frame_info *user_frame_info)
 {
@@ -1378,6 +1400,7 @@ static const struct ici_ioctl_ops ioctl_ops_mplane_ici = {
 	.ici_stream_on = ici_isys_stream_on,
 	.ici_stream_off = ici_isys_stream_off,
 	.ici_get_buf = ici_isys_getbuf,
+	.ici_get_buf_virt = ici_isys_getbuf_virt,
 	.ici_put_buf = ici_isys_putbuf,
 };
 

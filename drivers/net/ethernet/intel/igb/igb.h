@@ -281,6 +281,7 @@ struct igb_ring {
 	u16 count;			/* number of desc. in the ring */
 	u8 queue_index;			/* logical index of the ring*/
 	u8 reg_idx;			/* physical index of the ring */
+	bool launchtime_enable;		/* true if LaunchTime is enabled */
 	bool cbs_enable;		/* indicates if CBS is enabled */
 	s32 idleslope;			/* idleSlope in kbps */
 	s32 sendslope;			/* sendSlope in kbps */
@@ -440,6 +441,8 @@ struct hwmon_buff {
 enum igb_filter_match_flags {
 	IGB_FILTER_FLAG_ETHER_TYPE = 0x1,
 	IGB_FILTER_FLAG_VLAN_TCI   = 0x2,
+	IGB_FILTER_FLAG_SRC_MAC_ADDR   = 0x4,
+	IGB_FILTER_FLAG_DST_MAC_ADDR   = 0x8,
 };
 
 #define IGB_MAX_RXNFC_FILTERS 16
@@ -454,6 +457,8 @@ struct igb_nfc_input {
 	u8 match_flags;
 	__be16 etype;
 	__be16 vlan_tci;
+	u8 src_addr[ETH_ALEN];
+	u8 dst_addr[ETH_ALEN];
 };
 
 struct igb_nfc_filter {
@@ -472,6 +477,8 @@ struct igb_mac_addr {
 
 #define IGB_MAC_STATE_DEFAULT	0x1
 #define IGB_MAC_STATE_IN_USE	0x2
+#define IGB_MAC_STATE_SRC_ADDR	0x4
+#define IGB_MAC_STATE_QUEUE_STEERING 0x8
 
 /* board specific private data structure */
 struct igb_adapter {
@@ -735,5 +742,10 @@ int igb_add_filter(struct igb_adapter *adapter,
 		   struct igb_nfc_filter *input);
 int igb_erase_filter(struct igb_adapter *adapter,
 		     struct igb_nfc_filter *input);
+
+int igb_add_mac_steering_filter(struct igb_adapter *adapter,
+				const u8 *addr, u8 queue, u8 flags);
+int igb_del_mac_steering_filter(struct igb_adapter *adapter,
+				const u8 *addr, u8 queue, u8 flags);
 
 #endif /* _IGB_H_ */

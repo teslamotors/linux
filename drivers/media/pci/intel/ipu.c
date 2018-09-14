@@ -1,4 +1,4 @@
-// SPDX-License_Identifier: GPL-2.0
+// SPDX-License-Identifier: GPL-2.0
 // Copyright (C) 2013 - 2018 Intel Corporation
 
 #include <linux/debugfs.h>
@@ -272,10 +272,15 @@ err:
 
 static void ipu_remove_debugfs(struct ipu_device *isp)
 {
+	/*
+	 * Since isys and psys debugfs dir will be created under ipu root dir,
+	 * mark its dentry to NULL to avoid duplicate removal.
+	 */
 	debugfs_remove_recursive(isp->ipu_dir);
+	isp->ipu_dir = NULL;
 }
 
-int ipu_pci_config_setup(struct pci_dev *dev)
+static int ipu_pci_config_setup(struct pci_dev *dev)
 {
 	u16 pci_command;
 	int rval = pci_enable_msi(dev);
@@ -293,7 +298,7 @@ int ipu_pci_config_setup(struct pci_dev *dev)
 	return 0;
 }
 
-void ipu_configure_vc_mechanism(struct ipu_device *isp)
+static void ipu_configure_vc_mechanism(struct ipu_device *isp)
 {
 	u32 val = readl(isp->base + BUTTRESS_REG_BTRS_CTRL);
 

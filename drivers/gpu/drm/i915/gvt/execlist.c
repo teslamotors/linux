@@ -766,7 +766,7 @@ static int submit_context(struct intel_vgpu *vgpu, int ring_id,
 		intel_runtime_pm_put(dev_priv);
 	}
 
-	queue_workload(workload);
+	intel_vgpu_queue_workload(workload);
 	return 0;
 }
 

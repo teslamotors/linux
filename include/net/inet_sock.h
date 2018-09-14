@@ -146,6 +146,7 @@ struct inet_cork {
 	__u8			ttl;
 	__s16			tos;
 	char			priority;
+	u64			transmit_time;
 };
 
 struct inet_cork_full {

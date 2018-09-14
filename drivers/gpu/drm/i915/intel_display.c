@@ -3539,6 +3539,61 @@ u32 skl_plane_ctl(const struct intel_crtc_state *crtc_state,
 	return plane_ctl;
 }
 
+static void pv_update_primary_plane_reg(struct intel_plane *plane,
+		u32 stride, uint32_t src_w, uint32_t src_h,
+		uint32_t dst_w, uint32_t dst_h, u32 aux_stride,
+		const struct intel_crtc_state *crtc_state,
+		const struct intel_plane_state *plane_state)
+{
+	int i;
+	struct pv_plane_update tmp_plane;
+	int src_x = plane_state->main.x;
+	int src_y = plane_state->main.y;
+	struct drm_i915_private *dev_priv = to_i915(plane->base.dev);
+	u32 __iomem *pv_plane = (u32 *)&(dev_priv->shared_page->pv_plane);
+
+	memset(&tmp_plane, 0, sizeof(struct pv_plane_update));
+	if (IS_GEMINILAKE(dev_priv) || IS_CANNONLAKE(dev_priv)) {
+		tmp_plane.flags |= PLANE_COLOR_CTL_BIT;
+		tmp_plane.plane_color_ctl = PLANE_COLOR_PIPE_GAMMA_ENABLE |
+		      PLANE_COLOR_PIPE_CSC_ENABLE |
+		      PLANE_COLOR_PLANE_GAMMA_DISABLE;
+	}
+
+	tmp_plane.plane_ctl = plane_state->ctl;
+	tmp_plane.plane_offset = (src_y << 16) | src_x;
+	tmp_plane.plane_stride = stride;
+	tmp_plane.plane_size = (src_h << 16) | src_w;
+	tmp_plane.plane_aux_dist =
+	      (plane_state->aux.offset - plane_state->main.offset) | aux_stride;
+	tmp_plane.plane_aux_offset =
+		(plane_state->aux.y << 16) | plane_state->aux.x;
+
+	/* program plane scaler */
+	if (plane_state->scaler_id >= 0) {
+		WARN_ON(!dst_w || !dst_h);
+
+		tmp_plane.flags |= PLANE_SCALER_BIT;
+		tmp_plane.ps_ctrl = PS_SCALER_EN | PS_PLANE_SEL(plane->id) |
+		  crtc_state->scaler_state.scalers[plane_state->scaler_id].mode;
+		tmp_plane.ps_pwr_gate = 0;
+		tmp_plane.ps_win_ps =
+		    (plane_state->base.dst.x1 << 16) | plane_state->base.dst.y1;
+		tmp_plane.ps_win_sz = (dst_w << 16) | dst_h;
+		tmp_plane.plane_pos = 0;
+	} else {
+		tmp_plane.plane_pos =
+		    (plane_state->base.dst.y1 << 16) | plane_state->base.dst.x1;
+	}
+
+	spin_lock(&dev_priv->shared_page_lock);
+	for (i = 0; i < sizeof(struct pv_plane_update) / 4; i++)
+		writel(*((u32 *)(&tmp_plane) + i), pv_plane + i);
+	I915_WRITE_FW(PLANE_SURF(plane->pipe, plane->id),
+	      intel_plane_ggtt_offset(plane_state) + plane_state->main.offset);
+	spin_unlock(&dev_priv->shared_page_lock);
+}
+
 static void skylake_update_primary_plane(struct intel_plane *plane,
 					 const struct intel_crtc_state *crtc_state,
 					 const struct intel_plane_state *plane_state)
@@ -3577,6 +3632,13 @@ static void skylake_update_primary_plane(struct intel_plane *plane,
 
 	crtc->adjusted_x = src_x;
 	crtc->adjusted_y = src_y;
+
+	if (intel_vgpu_active(dev_priv) &&
+	    i915_modparams.enable_pvmmio & PVMMIO_PLANE_UPDATE) {
+		pv_update_primary_plane_reg(plane, stride, src_w, src_h,
+			dst_w, dst_h, aux_stride, crtc_state, plane_state);
+		return;
+	}
 
 	spin_lock_irqsave(&dev_priv->uncore.lock, irqflags);
 

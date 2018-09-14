@@ -34,7 +34,6 @@
 #include "hyper_dmabuf_drv.h"
 #include "hyper_dmabuf_list.h"
 #include "hyper_dmabuf_id.h"
-#include "hyper_dmabuf_event.h"
 
 DECLARE_HASHTABLE(hyper_dmabuf_hash_imported, MAX_ENTRY_IMPORTED);
 DECLARE_HASHTABLE(hyper_dmabuf_hash_exported, MAX_ENTRY_EXPORTED);

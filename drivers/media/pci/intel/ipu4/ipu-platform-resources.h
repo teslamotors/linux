@@ -1,4 +1,4 @@
-/* SPDX-License_Identifier: GPL-2.0 */
+/* SPDX-License-Identifier: GPL-2.0 */
 /* Copyright (C) 2016 - 2018 Intel Corporation */
 
 #ifndef IPU_PLATFORM_RESOURCES_H
@@ -206,7 +206,6 @@ struct ipu_fw_psys_process {
 struct ipu_psys_resource_alloc;
 struct ipu_fw_psys_process_group;
 struct ipu_psys_resource_pool;
-void ipu_psys_resource_alloc_init(struct ipu_psys_resource_alloc *alloc);
 int ipu_psys_allocate_resources(const struct device *dev,
 				struct ipu_fw_psys_process_group *pg,
 				void *pg_manifest,
@@ -220,11 +219,6 @@ int ipu_psys_move_resources(const struct device *dev,
 void ipu_psys_free_resources(struct ipu_psys_resource_alloc *alloc,
 			     struct ipu_psys_resource_pool *pool);
 
-extern const u32 ipu_fw_psys_cell_types[];
-extern const u16 ipu_fw_num_dev_channels[];
-extern const u16 ipu_fw_psys_mem_size[];
-extern const enum ipu_mem_id ipu_fw_psys_cell_mem
-	[IPU_FW_PSYS_N_CELL_ID][IPU_FW_PSYS_N_DATA_MEM_TYPE_ID];
 extern const struct ipu_fw_resource_definitions *res_defs;
 
 #endif /* IPU_PLATFORM_RESOURCES_H */

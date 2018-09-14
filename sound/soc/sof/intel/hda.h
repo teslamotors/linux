@@ -405,6 +405,8 @@ bool hda_dsp_core_is_enabled(struct snd_sof_dev *sdev,
 			     unsigned int core_mask);
 int hda_dsp_core_reset_power_down(struct snd_sof_dev *sdev,
 				  unsigned int core_mask);
+int hda_dsp_suspend(struct snd_sof_dev *sdev, int state);
+int hda_dsp_resume(struct snd_sof_dev *sdev);
 void hda_dsp_dump(struct snd_sof_dev *sdev, u32 flags);
 
 /*
@@ -481,7 +483,8 @@ int hda_dsp_ipc_cmd_done(struct snd_sof_dev *sdev, int dir);
 /*
  * DSP Code loader.
  */
-int hda_dsp_cl_load_fw(struct snd_sof_dev *sdev, const struct firmware *fw);
+int hda_dsp_cl_load_fw(struct snd_sof_dev *sdev, const struct firmware *fw,
+		       bool first_boot);
 int hda_dsp_cl_boot_firmware(struct snd_sof_dev *sdev);
 
 /*
