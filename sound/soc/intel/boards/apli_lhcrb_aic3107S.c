@@ -25,7 +25,7 @@
 #include <sound/pcm_params.h>
 #include "../../codecs/tlv320aic3x.h"
 
-static int apli_lfcrb_aic3107S_startup(struct snd_pcm_substream *substream)
+static int apli_lhcrb_aic3107S_startup(struct snd_pcm_substream *substream)
 {
 	int ret;
 	static unsigned int rates[] = { 48000 };
@@ -61,8 +61,8 @@ static int apli_lfcrb_aic3107S_startup(struct snd_pcm_substream *substream)
 	return ret;
 }
 
-static struct snd_soc_ops apli_lfcrb_aic3107S_ops = {
-	.startup = apli_lfcrb_aic3107S_startup,
+static struct snd_soc_ops apli_lhcrb_aic3107S_ops = {
+	.startup = apli_lhcrb_aic3107S_startup,
 };
 
 static const struct snd_kcontrol_new apli_controls[] = {
@@ -79,10 +79,10 @@ static const struct snd_kcontrol_new apli_controls[] = {
 static const struct snd_soc_dapm_widget apli_widgets[] = {
 	SND_SOC_DAPM_SPK("SSP1 Speaker", NULL),
 	SND_SOC_DAPM_MIC("SSP1 Mic", NULL),
-	SND_SOC_DAPM_SPK("SSP2 Speaker", NULL),
-	SND_SOC_DAPM_MIC("SSP2 Mic", NULL),
-	SND_SOC_DAPM_SPK("SSP4 Speaker", NULL),
-	SND_SOC_DAPM_MIC("SSP4 Mic", NULL),
+	SND_SOC_DAPM_SPK("SSP2 PbTestPin", NULL),
+	SND_SOC_DAPM_MIC("SSP2 CpTestPin", NULL),
+	SND_SOC_DAPM_SPK("SSP4 PbTestPin", NULL),
+	SND_SOC_DAPM_MIC("SSP4 CpTestPin", NULL),
 	SND_SOC_DAPM_HP("Headphone Jack", NULL),
 	SND_SOC_DAPM_MIC("Mic Jack", NULL),
 	SND_SOC_DAPM_LINE("Line In", NULL),
@@ -117,25 +117,25 @@ static const struct snd_soc_dapm_route apli_lhcrb_aic3107_map[] = {
 
 	/* Codec BE connections */
 	/* SSP1 follows Hardware pin naming */
-	{"SSP1 Speaker", NULL, "ssp0 Tx"},
-	{"ssp0 Tx", NULL, "codec2_out"},
+	{"SSP1 Speaker", NULL, "ssp1 Tx"},
+	{"ssp1 Tx", NULL, "codec2_out"},
 
-	{"codec2_in", NULL, "ssp0 Rx"},
-	{"ssp0 Rx", NULL, "SSP1 Mic"},
+	{"codec2_in", NULL, "ssp1 Rx"},
+	{"ssp1 Rx", NULL, "SSP1 Mic"},
 
 	/* SSP2 follows Hardware pin naming */
-	{"SSP2 Speaker", NULL, "ssp1 Tx"},
-	{"ssp1 Tx", NULL, "codec0_out"},
+	{"SSP2 PbTestPin", NULL, "ssp2 Tx"},
+	{"ssp2 Tx", NULL, "codec0_out"},
 
-	{"codec0_in", NULL, "ssp1 Rx"},
-	{"ssp1 Rx", NULL, "SSP2 Mic"},
+	{"codec0_in", NULL, "ssp2 Rx"},
+	{"ssp2 Rx", NULL, "SSP2 CpTestPin"},
 
 	/* SSP4 follows Hardware pin naming */
-	{"SSP4 Speaker", NULL, "ssp3 Tx"},
-	{"ssp3 Tx", NULL, "codec1_out"},
+	{"SSP4 PbTestPin", NULL, "ssp4 Tx"},
+	{"ssp4 Tx", NULL, "codec1_out"},
 
-	{"codec1_in", NULL, "ssp3 Rx"},
-	{"ssp3 Rx", NULL, "SSP4 Mic"},
+	{"codec1_in", NULL, "ssp4 Rx"},
+	{"ssp4 Rx", NULL, "SSP4 CpTestPin"},
 };
 
 static int tlv320aic3107_init(struct snd_soc_pcm_runtime *rtd)
@@ -194,6 +194,7 @@ static int aic3107_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	return 0;
 }
 
+static const char pname[] = "0000:00:0e.0";
 /* apli digital audio interface glue - connects codec <--> CPU */
 static struct snd_soc_dai_link apli_lhcrb_aic3107_dais[] = {
 	/* Front End DAI links */
@@ -201,7 +202,7 @@ static struct snd_soc_dai_link apli_lhcrb_aic3107_dais[] = {
 		.name = "SSP1 Playback Port",
 		.stream_name = "AIC3107 Playback",
 		.cpu_dai_name = "System Pin 4",
-		.platform_name = "0000:00:0e.0",
+		.platform_name = pname,
 		.nonatomic = 1,
 		.dynamic = 1,
 		.codec_name = "snd-soc-dummy",
@@ -209,7 +210,7 @@ static struct snd_soc_dai_link apli_lhcrb_aic3107_dais[] = {
 		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 				SND_SOC_DPCM_TRIGGER_POST},
 		.dpcm_playback = 1,
-		.ops = &apli_lfcrb_aic3107S_ops,
+		.ops = &apli_lhcrb_aic3107S_ops,
 	},
 	{
 		.name = "SSP1 Capture Port",
@@ -217,19 +218,19 @@ static struct snd_soc_dai_link apli_lhcrb_aic3107_dais[] = {
 		.cpu_dai_name = "System Pin 5",
 		.codec_name = "snd-soc-dummy",
 		.codec_dai_name = "snd-soc-dummy-dai",
-		.platform_name = "0000:00:0e.0",
+		.platform_name = pname,
 		.init = NULL,
 		.dpcm_capture = 1,
 		.ignore_suspend = 1,
 		.nonatomic = 1,
 		.dynamic = 1,
-		.ops = &apli_lfcrb_aic3107S_ops,
+		.ops = &apli_lhcrb_aic3107S_ops,
 	},
 	{
 		.name = "SSP2 Playback Port",
 		.stream_name = "SSP2 Speaker",
 		.cpu_dai_name = "System Pin",
-		.platform_name = "0000:00:0e.0",
+		.platform_name = pname,
 		.nonatomic = 1,
 		.dynamic = 1,
 		.codec_name = "snd-soc-dummy",
@@ -237,7 +238,7 @@ static struct snd_soc_dai_link apli_lhcrb_aic3107_dais[] = {
 		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 				SND_SOC_DPCM_TRIGGER_POST},
 		.dpcm_playback = 1,
-		.ops = &apli_lfcrb_aic3107S_ops,
+		.ops = &apli_lhcrb_aic3107S_ops,
 	},
 	{
 		.name = "SSP2 Capture Port",
@@ -245,19 +246,19 @@ static struct snd_soc_dai_link apli_lhcrb_aic3107_dais[] = {
 		.cpu_dai_name = "System Pin",
 		.codec_name = "snd-soc-dummy",
 		.codec_dai_name = "snd-soc-dummy-dai",
-		.platform_name = "0000:00:0e.0",
+		.platform_name = pname,
 		.init = NULL,
 		.dpcm_capture = 1,
 		.ignore_suspend = 1,
 		.nonatomic = 1,
 		.dynamic = 1,
-		.ops = &apli_lfcrb_aic3107S_ops,
+		.ops = &apli_lhcrb_aic3107S_ops,
 	},
 	{
 		.name = "SSP4 Playback Port",
 		.stream_name = "SSP4 Speaker",
 		.cpu_dai_name = "Deepbuffer Pin",
-		.platform_name = "0000:00:0e.0",
+		.platform_name = pname,
 		.nonatomic = 1,
 		.dynamic = 1,
 		.codec_name = "snd-soc-dummy",
@@ -265,7 +266,7 @@ static struct snd_soc_dai_link apli_lhcrb_aic3107_dais[] = {
 		.trigger = {SND_SOC_DPCM_TRIGGER_POST
 			, SND_SOC_DPCM_TRIGGER_POST},
 		.dpcm_playback = 1,
-		.ops = &apli_lfcrb_aic3107S_ops,
+		.ops = &apli_lhcrb_aic3107S_ops,
 	},
 	{
 		.name = "SSP4 Capture Port",
@@ -273,20 +274,20 @@ static struct snd_soc_dai_link apli_lhcrb_aic3107_dais[] = {
 		.cpu_dai_name = "Reference Pin",
 		.codec_name = "snd-soc-dummy",
 		.codec_dai_name = "snd-soc-dummy-dai",
-		.platform_name = "0000:00:0e.0",
+		.platform_name = pname,
 		.init = NULL,
 		.dpcm_capture = 1,
 		.ignore_suspend = 1,
 		.nonatomic = 1,
 		.dynamic = 1,
-		.ops = &apli_lfcrb_aic3107S_ops,
+		.ops = &apli_lhcrb_aic3107S_ops,
 	},
 	/* Back End DAI links */
 	{
 		/* SSP0 - Codec */
-		.name = "SSP0-Codec",
-		.be_id = 0,
-		.cpu_dai_name = "SSP0 Pin",
+		.name = "SSP1-Codec",
+		.id = 0,
+		.cpu_dai_name = "SSP1 Pin",
 		.codec_name = "tlv320aic3x-codec.3-0018",
 		.codec_dai_name = "tlv320aic3x-hifi",
 		.ignore_suspend = 1,
@@ -295,7 +296,7 @@ static struct snd_soc_dai_link apli_lhcrb_aic3107_dais[] = {
 		.dai_fmt = SND_SOC_DAIFMT_I2S |
 					SND_SOC_DAIFMT_NB_NF |
 					SND_SOC_DAIFMT_CBM_CFM,
-		.platform_name = "0000:00:0e.0",
+		.platform_name = pname,
 		.ignore_suspend = 1,
 		.dpcm_playback = 1,
 		.dpcm_capture = 1,
@@ -304,12 +305,12 @@ static struct snd_soc_dai_link apli_lhcrb_aic3107_dais[] = {
 	},
 	{
 		/* SSP1 - Codec */
-		.name = "SSP1-Codec",
-		.be_id = 1,
-		.cpu_dai_name = "SSP1 Pin",
+		.name = "SSP2-Codec",
+		.id = 1,
+		.cpu_dai_name = "SSP2 Pin",
 		.codec_name = "snd-soc-dummy",
 		.codec_dai_name = "snd-soc-dummy-dai",
-		.platform_name = "0000:00:0e.0",
+		.platform_name = pname,
 		.ignore_suspend = 1,
 		.dpcm_playback = 1,
 		.dpcm_capture = 1,
@@ -318,15 +319,15 @@ static struct snd_soc_dai_link apli_lhcrb_aic3107_dais[] = {
 	},
 	{
 		/* SSP3 - Codec */
-		.name = "SSP3-Codec",
-		.be_id = 2,
-		.cpu_dai_name = "SSP3 Pin",
+		.name = "SSP4-Codec",
+		.id = 2,
+		.cpu_dai_name = "SSP4 Pin",
 		.codec_name = "snd-soc-dummy",
 		.codec_dai_name = "snd-soc-dummy-dai",
 		.dai_fmt = SND_SOC_DAIFMT_I2S |
 					SND_SOC_DAIFMT_NB_NF |
 					SND_SOC_DAIFMT_CBS_CFS,
-		.platform_name = "0000:00:0e.0",
+		.platform_name = pname,
 		.ignore_suspend = 1,
 		.dpcm_playback = 1,
 		.dpcm_capture = 1,
@@ -394,7 +395,7 @@ static struct platform_driver apli_audio = {
 	.probe = apli_audio_probe,
 	.remove = apli_audio_remove,
 	.driver = {
-		.name = "lfcrb_aic3107S_i2s",
+		.name = "lhcrb_aic3107S_i2s",
 	},
 };
 
@@ -403,4 +404,4 @@ module_platform_driver(apli_audio)
 /* Module information */
 MODULE_DESCRIPTION("Intel Audio aic3107 Machine driver for APL-I LH CRB");
 MODULE_LICENSE("GPL v2");
-MODULE_ALIAS("platform:lfcrb_aic3107S_i2s");
+MODULE_ALIAS("platform:lhcrb_aic3107S_i2s");
