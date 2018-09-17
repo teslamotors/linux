@@ -38,26 +38,19 @@ struct intel_xhci_usb_data {
 	void __iomem *base;
 };
 
-static const struct acpi_device_id typec_port_devices[] = {
-	{ "PNP0CA0", 0 }, /* UCSI */
-	{ "INT33FE", 0 }, /* CHT USB Type-C PHY */
-	{ },
+struct intel_xhci_acpi_match {
+	const char *hid;
+	int hrv;
 };
 
-static acpi_status intel_xhci_userspace_ctrl(acpi_handle handle, u32 level,
-					     void *ctx, void **ret)
-{
-	struct acpi_device *adev;
-
-	if (acpi_bus_get_device(handle, &adev))
-		return AE_OK;
-
-	/* Don't allow userspace-control with Type-C ports */
-	if (!acpi_match_device_ids(adev, typec_port_devices))
-		return AE_ACCESS;
-
-	return AE_OK;
-}
+/*
+ * ACPI IDs for PMICs which do not support separate data and power role
+ * detection (USB ACA detection for micro USB OTG), we allow userspace to
+ * change the role manually on these.
+ */
+static const struct intel_xhci_acpi_match allow_userspace_ctrl_ids[] = {
+	{ "INT33F4",  3 }, /* X-Powers AXP288 PMIC */
+};
 
 static int intel_xhci_usb_set_role(struct device *dev, enum usb_role role)
 {
@@ -144,7 +137,7 @@ static int intel_xhci_usb_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct intel_xhci_usb_data *data;
 	struct resource *res;
-	acpi_status status;
+	int i;
 
 	data = devm_kzalloc(dev, sizeof(*data), GFP_KERNEL);
 	if (!data)
@@ -155,11 +148,10 @@ static int intel_xhci_usb_probe(struct platform_device *pdev)
 	if (IS_ERR(data->base))
 		return PTR_ERR(data->base);
 
-	status = acpi_walk_namespace(ACPI_TYPE_DEVICE, ACPI_ROOT_OBJECT,
-				     ACPI_UINT32_MAX, intel_xhci_userspace_ctrl,
-				     NULL, NULL, NULL);
-	if (ACPI_SUCCESS(status))
-		sw_desc.allow_userspace_control = true;
+	for (i = 0; i < ARRAY_SIZE(allow_userspace_ctrl_ids); i++)
+		if (acpi_dev_present(allow_userspace_ctrl_ids[i].hid, "1",
+				     allow_userspace_ctrl_ids[i].hrv))
+			sw_desc.allow_userspace_control = true;
 
 	platform_set_drvdata(pdev, data);
 
