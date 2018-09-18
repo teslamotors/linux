@@ -505,13 +505,8 @@ static struct snd_soc_dai_link broxton_gpmrb_dais[] = {
 		.name = "SSP4-Codec",
 		.be_id = 0,
 		.cpu_dai_name = "SSP4 Pin",
-#ifdef CONFIG_SND_SOC_INTEL_BXT_GPMRB_MACH_TDF8532_CODEC
 		.codec_name = "i2c-INT34C3:00",
 		.codec_dai_name = "tdf8532-hifi",
-#else
-		.codec_name = "snd-soc-dummy",
-		.codec_dai_name = "snd-soc-dummy-dai",
-#endif
 		.platform_name = "0000:00:0e.0",
 		.ignore_suspend = 1,
 		.dpcm_playback = 1,
