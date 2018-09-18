@@ -51,11 +51,16 @@ struct snd_soc_acpi_mach snd_soc_acpi_intel_bxt_machines[] = {
 	},
 	{
 		.id = "INT34C3",
+#if IS_ENABLED(CONFIG_SND_SOC_INTEL_BXT_GPMRB_MACH)
+		.drv_name = "gpmrb_machine",
+		.fw_filename = "ADSPFW.bin",
+#else
 		.drv_name = "bxt_tdf8532",
 		.fw_filename = "intel/dsp_fw_bxtn.bin",
 		.sof_fw_filename = "intel/sof-apl.ri",
 		.sof_tplg_filename = "intel/sof-apl-tdf8532.tplg",
 		.asoc_plat_name = "0000:00:0e.0",
+#endif
 	},
 	{
 		.id = "INT344A",
