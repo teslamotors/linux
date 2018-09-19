@@ -642,7 +642,7 @@ create_vm_fail:
 
 		ret = hcall_vm_intr_monitor(vm->vmid, page_to_phys(page));
 		if (ret < 0) {
-			pr_err("vhm-dev: monitor intr data err=%d\n", ret);
+			pr_err("vhm-dev: monitor intr data err=%ld\n", ret);
 			return -EFAULT;
 		}
 		break;
