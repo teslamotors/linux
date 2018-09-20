@@ -131,23 +131,6 @@ static int set_pipeline_node_format(void* cb_data,
 	return 0;
 }
 
-static int set_pipeline_format(struct ici_isys_stream *as,
-	struct ici_framefmt* ff)
-{
-	struct pipeline_format_data fmt_data = {
-		.as = as,
-		.pff.pad.pad_idx = 0,
-		.pff.ffmt = *ff
-	};
-
-	return ici_isys_pipeline_for_each_node(
-		set_pipeline_node_format,
-		&fmt_data,
-		&as->node,
-		&as->ip,
-		true);
-}
-
 struct pipeline_power_data {
 	struct ici_isys_stream *as;
 	int power;
@@ -1311,12 +1294,6 @@ static int ici_isys_set_format(struct file *file, void *fh,
 		return rval;
 	}
 
-	rval = set_pipeline_format(as, &sf->ffmt);
-	if (rval) {
-		dev_err(&isys->adev->dev,
-			"failed to set format on pipeline %d\n", rval);
-		return rval;
-	}
 	return 0;
 }
 

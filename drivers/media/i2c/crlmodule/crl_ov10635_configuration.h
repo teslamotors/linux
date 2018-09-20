@@ -6117,8 +6117,8 @@ static struct crl_register_write_rep ov10635_poweroff_regs[] = {
 static struct crl_power_seq_entity ov10635_power_items[] = {
 	{
 		.type = CRL_POWER_ETY_GPIO_FROM_PDATA,
-		.val = 0,
-		.undo_val = 1,
+		.val = 1,
+		.undo_val = 0,
 	},
 };
 

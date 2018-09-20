@@ -649,7 +649,7 @@ static struct crlmodule_platform_data ov10635_pdata = {
 	 * The number here stands for which GPIO to connect with.
 	 * 1 means to connect sensor xshutdown to GPIO1
 	 */
-	.xshutdown = 1,
+	.xshutdown = 0,
 };
 #endif
 
