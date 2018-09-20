@@ -208,6 +208,23 @@ int map_guest_memseg(struct vhm_vm *vm, struct vm_memmap *memmap)
 	return 0;
 }
 
+int unmap_guest_memseg(struct vhm_vm *vm, struct vm_memmap *memmap)
+{
+	/* only handle mmio */
+	if (memmap->type != VM_MEMMAP_MMIO) {
+		pr_err("vhm: %s invalid memmap type: %d for unmap\n",
+			__func__, memmap->type);
+		return -EINVAL;
+	}
+
+	if (del_memory_region(vm->vmid, memmap->gpa, memmap->len) < 0) {
+		pr_err("vhm: failed to del memory region %ld!\n", vm->vmid);
+		return -EFAULT;
+	}
+
+	return 0;
+}
+
 void free_guest_mem(struct vhm_vm *vm)
 {
 	return hugepage_free_guest(vm);

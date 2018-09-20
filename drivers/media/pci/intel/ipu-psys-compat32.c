@@ -42,6 +42,7 @@ struct ipu_psys_command32 {
 	u32 pg_manifest_size;
 	u32 bufcount;
 	u32 min_psys_freq;
+	u32 frame_counter;
 	u32 reserved[2];
 } __packed;
 
@@ -69,6 +70,7 @@ get_ipu_psys_command32(struct ipu_psys_command *kp,
 	    get_user(kp->pg_manifest_size, &up->pg_manifest_size) ||
 	    get_user(kp->bufcount, &up->bufcount) ||
 	    get_user(kp->min_psys_freq, &up->min_psys_freq)
+		|| get_user(kp->frame_counter, &up->frame_counter)
 	    )
 		return -EFAULT;
 

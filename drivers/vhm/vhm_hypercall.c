@@ -92,6 +92,11 @@ inline long hcall_setup_sbuf(unsigned long sbuf_head)
 	return acrn_hypercall1(HC_SETUP_SBUF, sbuf_head);
 }
 
+inline long hcall_setup_hv_npk_log(unsigned long hv_npk_log)
+{
+	return acrn_hypercall1(HC_SETUP_HV_NPK_LOG, hv_npk_log);
+}
+
 inline long hcall_set_sstate_data(unsigned long sx_data_addr)
 {
 	return acrn_hypercall1(HC_PM_SET_SSTATE_DATA, sx_data_addr);

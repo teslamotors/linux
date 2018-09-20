@@ -166,7 +166,10 @@ static void bu64295_subdev_cleanup(struct bu64295_device *bu64295_dev)
 {
 	v4l2_ctrl_handler_free(&bu64295_dev->ctrls_vcm);
 	v4l2_device_unregister_subdev(&bu64295_dev->subdev_vcm);
+
+#if defined(CONFIG_MEDIA_CONTROLLER)
 	media_entity_cleanup(&bu64295_dev->subdev_vcm.entity);
+#endif
 }
 
 static const struct v4l2_subdev_ops bu64295_ops = { };
@@ -202,19 +205,23 @@ static int bu64295_probe(struct i2c_client *client,
 	rval = bu64295_init_controls(bu64295_dev);
 	if (rval)
 		goto err_cleanup;
+#if defined(CONFIG_MEDIA_CONTROLLER)
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
 	rval = media_entity_init(&bu64295_dev->subdev_vcm.entity, 0, NULL, 0);
 #else
 	rval = media_entity_pads_init(&bu64295_dev->subdev_vcm.entity, 0,
 				      NULL);
 #endif
+#endif
 	if (rval)
 		goto err_cleanup;
 
+#if defined(CONFIG_MEDIA_CONTROLLER)
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
 	bu64295_dev->subdev_vcm.entity.type = MEDIA_ENT_T_V4L2_SUBDEV_LENS;
 #else
 	bu64295_dev->subdev_vcm.entity.function = MEDIA_ENT_F_LENS;
+#endif
 #endif
 	bu64295_dev->vcm_mode = BU64295_DIRECT;
 

@@ -268,7 +268,7 @@ static int handle_kick(int client_id, unsigned long *ioreqs_map)
 		return -EINVAL;
 	}
 
-	val = virtio_vq_index_get(&rng->dev, ioreqs_map);
+	virtio_vqs_index_get(&rng->dev, ioreqs_map, &val, 1);
 
 	if (val >= 0)
 		handle_vq_kick(rng, val);
