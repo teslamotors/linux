@@ -72,6 +72,21 @@ enum scsi_device_event {
 	SDEV_EVT_MAXBITS	= SDEV_EVT_LAST + 1
 };
 
+/**
+ * SCSI media change event reasons
+ * @SDEV_MEDIA_ATTACH: a valid medium has been inserted
+ * @SDEV_MEDIA_BAD: an unreadable medium has been inserted into the drive
+ * @SDEV_MEDIA_DETACH: a medium has been removed
+ * @SDEV_MEDIA_UNDEF: no valid reason has been detected
+ */
+enum scsi_media_change_reason {
+	SDEV_MEDIA_ATTACH = 1,
+	SDEV_MEDIA_BAD,
+	SDEV_MEDIA_DETACH,
+	SDEV_MEDIA_UNDEF,
+	SDEV_MEDIA_REASON_MAX = SDEV_MEDIA_UNDEF
+};
+
 struct scsi_event {
 	enum scsi_device_event	evt_type;
 	struct list_head	node;
@@ -191,6 +206,7 @@ struct scsi_device {
 	unsigned is_visible:1;	/* is the device visible in sysfs */
 	unsigned wce_default_on:1;	/* Cache is ON by default */
 	unsigned no_dif:1;	/* T10 PI (DIF) should be disabled */
+	unsigned add_change_reason:1; /* Add media change reason? */
 	unsigned broken_fua:1;		/* Don't set FUA bit */
 	unsigned lun_in_cdb:1;		/* Store LUN bits in CDB[1] */
 	unsigned unmap_limit_for_ws:1;	/* Use the UNMAP limit for WRITE SAME */
@@ -221,6 +237,8 @@ struct scsi_device {
 	unsigned char		access_state;
 	struct mutex		state_mutex;
 	enum scsi_device_state sdev_state;
+
+	enum scsi_media_change_reason	last_change_reason;
 	unsigned long		sdev_data[0];
 } __attribute__((aligned(sizeof(unsigned long))));
 
