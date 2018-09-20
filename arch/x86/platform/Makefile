@@ -15,3 +15,4 @@ obj-y	+= scx200/
 obj-y	+= sfi/
 obj-y	+= ts5500/
 obj-y	+= uv/
+obj-y	+= apli_lhcrb/

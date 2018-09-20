@@ -77,6 +77,13 @@ enum skl_bitdepth {
 	SKL_DEPTH_INVALID
 };
 
+enum skl_format {
+	SKL_FMT_S16LE = 2,
+	SKL_FMT_S24LE = 6,
+	SKL_FMT_S32LE = 10,
+	SKL_FMT_FLOATLE = 14,
+	SKL_FMT_S24_3LE = 32
+};
 
 enum skl_s_freq {
 	SKL_FS_8000 = 8000,
@@ -556,8 +563,9 @@ int skl_tplg_init(struct snd_soc_platform *platform,
 struct skl_module_cfg *skl_tplg_fe_get_cpr_module(
 		struct snd_soc_dai *dai, int stream);
 int skl_tplg_update_pipe_params(struct device *dev,
-		struct skl_module_cfg *mconfig, struct skl_pipe_params *params);
-
+			struct skl_module_cfg *mconfig,
+			struct skl_pipe_params *params,
+			snd_pcm_format_t fmt);
 void skl_tplg_d0i3_get(struct skl *skl, enum d0i3_capability caps);
 void skl_tplg_d0i3_put(struct skl *skl, enum d0i3_capability caps);
 
@@ -611,10 +619,6 @@ struct skl_module_cfg *skl_tplg_be_get_cpr_module(struct snd_soc_dai *dai,
 int is_skl_dsp_widget_type(struct snd_soc_dapm_widget *w, struct device *dev);
 
 enum skl_bitdepth skl_get_bit_depth(int params);
-int skl_pcm_host_dma_prepare(struct device *dev,
-			struct skl_pipe_params *params);
-int skl_pcm_link_dma_prepare(struct device *dev,
-			struct skl_pipe_params *params);
 int skl_tplg_dsp_log_get(struct snd_kcontrol *kcontrol,
 			 struct snd_ctl_elem_value *ucontrol);
 int skl_tplg_dsp_log_set(struct snd_kcontrol *kcontrol,
