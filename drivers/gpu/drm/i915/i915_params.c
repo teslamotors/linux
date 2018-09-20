@@ -74,7 +74,8 @@ struct i915_params i915_modparams __read_mostly = {
 	.enable_dpcd_backlight = false,
 	.enable_gvt = false,
 	.enable_pvmmio = PVMMIO_ELSP_SUBMIT | PVMMIO_PLANE_UPDATE |
-			 PVMMIO_PLANE_WM_UPDATE | PVMMIO_PPGTT_UPDATE,
+			 PVMMIO_PLANE_WM_UPDATE | PVMMIO_PPGTT_UPDATE |
+			 PVMMIO_GGTT_UPDATE,
 	.enable_gvt_oos = 1,
 	.enable_conformance_check = true,
 	.disable_gvt_fw_loading = true,

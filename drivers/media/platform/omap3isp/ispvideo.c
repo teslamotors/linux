@@ -238,7 +238,7 @@ static int isp_video_get_graph_data(struct isp_video *video,
 		return ret;
 	}
 
-	media_graph_walk_start(&graph, entity);
+	media_graph_walk_start(&graph, &entity->pads[0]);
 
 	while ((entity = media_graph_walk_next(&graph))) {
 		struct isp_video *__video;

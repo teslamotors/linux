@@ -19,3 +19,11 @@ config ACRN_HVLOG
 	---help---
 		This is the Trace driver for the Intel ACRN hypervisor log.
 		You can say y to build it into the kernel.
+
+config ACRN_HV_NPK_LOG
+	bool "Intel ACRN Hypervisor NPK Log"
+	depends on INTEL_TH
+	depends on ACRN_VHM
+	---help---
+	  The driver is to configure/enable/disable the Intel ACRN hypervisor
+	  NPK log.

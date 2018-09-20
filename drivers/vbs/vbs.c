@@ -148,9 +148,12 @@ long virtio_dev_deregister(struct virtio_dev_info *dev)
 	return 0;
 }
 
-int virtio_vq_index_get(struct virtio_dev_info *dev, unsigned long *ioreqs_map)
+int virtio_vqs_index_get(struct virtio_dev_info *dev,
+						unsigned long *ioreqs_map,
+						int *vqs_index,
+						int max_vqs_index)
 {
-	int val = -1;
+	int idx = 0;
 	struct vhm_request *req;
 	int vcpu;
 
@@ -178,10 +181,24 @@ int virtio_vq_index_get(struct virtio_dev_info *dev, unsigned long *ioreqs_map)
 			} else {
 				pr_debug("%s: write request! type %d\n",
 						__func__, req->type);
+
+				if (idx == max_vqs_index) {
+					pr_warn("%s: The allocated vqs\n"
+						"size (%d) is smaller than the\n"
+						"number of vcpu (%d)! This\n"
+						"might caused the process of\n"
+						"some requests be delayed.",
+						__func__, max_vqs_index,
+						dev->_ctx.max_vcpu);
+					break;
+				}
+
 				if (dev->io_range_type == PIO_RANGE)
-					val = req->reqs.pio_request.value;
+					vqs_index[idx++] =
+						req->reqs.pio_request.value;
 				else
-					val = req->reqs.mmio_request.value;
+					vqs_index[idx++] =
+						req->reqs.mmio_request.value;
 			}
 			smp_mb();
 			atomic_set(&req->processed, REQ_STATE_COMPLETE);
@@ -189,7 +206,7 @@ int virtio_vq_index_get(struct virtio_dev_info *dev, unsigned long *ioreqs_map)
 		}
 	}
 
-	return val;
+	return idx;
 }
 
 static long virtio_vqs_info_set(struct virtio_dev_info *dev,

@@ -282,6 +282,7 @@ void intel_gvt_destroy_vgpu(struct intel_vgpu *vgpu)
 	intel_vgpu_clean_gtt(vgpu);
 	intel_gvt_hypervisor_detach_vgpu(vgpu);
 	intel_vgpu_free_resource(vgpu);
+	intel_vgpu_reset_cfg_space(vgpu);
 	intel_vgpu_clean_mmio(vgpu);
 	vfree(vgpu);
 

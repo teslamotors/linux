@@ -69,6 +69,7 @@ config VIDEO_INTEL_UOS
 	If selected UOS driver components will be compiled
 
 config VIDEO_INTEL_IPU_ACRN
+	depends on X86_64
 	bool "Compile for virtio mediation"
 
 choice

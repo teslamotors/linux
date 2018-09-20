@@ -1325,17 +1325,10 @@ struct netvsc_device *rndis_filter_device_add(struct hv_device *dev,
 		schedule_work(&net_device->subchan_work);
 
 out:
-	/* if unavailable, just proceed with one queue */
-	if (ret) {
-		net_device->max_chn = 1;
-		net_device->num_chn = 1;
-	}
-
-	/* No sub channels, device is ready */
-	if (net_device->num_chn == 1)
-		netif_device_attach(net);
-
-	return net_device;
+	/* setting up multiple channels failed */
+	net_device->max_chn = 1;
+	net_device->num_chn = 1;
+	return 0;
 
 err_dev_remv:
 	rndis_filter_device_remove(dev, net_device);
