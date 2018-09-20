@@ -102,8 +102,11 @@ static u32 get_core_family(struct drm_i915_private *dev_priv)
 static void guc_params_init(struct drm_i915_private *dev_priv)
 {
 	struct intel_guc *guc = &dev_priv->guc;
+	struct intel_uc_fw *guc_fw = &dev_priv->guc.fw;
 	u32 params[GUC_CTL_MAX_DWORDS];
+	struct i915_gem_context *ctx;
 	int i;
+	bool enable_critical_logging = false;
 
 	memset(&params, 0, sizeof(params));
 
@@ -126,11 +129,28 @@ static void guc_params_init(struct drm_i915_private *dev_priv)
 
 	params[GUC_CTL_LOG_PARAMS] = guc->log.flags;
 
+	/*
+	 * Enable critical logging in GuC based on i915.guc_log_level and
+	 * i915.enable_guc_critical_logging.
+	 */
 	if (i915_modparams.guc_log_level >= 0) {
 		params[GUC_CTL_DEBUG] =
 			i915_modparams.guc_log_level << GUC_LOG_VERBOSITY_SHIFT;
-	} else
+		enable_critical_logging = true;
+	} else {
 		params[GUC_CTL_DEBUG] = GUC_LOG_DISABLED;
+		if (i915_modparams.enable_guc_critical_logging)
+			enable_critical_logging = true;
+	}
+
+	if (NEEDS_GUC_CRITICAL_LOGGING(dev_priv, guc_fw)) {
+		if (enable_critical_logging)
+			params[GUC_CTL_DEBUG] &=
+				~GUC_V9_CRITICAL_LOGGING_DISABLED;
+		else
+			params[GUC_CTL_DEBUG] |=
+				GUC_V9_CRITICAL_LOGGING_DISABLED;
+	}
 
 	/* If GuC submission is enabled, set up additional parameters here */
 	if (i915_modparams.enable_guc_submission) {
@@ -150,6 +170,16 @@ static void guc_params_init(struct drm_i915_private *dev_priv)
 		/* Unmask this bit to enable the GuC's internal scheduler */
 		params[GUC_CTL_FEATURE] &= ~GUC_CTL_DISABLE_SCHEDULER;
 	}
+
+	/*
+	 * For watchdog / media reset, GuC must know the address of the shared
+	 * data page, which is the first page of the default context.
+	 * We will also use this page in several places (suspend/resume),
+	 * so save the ggtt offset.
+	 */
+	ctx = dev_priv->kernel_context;
+	guc->shared_data_offset = guc_ggtt_offset(ctx->engine[RCS].state);
+	params[GUC_CTL_SHARED_DATA] = guc->shared_data_offset;
 
 	I915_WRITE(SOFT_SCRATCH(0), 0);
 

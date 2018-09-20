@@ -56,6 +56,10 @@ intel_create_plane_state(struct drm_plane *plane)
 
 	state->base.plane = plane;
 	state->base.rotation = DRM_MODE_ROTATE_0;
+	state->base.blend_mode.func = DRM_BLEND_FUNC(AUTO, AUTO);
+	state->base.blend_mode.color = drm_rgba(16,
+						0xffff, 0xffff,
+						0xffff, 0xffff);
 	state->ckey.flags = I915_SET_COLORKEY_NONE;
 
 	return state;
@@ -116,6 +120,7 @@ int intel_plane_atomic_check_with_state(struct intel_crtc_state *crtc_state,
 	struct intel_plane *intel_plane = to_intel_plane(plane);
 	const struct drm_display_mode *adjusted_mode =
 		&crtc_state->base.adjusted_mode;
+	enum drm_blend_factor src_factor, dst_factor;
 	int ret;
 
 	/*
@@ -189,10 +194,29 @@ int intel_plane_atomic_check_with_state(struct intel_crtc_state *crtc_state,
 	}
 
 	/* FIXME pre-g4x don't work like this */
-	if (intel_state->base.visible)
+	if (state->visible)
 		crtc_state->active_planes |= BIT(intel_plane->id);
 	else
 		crtc_state->active_planes &= ~BIT(intel_plane->id);
+
+	if (state->blend_mode.func & ~GENMASK_ULL(31, 0)) {
+		DRM_DEBUG_KMS("Invalid bits in blend mode function (0x%llx)!\n",
+			      state->blend_mode.func);
+		return -EINVAL;
+	}
+
+	src_factor = DRM_BLEND_FUNC_SRC_FACTOR(state->blend_mode.func);
+	dst_factor = DRM_BLEND_FUNC_DST_FACTOR(state->blend_mode.func);
+	if ((src_factor == DRM_BLEND_FACTOR_AUTO) ^
+	    (dst_factor == DRM_BLEND_FACTOR_AUTO)) {
+		DRM_DEBUG_KMS("Invalid mix of auto and non-auto blend factors!");
+		return -EINVAL;
+	}
+
+	if (state->visible && state->fb->format->format == DRM_FORMAT_NV12)
+		crtc_state->nv12_planes |= BIT(intel_plane->id);
+	else
+		crtc_state->nv12_planes &= ~BIT(intel_plane->id);
 
 	return intel_plane_atomic_calc_changes(&crtc_state->base, state);
 }
