@@ -217,7 +217,7 @@ static void cmd_process_work(struct work_struct *work)
 		dev_dbg(hy_drv_priv->dev, "\tnents %d\n", req->op[4]);
 		dev_dbg(hy_drv_priv->dev, "\tfirst offset %d\n", req->op[5]);
 		dev_dbg(hy_drv_priv->dev, "\tlast len %d\n", req->op[6]);
-		dev_dbg(hy_drv_priv->dev, "\tgrefid 0x%lx\n",
+		dev_dbg(hy_drv_priv->dev, "\tgrefid 0x%llx\n",
 			(u64)req->op[8] << 32 | req->op[7]);
 
 		memcpy(imported->priv, &req->op[10], req->op[9]);

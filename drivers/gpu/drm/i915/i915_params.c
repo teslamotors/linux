@@ -86,7 +86,7 @@ struct i915_params i915_modparams __read_mostly = {
 	.domain_plane_owners = 0,
 	.bg_color = 0x00000000,
 	.gvt_emulate_hdmi = true,
-	.domain_scaler_owner = 0x21100,
+	.domain_scaler_owner = 0x11100,
 };
 
 i915_param_named(modeset, int, 0400,
