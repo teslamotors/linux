@@ -80,6 +80,7 @@
 #define IC_DEASSERT_IRQLINE            _IC_ID(IC_ID, IC_ID_IRQ_BASE + 0x01)
 #define IC_PULSE_IRQLINE               _IC_ID(IC_ID, IC_ID_IRQ_BASE + 0x02)
 #define IC_INJECT_MSI                  _IC_ID(IC_ID, IC_ID_IRQ_BASE + 0x03)
+#define IC_VM_INTR_MONITOR             _IC_ID(IC_ID, IC_ID_IRQ_BASE + 0x04)
 
 /* DM ioreq management */
 #define IC_ID_IOREQ_BASE                0x30UL
