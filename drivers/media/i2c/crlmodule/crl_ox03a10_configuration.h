@@ -242,8 +242,6 @@ static struct crl_register_write_rep ox03a10_1920_1088_12DCG[] = {
 	{ 0x3809, CRL_REG_LEN_08BIT, 0x80 },
 	{ 0x380a, CRL_REG_LEN_08BIT, 0x04 },
 	{ 0x380b, CRL_REG_LEN_08BIT, 0x40 },
-	{ 0x380c, CRL_REG_LEN_08BIT, 0x02 },
-	{ 0x380d, CRL_REG_LEN_08BIT, 0x14 },
 	{ 0x380e, CRL_REG_LEN_08BIT, 0x05 },
 	{ 0x380f, CRL_REG_LEN_08BIT, 0x40 },
 	{ 0x3810, CRL_REG_LEN_08BIT, 0x00 },
@@ -698,8 +696,6 @@ static struct crl_register_write_rep ox03a10_1920_1088_12DCG_12VS[] = {
 	{ 0x3809, CRL_REG_LEN_08BIT, 0x80 },
 	{ 0x380a, CRL_REG_LEN_08BIT, 0x04 },
 	{ 0x380b, CRL_REG_LEN_08BIT, 0x40 },
-	{ 0x380c, CRL_REG_LEN_08BIT, 0x02 },
-	{ 0x380d, CRL_REG_LEN_08BIT, 0x14 },
 	{ 0x380e, CRL_REG_LEN_08BIT, 0x05 },
 	{ 0x380f, CRL_REG_LEN_08BIT, 0x40 },
 	{ 0x3810, CRL_REG_LEN_08BIT, 0x00 },
@@ -1280,7 +1276,7 @@ struct crl_v4l2_ctrl ox03a10_v4l2_ctrls[] = {
 		.flags = V4L2_CTRL_FLAG_UPDATE,
 		.impact = CRL_IMPACTS_NO_IMPACT,
 		.regs_items = ARRAY_SIZE(ox03a10_lcg_digital_gain),
-		.regs = ox03a10_hcg_digital_gain,
+		.regs = ox03a10_lcg_digital_gain,
 		.v4l2_type = V4L2_CTRL_TYPE_INTEGER,
 	},
 	{
@@ -1297,7 +1293,7 @@ struct crl_v4l2_ctrl ox03a10_v4l2_ctrls[] = {
 		.flags = V4L2_CTRL_FLAG_UPDATE,
 		.impact = CRL_IMPACTS_NO_IMPACT,
 		.regs_items = ARRAY_SIZE(ox03a10_lcg_real_gain),
-		.regs = ox03a10_hcg_real_gain,
+		.regs = ox03a10_lcg_real_gain,
 		.v4l2_type = V4L2_CTRL_TYPE_INTEGER,
 	},
 	{
@@ -1464,7 +1460,7 @@ struct crl_v4l2_ctrl ox03a10_v4l2_ctrls[] = {
 		.data.std_data.min = 1920,
 		.data.std_data.max = 65535,
 		.data.std_data.step = 1,
-		.data.std_data.def = 1978,
+		.data.std_data.def = 2168,
 		.flags = V4L2_CTRL_FLAG_UPDATE,
 		.impact = CRL_IMPACTS_NO_IMPACT,
 		.ctrl = 0,
@@ -1565,10 +1561,10 @@ struct crl_csi_data_fmt ox03a10_crl_csi_data_fmt[] = {
 struct crl_pll_configuration ox03a10_pll_configurations[] = {
 	{
 		.input_clk = 27000000,
-		.op_sys_clk = 87750000,
+		.op_sys_clk = 108000000,
 		.bitsperpixel = 12,
-		.pixel_rate_csi = 176000000,
-		.pixel_rate_pa = 176000000, /* pixel_rate = op_sys_clk*2 *csi_lanes/bitsperpixel */
+		.pixel_rate_csi = 108000000,
+		.pixel_rate_pa = 108000000, /* pixel_rate = op_sys_clk*2 *csi_lanes/bitsperpixel */
 		.csi_lanes = 4,
 		.comp_items = 0,
 		.ctrl_data = 0,
