@@ -59,6 +59,10 @@ static acpi_status intel_xhci_userspace_ctrl(acpi_handle handle, u32 level,
 	return AE_OK;
 }
 
+static int default_role;
+module_param(default_role, int, 0444);
+MODULE_PARM_DESC(default_role, "USB OTG port default role 0:default 1:host 2:device");
+
 static int intel_xhci_usb_set_role(struct device *dev, enum usb_role role)
 {
 	struct intel_xhci_usb_data *data = dev_get_drvdata(dev);
@@ -170,6 +174,16 @@ static int intel_xhci_usb_probe(struct platform_device *pdev)
 	intel_xhci_usb_set_role(dev, USB_ROLE_HOST);
 	msleep(10);
 	intel_xhci_usb_set_role(dev, USB_ROLE_DEVICE);
+
+	/* Override USB OTG port default role. */
+	switch (default_role) {
+	case USB_ROLE_HOST:
+		intel_xhci_usb_set_role(dev, USB_ROLE_HOST);
+		break;
+	case USB_ROLE_DEVICE:
+		intel_xhci_usb_set_role(dev, USB_ROLE_DEVICE);
+		break;
+	}
 
 	return 0;
 }
