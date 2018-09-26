@@ -120,7 +120,7 @@ static struct snd_soc_dai_link dais[] = {
 	/* back ends */
 	{
 		.name = "Playback BE",
-		.be_id = 2,
+		.id = 2,
 		.cpu_dai_name = "SSP2 Pin",
 		.platform_name = "0000:00:0e.0",
 		.codec_name = "snd-soc-dummy",
@@ -133,7 +133,7 @@ static struct snd_soc_dai_link dais[] = {
 	},
 	{
 		.name = "Capture heartbeat BE",
-		.be_id = 3,
+		.id = 3,
 		.cpu_dai_name = "SSP0 Pin",
 		.platform_name = "0000:00:0e.0",
 		.codec_name = "snd-soc-dummy",
