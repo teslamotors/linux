@@ -83,7 +83,7 @@ static int __tdf8532_single_write(struct tdf8532_priv *dev_data,
 }
 
 
-static uint8_t tdf8532_read_wait_ack(struct tdf8532_priv *dev_data,
+static int tdf8532_read_wait_ack(struct tdf8532_priv *dev_data,
 						unsigned long timeout)
 {
 	uint8_t ack_repl[HEADER_SIZE] = {0, 0, 0};
