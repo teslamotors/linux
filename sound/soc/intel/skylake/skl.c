@@ -40,19 +40,7 @@
 #include "skl-sst-ipc.h"
 #include "skl-topology.h"
 
-static struct skl_machine_pdata skl_dmic_data;
-
-static char *machine = NULL;
-static char *fw_filename = NULL;
-
-module_param(machine, charp, 0444);
-MODULE_PARM_DESC(machine, "machine driver string for Intel soundcard.");
-
-module_param(fw_filename, charp, 0444);
-MODULE_PARM_DESC(fw_filename, "firmware filename string for Intel DSP.");
-
 /*
-
  * initialize the PCI registers
  */
 static void skl_update_pci_byte(struct pci_dev *pci, unsigned int reg,
@@ -528,24 +516,14 @@ static int skl_find_machine(struct skl *skl, void *driver_data)
 	    IS_ENABLED(CONFIG_SND_SOC_INTEL_CNL_FPGA))
 		goto out;
 
-	if (machine) {
-		mach = kzalloc(sizeof(*mach), GFP_KERNEL);
-		if (!mach)
-			return -ENOMEM;
-		mach->drv_name = machine;
-		if (fw_filename)
-			mach->fw_filename = fw_filename;
-	} else {
-		mach = driver_data;
-		mach = snd_soc_acpi_find_machine(mach);
-		if (mach == NULL) {
-			dev_err(bus->dev, "No matching machine driver found\n");
-			return -ENODEV;
-		}
-
+	mach = snd_soc_acpi_find_machine(mach);
+	if (mach == NULL) {
+		dev_err(bus->dev, "No matching machine driver found\n");
+		return -ENODEV;
 	}
 
 out:
+
 	skl->fw_name = mach->fw_filename;
 	skl->mach = mach;
 	if (mach->pdata) {
@@ -562,6 +540,7 @@ static int skl_machine_device_register(struct skl *skl)
 	struct snd_soc_acpi_mach *mach = skl->mach;
 	struct platform_device *pdev;
 	int ret;
+
 	pdev = platform_device_alloc(mach->drv_name, -1);
 	if (pdev == NULL) {
 		dev_err(bus->dev, "platform device alloc failed\n");
@@ -579,9 +558,6 @@ static int skl_machine_device_register(struct skl *skl)
 		dev_set_drvdata(&pdev->dev, mach->pdata);
 
 	skl->i2s_dev = pdev;
-
-	if (machine)
-		kfree(mach);
 
 	return 0;
 }
