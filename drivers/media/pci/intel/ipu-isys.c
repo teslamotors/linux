@@ -418,7 +418,7 @@ static int isys_register_ext_subdev(struct ipu_isys *isys,
        if (bus < 0) {
                dev_err(&isys->adev->dev, "Failed to find adapter!");
                return -ENOENT;
-       
+       }
 #else
         bus = sd_info->i2c.i2c_adapter_id;
 #endif
@@ -701,10 +701,11 @@ static int isys_register_subdevices(struct ipu_isys *isys)
 			for (k = CSI2_BE_SOC_PAD_SINK(0);
 			     k < NR_OF_CSI2_BE_SOC_SINK_PADS; k++) {
 				rval =
-				    media_create_pad_link(&isys->csi2[i].asd.sd.
-							  entity, CSI2_PAD_SOURCE,
-							  &isys->csi2_be_soc.
-							  asd.sd.entity, CSI2_BE_SOC_PAD_SINK, 0);
+                                    media_create_pad_link(&isys->csi2[i].asd.sd.
+                                                          entity, j,
+                                                          &isys->csi2_be_soc.
+                                                          asd.sd.entity, k,
+                                                          MEDIA_LNK_FL_DYNAMIC);
 				if (rval) {
 					dev_info(&isys->adev->dev,
 						 "can't create link csi2->be_soc\n");

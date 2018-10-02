@@ -291,7 +291,6 @@ int ipu_isys_csi2_be_soc_init(struct ipu_isys_csi2_be_soc *csi2_be_soc,
 			   streams_stat, 0, 1);
 	}
 	csi2_be_soc->asd.route[0].flags |= V4L2_SUBDEV_ROUTE_FL_IMMUTABLE;
-#endif
 	mutex_unlock(&csi2_be_soc->asd.mutex);
 	for (i = 0; i < NR_OF_CSI2_BE_SOC_SOURCE_PADS; i++) {
 		snprintf(csi2_be_soc->av[i].vdev.name,

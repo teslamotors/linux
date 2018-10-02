@@ -62,11 +62,11 @@ include $(srcpath)/$(src)/ipu4-css/Makefile.isyslib
 include $(srcpath)/$(src)/ipu4-css/Makefile.psyslib
 endif
 
-ccflags-y += -I$(srcpath)/$(src)/../../../../../include/
-ccflags-y += -I$(srcpath)/$(src)/../
-ccflags-y += -I$(srcpath)/$(src)/../ipu4/
-ccflags-y += -I$(srcpath)/$(src)/
-ccflags-y += -I$(srcpath)/$(src)/ipu4-css
+subdir-ccflags-y += -I$(srcpath)/$(src)/../../../../../include/
+subdir-ccflags-y += -I$(srcpath)/$(src)/../
+subdir-ccflags-y += -I$(srcpath)/$(src)/../ipu4/
+subdir-ccflags-y += -I$(srcpath)/$(src)/
+subdir-ccflags-y += -I$(srcpath)/$(src)/ipu4-css
 
 ccflags-y += -DPARAMETER_INTERFACE_V2
 
