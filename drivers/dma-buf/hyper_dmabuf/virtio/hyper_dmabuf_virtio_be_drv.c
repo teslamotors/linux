@@ -204,7 +204,7 @@ static int virtio_be_handle_kick(int client_id, unsigned long *ioreqs_map)
  */
 static int virtio_be_register_vhm_client(struct virtio_dev_info *d)
 {
-	unsigned int vmid;
+	int vmid;
 	struct vm_info info;
 	struct virtio_fe_info *fe_info;
 	int ret;
@@ -356,15 +356,17 @@ static int vbs_k_release(struct inode *inode, struct file *f)
 
 static int vbs_k_reset(struct virtio_be_priv *priv)
 {
+	int ret = 0;
 	virtio_comm_ring_free(&priv->tx_ring);
 
 	virtio_fe_foreach(cleanup_fe, priv);
 
 	virtio_dev_reset(&priv->dev);
 
-	virtio_comm_ring_init(&priv->tx_ring,
+	ret = virtio_comm_ring_init(&priv->tx_ring,
 			      sizeof(struct virtio_be_tx_data),
 			      REQ_RING_SIZE);
+	return ret;
 }
 
 static long vbs_k_ioctl(struct file *f, unsigned int ioctl,
@@ -373,7 +375,7 @@ static long vbs_k_ioctl(struct file *f, unsigned int ioctl,
 	struct virtio_be_priv *priv =
 		(struct virtio_be_priv *) f->private_data;
 	void __user *argp = (void __user *)arg;
-	int r;
+	int r = 0;
 
 	if (priv == NULL) {
 		dev_err(hy_drv_priv->dev,
