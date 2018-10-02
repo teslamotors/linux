@@ -19,6 +19,7 @@
 #include <linux/delay.h>
 #include <linux/pm.h>
 #include <linux/i2c.h>
+#include <linux/acpi.h>
 #include <linux/slab.h>
 #include <linux/regmap.h>
 #include <linux/regulator/consumer.h>
@@ -730,6 +731,13 @@ static struct spi_driver wm8731_spi_driver = {
 };
 #endif /* CONFIG_SPI_MASTER */
 
+const struct acpi_device_id wm8731_acpi_match[] = {
+	{"INT345A", 0},
+	{},
+};
+MODULE_DEVICE_TABLE(acpi, wm8731_acpi_match);
+EXPORT_SYMBOL_GPL(wm8731_acpi_match);
+
 #if IS_ENABLED(CONFIG_I2C)
 static int wm8731_i2c_probe(struct i2c_client *i2c,
 			    const struct i2c_device_id *id)
@@ -801,6 +809,7 @@ static struct i2c_driver wm8731_i2c_driver = {
 	.driver = {
 		.name = "wm8731",
 		.of_match_table = wm8731_of_match,
+		.acpi_match_table = ACPI_PTR(wm8731_acpi_match),
 	},
 	.probe =    wm8731_i2c_probe,
 	.remove =   wm8731_i2c_remove,

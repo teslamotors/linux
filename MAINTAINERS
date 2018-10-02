@@ -12554,11 +12554,6 @@ F:	Documentation/sound/alsa/soc/
 F:	sound/soc/
 F:	include/sound/soc*
 
-APOLLO LAKE DUMMY CODEC
-M:	Seng Kai, Tan <seng.kai.tan@intel.com>
-S:	Supported
-F:	sound/soc/intel/boards/apli_lhcrb_dummy.c
-
 APOLLO_LAKE_I WM8731 MACHINE DRIVER
 M:	Tan, Seng Kai <seng.kai.tan@intel.com>
 S:	Maintained
