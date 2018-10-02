@@ -194,8 +194,7 @@ static int gvt_decode_information(struct drm_device *dev,
 		return -EINVAL;
 	}
 
-	args->size = (((args->width * args->height * args->bpp) / 8) +
-		      (PAGE_SIZE - 1)) >> PAGE_SHIFT;
+	args->size = ALIGN(args->stride * args->height, PAGE_SIZE) >> PAGE_SHIFT;
 
 	if (args->start & (PAGE_SIZE - 1)) {
 		DRM_DEBUG_DRIVER("GVT_GEM: Not aligned fb start address: "
