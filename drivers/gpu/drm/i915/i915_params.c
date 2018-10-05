@@ -65,7 +65,7 @@ struct i915_params i915_modparams __read_mostly = {
 	.nuclear_pageflip = 0,
 	.edp_vswing = 0,
 	.enable_guc_loading = 1,
-	.enable_guc_submission = 1,
+	.enable_guc_submission = 0,
 	.guc_log_level = -1,
 	.guc_firmware_path = NULL,
 	.huc_firmware_path = NULL,
@@ -224,7 +224,7 @@ i915_param_named_unsafe(enable_guc_loading, int, 0400,
 
 i915_param_named_unsafe(enable_guc_submission, int, 0400,
 	"Enable GuC submission "
-	"(-1=auto, 0=never, 1=if available [default], 2=required)");
+	"(-1=auto, 0=never [default], 1=if available, 2=required)");
 
 i915_param_named(guc_log_level, int, 0400,
 	"GuC firmware logging level (-1:disabled (default), 0-3:enabled)");
