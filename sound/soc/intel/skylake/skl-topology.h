@@ -555,7 +555,7 @@ int skl_tplg_be_update_params(struct snd_soc_dai *dai,
 	struct skl_pipe_params *params);
 int skl_dsp_set_dma_clk_controls(struct skl_sst *ctx);
 int skl_dsp_set_dma_control(struct skl_sst *ctx, u32 *caps,
-			u32 caps_size, u32 node_id);
+			u32 caps_size, u32 node_id, u32 blob_size);
 void skl_tplg_set_be_dmic_config(struct snd_soc_dai *dai,
 	struct skl_pipe_params *params, int stream);
 int skl_tplg_init(struct snd_soc_platform *platform,
