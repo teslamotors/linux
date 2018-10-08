@@ -323,7 +323,9 @@ static int tdf8532_dai_trigger(struct snd_pcm_substream *substream, int cmd,
 	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
 	case SNDRV_PCM_TRIGGER_SUSPEND:
 	case SNDRV_PCM_TRIGGER_STOP:
-		ret = tdf8532_stop_play(tdf8532);
+		/* WA on unexpected codec down during S3
+		 SNDRV_PCM_TRIGGER_STOP fails so skip set ret */
+		tdf8532_stop_play(tdf8532);
 		break;
 	}
 
