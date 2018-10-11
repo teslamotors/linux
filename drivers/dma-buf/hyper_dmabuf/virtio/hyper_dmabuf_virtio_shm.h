@@ -25,7 +25,7 @@
 #ifndef __HYPER_DMABUF_VIRTIO_SHM_H__
 #define __HYPER_DMABUF_VIRTIO_SHM_H__
 
-int virtio_share_pages(struct page **pages,
+long virtio_share_pages(struct page **pages,
 		       int domid, int nents,
 		       void **refs_info);
 

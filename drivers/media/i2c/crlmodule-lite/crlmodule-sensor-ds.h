@@ -177,6 +177,7 @@ struct crl_register_write_rep {
 	u8 len;
 	u32 val;
 	u16 dev_i2c_addr;
+	u32 mask;
 };
 
 struct crl_register_read_rep {
@@ -489,7 +490,6 @@ struct crl_sensor_configuration {
 
 	const unsigned int pll_config_items;
 	const struct crl_pll_configuration *pll_configs;
-	const s64 *op_sys_clk;
 
 	const unsigned int modes_items;
 	const struct crl_mode_rep *modes;

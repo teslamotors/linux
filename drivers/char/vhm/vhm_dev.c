@@ -272,13 +272,13 @@ create_vm_fail:
 	}
 
 	case IC_DESTROY_VM: {
-		if (vm->trusty_host_gpa)
-			deinit_trusty(vm);
 		ret = hcall_destroy_vm(vm->vmid);
 		if (ret < 0) {
 			pr_err("failed to destroy VM %ld\n", vm->vmid);
 			return -EFAULT;
 		}
+		if (vm->trusty_host_gpa)
+			deinit_trusty(vm);
 		vm->vmid = ACRN_INVALID_VMID;
 		break;
 	}
@@ -628,6 +628,23 @@ create_vm_fail:
 			break;
 		}
 
+		break;
+	}
+
+	case IC_VM_INTR_MONITOR: {
+		struct page *page;
+
+		ret = get_user_pages_fast(ioctl_param, 1, 1, &page);
+		if (unlikely(ret != 1) || (page == NULL)) {
+			pr_err("vhm-dev: failed to pin intr hdr buffer!\n");
+			return -ENOMEM;
+		}
+
+		ret = hcall_vm_intr_monitor(vm->vmid, page_to_phys(page));
+		if (ret < 0) {
+			pr_err("vhm-dev: monitor intr data err=%ld\n", ret);
+			return -EFAULT;
+		}
 		break;
 	}
 

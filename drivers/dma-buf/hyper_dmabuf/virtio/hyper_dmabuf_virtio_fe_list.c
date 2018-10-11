@@ -97,3 +97,17 @@ int virtio_fe_remove(int client_id)
 
 	return -ENOENT;
 }
+
+void virtio_fe_foreach(
+        void (*func)(struct virtio_fe_info *, void *attr),
+        void *attr)
+{
+	struct virtio_fe_info_entry *info_entry;
+        struct hlist_node *tmp;
+        int bkt;
+
+        hash_for_each_safe(virtio_fe_hash, bkt, tmp,
+                           info_entry, node) {
+                func(info_entry->info, attr);
+        }
+}

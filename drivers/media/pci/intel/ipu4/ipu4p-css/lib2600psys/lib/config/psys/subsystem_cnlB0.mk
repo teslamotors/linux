@@ -37,22 +37,13 @@ PSYS_SERVER_ENABLE_TERMINAL_LOAD_DMA = 1
 # Assume OFS will be running concurrently with IPF, and prioritize according to rates of services on devproxy
 CONCURRENT_OFS_IPF_PRIORITY_OPTIMIZATION_ENABLED	= 1
 
-# Enable clock gating of input feeder ibufctrl as specified in:
-#     https://sharepoint.ger.ith.intel.com/sites/ICG_Arch/Shared%20Documents/
-#           IPU%20Specs/IPU4-P/HAS/CNL%20B0%20clock%20gating%20registers.xlsx
-# (see register: processing_system_psa_psa_logic_ipfd_ibufctrl_2600_inst_enable_clk_gate)
+# Enable clock gating of input feeder ibufctrl
 ENABLE_IPFD_IBUFCTRL_CLK_GATE    = 1
 
-# Enable clock gating of input slice light ibufctrl as specified in:
-#     https://sharepoint.ger.ith.intel.com/sites/ICG_Arch/Shared%20Documents/
-#           IPU%20Specs/IPU4-P/HAS/CNL%20B0%20clock%20gating%20registers.xlsx
-# (see register: processing_system_input_slice_light_logic_ibuf_ctrl_enable_clk_gate)
+# Enable clock gating of input slice light ibufctrl
 ENABLE_ISL_IBUFCTRL_CLK_GATE     = 1
 
-# Enable clock gating of GDC0 as specified in:
-#     https://sharepoint.ger.ith.intel.com/sites/ICG_Arch/Shared%20Documents/
-#           IPU%20Specs/IPU4-P/HAS/CNL%20B0%20clock%20gating%20registers.xlsx
-# (see register: processing_system_gdc_logic_gdc0_nr_of_lut_parts)
+# Enable clock gating of GDC0
 ENABLE_GDC0_CLK_GATE     = 1
 
 

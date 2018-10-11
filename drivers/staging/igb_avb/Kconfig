@@ -1,0 +1,17 @@
+config IGB_AVB
+	tristate "Avnu IGB AVB driver"
+	depends on IGB=n && E1000=n && E1000E=n
+	select DCA
+	default n
+	---help---
+		This is the Intel I210 Ethernet driver that lives
+		at https://github.com/AVnu/OpenAvnu/tree/master/
+		kmod/igb. Note that this is different from drivers/
+		net/ethernet/intel/igb. It can be used for developing
+		Audio/Video Bridging applications, Industrial Ethernet
+		applications which require precise timing control over
+		frame transmission, or test harnesses for measuring system
+		latencies and sampling events. It is exclusive with the
+		in-tree IGB driver, so only one of them can be enabled
+		at any point in time.  There are also coexistance issues with
+		the e1000 and e1000e.

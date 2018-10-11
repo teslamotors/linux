@@ -56,7 +56,7 @@ struct virtio_shared_pages_info {
 #endif
 
 #ifdef CONFIG_HYPER_DMABUF_VIRTIO_BE
-static int virtio_be_share_pages(struct page **pages,
+static long virtio_be_share_pages(struct page **pages,
 				 int vmid,
 				 int nents,
 				 void **refs_info)
@@ -208,7 +208,7 @@ static int virtio_be_unmap_shared_pages(void **refs_info, int nents)
 	return 0;
 }
 #else
-static int virtio_fe_share_pages(struct page **pages,
+static long virtio_fe_share_pages(struct page **pages,
 			  int domid, int nents,
 			  void **refs_info)
 {
@@ -292,11 +292,11 @@ static int virtio_fe_unmap_shared_pages(void **refs_info, int nents)
 
 #endif
 
-int virtio_share_pages(struct page **pages,
+long virtio_share_pages(struct page **pages,
 		       int domid, int nents,
 		       void **refs_info)
 {
-	int ret;
+	long ret;
 #ifdef CONFIG_HYPER_DMABUF_VIRTIO_BE
 	ret = virtio_be_share_pages(pages, domid, nents, refs_info);
 #else

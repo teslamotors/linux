@@ -8,7 +8,6 @@
 
 #include "crlmodule-sensor-ds.h"
 
-static const s64 adv7481_eval_op_sys_clock[] =  {400000000, };
 
 struct crl_ctrl_data_pair ctrl_data_lanes[] = {
 	{
@@ -395,7 +394,6 @@ static struct crl_ctrl_data adv7481_eval_ctrls[] = {
 		.type = CRL_CTRL_TYPE_MENU_INT,
 		.data.int_menu.def = 0,
 		.data.int_menu.max = ARRAY_SIZE(adv7481_eval_pll_configurations) - 1,
-		.data.int_menu.menu = adv7481_eval_op_sys_clock,
 		.flags = 0,
 		.impact = CRL_IMPACTS_NO_IMPACT,
 		.regs_items = 0,
@@ -478,7 +476,6 @@ static struct crl_sensor_configuration adv7481_eval_crl_configuration = {
 
 	.pll_config_items = ARRAY_SIZE(adv7481_eval_pll_configurations),
 	.pll_configs = adv7481_eval_pll_configurations,
-	.op_sys_clk = adv7481_eval_op_sys_clock,
 
 	.modes_items = ARRAY_SIZE(adv7481_eval_modes),
 	.modes = adv7481_eval_modes,
@@ -514,7 +511,6 @@ static struct crl_sensor_configuration adv7481b_eval_crl_configuration = {
 
 	.pll_config_items = ARRAY_SIZE(adv7481_eval_pll_configurations),
 	.pll_configs = adv7481_eval_pll_configurations,
-	.op_sys_clk = adv7481_eval_op_sys_clock,
 
 	.modes_items = ARRAY_SIZE(adv7481_eval_modes),
 	.modes = adv7481_eval_modes,

@@ -166,6 +166,7 @@ static int __crb_go_idle(struct device *dev, struct crb_priv *priv)
 		dev_warn(dev, "goIdle timed out\n");
 		return -ETIME;
 	}
+
 	return 0;
 }
 

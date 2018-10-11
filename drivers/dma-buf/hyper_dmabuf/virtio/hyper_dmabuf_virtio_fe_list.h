@@ -39,10 +39,13 @@ void virtio_fe_table_init(void);
 
 int virtio_fe_add(struct virtio_fe_info *fe_info);
 
-int virtio_remove_fe(int client_id);
+int virtio_fe_remove(int client_id);
 
 struct virtio_fe_info *virtio_fe_find(int client_id);
 
 struct virtio_fe_info *virtio_fe_find_by_vmid(int vmid);
+
+void virtio_fe_foreach(void (*func)(struct virtio_fe_info *,
+                       void *attr), void *attr);
 
 #endif /* __HYPER_DMABUF_VIRTIO_FE_LIST_H__*/
