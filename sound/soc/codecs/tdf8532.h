@@ -16,7 +16,7 @@
 #ifndef __TDF8532_H_
 #define __TDF8532_H_
 
-#define ACK_TIMEOUT 300
+#define ACK_TIMEOUT 10000
 
 #define CHNL_MAX 5
 
