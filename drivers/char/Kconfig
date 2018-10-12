@@ -590,5 +590,7 @@ source "drivers/char/xillybus/Kconfig"
 
 source "drivers/char/rpmb/Kconfig"
 
+source "drivers/char/rpmb/mux/Kconfig"
+
 endmenu
 
