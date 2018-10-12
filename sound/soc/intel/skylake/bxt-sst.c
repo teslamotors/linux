@@ -514,6 +514,8 @@ static int bxt_set_dsp_D0(struct sst_dsp *ctx, unsigned int core_id)
 		}
 		skl->cores.state[core_id] = SKL_DSP_RUNNING;
 		return ret;
+	} else if (skl->cores.state[core_id] == SKL_DSP_RUNNING) {
+		return 0;
 	}
 
 	/* If core 0 is being turned on, turn on core 1 as well */
