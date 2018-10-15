@@ -140,6 +140,8 @@ power9_restore_additional_sprs:
 	ld	r4, STOP_MMCR2(r13)
 	mtspr	SPRN_MMCR1, r3
 	mtspr	SPRN_MMCR2, r4
+	ld	r4, PACA_SPRG_VDSO(r13)
+	mtspr	SPRN_SPRG3, r4
 	blr
 
 /*
@@ -838,6 +840,8 @@ BEGIN_FTR_SECTION
 	mtspr	SPRN_PTCR,r4
 	ld	r4,_RPR(r1)
 	mtspr	SPRN_RPR,r4
+	ld	r4,_AMOR(r1)
+	mtspr	SPRN_AMOR,r4
 END_FTR_SECTION_IFSET(CPU_FTR_ARCH_300)
 
 	ld	r4,_TSCR(r1)

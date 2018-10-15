@@ -557,6 +557,7 @@ static int esw_create_offloads_fdb_tables(struct mlx5_eswitch *esw, int nvports)
 	if (err)
 		goto miss_rule_err;
 
+	kvfree(flow_group_in);
 	return 0;
 
 miss_rule_err:
@@ -912,8 +913,8 @@ static int mlx5_devlink_eswitch_check(struct devlink *devlink)
 	if (MLX5_CAP_GEN(dev, port_type) != MLX5_CAP_PORT_TYPE_ETH)
 		return -EOPNOTSUPP;
 
-	if (!MLX5_CAP_GEN(dev, vport_group_manager))
-		return -EOPNOTSUPP;
+	if(!MLX5_ESWITCH_MANAGER(dev))
+		return -EPERM;
 
 	if (dev->priv.eswitch->mode == SRIOV_NONE)
 		return -EOPNOTSUPP;

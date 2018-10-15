@@ -50,8 +50,6 @@
 #include "qp.h"
 #include "trace.h"
 
-#define SC_CTXT_PACKET_EGRESS_TIMEOUT 350 /* in chip cycles */
-
 #define SC(name) SEND_CTXT_##name
 /*
  * Send Context functions
@@ -88,6 +86,7 @@ void pio_send_control(struct hfi1_devdata *dd, int op)
 	unsigned long flags;
 	int write = 1;	/* write sendctrl back */
 	int flush = 0;	/* re-read sendctrl to make sure it is flushed */
+	int i;
 
 	spin_lock_irqsave(&dd->sendctrl_lock, flags);
 
@@ -97,9 +96,13 @@ void pio_send_control(struct hfi1_devdata *dd, int op)
 		reg |= SEND_CTRL_SEND_ENABLE_SMASK;
 	/* Fall through */
 	case PSC_DATA_VL_ENABLE:
+		mask = 0;
+		for (i = 0; i < ARRAY_SIZE(dd->vld); i++)
+			if (!dd->vld[i].mtu)
+				mask |= BIT_ULL(i);
 		/* Disallow sending on VLs not enabled */
-		mask = (((~0ull) << num_vls) & SEND_CTRL_UNSUPPORTED_VL_MASK) <<
-				SEND_CTRL_UNSUPPORTED_VL_SHIFT;
+		mask = (mask & SEND_CTRL_UNSUPPORTED_VL_MASK) <<
+			SEND_CTRL_UNSUPPORTED_VL_SHIFT;
 		reg = (reg & ~SEND_CTRL_UNSUPPORTED_VL_SMASK) | mask;
 		break;
 	case PSC_GLOBAL_DISABLE:
@@ -977,15 +980,40 @@ void sc_disable(struct send_context *sc)
 }
 
 /* return SendEgressCtxtStatus.PacketOccupancy */
-#define packet_occupancy(r) \
-	(((r) & SEND_EGRESS_CTXT_STATUS_CTXT_EGRESS_PACKET_OCCUPANCY_SMASK)\
-	>> SEND_EGRESS_CTXT_STATUS_CTXT_EGRESS_PACKET_OCCUPANCY_SHIFT)
+static u64 packet_occupancy(u64 reg)
+{
+	return (reg &
+		SEND_EGRESS_CTXT_STATUS_CTXT_EGRESS_PACKET_OCCUPANCY_SMASK)
+		>> SEND_EGRESS_CTXT_STATUS_CTXT_EGRESS_PACKET_OCCUPANCY_SHIFT;
+}
 
 /* is egress halted on the context? */
-#define egress_halted(r) \
-	((r) & SEND_EGRESS_CTXT_STATUS_CTXT_EGRESS_HALT_STATUS_SMASK)
+static bool egress_halted(u64 reg)
+{
+	return !!(reg & SEND_EGRESS_CTXT_STATUS_CTXT_EGRESS_HALT_STATUS_SMASK);
+}
 
-/* wait for packet egress, optionally pause for credit return  */
+/* is the send context halted? */
+static bool is_sc_halted(struct hfi1_devdata *dd, u32 hw_context)
+{
+	return !!(read_kctxt_csr(dd, hw_context, SC(STATUS)) &
+		  SC(STATUS_CTXT_HALTED_SMASK));
+}
+
+/**
+ * sc_wait_for_packet_egress
+ * @sc: valid send context
+ * @pause: wait for credit return
+ *
+ * Wait for packet egress, optionally pause for credit return
+ *
+ * Egress halt and Context halt are not necessarily the same thing, so
+ * check for both.
+ *
+ * NOTE: The context halt bit may not be set immediately.  Because of this,
+ * it is necessary to check the SW SFC_HALTED bit (set in the IRQ) and the HW
+ * context bit to determine if the context is halted.
+ */
 static void sc_wait_for_packet_egress(struct send_context *sc, int pause)
 {
 	struct hfi1_devdata *dd = sc->dd;
@@ -997,8 +1025,9 @@ static void sc_wait_for_packet_egress(struct send_context *sc, int pause)
 		reg_prev = reg;
 		reg = read_csr(dd, sc->hw_context * 8 +
 			       SEND_EGRESS_CTXT_STATUS);
-		/* done if egress is stopped */
-		if (egress_halted(reg))
+		/* done if any halt bits, SW or HW are set */
+		if (sc->flags & SCF_HALTED ||
+		    is_sc_halted(dd, sc->hw_context) || egress_halted(reg))
 			break;
 		reg = packet_occupancy(reg);
 		if (reg == 0)

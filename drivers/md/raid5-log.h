@@ -9,7 +9,7 @@ extern void r5l_write_stripe_run(struct r5l_log *log);
 extern void r5l_flush_stripe_to_raid(struct r5l_log *log);
 extern void r5l_stripe_write_finished(struct stripe_head *sh);
 extern int r5l_handle_flush_request(struct r5l_log *log, struct bio *bio);
-extern void r5l_quiesce(struct r5l_log *log, int state);
+extern void r5l_quiesce(struct r5l_log *log, int quiesce);
 extern bool r5l_log_disk_error(struct r5conf *conf);
 extern bool r5c_is_writeback(struct r5l_log *log);
 extern int
@@ -42,6 +42,11 @@ extern int ppl_write_stripe(struct r5conf *conf, struct stripe_head *sh);
 extern void ppl_write_stripe_run(struct r5conf *conf);
 extern void ppl_stripe_write_finished(struct stripe_head *sh);
 extern int ppl_modify_log(struct r5conf *conf, struct md_rdev *rdev, bool add);
+
+static inline bool raid5_has_log(struct r5conf *conf)
+{
+	return test_bit(MD_HAS_JOURNAL, &conf->mddev->flags);
+}
 
 static inline bool raid5_has_ppl(struct r5conf *conf)
 {

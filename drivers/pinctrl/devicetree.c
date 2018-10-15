@@ -101,10 +101,11 @@ struct pinctrl_dev *of_pinctrl_get(struct device_node *np)
 }
 
 static int dt_to_map_one_config(struct pinctrl *p,
-				struct pinctrl_dev *pctldev,
+				struct pinctrl_dev *hog_pctldev,
 				const char *statename,
 				struct device_node *np_config)
 {
+	struct pinctrl_dev *pctldev = NULL;
 	struct device_node *np_pctldev;
 	const struct pinctrl_ops *ops;
 	int ret;
@@ -122,8 +123,12 @@ static int dt_to_map_one_config(struct pinctrl *p,
 			/* OK let's just assume this will appear later then */
 			return -EPROBE_DEFER;
 		}
-		if (!pctldev)
-			pctldev = get_pinctrl_dev_from_of_node(np_pctldev);
+		/* If we're creating a hog we can use the passed pctldev */
+		if (hog_pctldev && (np_pctldev == p->dev->of_node)) {
+			pctldev = hog_pctldev;
+			break;
+		}
+		pctldev = get_pinctrl_dev_from_of_node(np_pctldev);
 		if (pctldev)
 			break;
 		/* Do not defer probing of hogs (circular loop) */

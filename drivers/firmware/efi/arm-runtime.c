@@ -54,6 +54,9 @@ static struct ptdump_info efi_ptdump_info = {
 
 static int __init ptdump_init(void)
 {
+	if (!efi_enabled(EFI_RUNTIME_SERVICES))
+		return 0;
+
 	return ptdump_debugfs_register(&efi_ptdump_info, "efi_page_tables");
 }
 device_initcall(ptdump_init);
@@ -119,10 +122,12 @@ static int __init arm_enable_runtime_services(void)
 {
 	u64 mapsize;
 
-	if (!efi_enabled(EFI_BOOT)) {
+	if (!efi_enabled(EFI_BOOT) || !efi_enabled(EFI_MEMMAP)) {
 		pr_info("EFI services will not be available.\n");
 		return 0;
 	}
+
+	efi_memmap_unmap();
 
 	if (efi_runtime_disabled()) {
 		pr_info("EFI runtime services will be disabled.\n");

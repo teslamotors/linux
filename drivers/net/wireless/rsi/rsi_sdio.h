@@ -46,6 +46,8 @@ enum sdio_interrupt_type {
 #define PKT_BUFF_AVAILABLE                      1
 #define FW_ASSERT_IND                           2
 
+#define RSI_MASTER_REG_BUF_SIZE			12
+
 #define RSI_DEVICE_BUFFER_STATUS_REGISTER       0xf3
 #define RSI_FN1_INT_REGISTER                    0xf9
 #define RSI_SD_REQUEST_MASTER                   0x10000
@@ -83,7 +85,7 @@ enum sdio_interrupt_type {
 #define TA_SOFT_RST_CLR              0
 #define TA_SOFT_RST_SET              BIT(0)
 #define TA_PC_ZERO                   0
-#define TA_HOLD_THREAD_VALUE         cpu_to_le32(0xF)
+#define TA_HOLD_THREAD_VALUE         0xF
 #define TA_RELEASE_THREAD_VALUE      cpu_to_le32(0xF)
 #define TA_BASE_ADDR                 0x2200
 #define MISC_CFG_BASE_ADDR           0x4105

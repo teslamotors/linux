@@ -130,7 +130,8 @@ int bnxt_qplib_get_dev_attr(struct bnxt_qplib_rcfw *rcfw,
 	attr->max_pkey = le32_to_cpu(sb->max_pkeys);
 
 	attr->max_inline_data = le32_to_cpu(sb->max_inline_data);
-	attr->l2_db_size = (sb->l2_db_space_size + 1) * PAGE_SIZE;
+	attr->l2_db_size = (sb->l2_db_space_size + 1) *
+			    (0x01 << RCFW_DBR_BASE_PAGE_SHIFT);
 	attr->max_sgid = le32_to_cpu(sb->max_gid);
 
 	strlcpy(attr->fw_ver, "20.6.28.0", sizeof(attr->fw_ver));
@@ -155,7 +156,7 @@ int bnxt_qplib_get_sgid(struct bnxt_qplib_res *res,
 			struct bnxt_qplib_sgid_tbl *sgid_tbl, int index,
 			struct bnxt_qplib_gid *gid)
 {
-	if (index > sgid_tbl->max) {
+	if (index >= sgid_tbl->max) {
 		dev_err(&res->pdev->dev,
 			"QPLIB: Index %d exceeded SGID table max (%d)",
 			index, sgid_tbl->max);
@@ -360,7 +361,7 @@ int bnxt_qplib_get_pkey(struct bnxt_qplib_res *res,
 		*pkey = 0xFFFF;
 		return 0;
 	}
-	if (index > pkey_tbl->max) {
+	if (index >= pkey_tbl->max) {
 		dev_err(&res->pdev->dev,
 			"QPLIB: Index %d exceeded PKEY table max (%d)",
 			index, pkey_tbl->max);

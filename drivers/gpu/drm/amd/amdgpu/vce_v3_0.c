@@ -467,8 +467,8 @@ static int vce_v3_0_hw_init(void *handle)
 	struct amdgpu_device *adev = (struct amdgpu_device *)handle;
 
 	vce_v3_0_override_vce_clock_gating(adev, true);
-	if (!(adev->flags & AMD_IS_APU))
-		amdgpu_asic_set_vce_clocks(adev, 10000, 10000);
+
+	amdgpu_asic_set_vce_clocks(adev, 10000, 10000);
 
 	for (i = 0; i < adev->vce.num_rings; i++)
 		adev->vce.ring[i].ready = false;
@@ -899,7 +899,7 @@ static const struct amdgpu_ring_funcs vce_v3_0_ring_phys_funcs = {
 	.emit_frame_size =
 		4 + /* vce_v3_0_emit_pipeline_sync */
 		6, /* amdgpu_vce_ring_emit_fence x1 no user fence */
-	.emit_ib_size = 5, /* vce_v3_0_ring_emit_ib */
+	.emit_ib_size = 4, /* amdgpu_vce_ring_emit_ib */
 	.emit_ib = amdgpu_vce_ring_emit_ib,
 	.emit_fence = amdgpu_vce_ring_emit_fence,
 	.test_ring = amdgpu_vce_ring_test_ring,
@@ -923,7 +923,7 @@ static const struct amdgpu_ring_funcs vce_v3_0_ring_vm_funcs = {
 		6 + /* vce_v3_0_emit_vm_flush */
 		4 + /* vce_v3_0_emit_pipeline_sync */
 		6 + 6, /* amdgpu_vce_ring_emit_fence x2 vm fence */
-	.emit_ib_size = 4, /* amdgpu_vce_ring_emit_ib */
+	.emit_ib_size = 5, /* vce_v3_0_ring_emit_ib */
 	.emit_ib = vce_v3_0_ring_emit_ib,
 	.emit_vm_flush = vce_v3_0_emit_vm_flush,
 	.emit_pipeline_sync = vce_v3_0_emit_pipeline_sync,

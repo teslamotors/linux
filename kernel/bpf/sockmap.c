@@ -313,12 +313,15 @@ out:
 static void smap_write_space(struct sock *sk)
 {
 	struct smap_psock *psock;
+	void (*write_space)(struct sock *sk);
 
 	rcu_read_lock();
 	psock = smap_psock_sk(sk);
 	if (likely(psock && test_bit(SMAP_TX_RUNNING, &psock->state)))
 		schedule_work(&psock->tx_work);
+	write_space = psock->save_write_space;
 	rcu_read_unlock();
+	write_space(sk);
 }
 
 static void smap_stop_sock(struct smap_psock *psock, struct sock *sk)
@@ -601,11 +604,6 @@ static void sock_map_free(struct bpf_map *map)
 	}
 	rcu_read_unlock();
 
-	if (stab->bpf_verdict)
-		bpf_prog_put(stab->bpf_verdict);
-	if (stab->bpf_parse)
-		bpf_prog_put(stab->bpf_parse);
-
 	sock_map_remove_complete(stab);
 }
 
@@ -877,6 +875,19 @@ static int sock_map_update_elem(struct bpf_map *map,
 	return err;
 }
 
+static void sock_map_release(struct bpf_map *map, struct file *map_file)
+{
+	struct bpf_stab *stab = container_of(map, struct bpf_stab, map);
+	struct bpf_prog *orig;
+
+	orig = xchg(&stab->bpf_parse, NULL);
+	if (orig)
+		bpf_prog_put(orig);
+	orig = xchg(&stab->bpf_verdict, NULL);
+	if (orig)
+		bpf_prog_put(orig);
+}
+
 const struct bpf_map_ops sock_map_ops = {
 	.map_alloc = sock_map_alloc,
 	.map_free = sock_map_free,
@@ -884,6 +895,7 @@ const struct bpf_map_ops sock_map_ops = {
 	.map_get_next_key = sock_map_get_next_key,
 	.map_update_elem = sock_map_update_elem,
 	.map_delete_elem = sock_map_delete_elem,
+	.map_release = sock_map_release,
 };
 
 BPF_CALL_4(bpf_sock_map_update, struct bpf_sock_ops_kern *, bpf_sock,
