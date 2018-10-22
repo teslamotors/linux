@@ -213,7 +213,7 @@ static int sst_bxt_prepare_fw(struct sst_dsp *ctx,
 	ret = sst_dsp_register_poll(ctx, BXT_ADSP_FW_STATUS, SKL_FW_STS_MASK,
 			SKL_FW_INIT, BXT_ROM_INIT_TIMEOUT, "ROM Load");
 	if (ret < 0) {
-		dev_err(ctx->dev, "Timeout for ROM init, ret:%d\n", ret);
+		dev_dbg(ctx->dev, "Timeout for ROM init, ret:%d\n", ret);
 		goto base_fw_load_failed;
 	}
 
@@ -273,30 +273,46 @@ static int bxt_load_base_firmware(struct sst_dsp *ctx)
 	for (i = 0; i < BXT_FW_INIT_RETRY; i++) {
 		ret = sst_bxt_prepare_fw(ctx, stripped_fw.data, stripped_fw.size);
 		if (ret < 0) {
-			dev_err(ctx->dev, "Error code=0x%x: FW status=0x%x\n",
-				sst_dsp_shim_read(ctx, BXT_ADSP_ERROR_CODE),
-				sst_dsp_shim_read(ctx, BXT_ADSP_FW_STATUS));
-
-			dev_err(ctx->dev, "Itertion %d Core En/ROM load fail:%d\n",
-					i, ret);
+			if (i < (BXT_FW_INIT_RETRY - 1)) {
+				dev_dbg(ctx->dev, "Error code=0x%x: FW status=0x%x\n",
+					sst_dsp_shim_read(ctx, BXT_ADSP_ERROR_CODE),
+					sst_dsp_shim_read(ctx, BXT_ADSP_FW_STATUS));
+				dev_dbg(ctx->dev, "Iteration %d Core En/ROM load fail:%d\n",
+						i, ret);
+			}
+			else {
+				dev_err(ctx->dev, "Error code=0x%x: FW status=0x%x\n",
+					sst_dsp_shim_read(ctx, BXT_ADSP_ERROR_CODE),
+					sst_dsp_shim_read(ctx, BXT_ADSP_FW_STATUS));
+				dev_err(ctx->dev, "Iteration %d Core En/ROM load fail:%d\n",
+						i, ret);
+			}
 			continue;
 		}
-		dev_dbg(ctx->dev, "Itertion %d ROM load Success:%d\n",
+		dev_dbg(ctx->dev, "Iteration %d ROM load Success:%d\n",
 				i, ret);
 
 		ret = sst_transfer_fw_host_dma(ctx);
 		if (ret < 0) {
-			dev_err(ctx->dev, "Itertion %d Transfer firmware failed %d\n",
-					i, ret);
-			dev_info(ctx->dev, "Error code=0x%x: FW status=0x%x\n",
-				sst_dsp_shim_read(ctx, BXT_ADSP_ERROR_CODE),
-				sst_dsp_shim_read(ctx, BXT_ADSP_FW_STATUS));
-
+			if (i < (BXT_FW_INIT_RETRY - 1)) {
+				dev_dbg(ctx->dev, "Iteration %d Transfer firmware failed %d\n",
+						i, ret);
+				dev_dbg(ctx->dev, "Error code=0x%x: FW status=0x%x\n",
+					sst_dsp_shim_read(ctx, BXT_ADSP_ERROR_CODE),
+					sst_dsp_shim_read(ctx, BXT_ADSP_FW_STATUS));
+			}
+			else {
+				dev_err(ctx->dev, "Iteration %d Transfer firmware failed %d\n",
+						i, ret);
+				dev_err(ctx->dev, "Error code=0x%x: FW status=0x%x\n",
+					sst_dsp_shim_read(ctx, BXT_ADSP_ERROR_CODE),
+					sst_dsp_shim_read(ctx, BXT_ADSP_FW_STATUS));
+			}
 			skl_dsp_core_power_down(ctx, SKL_DSP_CORE_MASK(1));
 			skl_dsp_disable_core(ctx, SKL_DSP_CORE0_MASK);
 			continue;
 		}
-		dev_dbg(ctx->dev, "Itertion %d FW transfer Success:%d\n",
+		dev_dbg(ctx->dev, "Iteration %d FW transfer Success:%d\n",
 				i, ret);
 
 		if (ret == 0)
