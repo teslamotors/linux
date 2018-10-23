@@ -549,8 +549,9 @@ skl_parse_resource_event(struct skl_sst *skl, struct skl_ipc_header header)
 					header.primary);
 		break;
 	case SKL_I2S_CLK_STATE_CHANGED:
-		dev_dbg(sst->dev, "Clock detected/loss on I2S port: %x\n",
-					header.primary);
+		dev_dbg(sst->dev, "Clock %s on I2S port %d: %x\n",
+					notify.event_data[1] ? "detected" : "loss",
+					notify.resource_id, header.primary);
 		break;
 	case SKL_I2S_SINK_MODE_CHANGED:
 		dev_dbg(sst->dev, "I2S Sink started/stopped dropping \
