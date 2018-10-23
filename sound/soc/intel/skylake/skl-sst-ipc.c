@@ -500,76 +500,76 @@ skl_parse_resource_event(struct skl_sst *skl, struct skl_ipc_header header)
 	switch (notify.event_type) {
 
 	case SKL_BUDGET_VIOLATION:
-		dev_err(sst->dev, "MCPS Budget Violation: %x\n",
+		dev_dbg(sst->dev, "MCPS Budget Violation: %x\n",
 					header.primary);
 		break;
 	case SKL_MIXER_UNDERRUN:
-		dev_err(sst->dev, "Mixer Underrun Detected: %x\n",
+		dev_dbg(sst->dev, "Mixer Underrun Detected: %x\n",
 					header.primary);
 		break;
 	case SKL_STREAM_DATA_SEGMENT:
-		dev_err(sst->dev, "Stream Data Segment: %x\n",
+		dev_dbg(sst->dev, "Stream Data Segment: %x\n",
 					header.primary);
 		break;
 	case SKL_PROCESS_DATA_ERR:
-		dev_err(sst->dev, "Process Data Error: %x\n",
+		dev_dbg(sst->dev, "Process Data Error: %x\n",
 					header.primary);
 		break;
 	case SKL_STACK_OVERFLOW:
-		dev_err(sst->dev, "Stack Overflow: %x\n",
+		dev_dbg(sst->dev, "Stack Overflow: %x\n",
 					header.primary);
 		break;
 	case SKL_BUFFERING_MODE_CHANGED:
-		dev_err(sst->dev, "Buffering Mode Changed: %x\n",
+		dev_dbg(sst->dev, "Buffering Mode Changed: %x\n",
 					header.primary);
 		break;
 	case SKL_GATEWAY_UNDERRUN:
-		dev_err(sst->dev, "Gateway Underrun Detected: %x\n",
+		dev_dbg(sst->dev, "Gateway Underrun Detected: %x\n",
 					header.primary);
 		break;
 	case SKL_GATEWAY_OVERRUN:
-		dev_err(sst->dev, "Gateway Overrun Detected: %x\n",
+		dev_dbg(sst->dev, "Gateway Overrun Detected: %x\n",
 					header.primary);
 		break;
 	case SKL_WCLK_SAMPLE_COUNT:
-		dev_err(sst->dev,
+		dev_dbg(sst->dev,
 			"FW Wclk and Sample count Notif Detected: %x\n",
 					header.primary);
 		break;
 	case SKL_GATEWAY_HIGH_THRESHOLD:
-		dev_err(sst->dev, "IPC gateway reached high threshold: %x\n",
+		dev_dbg(sst->dev, "IPC gateway reached high threshold: %x\n",
 					header.primary);
 		break;
 	case SKL_GATEWAY_LOW_THRESHOLD:
-		dev_err(sst->dev, "IPC gateway reached low threshold: %x\n",
+		dev_dbg(sst->dev, "IPC gateway reached low threshold: %x\n",
 					header.primary);
 		break;
 	case SKL_I2S_BCE_DETECTED:
-		dev_err(sst->dev, "Bit Count Error detected on I2S port: %x\n",
+		dev_dbg(sst->dev, "Bit Count Error detected on I2S port: %x\n",
 					header.primary);
 		break;
 	case SKL_I2S_CLK_STATE_CHANGED:
-		dev_err(sst->dev, "Clock detected/loss on I2S port: %x\n",
+		dev_dbg(sst->dev, "Clock detected/loss on I2S port: %x\n",
 					header.primary);
 		break;
 	case SKL_I2S_SINK_MODE_CHANGED:
-		dev_err(sst->dev, "I2S Sink started/stopped dropping \
+		dev_dbg(sst->dev, "I2S Sink started/stopped dropping \
 			data in non-blk mode: %x\n", header.primary);
 		break;
 	case SKL_I2S_SOURCE_MODE_CHANGED:
-		dev_err(sst->dev, "I2S Source started/stopped generating 0's \
+		dev_dbg(sst->dev, "I2S Source started/stopped generating 0's \
 			in non-blk mode: %x\n", header.primary);
 		break;
 	case SKL_SRE_DRIFT_TOO_HIGH:
-		dev_err(sst->dev,
+		dev_dbg(sst->dev,
 			"Frequency drift exceeded limit in SRE: %x\n",
 					header.primary);
 		break;
 	case SKL_INVALID_RESORUCE_EVENT_TYPE:
-		dev_err(sst->dev, "Invalid type: %x\n", header.primary);
+		dev_dbg(sst->dev, "Invalid type: %x\n", header.primary);
 		break;
 	default:
-		dev_err(sst->dev, "ipc: Unhandled resource event=%x",
+		dev_dbg(sst->dev, "ipc: Unhandled resource event=%x",
 					header.primary);
 		break;
 	}
