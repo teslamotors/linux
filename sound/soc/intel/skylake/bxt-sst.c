@@ -559,8 +559,18 @@ static int bxt_set_dsp_D0(struct sst_dsp *ctx, unsigned int core_id)
 				sst_dsp_shim_read(ctx, BXT_ADSP_ERROR_CODE),
 				sst_dsp_shim_read(ctx, BXT_ADSP_FW_STATUS));
 			dev_err(ctx->dev, "Failed to set core0 to D0 state\n");
-			ret = -EIO;
-			goto err;
+
+			dev_err(ctx->dev, "Trying to reinitialize FW to recover audio\n");
+
+			ret = bxt_sst_init_fw(ctx->dev, skl);
+			if (ret < 0)
+			{
+				ret = -EIO;
+				goto err;
+			}
+			else
+				dev_err(ctx->dev, "FW recovery & reinitialization successful!\n");
+
 		}
 	}
 
