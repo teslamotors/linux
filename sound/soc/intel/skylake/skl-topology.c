@@ -1641,11 +1641,7 @@ static int skl_tplg_bind_sinks(struct snd_soc_dapm_widget *w,
 		}
 	}
 
-	/* NOTE: While selecting the multiple pipeline confguration next_sink
-	 * become NULL. So sink and next_sink checking is required for muliple
-	 * pipeline configuration.
-	 */
-	if ((!sink) && (next_sink))
+	if (!sink && next_sink)
 		return skl_tplg_bind_sinks(next_sink, skl, src_w, src_mconfig);
 
 	return 0;

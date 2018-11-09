@@ -34,12 +34,9 @@
 #define SOF_TKN_BUF_CAPS			101
 
 /* DAI */
-#define SOF_TKN_DAI_DMAC			151
-#define	SOF_TKN_DAI_DMAC_CHAN			152
 #define	SOF_TKN_DAI_DMAC_CONFIG			153
 #define SOF_TKN_DAI_TYPE			154
 #define SOF_TKN_DAI_INDEX			155
-#define SOF_TKN_DAI_SAMPLE_BITS			156
 
 /* scheduling */
 #define SOF_TKN_SCHED_DEADLINE			200
@@ -58,8 +55,6 @@
 #define SOF_TKN_SRC_RATE_OUT			301
 
 /* PCM */
-#define SOF_TKN_PCM_DMAC			351
-#define SOF_TKN_PCM_DMAC_CHAN			352
 #define SOF_TKN_PCM_DMAC_CONFIG			353
 
 /* Generic components */

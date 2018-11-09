@@ -52,9 +52,7 @@
  */
 
 /**
- * @file acrn_vhm_mm.h
- *
- * @brief Virtio and Hypervisor Module memory manager APIs
+ * DOC: Virtio and Hypervisor Module memory manager APIs
  */
 
 #ifndef __ACRN_VHM_MM_H__
@@ -80,12 +78,10 @@ static inline unsigned long  acrn_hpa2gpa(unsigned long hpa)
 }
 
 /**
- * map_guest_phys - map guest physical address
- *
- * to SOS kernel virtual address
+ * map_guest_phys - map guest physical address to SOS kernel virtual address
  *
  * @vmid: guest vmid
- * @uos_phy: phsical address in guest
+ * @uos_phys: physical address in guest
  * @size: the memory size mapped
  *
  * Return: SOS kernel virtual address, NULL on error
@@ -96,7 +92,7 @@ void *map_guest_phys(unsigned long vmid, u64 uos_phys, size_t size);
  * unmap_guest_phys - unmap guest physical address
  *
  * @vmid: guest vmid
- * @uos_phy: phsical address in guest
+ * @uos_phys: physical address in guest
  *
  * Return: 0 on success, <0 for error.
  */

@@ -1434,7 +1434,6 @@ EXPORT_SYMBOL_GPL(ipu_buttress_tsc_read);
 
 u64 ipu_buttress_tsc_ticks_to_ns(u64 ticks)
 {
-	u64 ns = ticks * 10000;
 	/*
 	 * TSC clock frequency is 19.2MHz,
 	 * converting TSC tick count to ns is calculated by:
@@ -1442,9 +1441,7 @@ u64 ipu_buttress_tsc_ticks_to_ns(u64 ticks)
 	 *    = ticks * 1000 000 000 / 19200000Hz
 	 *    = ticks * 10000 / 192 ns
 	 */
-	do_div(ns, 192);
-
-	return ns;
+	return ticks * 10000 / 192;
 }
 EXPORT_SYMBOL_GPL(ipu_buttress_tsc_ticks_to_ns);
 
@@ -1512,6 +1509,7 @@ static int ipu_buttress_start_tsc_sync_set(void *data, u64 val)
 
 DEFINE_SIMPLE_ATTRIBUTE(ipu_buttress_start_tsc_sync_fops, NULL,
 			ipu_buttress_start_tsc_sync_set, "%llu\n");
+
 
 static int ipu_buttress_tsc_get(void *data, u64 *val)
 {

@@ -68,6 +68,7 @@
 /* general */
 #define HC_ID_GEN_BASE               0x0UL
 #define HC_GET_API_VERSION          _HC_ID(HC_ID, HC_ID_GEN_BASE + 0x00)
+#define HC_SOS_OFFLINE_CPU          _HC_ID(HC_ID, HC_ID_GEN_BASE + 0x01)
 
 /* VM management */
 #define HC_ID_VM_BASE               0x10UL
@@ -76,7 +77,7 @@
 #define HC_START_VM                 _HC_ID(HC_ID, HC_ID_VM_BASE + 0x02)
 #define HC_PAUSE_VM                 _HC_ID(HC_ID, HC_ID_VM_BASE + 0x03)
 #define HC_CREATE_VCPU              _HC_ID(HC_ID, HC_ID_VM_BASE + 0x04)
-#define HC_RESTART_VM               _HC_ID(HC_ID, HC_ID_VM_BASE + 0x05)
+#define HC_RESET_VM                 _HC_ID(HC_ID, HC_ID_VM_BASE + 0x05)
 
 /* IRQ and Interrupts */
 #define HC_ID_IRQ_BASE              0x20UL

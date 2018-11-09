@@ -24,9 +24,9 @@
 #include <sound/sof.h>
 #include <uapi/sound/sof-fw.h>
 
-#include "sof-priv.h"
-#include "ops.h"
-#include "intel.h"
+#include "../sof-priv.h"
+#include "../ops.h"
+#include "shim.h"
 
 /* DSP memories */
 #define IRAM_OFFSET		0x0C0000
@@ -55,6 +55,8 @@
 #define BYT_STACK_DUMP_SIZE	32
 
 #define BYT_PCI_BAR_SIZE	0x200000
+
+#define BYT_PANIC_OFFSET(x)	(((x) & (0xFFFFll << 32)) >> 32)
 
 /*
  * Debug
@@ -392,17 +394,12 @@ static irqreturn_t byt_irq_thread(int irq, void *context)
 	if (ipcd & SHIM_BYT_IPCD_BUSY) {
 		/* Handle messages from DSP Core */
 		if ((ipcd & SOF_IPC_PANIC_MAGIC_MASK) == SOF_IPC_PANIC_MAGIC) {
-			dev_err(sdev->dev, "error : DSP panic!\n");
-			snd_sof_dsp_cmd_done(sdev);
-			snd_sof_dsp_dbg_dump(sdev, SOF_DBG_REGS | SOF_DBG_MBOX);
-			snd_sof_trace_notify_for_error(sdev);
+			snd_sof_dsp_panic(sdev, BYT_PANIC_OFFSET(ipcd) +
+					  MBOX_OFFSET);
 		} else {
 			snd_sof_ipc_msgs_rx(sdev);
 		}
 	}
-
-	/* continue to send any remaining messages... */
-	snd_sof_ipc_msgs_tx(sdev);
 
 	return IRQ_HANDLED;
 }
@@ -445,7 +442,7 @@ static int byt_get_reply(struct snd_sof_dev *sdev, struct snd_sof_ipc_msg *msg)
 	} else {
 		/* reply correct size ? */
 		if (reply.hdr.size != msg->reply_size) {
-			dev_err(sdev->dev, "error: reply expected 0x%lx got 0x%x bytes\n",
+			dev_err(sdev->dev, "error: reply expected 0x%zx got 0x%x bytes\n",
 				msg->reply_size, reply.hdr.size);
 			size = msg->reply_size;
 			ret = -EINVAL;
@@ -544,6 +541,9 @@ static int byt_acpi_probe(struct snd_sof_dev *sdev)
 	struct resource *mmio;
 	u32 base, size;
 	int ret = 0;
+
+	/* set DSP arch ops */
+	sdev->arch_ops = &sof_xtensa_arch_ops;
 
 	/* DSP DMA can only access low 31 bits of host memory */
 	ret = dma_coerce_mask_and_coherent(sdev->dev, DMA_BIT_MASK(31));
@@ -811,7 +811,7 @@ static struct snd_soc_dai_driver byt_dai[] = {
 };
 
 /* baytrail ops */
-struct snd_sof_dsp_ops snd_sof_byt_ops = {
+struct snd_sof_dsp_ops sof_byt_ops = {
 	/* device init */
 	.probe		= byt_probe,
 	.remove		= byt_remove,
@@ -860,10 +860,10 @@ struct snd_sof_dsp_ops snd_sof_byt_ops = {
 	.drv = byt_dai,
 	.num_drv = 3, /* we have only 3 SSPs on byt*/
 };
-EXPORT_SYMBOL(snd_sof_byt_ops);
+EXPORT_SYMBOL(sof_byt_ops);
 
 /* cherrytrail and braswell ops */
-struct snd_sof_dsp_ops snd_sof_cht_ops = {
+struct snd_sof_dsp_ops sof_cht_ops = {
 	/* device init */
 	.probe		= byt_probe,
 	.remove		= byt_remove,
@@ -913,6 +913,6 @@ struct snd_sof_dsp_ops snd_sof_cht_ops = {
 	/* all 6 SSPs may be available for cherrytrail */
 	.num_drv = ARRAY_SIZE(byt_dai),
 };
-EXPORT_SYMBOL(snd_sof_cht_ops);
+EXPORT_SYMBOL(sof_cht_ops);
 
 MODULE_LICENSE("Dual BSD/GPL");

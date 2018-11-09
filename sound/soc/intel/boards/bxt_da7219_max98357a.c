@@ -853,7 +853,7 @@ static const struct platform_device_id bxt_board_ids[] = {
 static struct platform_driver broxton_audio = {
 	.probe = broxton_audio_probe,
 	.driver = {
-		.name = "bxt_da7219_max98357a_i2s",
+		.name = "bxt_da7219_max98357a",
 		.pm = &snd_soc_pm_ops,
 	},
 	.id_table = bxt_board_ids,

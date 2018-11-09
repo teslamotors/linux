@@ -30,6 +30,7 @@
 #include <sound/pcm.h>
 #include <sound/compress_driver.h>
 #include <sound/soc-acpi.h>
+#include <sound/soc-acpi-intel-match.h>
 #include <sound/hda_register.h>
 #include <sound/hdaudio.h>
 #include <sound/hda_i915.h>
@@ -39,19 +40,7 @@
 #include "skl-sst-ipc.h"
 #include "skl-topology.h"
 
-static struct skl_machine_pdata skl_dmic_data;
-
-static char *machine = NULL;
-static char *fw_filename = NULL;
-
-module_param(machine, charp, 0444);
-MODULE_PARM_DESC(machine, "machine driver string for Intel soundcard.");
-
-module_param(fw_filename, charp, 0444);
-MODULE_PARM_DESC(fw_filename, "firmware filename string for Intel DSP.");
-
 /*
-
  * initialize the PCI registers
  */
 static void skl_update_pci_byte(struct pci_dev *pci, unsigned int reg,
@@ -527,24 +516,14 @@ static int skl_find_machine(struct skl *skl, void *driver_data)
 	    IS_ENABLED(CONFIG_SND_SOC_INTEL_CNL_FPGA))
 		goto out;
 
-	if (machine) {
-		mach = kzalloc(sizeof(*mach), GFP_KERNEL);
-		if (!mach)
-			return -ENOMEM;
-		mach->drv_name = machine;
-		if (fw_filename)
-			mach->fw_filename = fw_filename;
-	} else {
-		mach = driver_data;
-		mach = snd_soc_acpi_find_machine(mach);
-		if (mach == NULL) {
-			dev_err(bus->dev, "No matching machine driver found\n");
-			return -ENODEV;
-		}
-
+	mach = snd_soc_acpi_find_machine(mach);
+	if (mach == NULL) {
+		dev_err(bus->dev, "No matching machine driver found\n");
+		return -ENODEV;
 	}
 
 out:
+
 	skl->fw_name = mach->fw_filename;
 	skl->mach = mach;
 	if (mach->pdata) {
@@ -561,6 +540,7 @@ static int skl_machine_device_register(struct skl *skl)
 	struct snd_soc_acpi_mach *mach = skl->mach;
 	struct platform_device *pdev;
 	int ret;
+
 	pdev = platform_device_alloc(mach->drv_name, -1);
 	if (pdev == NULL) {
 		dev_err(bus->dev, "platform device alloc failed\n");
@@ -578,9 +558,6 @@ static int skl_machine_device_register(struct skl *skl)
 		dev_set_drvdata(&pdev->dev, mach->pdata);
 
 	skl->i2s_dev = pdev;
-
-	if (machine)
-		kfree(mach);
 
 	return 0;
 }
@@ -1035,174 +1012,6 @@ static void skl_remove(struct pci_dev *pci)
 	dev_set_drvdata(&pci->dev, NULL);
 }
 
-static struct snd_soc_acpi_codecs skl_codecs = {
-	.num_codecs = 1,
-	.codecs = {"10508825"}
-};
-
-static struct snd_soc_acpi_codecs kbl_codecs = {
-	.num_codecs = 1,
-	.codecs = {"10508825"}
-};
-
-static struct snd_soc_acpi_codecs bxt_codecs = {
-	.num_codecs = 1,
-	.codecs = {"MX98357A"}
-};
-
-static struct snd_soc_acpi_codecs kbl_poppy_codecs = {
-	.num_codecs = 1,
-	.codecs = {"10EC5663"}
-};
-
-static struct snd_soc_acpi_codecs kbl_5663_5514_codecs = {
-	.num_codecs = 2,
-	.codecs = {"10EC5663", "10EC5514"}
-};
-
-
-static struct snd_soc_acpi_mach sst_skl_devdata[] = {
-	{
-		.id = "INT343A",
-		.drv_name = "skl_alc286s_i2s",
-		.fw_filename = "intel/dsp_fw_release.bin",
-	},
-	{
-		.id = "INT343B",
-		.drv_name = "skl_n88l25_s4567",
-		.fw_filename = "intel/dsp_fw_release.bin",
-		.machine_quirk = snd_soc_acpi_codec_list,
-		.quirk_data = &skl_codecs,
-		.pdata = &skl_dmic_data
-	},
-	{
-		.id = "MX98357A",
-		.drv_name = "skl_n88l25_m98357a",
-		.fw_filename = "intel/dsp_fw_release.bin",
-		.machine_quirk = snd_soc_acpi_codec_list,
-		.quirk_data = &skl_codecs,
-		.pdata = &skl_dmic_data
-	},
-	{}
-};
-
-static struct snd_soc_acpi_mach sst_bxtp_devdata[] = {
-	{
-		.id = "INT343A",
-#if IS_ENABLED(CONFIG_SND_SOC_INTEL_BXTP_IVI_RSE_MACH)
-		.drv_name = "bxt_ivi_rse_i2s",
-#elif IS_ENABLED(CONFIG_SND_SOC_INTEL_BXTP_IVI_HU_MACH)
-		.drv_name = "bxt_ivi_hu_i2s",
-#elif IS_ENABLED(CONFIG_SND_SOC_INTEL_BXTP_IVI_M3_MACH)
-		.drv_name = "bxt_ivi_m3_i2s",
-#elif IS_ENABLED(CONFIG_SND_SOC_INTEL_BXTP_IVI_GENERIC_MACH)
-		.drv_name = "bxt_ivi_generic_i2s",
-#else
-		.drv_name = "bxt_alc298s_i2s",
-#endif
-#if IS_ENABLED(CONFIG_SND_SOC_INTEL_BXTP_IVI_RSE_MACH) || \
-IS_ENABLED(CONFIG_SND_SOC_INTEL_BXTP_IVI_HU_MACH) || \
-IS_ENABLED(CONFIG_SND_SOC_INTEL_BXTP_IVI_M3_MACH) || \
-IS_ENABLED(CONFIG_SND_SOC_INTEL_BXTP_IVI_GENERIC_MACH)
-		.fw_filename = "intel/ADSPFW.bin"
-#else
-		.fw_filename = "intel/dsp_fw_bxtn.bin",
-#endif
-	},
-	{
-		.id = "DLGS7219",
-		.drv_name = "bxt_da7219_max98357a_i2s",
-		.fw_filename = "intel/dsp_fw_bxtn.bin",
-		.machine_quirk = snd_soc_acpi_codec_list,
-		.quirk_data = &bxt_codecs,
-	},
-#if IS_ENABLED(CONFIG_SND_SOC_INTEL_BXT_TDF8532_MACH)
-	{
-		.id = "INT34C3",
-		.drv_name = "bxt_tdf8532",
-		.fw_filename = "intel/dsp_fw_bxtn.bin",
-	},
-#elif IS_ENABLED(CONFIG_SND_SOC_INTEL_BXT_ULL_MACH)
-	{
-		.id = "INT34C3",
-		.drv_name = "bxt_ivi_ull",
-		.fw_filename = "intel/dsp_fw_ull_bxtn.bin",
-	},
-#endif
-	{}
-};
-
-static struct snd_soc_acpi_mach sst_kbl_devdata[] = {
-	{
-		.id = "INT343A",
-		.drv_name = "kbl_alc286s_i2s",
-		.fw_filename = "intel/dsp_fw_kbl.bin",
-	},
-	{
-		.id = "INT343B",
-		.drv_name = "kbl_n88l25_s4567",
-		.fw_filename = "intel/dsp_fw_kbl.bin",
-		.machine_quirk = snd_soc_acpi_codec_list,
-		.quirk_data = &kbl_codecs,
-		.pdata = &skl_dmic_data
-	},
-	{
-		.id = "MX98357A",
-		.drv_name = "kbl_n88l25_m98357a",
-		.fw_filename = "intel/dsp_fw_kbl.bin",
-		.machine_quirk = snd_soc_acpi_codec_list,
-		.quirk_data = &kbl_codecs,
-		.pdata = &skl_dmic_data
-	},
-	{
-		.id = "MX98927",
-		.drv_name = "kbl_r5514_5663_max",
-		.fw_filename = "intel/dsp_fw_kbl.bin",
-		.machine_quirk = snd_soc_acpi_codec_list,
-		.quirk_data = &kbl_5663_5514_codecs,
-		.pdata = &skl_dmic_data
-	},
-	{
-		.id = "MX98927",
-		.drv_name = "kbl_rt5663_m98927",
-		.fw_filename = "intel/dsp_fw_kbl.bin",
-		.machine_quirk = snd_soc_acpi_codec_list,
-		.quirk_data = &kbl_poppy_codecs,
-		.pdata = &skl_dmic_data
-	},
-	{
-		.id = "10EC5663",
-		.drv_name = "kbl_rt5663",
-		.fw_filename = "intel/dsp_fw_kbl.bin",
-	},
-
-	{}
-};
-
-static struct snd_soc_acpi_mach sst_glk_devdata[] = {
-	{
-		.id = "INT343A",
-		.drv_name = "glk_alc298s_i2s",
-		.fw_filename = "intel/dsp_fw_glk.bin",
-	},
-	{}
-};
-
-static const struct snd_soc_acpi_mach sst_cnl_devdata[] = {
-#if !IS_ENABLED(CONFIG_SND_SOC_RT700)
-	{
-		.id = "INT34C2",
-		.drv_name = "cnl_rt274",
-		.fw_filename = "intel/dsp_fw_cnl.bin",
-	},
-#else
-	{
-		.drv_name = "cnl_rt700",
-		.fw_filename = "intel/dsp_fw_cnl.bin",
-	},
-#endif
-};
-
 static struct snd_soc_acpi_mach sst_icl_devdata[] = {
 #if IS_ENABLED(CONFIG_SND_SOC_RT700)
 	{ "dummy", "icl_rt700", "intel/dsp_fw_icl.bin", NULL, NULL, NULL },
@@ -1218,19 +1027,19 @@ static struct snd_soc_acpi_mach sst_icl_devdata[] = {
 static const struct pci_device_id skl_ids[] = {
 	/* Sunrise Point-LP */
 	{ PCI_DEVICE(0x8086, 0x9d70),
-		.driver_data = (unsigned long)&sst_skl_devdata},
+		.driver_data = (unsigned long)&snd_soc_acpi_intel_skl_machines},
 	/* BXT-P */
 	{ PCI_DEVICE(0x8086, 0x5a98),
-		.driver_data = (unsigned long)&sst_bxtp_devdata},
+		.driver_data = (unsigned long)&snd_soc_acpi_intel_bxt_machines},
 	/* KBL */
 	{ PCI_DEVICE(0x8086, 0x9D71),
-		.driver_data = (unsigned long)&sst_kbl_devdata},
+		.driver_data = (unsigned long)&snd_soc_acpi_intel_kbl_machines},
 	/* GLK */
 	{ PCI_DEVICE(0x8086, 0x3198),
-		.driver_data = (unsigned long)&sst_glk_devdata},
+		.driver_data = (unsigned long)&snd_soc_acpi_intel_glk_machines},
 	/* CNL */
 	{ PCI_DEVICE(0x8086, 0x9dc8),
-		.driver_data = (unsigned long)&sst_cnl_devdata},
+		.driver_data = (unsigned long)&snd_soc_acpi_intel_cnl_machines},
 	/* ICL */
 	{ PCI_DEVICE(0x8086, 0x34c8),
 		.driver_data = (unsigned long)&sst_icl_devdata},

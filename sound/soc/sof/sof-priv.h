@@ -155,8 +155,14 @@ struct snd_sof_dsp_ops {
 	int num_drv;
 };
 
-struct snd_sof_pdata;
+/* DSP architecture specific callbacks for oops and stack dumps */
+struct sof_arch_ops {
+	void (*dsp_oops)(struct snd_sof_dev *sdev, void *oops);
+	void (*dsp_stack)(struct snd_sof_dev *sdev, void *oops,
+			  u32 *stack, u32 stack_words);
+};
 
+/* DSP device HW descriptor mapping between bus ID and ops */
 struct sof_ops_table {
 	const struct sof_dev_desc *desc;
 	struct snd_sof_dsp_ops *ops;
@@ -178,6 +184,7 @@ struct snd_sof_dfsentry_buf {
 	struct snd_sof_dev *sdev;
 };
 
+/* Debug mapping for any DSP memory or registers that can used for debug */
 struct snd_sof_debugfs_map {
 	const char *name;
 	u32 bar;
@@ -185,11 +192,28 @@ struct snd_sof_debugfs_map {
 	u32 size;
 };
 
+/* mailbox descriptor, used for host <-> DSP IPC */
 struct snd_sof_mailbox {
 	u32 offset;
 	size_t size;
 };
 
+/* IPC message descriptor for host <-> DSP IO */
+struct snd_sof_ipc_msg {
+	struct list_head list;
+
+	/* message data */
+	u32 header;
+	void *msg_data;
+	void *reply_data;
+	size_t msg_size;
+	size_t reply_size;
+
+	wait_queue_head_t waitq;
+	bool complete;
+};
+
+/* PCM stream, mapped to FW component  */
 struct snd_sof_pcm_stream {
 	u32 comp_id;
 	struct snd_dma_buffer page_table;
@@ -197,6 +221,7 @@ struct snd_sof_pcm_stream {
 	struct snd_pcm_substream *substream;
 };
 
+/* ASLA SOF PCM device */
 struct snd_sof_pcm {
 	struct snd_sof_dev *sdev;
 	struct snd_soc_tplg_pcm pcm;
@@ -208,6 +233,7 @@ struct snd_sof_pcm {
 	int restore_stream[2]; /* restore hw_params for paused stream */
 };
 
+/* ALSA SOF Kcontrol device */
 struct snd_sof_control {
 	struct snd_sof_dev *sdev;
 	int comp_id;
@@ -216,11 +242,13 @@ struct snd_sof_control {
 	struct sof_ipc_ctrl_data *control_data;
 	u32 size;	/* cdata size */
 	enum sof_ipc_ctrl_cmd cmd;
+	u32 *volume_table; /* volume table computed from tlv data*/
 
 	struct mutex mutex;	/* access mutex */
 	struct list_head list;	/* list in sdev control list */
 };
 
+/* ASoC SOF DAPM widget */
 struct snd_sof_widget {
 	struct snd_sof_dev *sdev;
 	int comp_id;
@@ -232,7 +260,7 @@ struct snd_sof_widget {
 	struct mutex mutex;	/* access mutex */
 	struct list_head list;	/* list in sdev widget list */
 
-	void *private;			/* core does not touch this */
+	void *private;		/* core does not touch this */
 };
 
 /* ASoC SOF DAPM route */
@@ -255,85 +283,6 @@ struct snd_sof_dai {
 	struct list_head list;	/* list in sdev dai list */
 };
 
-struct snd_sof_ipc_msg {
-	struct list_head list;
-
-	/* message data */
-	u32 header;
-	void *msg_data;
-	void *reply_data;
-	size_t msg_size;
-	size_t reply_size;
-
-	wait_queue_head_t waitq;
-	bool complete;
-};
-
-struct snd_sof_hda_rb {
-	__le32 *buf;
-	dma_addr_t addr;
-	unsigned short rp, wp;
-	int cmds[HDA_MAX_CODECS];
-	u32 res[HDA_MAX_CODECS];
-};
-
-struct snd_sof_hda_stream {
-	void __iomem *pphc_addr;
-	void __iomem *pplc_addr; // do we need this ?
-	void __iomem *spib_addr;
-	void __iomem *fifo_addr;
-	void __iomem *drsm_addr;
-	u32 dpib;
-	u32 lpib;
-	int stream_tag;
-	int direction;
-	bool open;
-	bool running;
-	struct snd_dma_buffer bdl;
-	void __iomem *sd_addr;	/* stream descriptor pointer */
-
-	int sd_offset; /* Stream descriptor offset */
-
-	/* CORB/RIRB and position buffers */
-	struct snd_dma_buffer posbuffer;
-	struct snd_dma_buffer ringbuffer;
-
-	__le32 *posbuf;		/* position buffer pointer */
-	unsigned int frags;	/* number for period in the play buffer */
-	unsigned int format_val;	/* format value to be set in the
-					 * controller and the codec
-					 */
-	unsigned int bufsize;	/* size of the play buffer in bytes */
-	unsigned int fifo_size;	/* FIFO size */
-	unsigned char index;		/* stream index */
-	/* PCM Support */
-	/* Assigned substream set in PCM open */
-	struct snd_pcm_substream *substream;
-};
-
-#define SOF_HDA_PLAYBACK_STREAMS	16
-#define SOF_HDA_CAPTURE_STREAMS		16
-#define SOF_HDA_PLAYBACK 0
-#define SOF_HDA_CAPTURE 1
-
-struct snd_sof_hda_dev {
-	struct snd_sof_hda_stream pstream[SOF_HDA_PLAYBACK_STREAMS];
-	struct snd_sof_hda_stream cstream[SOF_HDA_CAPTURE_STREAMS];
-
-	int num_capture;
-	int num_playback;
-
-	/* CORB/RIRB */
-	struct snd_sof_hda_rb corb;
-	struct snd_sof_hda_rb rirb;
-
-	/* CORB/RIRB and position buffers */
-	struct snd_dma_buffer posbuffer;
-	struct snd_dma_buffer ringbuffer;
-
-	int irq;
-};
-
 /*
  * SOF Device Level.
  */
@@ -347,8 +296,6 @@ struct snd_sof_dev {
 	/* ASoC components */
 	struct snd_soc_platform_driver plat_drv;
 	const struct snd_soc_component_driver *cmpnt_drv;
-	struct snd_soc_dai_driver dai_drv;
-	int num_dai;
 
 	/* DSP firmware boot */
 	wait_queue_head_t boot_wait;
@@ -357,7 +304,8 @@ struct snd_sof_dev {
 	/* DSP HW differentiation */
 	struct snd_sof_pdata *pdata;
 	const struct snd_sof_dsp_ops *ops;
-	struct snd_sof_hda_dev hda;	/* for HDA based DSP HW */
+	struct sof_intel_hda_dev *hda;	/* for HDA based DSP HW */
+	const struct sof_arch_ops *arch_ops;
 
 	/* IPC */
 	struct snd_sof_ipc *ipc;
@@ -406,7 +354,6 @@ struct snd_sof_dev {
 	/* DMA for Trace */
 	struct snd_dma_buffer dmatb;
 	struct snd_dma_buffer dmatp;
-	struct snd_sof_hda_stream *dtrace_stream;
 	int dma_trace_pages;
 	wait_queue_head_t trace_sleep;
 	u32 host_offset;
@@ -535,13 +482,6 @@ int snd_sof_init_trace_ipc(struct snd_sof_dev *sdev);
 /*
  * Platform specific ops.
  */
-
-extern struct snd_sof_dsp_ops snd_sof_byt_ops;
-extern struct snd_sof_dsp_ops snd_sof_cht_ops;
-extern struct snd_sof_dsp_ops snd_sof_hsw_ops;
-extern struct snd_sof_dsp_ops snd_sof_bdw_ops;
-extern struct snd_sof_dsp_ops snd_sof_apl_ops;
-extern struct snd_sof_dsp_ops snd_sof_cnl_ops;
 extern struct snd_compr_ops sof_compressed_ops;
 
 /*
@@ -561,4 +501,21 @@ int snd_sof_bytes_get(struct snd_kcontrol *kcontrol,
 int snd_sof_bytes_put(struct snd_kcontrol *kcontrol,
 		      struct snd_ctl_elem_value *ucontrol);
 
+/*
+ * DSP Architectures.
+ */
+static inline void sof_stack(struct snd_sof_dev *sdev, void *oops, u32 *stack,
+			     u32 stack_words)
+{
+	if (sdev->arch_ops->dsp_stack)
+		sdev->arch_ops->dsp_stack(sdev, oops, stack, stack_words);
+}
+
+static inline void sof_oops(struct snd_sof_dev *sdev, void *oops)
+{
+	if (sdev->arch_ops->dsp_oops)
+		sdev->arch_ops->dsp_oops(sdev, oops);
+}
+
+extern const struct sof_arch_ops sof_xtensa_arch_ops;
 #endif
