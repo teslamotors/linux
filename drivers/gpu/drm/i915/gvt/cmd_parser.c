@@ -2894,6 +2894,7 @@ static int init_cmd_table(struct intel_gvt *gvt)
 		if (info) {
 			gvt_err("%s %s duplicated\n", e->info->name,
 					info->name);
+			kfree(e);
 			return -EEXIST;
 		}
 		if (cmd_info[i].opcode == OP_MI_NOOP)
