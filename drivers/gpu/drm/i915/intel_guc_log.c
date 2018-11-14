@@ -332,10 +332,6 @@ static void guc_read_update_log_buffer(struct intel_guc *guc)
 	if (log_buf_snapshot_state)
 		guc_move_to_next_buf(guc);
 	else {
-		/* Used rate limited to avoid deluge of messages, logs might be
-		 * getting consumed by User at a slow rate.
-		 */
-		DRM_ERROR_RATELIMITED("no sub-buffer to capture logs\n");
 		guc->log.capture_miss_count++;
 	}
 }
