@@ -176,6 +176,8 @@ static int intel_ipu4_poll_for_events(struct intel_ipu4_isys_video *av)
 	return is_intel_ipu_hw_fpga(av->isys->adev->isp);
 }
 
+void intel_ipu4_isys_csi2_trigger_error_all(struct intel_ipu4_isys *isys);
+
 static int video_open(struct file *file)
 {
 	struct intel_ipu4_isys_video *av = video_drvdata(file);
@@ -188,6 +190,7 @@ static int video_open(struct file *file)
 
 	mutex_lock(&isys->mutex);
 	if (isys->reset_needed || isp->flr_done) {
+		intel_ipu4_isys_csi2_trigger_error_all(av->isys);
 		mutex_unlock(&isys->mutex);
 		dev_warn(&isys->adev->dev, "isys power cycle required\n");
 		return -EIO;
@@ -1223,7 +1226,7 @@ out_stream_close:
 		dev_dbg(dev, "can't close stream (%d)\n", rvalout);
 	} else {
 		tout = wait_for_completion_timeout(&ip->stream_close_completion,
-				av->isys->csi2_in_error_state ? 0 : INTEL_IPU4_LIB_CALL_TIMEOUT_JIFFIES);
+				INTEL_IPU4_LIB_CALL_TIMEOUT_JIFFIES);
 		if (!tout)
 			dev_err(dev, "stream close time out\n");
 		else if (ip->error)
@@ -1255,6 +1258,7 @@ static void stop_streaming_firmware(struct intel_ipu4_isys_video *av)
 	if (ip->csi2 && !ip->csi2_be && !ip->csi2_be_soc)
 		send_type = IPU_FW_ISYS_SEND_TYPE_STREAM_STOP;
 
+	mutex_lock(&av->isys->mutex);
 	rval = av->isys->fwctrl->simple_cmd(av->isys,
 				ip->stream_handle,
 				send_type);
@@ -1263,7 +1267,7 @@ static void stop_streaming_firmware(struct intel_ipu4_isys_video *av)
 		dev_err(dev, "can't stop stream (%d)\n", rval);
 	} else {
 		tout = wait_for_completion_timeout(&ip->stream_stop_completion,
-				av->isys->csi2_in_error_state ? 0 : INTEL_IPU4_LIB_CALL_TIMEOUT_JIFFIES);
+				INTEL_IPU4_LIB_CALL_TIMEOUT_JIFFIES);
 		if (!tout)
 			dev_err(dev, "stream stop time out\n");
 		else if (ip->error)
@@ -1271,6 +1275,7 @@ static void stop_streaming_firmware(struct intel_ipu4_isys_video *av)
 		else
 			dev_dbg(dev, "stop stream: complete\n");
 	}
+	mutex_unlock(&av->isys->mutex);
 }
 
 static void close_streaming_firmware(struct intel_ipu4_isys_video *av)
@@ -1282,6 +1287,7 @@ static void close_streaming_firmware(struct intel_ipu4_isys_video *av)
 
 	reinit_completion(&ip->stream_close_completion);
 
+	mutex_lock(&av->isys->mutex);
 	rval = av->isys->fwctrl->simple_cmd(av->isys,
 					  ip->stream_handle,
 					  IPU_FW_ISYS_SEND_TYPE_STREAM_CLOSE);
@@ -1289,7 +1295,7 @@ static void close_streaming_firmware(struct intel_ipu4_isys_video *av)
 		dev_err(dev, "can't close stream (%d)\n", rval);
 	} else {
 		tout = wait_for_completion_timeout(&ip->stream_close_completion,
-				av->isys->csi2_in_error_state ? 0 : INTEL_IPU4_LIB_CALL_TIMEOUT_JIFFIES);
+				INTEL_IPU4_LIB_CALL_TIMEOUT_JIFFIES);
 		if (!tout)
 			dev_err(dev, "stream close time out\n");
 		else if (ip->error)
@@ -1299,6 +1305,7 @@ static void close_streaming_firmware(struct intel_ipu4_isys_video *av)
 	}
 	put_stream_opened(av);
 	put_stream_handle(av);
+	mutex_unlock(&av->isys->mutex);
 }
 
 void intel_ipu4_isys_video_add_capture_done(

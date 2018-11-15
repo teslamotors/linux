@@ -36,5 +36,6 @@ unsigned int intel_ipu4_isys_csi2_get_current_field(
 	unsigned int *timestamp);
 bool intel_ipu4_skew_cal_required(struct intel_ipu4_isys_csi2 *csi2);
 int intel_ipu4_csi_set_skew_cal(struct intel_ipu4_isys_csi2 *csi2, int enable);
+void intel_ipu4_isys_csi2_trigger_error_all(struct intel_ipu4_isys *isys);
 
 #endif /* INTEL_IPU4_ISYS_CSI2_H */

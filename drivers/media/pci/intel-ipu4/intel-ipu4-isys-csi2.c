@@ -57,6 +57,16 @@ static void trigger_error(struct intel_ipu4_isys_csi2 *csi2)
 	spin_unlock_irqrestore(&csi2->isys->lock, flags);
 }
 
+void intel_ipu4_isys_csi2_trigger_error_all(struct intel_ipu4_isys *isys)
+{
+	int i;
+
+	isys->reset_needed = true;
+	for (i = 0; i < isys->pdata->ipdata->csi2.nports; i++) {
+        	trigger_error(&isys->csi2[i]);
+        }
+}
+
 struct intel_ipu_isys_csi2_ops csi2_funcs_ipu4 = {
 	.set_stream = intel_ipu4_isys_csi2_set_stream,
 	.csi2_isr = intel_ipu4_isys_csi2_isr,
@@ -355,7 +365,7 @@ void intel_ipu4_isys_csi2_error(struct intel_ipu4_isys_csi2 *csi2)
 		dev_err_ratelimited(&csi2->isys->adev->dev,
 					"csi2-%i received fatal error\n",
 					csi2->index);
-		trigger_error(csi2);
+		intel_ipu4_isys_csi2_trigger_error_all(csi2->isys);
 	}
 
 	for (i = 0; i < ARRAY_SIZE(errors); i++) {
