@@ -655,7 +655,12 @@ static u64 tsc_time_to_tunit_time(struct intel_ipu4_isys *isys,
 	u64 isys_clk = IS_FREQ_SOURCE / adev->ctrl->divisor / 100000;
 	u64 tsc_clk = INTEL_IPU4_BUTTRESS_TSC_CLK / 100000;
 
-	return (tsc_time - tsc_base) * isys_clk / tsc_clk + tunit_base;
+	tsc_time *= isys_clk;
+	tsc_base *= isys_clk;
+	do_div(tsc_time, tsc_clk);
+	do_div(tsc_base, tsc_clk);
+
+	return tunit_base + tsc_time - tsc_base;
 }
 
 /* Extract the timestamp from trace message.
@@ -700,6 +705,8 @@ unsigned int intel_ipu4_isys_csi2_get_current_field(
 	unsigned int i = ip->short_packet_trace_index;
 	bool msg_matched = false;
 	unsigned int monitor_id;
+
+	update_timer_base(isys);
 
 	if (ip->csi2->index >=
 		INTEL_IPU4_ISYS_MAX_CSI2_LEGACY_PORTS)
