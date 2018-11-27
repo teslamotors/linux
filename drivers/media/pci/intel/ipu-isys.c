@@ -40,7 +40,7 @@
  * The param was passed from module to indicate if port
  * could be optimized.
  */
-static bool csi2_port_optimized;
+static bool csi2_port_optimized = true;
 module_param(csi2_port_optimized, bool, 0660);
 MODULE_PARM_DESC(csi2_port_optimized, "IPU CSI2 port optimization");
 
@@ -407,21 +407,32 @@ static int isys_register_ext_subdev(struct ipu_isys *isys,
 				    struct ipu_isys_subdev_info *sd_info,
 				    bool acpi_only)
 {
-	struct i2c_adapter *adapter =
-	    i2c_get_adapter(sd_info->i2c.i2c_adapter_id);
+	struct i2c_adapter *adapter;
 	struct v4l2_subdev *sd;
 	struct i2c_client *client;
 	int rval;
+       int bus;
 
-	dev_info(&isys->adev->dev,
-		 "creating new i2c subdev for %s (address %2.2x, bus %d)",
-		 sd_info->i2c.board_info.type, sd_info->i2c.board_info.addr,
-		 sd_info->i2c.i2c_adapter_id);
-
-	if (!adapter) {
+#ifdef I2C_WA
+       bus = ipu_get_i2c_bus_id(sd_info->i2c.i2c_adapter_id);
+       if (bus < 0) {
+               dev_err(&isys->adev->dev, "Failed to find adapter!");
+               return -ENOENT;
+       }
+#else
+        bus = sd_info->i2c.i2c_adapter_id;
+#endif
+        adapter = i2c_get_adapter(bus);
+        if (!adapter) {
 		dev_warn(&isys->adev->dev, "can't find adapter\n");
 		return -ENOENT;
 	}
+
+        dev_info(&isys->adev->dev,
+                 "creating new i2c subdev for %s (address %2.2x, bus %d)",
+                 sd_info->i2c.board_info.type, sd_info->i2c.board_info.addr,
+                 bus);
+
 	if (sd_info->csi2) {
 		dev_info(&isys->adev->dev, "sensor device on CSI port: %d\n",
 			 sd_info->csi2->port);
@@ -483,6 +494,7 @@ static int isys_register_ext_subdev(struct ipu_isys *isys,
 		rval = -EINVAL;
 		goto skip_put_adapter;
 	}
+
 	if (!sd_info->csi2)
 		return 0;
 
@@ -689,11 +701,11 @@ static int isys_register_subdevices(struct ipu_isys *isys)
 			for (k = CSI2_BE_SOC_PAD_SINK(0);
 			     k < NR_OF_CSI2_BE_SOC_SINK_PADS; k++) {
 				rval =
-				    media_create_pad_link(&isys->csi2[i].asd.sd.
-							  entity, j,
-							  &isys->csi2_be_soc.
-							  asd.sd.entity, k,
-							  MEDIA_LNK_FL_DYNAMIC);
+                                    media_create_pad_link(&isys->csi2[i].asd.sd.
+                                                          entity, j,
+                                                          &isys->csi2_be_soc.
+                                                          asd.sd.entity, k,
+                                                          MEDIA_LNK_FL_DYNAMIC);
 				if (rval) {
 					dev_info(&isys->adev->dev,
 						 "can't create link csi2->be_soc\n");
@@ -720,7 +732,8 @@ static int isys_register_subdevices(struct ipu_isys *isys)
 			    media_create_pad_link(&isys->tpg[i].asd.sd.entity,
 						  TPG_PAD_SOURCE,
 						  &isys->csi2_be_soc.asd.sd.
-						  entity, k, 0);
+						  entity, k,
+						  MEDIA_LNK_FL_DYNAMIC);
 			if (rval) {
 				dev_info(&isys->adev->dev,
 					 "can't create link tpg->be_soc\n");

@@ -502,6 +502,9 @@ static int ipu_pci_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	pm_runtime_put_noidle(&pdev->dev);
 	pm_runtime_allow(&pdev->dev);
 
+	dev_info(&pdev->dev, "IPU driver verion %d.%d\n", IPU_MAJOR_VERSION,
+		 IPU_MINOR_VERSION);
+
 	trace_printk("E|TMWK\n");
 	return 0;
 
