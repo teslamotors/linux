@@ -10,8 +10,7 @@
 #include "ipu.h"
 #include "ipu-pdata.h"
 #include "ipu-fw-psys.h"
-
-#include <uapi/linux/ipu-psys.h>
+#include "ipu-platform-psys.h"
 
 #define IPU_PSYS_PG_POOL_SIZE 16
 #define IPU_PSYS_PG_MAX_SIZE 2048
@@ -20,8 +19,6 @@
 #define IPU_PSYS_EVENT_FRAGMENT_COMPLETE IPU_FW_PSYS_EVENT_TYPE_SUCCESS
 #define IPU_PSYS_CLOSE_TIMEOUT_US   50
 #define IPU_PSYS_CLOSE_TIMEOUT (100000 / IPU_PSYS_CLOSE_TIMEOUT_US)
-#define IPU_PSYS_BUF_SET_POOL_SIZE 16
-#define IPU_PSYS_BUF_SET_MAX_SIZE 1024
 #define IPU_PSYS_WORK_QUEUE		system_power_efficient_wq
 #define IPU_MAX_RESOURCES 32
 
@@ -122,14 +119,9 @@ struct ipu_psys_fh {
 	struct mutex mutex;	/* Protects bufmap & kcmds fields */
 	struct list_head list;
 	struct list_head bufmap;
-	struct list_head kcmds[IPU_PSYS_CMD_PRIORITY_NUM];
-	struct ipu_psys_kcmd
-	*new_kcmd_tail[IPU_PSYS_CMD_PRIORITY_NUM];
 	wait_queue_head_t wait;
-	struct mutex bs_mutex;	/* Protects buf_set field */
-	struct list_head buf_sets;
+       struct ipu_psys_scheduler sched;
 };
-
 
 struct ipu_psys_pg {
 	struct ipu_fw_psys_process_group *pg;
@@ -140,29 +132,14 @@ struct ipu_psys_pg {
 	struct ipu_psys_resource_alloc resource_alloc;
 };
 
-enum ipu_psys_cmd_state {
-	KCMD_STATE_NEW,
-	KCMD_STATE_START_PREPARED,
-	KCMD_STATE_STARTED,
-	KCMD_STATE_RUN_PREPARED,
-	KCMD_STATE_RUNNING,
-	KCMD_STATE_COMPLETE
-};
-
-struct ipu_psys_buffer_set {
-	struct list_head list;
-	struct ipu_fw_psys_buffer_set *buf_set;
-	size_t size;
-	size_t buf_set_size;
-	dma_addr_t dma_addr;
-	void *kaddr;
-	struct ipu_psys_kcmd *kcmd;
-};
-
 struct ipu_psys_kcmd {
 	struct ipu_psys_fh *fh;
 	struct list_head list;
+#ifndef IPU_PSYS_LEGACY
+       struct ipu_psys_buffer_set *kbuf_set;
+#else
 	struct list_head started_list;
+#endif
 	enum ipu_psys_cmd_state state;
 	void *pg_manifest;
 	size_t pg_manifest_size;
@@ -175,8 +152,6 @@ struct ipu_psys_kcmd {
 	u64 issue_id;
 	u32 priority;
 	struct ipu_buttress_constraint constraint;
-	struct ipu_psys_buffer_set *kbuf_set;
-
 	struct ipu_psys_event ev;
 	struct timer_list watchdog;
 };
@@ -202,8 +177,6 @@ struct ipu_psys_kbuffer {
 	struct sg_table *sgt;
 	struct dma_buf_attachment *db_attach;
 	struct dma_buf *dbuf;
-	struct ipu_psys *psys;
-	struct ipu_psys_fh *fh;
 	bool valid;	/* True when buffer is usable */
 };
 
@@ -219,14 +192,8 @@ long ipu_psys_compat_ioctl32(struct file *file, unsigned int cmd,
 void ipu_psys_setup_hw(struct ipu_psys *psys);
 void ipu_psys_handle_events(struct ipu_psys *psys);
 int ipu_psys_kcmd_new(struct ipu_psys_command *cmd, struct ipu_psys_fh *fh);
-int ipu_psys_kcmd_queue(struct ipu_psys *psys, struct ipu_psys_kcmd *kcmd);
-void ipu_psys_kcmd_complete(struct ipu_psys *psys,
-			    struct ipu_psys_kcmd *kcmd, int error);
 void ipu_psys_run_next(struct ipu_psys *psys);
 void ipu_psys_watchdog_work(struct work_struct *work);
-int ipu_psys_kcmd_abort(struct ipu_psys *psys,
-			struct ipu_psys_kcmd *kcmd, int error);
-void ipu_psys_kcmd_free(struct ipu_psys_kcmd *kcmd);
 struct ipu_psys_pg *__get_pg_buf(struct ipu_psys *psys, size_t pg_size);
 struct ipu_psys_kbuffer *
 ipu_psys_lookup_kbuffer(struct ipu_psys_fh *fh, int fd);
@@ -237,5 +204,8 @@ int ipu_psys_gpc_init_debugfs(struct ipu_psys *psys);
 #endif
 int ipu_psys_resource_pool_init(struct ipu_psys_resource_pool *pool);
 void ipu_psys_resource_pool_cleanup(struct ipu_psys_resource_pool *pool);
+struct ipu_psys_kcmd *ipu_get_completed_kcmd(struct ipu_psys_fh *fh);
+long ipu_ioctl_dqevent(struct ipu_psys_event *event,
+		       struct ipu_psys_fh *fh, unsigned int f_flags);
 
 #endif /* IPU_PSYS_H */

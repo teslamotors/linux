@@ -36,6 +36,7 @@ struct crlmodule_platform_data {
 	unsigned int irq_pin_flags;
 	char irq_pin_name[16];
 	const char *id_string;
+	char suffix; /* suffix to identify multi sensors, abcd.. */
 	unsigned int high_framevalid_flags; /* high framevaild flags*/
 };
 

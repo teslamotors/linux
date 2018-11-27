@@ -9,11 +9,6 @@
 
 #include "./ici/ici-isys-pipeline.h"
 
-int ici_isys_pipeline_init(struct ici_isys_pipeline *ip)
-{
-	return 0;
-}
-
 int ici_isys_pipeline_node_init(
 	struct ici_isys *isys,
 	struct ici_isys_node *node,

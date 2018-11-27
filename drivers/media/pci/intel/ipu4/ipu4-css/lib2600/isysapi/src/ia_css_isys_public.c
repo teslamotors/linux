@@ -296,7 +296,7 @@ int ia_css_isys_context_create(
 
 /* push context information to DMEM for FW to access */
 int ia_css_isys_context_store_dmem(
-	const HANDLE *context,
+	const HANDLE * context,
 	const struct ia_css_isys_device_cfg_data *config)
 {
 	struct ia_css_isys_context *ctx = (struct ia_css_isys_context *) *context;
@@ -305,7 +305,7 @@ int ia_css_isys_context_store_dmem(
 }
 
 bool ia_css_isys_ab_spc_ready(
-	HANDLE *context)
+	HANDLE * context)
 {
 	struct ia_css_isys_context *ctx = (struct ia_css_isys_context *) *context;
 

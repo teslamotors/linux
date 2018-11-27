@@ -46,12 +46,14 @@ struct ti964_subdev_info {
 	int i2c_adapter_id;
 	unsigned short rx_port;
 	unsigned short phy_i2c_addr;
+	const char suffix; /* suffix for subdevs */
 };
 
 struct ti964_pdata {
 	unsigned int subdev_num;
 	struct ti964_subdev_info *subdev_info;
 	unsigned int reset_gpio;
+	const char suffix; /* suffix for multi aggregators, abcd... */
 };
 
 #endif

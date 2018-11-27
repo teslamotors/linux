@@ -939,6 +939,12 @@ config VIDEO_TI964
 	---help---
 	This is a driver for TI964 camera.
 
+config VIDEO_TI960
+	tristate "TI960 driver support"
+	depends on I2C && VIDEO_V4L2
+	---help---
+	This is a driver for TI960 Deserializer.
+
 config VIDEO_AS3638
 	tristate "AS3638 flash driver support"
 	depends on I2C && VIDEO_V4L2 && MEDIA_CONTROLLER

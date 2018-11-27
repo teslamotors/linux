@@ -32,6 +32,7 @@
 #include "crl_magna_configuration.h"
 #include "crl_ar023z_configuration.h"
 #include "crl_ov2775_configuration.h"
+#include "crl_ox03a10_configuration.h"
 
 static const struct crlmodule_sensors supported_sensors[] = {
 	{ "i2c-OVTIF858:00", "ov13858", &ov13858_crl_configuration},
@@ -76,6 +77,7 @@ static const struct crlmodule_sensors supported_sensors[] = {
 	{ "MAGNA", "magna", &magna_crl_configuration },
 	{ "AR023Z", "ar023z", &ar023z_crl_configuration },
 	{ "OV2775", "ov2775", &ov2775_crl_configuration },
+	{ "OX03A10", "ox03a10", &ox03a10_crl_configuration },
 };
 
 /*
