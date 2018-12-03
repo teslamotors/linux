@@ -41,7 +41,7 @@
 
 #define BUTTRESS_IPC_TX_TIMEOUT			1000
 #define BUTTRESS_IPC_RX_TIMEOUT			1000
-#define BUTTRESS_IPC_VALIDITY_TIMEOUT		1000
+#define BUTTRESS_IPC_VALIDITY_TIMEOUT		5000
 
 #define IPU_BUTTRESS_TSC_LIMIT	500	/* 26 us @ 19.2 MHz */
 #define IPU_BUTTRESS_TSC_RETRY	10
@@ -75,7 +75,7 @@ int ipu_buttress_ipc_reset(struct ipu_device *isp, struct ipu_buttress_ipc *ipc)
 {
 	struct ipu_buttress *b = &isp->buttress;
 	unsigned long tout_jfs;
-	unsigned int tout = 500;
+	unsigned int tout = 5000;
 	u32 val = 0, csr_in_clr;
 
 	mutex_lock(&b->ipc_mutex);
