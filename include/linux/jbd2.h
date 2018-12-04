@@ -561,6 +561,7 @@ struct transaction_s
 	enum {
 		T_RUNNING,
 		T_LOCKED,
+		T_SWITCH,
 		T_FLUSH,
 		T_COMMIT,
 		T_COMMIT_DFLUSH,
