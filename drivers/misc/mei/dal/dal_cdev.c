@@ -182,13 +182,17 @@ static ssize_t dal_dev_read(struct file *fp, char __user *buf,
 		return -EFAULT;
 	}
 
-	ret = kfifo_to_user(&dc->read_queue, buf, count, &copied);
+	/**
+	 * count is the user buffer size, len is the msg size,
+	 * if we reach here then len <= count,
+	 * we can copy the whole msg to the user because his
+	 * buffer is big enough
+	 */
+	ret = kfifo_to_user(&dc->read_queue, buf, len, &copied);
 	if (ret) {
 		dev_dbg(&ddev->dev, "copy_to_user() failed\n");
 		return -EFAULT;
 	}
-
-	/*FIXME: need to drop rest of the data */
 
 	return copied;
 }
