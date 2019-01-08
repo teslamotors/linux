@@ -330,12 +330,15 @@ int request_cpd_fw(const struct firmware **firmware_p, const char *name,
 		*firmware_p = fw;
 	} else {
 		tmp = kzalloc(sizeof(struct firmware), GFP_KERNEL);
-		if (!tmp)
+		if (!tmp) {
+			release_firmware(fw);
 			return -ENOMEM;
+		}
 		tmp->size = fw->size;
 		tmp->data = vmalloc(fw->size);
 		if (!tmp->data) {
 			kfree(tmp);
+			release_firmware(fw);
 			return -ENOMEM;
 		}
 		memcpy((void *)tmp->data, fw->data, fw->size);
