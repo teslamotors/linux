@@ -1042,7 +1042,7 @@ int ipu_psys_fh_deinit(struct ipu_psys_fh *fh)
 	return 0;
 }
 
-static struct ipu_psys_kcmd *__ipu_get_completed_kcmd(struct ipu_psys_fh *fh)
+struct ipu_psys_kcmd *__ipu_get_completed_kcmd(struct ipu_psys_fh *fh)
 {
 	int p;
 

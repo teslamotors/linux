@@ -437,7 +437,7 @@ static void ipu_dma_buf_vunmap(struct dma_buf *dmabuf, void *vaddr)
 	vm_unmap_ram(vaddr, ipu_attach->npages);
 }
 
-static struct dma_buf_ops ipu_dma_buf_ops = {
+struct dma_buf_ops ipu_dma_buf_ops = {
 	.attach = ipu_dma_buf_attach,
 	.detach = ipu_dma_buf_detach,
 	.map_dma_buf = ipu_dma_buf_map,
@@ -544,7 +544,7 @@ static int ipu_psys_release(struct inode *inode, struct file *file)
 			if (kbuf->dbuf && kbuf->db_attach) {
 				struct dma_buf *dbuf;
 				kbuf->valid = false;
-#if defined(CONFIG_VIDEO_INTEL_IPU_ACRN) && defined(CONFIG_VIDEO_INTEL_IPU_VIRTIO_BE)
+#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 17, 0) && defined(CONFIG_VIDEO_INTEL_IPU_ACRN) && defined(CONFIG_VIDEO_INTEL_IPU_VIRTIO_BE)
 				ipu_attach = kbuf->db_attach->priv;
 				if (ipu_attach->vma_is_io)
 					ksys_close(kbuf->fd);
@@ -558,6 +558,9 @@ static int ipu_psys_release(struct inode *inode, struct file *file)
 				kbuf->dbuf = NULL;
 				kbuf->db_attach = NULL;
 				dma_buf_put(dbuf);
+#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 17, 0) && defined(CONFIG_VIDEO_INTEL_IPU_ACRN) && defined(CONFIG_VIDEO_INTEL_IPU_VIRTIO_BE)
+				ksys_close(kbuf->fd);
+#endif
 			} else {
 				if (kbuf->db_attach)
 					ipu_psys_put_userpages(
@@ -746,7 +749,7 @@ error_put:
 	return ret;
 }
 
-static long ipu_psys_unmapbuf(int fd, struct ipu_psys_fh *fh)
+long ipu_psys_unmapbuf(int fd, struct ipu_psys_fh *fh)
 {
 	struct ipu_psys_kbuffer *kbuf;
 	struct ipu_psys *psys = fh->psys;
