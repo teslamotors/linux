@@ -685,7 +685,7 @@ static void taprio_destroy(struct Qdisc *sch)
 
 	if (q->qdiscs) {
 		for (i = 0; i < dev->num_tx_queues && q->qdiscs[i]; i++)
-			qdisc_put(q->qdiscs[i]);
+			qdisc_destroy(q->qdiscs[i]);
 
 		kfree(q->qdiscs);
 	}
