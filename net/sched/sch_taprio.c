@@ -633,8 +633,7 @@ static int taprio_change(struct Qdisc *sch, struct nlattr *opt,
 		qdisc = qdisc_create_dflt(dev_queue,
 					  &pfifo_qdisc_ops,
 					  TC_H_MAKE(TC_H_MAJ(sch->handle),
-						    TC_H_MIN(i + 1)),
-					  extack);
+						    TC_H_MIN(i + 1)));
 		if (!qdisc)
 			return -ENOMEM;
 
