@@ -698,8 +698,7 @@ static void taprio_destroy(struct Qdisc *sch)
 	}
 }
 
-static int taprio_init(struct Qdisc *sch, struct nlattr *opt,
-		       struct netlink_ext_ack *extack)
+static int taprio_init(struct Qdisc *sch, struct nlattr *opt)
 {
 	struct taprio_sched *q = qdisc_priv(sch);
 	struct net_device *dev = qdisc_dev(sch);
@@ -734,7 +733,7 @@ static int taprio_init(struct Qdisc *sch, struct nlattr *opt,
 	if (!opt)
 		return -EINVAL;
 
-	return taprio_change(sch, opt, extack);
+	return taprio_change(sch, opt, NULL);
 }
 
 static struct netdev_queue *taprio_queue_get(struct Qdisc *sch,
@@ -750,8 +749,7 @@ static struct netdev_queue *taprio_queue_get(struct Qdisc *sch,
 }
 
 static int taprio_graft(struct Qdisc *sch, unsigned long cl,
-			struct Qdisc *new, struct Qdisc **old,
-			struct netlink_ext_ack *extack)
+			struct Qdisc *new, struct Qdisc **old)
 {
 	struct taprio_sched *q = qdisc_priv(sch);
 	struct net_device *dev = qdisc_dev(sch);
