@@ -372,9 +372,24 @@ static void hangcheck_accumulate_sample(struct intel_engine_cs *engine,
 		 * in hopes that it is just a long shader.
 		 */
 		timeout = I915_SEQNO_DEAD_TIMEOUT;
-		break;
 
+		/* Intentional fall through */
 	case ENGINE_DEAD:
+		/* Refresh the timestamp upon our first indication of slow
+		 * progress. This prevents us from prematurely declaring a
+		 * stall when hangcheck has not run for a while and the last
+		 * action timestamp has become stale.
+		 */
+		switch (engine->hangcheck.action) {
+		case ENGINE_IDLE:
+		case ENGINE_ACTIVE_SEQNO:
+		case ENGINE_WAIT_KICK:
+		case ENGINE_WAIT:
+			engine->hangcheck.action_timestamp = jiffies;
+			break;
+		default:
+			break;
+		}
 		break;
 
 	default:
