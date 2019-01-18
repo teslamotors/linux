@@ -146,7 +146,7 @@ static int verity_hash_update(struct dm_verity *v, struct ahash_request *req,
 	} else {
 		do {
 			int r;
-			size_t this_step = min(len, PAGE_SIZE - offset_in_page(data));
+			size_t this_step = min_t(size_t, len, PAGE_SIZE - offset_in_page(data));
 			flush_kernel_vmap_range((void *)data, this_step);
 			sg_init_table(&sg, 1);
 			sg_set_page(&sg, vmalloc_to_page(data), this_step, offset_in_page(data));
