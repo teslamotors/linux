@@ -1076,6 +1076,21 @@ TRACE_EVENT(switch_mm,
 		  __entry->dev, __entry->ring, __entry->to, __entry->vm)
 );
 
+TRACE_EVENT(i915_hangcheck,
+	TP_PROTO(struct drm_i915_private *i915),
+	TP_ARGS(i915),
+
+	TP_STRUCT__entry(
+			__field(u32, dev)
+	),
+
+	TP_fast_assign(
+			__entry->dev = i915->drm.primary->index;
+	),
+
+	TP_printk("dev=%u", __entry->dev)
+);
+
 #endif /* _I915_TRACE_H_ */
 
 /* This part must be outside protection */

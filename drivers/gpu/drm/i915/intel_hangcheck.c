@@ -460,6 +460,7 @@ static void i915_hangcheck_elapsed(struct work_struct *work)
 	 */
 	intel_uncore_arm_unclaimed_mmio_detection(dev_priv);
 
+	trace_i915_hangcheck(dev_priv);
 	for_each_engine(engine, dev_priv, id) {
 		struct intel_engine_hangcheck cur_state, *hc = &cur_state;
 		const bool busy = intel_engine_has_waiter(engine);
