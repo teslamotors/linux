@@ -33,7 +33,7 @@
 #include "sst-ipc.h"
 
 /* IPC message timeout (msecs) */
-#define IPC_TIMEOUT_MSECS	300
+#define IPC_TIMEOUT_MSECS	1000
 
 #define IPC_EMPTY_LIST_SIZE	8
 
