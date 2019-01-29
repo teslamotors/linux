@@ -59,7 +59,7 @@
 /* Delay before scheduling D0i3 entry */
 #define BXT_D0I3_DELAY 5000
 
-#define BXT_FW_INIT_RETRY 100
+#define BXT_FW_INIT_RETRY 3
 
 #define GET_SSP_BASE(N)	(N > 4 ? 0x2000 : 0x4000)
 
@@ -149,8 +149,8 @@ load_library_failed:
  * status on core 1, so power up core 1 also momentarily, keep it in
  * reset/stall and then turn it off
  */
-static int sst_bxt_prepare_fw(struct sst_dsp *ctx,
-			const void *fwdata, u32 fwsize)
+static int sst_bxt_prepare_fw(struct sst_dsp *ctx, const void *fwdata,
+			      u32 fwsize, unsigned int timeout_val)
 {
 	int stream_tag, ret;
 
@@ -211,7 +211,7 @@ static int sst_bxt_prepare_fw(struct sst_dsp *ctx,
 
 	/* Step 7: Wait for ROM init */
 	ret = sst_dsp_register_poll(ctx, BXT_ADSP_FW_STATUS, SKL_FW_STS_MASK,
-			SKL_FW_INIT, BXT_ROM_INIT_TIMEOUT, "ROM Load");
+			SKL_FW_INIT, timeout_val, "ROM Load");
 	if (ret < 0) {
 		dev_dbg(ctx->dev, "Timeout for ROM init, ret:%d\n", ret);
 		goto base_fw_load_failed;
@@ -249,6 +249,7 @@ static int bxt_load_base_firmware(struct sst_dsp *ctx)
 {
 	struct firmware stripped_fw;
 	struct skl_sst *skl = ctx->thread_context;
+	unsigned int timeout_val = BXT_ROM_INIT_TIMEOUT;
 	int ret, i;
 
 	if (ctx->fw == NULL) {
@@ -270,8 +271,10 @@ static int bxt_load_base_firmware(struct sst_dsp *ctx)
 	stripped_fw.size = ctx->fw->size;
 	skl_dsp_strip_extended_manifest(&stripped_fw);
 
-	for (i = 0; i < BXT_FW_INIT_RETRY; i++) {
-		ret = sst_bxt_prepare_fw(ctx, stripped_fw.data, stripped_fw.size);
+	/* Double the ROM init timeout_val every time recovery fails */
+	for (i = 0; i < BXT_FW_INIT_RETRY; i++, timeout_val *= 2) {
+		ret = sst_bxt_prepare_fw(ctx, stripped_fw.data,
+				stripped_fw.size, timeout_val);
 		if (ret < 0) {
 			if (i < (BXT_FW_INIT_RETRY - 1)) {
 				dev_dbg(ctx->dev, "Error code=0x%x: FW status=0x%x\n",
