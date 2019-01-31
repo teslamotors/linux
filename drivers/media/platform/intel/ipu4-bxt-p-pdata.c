@@ -143,6 +143,7 @@ static struct crlmodule_platform_data ov2740_pdata_2 = {
 	.op_sys_clock = (uint64_t []){ 72000000 },
 	.module_name = "INT3474-2",
 	.id_string = "0x27 0x40",
+	.suffix = 'b',
 };
 
 static struct ipu_isys_csi2_config ov2740_csi2_cfg_2 = {
