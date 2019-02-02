@@ -1449,6 +1449,7 @@ config ARCH_HAS_MEM_ENCRYPT
 config AMD_MEM_ENCRYPT
 	bool "AMD Secure Memory Encryption (SME) support"
 	depends on X86_64 && CPU_SUP_AMD
+	select ARCH_USE_MEMREMAP_PROT
 	---help---
 	  Say yes to enable support for the encryption of system memory.
 	  This requires an AMD processor that supports Secure Memory
@@ -1466,10 +1467,6 @@ config AMD_MEM_ENCRYPT_ACTIVE_BY_DEFAULT
 
 	  If set to N, then the encryption of system memory can be
 	  activated with the mem_encrypt=on command line option.
-
-config ARCH_USE_MEMREMAP_PROT
-	def_bool y
-	depends on AMD_MEM_ENCRYPT
 
 # Common NUMA Features
 config NUMA
