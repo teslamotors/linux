@@ -585,8 +585,11 @@ static int uart_put_char(struct tty_struct *tty, unsigned char c)
 	int ret = 0;
 
 	circ = &state->xmit;
-	if (!circ->buf)
+	port = uart_port_lock(state, flags);
+	if (!circ->buf) {
+		uart_port_unlock(port, flags);
 		return 0;
+	}
 
 	port = uart_port_ref_no_rpm(state);
 	if (!port)
@@ -626,9 +629,12 @@ static int uart_write(struct tty_struct *tty,
 		return -EL3HLT;
 	}
 
+	port = uart_port_lock(state, flags);
 	circ = &state->xmit;
-	if (!circ->buf)
+	if (!circ->buf) {
+		uart_port_unlock(port, flags);
 		return 0;
+	}
 
 	port = uart_port_ref_no_rpm(state);
 	if (!port)
