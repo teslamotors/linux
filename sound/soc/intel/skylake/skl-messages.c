@@ -467,7 +467,7 @@ static int cnl_sdw_bra_pipe_cfg_pb(struct skl_sst *ctx,
 		goto error_delete_pipeline;
 	}
 
-	host_cpr_cfg->module->resources[0].cps = 100000;
+	host_cpr_cfg->module->resources[0].cpc = 100000000;
 	host_cpr_cfg->module->resources[0].is_pages = 0;
 	host_cpr_cfg->module->resources[0].ibs = 384;
 	host_cpr_cfg->module->resources[0].obs = 384;
@@ -740,7 +740,7 @@ static int cnl_sdw_bra_pipe_cfg_cp(struct skl_sst *ctx,
 		goto error_delete_pipeline;
 	}
 
-	link_cpr_cfg->module->resources[0].cps = 100000;
+	link_cpr_cfg->module->resources[0].cpc = 100000000;
 	link_cpr_cfg->module->resources[0].is_pages = 0;
 	link_cpr_cfg->module->resources[0].ibs = 1152;
 	link_cpr_cfg->module->resources[0].obs = 1152;
