@@ -159,9 +159,11 @@ void skl_update_d0i3c(struct device *dev, bool enable)
 
 static void skl_get_total_bytes_transferred(struct hdac_stream *hstr)
 {
-	int pos, prev_pos, no_of_bytes;
+	int pos, no_of_bytes;
+	unsigned int prev_pos;
 
-	prev_pos = hstr->curr_pos % hstr->stream->runtime->buffer_size;
+	div_u64_rem(hstr->curr_pos,
+		   hstr->stream->runtime->buffer_size, &prev_pos);
 	pos = snd_hdac_stream_get_pos_posbuf(hstr);
 
 	if (pos < prev_pos)

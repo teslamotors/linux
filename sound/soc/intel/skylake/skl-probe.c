@@ -335,7 +335,8 @@ int skl_probe_compr_tstamp(struct snd_compr_stream *stream,
 int skl_probe_compr_copy(struct snd_compr_stream *stream, char __user *buf,
 					size_t count, struct snd_soc_dai *dai)
 {
-	int offset = 0, availcount = 0, retval = 0, copy;
+	int availcount = 0, retval = 0, copy;
+	unsigned int offset = 0;
 	void *dstn;
 	/*
 	 * If userspace happens to issue a copy with count > ring buffer size,
@@ -345,8 +346,8 @@ int skl_probe_compr_copy(struct snd_compr_stream *stream, char __user *buf,
 		count = stream->runtime->buffer_size;
 
 	if (stream->direction == SND_COMPRESS_CAPTURE) {
-		offset = stream->runtime->total_bytes_transferred %
-						stream->runtime->buffer_size;
+		div_u64_rem(stream->runtime->total_bytes_transferred,
+			    stream->runtime->buffer_size, &offset);
 		dstn = stream->runtime->dma_area + offset;
 		availcount = (stream->runtime->buffer_size - offset);
 		if (count > availcount) {
@@ -366,8 +367,8 @@ int skl_probe_compr_copy(struct snd_compr_stream *stream, char __user *buf,
 
 	} else if (stream->direction == SND_COMPRESS_PLAYBACK) {
 
-		offset = stream->runtime->total_bytes_available %
-						stream->runtime->buffer_size;
+		div_u64_rem(stream->runtime->total_bytes_available,
+			    stream->runtime->buffer_size, &offset);
 		dstn = stream->runtime->dma_area + offset;
 
 		if (count < stream->runtime->buffer_size - offset)
