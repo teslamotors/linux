@@ -1021,6 +1021,9 @@ static ssize_t store_no_turbo(struct kobject *a, struct kobj_attribute *b,
 	if (ret != 1)
 		return -EINVAL;
 
+	if (notification_registered_flag)
+		return -EAGAIN;
+
 	mutex_lock(&intel_pstate_driver_lock);
 
 	if (!intel_pstate_driver) {
@@ -1037,9 +1040,6 @@ static ssize_t store_no_turbo(struct kobject *a, struct kobj_attribute *b,
 		mutex_unlock(&intel_pstate_driver_lock);
 		return -EPERM;
 	}
-
-	if (notification_registered_flag)
-		return -EAGAIN;
 
 	global.no_turbo = clamp_t(int, input, 0, 1);
 
