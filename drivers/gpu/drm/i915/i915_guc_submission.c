@@ -425,7 +425,7 @@ static void guc_stage_desc_fini(struct intel_guc *guc,
 
 /* Construct a Work Item and append it to the GuC's Work Queue */
 static void guc_wq_item_append(struct i915_guc_client *client,
-			       struct drm_i915_gem_request *rq)
+			       struct i915_request *rq)
 {
 	/* wqi_len is in DWords, and does not include the one-word header */
 	const size_t wqi_size = sizeof(struct guc_wq_item);
@@ -518,7 +518,7 @@ static void i915_guc_submit(struct intel_engine_cs *engine)
 	unsigned int n;
 
 	for (n = 0; n < ARRAY_SIZE(execlists->port); n++) {
-		struct drm_i915_gem_request *rq;
+		struct i915_request *rq;
 		unsigned int count;
 
 		rq = port_unpack(&port[n], &count);
@@ -540,14 +540,14 @@ static void i915_guc_submit(struct intel_engine_cs *engine)
 	}
 }
 
-static void nested_enable_signaling(struct drm_i915_gem_request *rq)
+static void nested_enable_signaling(struct i915_request *rq)
 {
 	/* If we use dma_fence_enable_sw_signaling() directly, lockdep
 	 * detects an ordering issue between the fence lockclass and the
 	 * global_timeline. This circular dependency can only occur via 2
 	 * different fences (but same fence lockclass), so we use the nesting
 	 * annotation here to prevent the warn, equivalent to the nesting
-	 * inside i915_gem_request_submit() for when we also enable the
+	 * inside i915_request_submit() for when we also enable the
 	 * signaler.
 	 */
 
@@ -564,14 +564,14 @@ static void nested_enable_signaling(struct drm_i915_gem_request *rq)
 }
 
 static void port_assign(struct execlist_port *port,
-			struct drm_i915_gem_request *rq)
+			struct i915_request *rq)
 {
 	GEM_BUG_ON(rq == port_request(port));
 
 	if (port_isset(port))
-		i915_gem_request_put(port_request(port));
+		i915_request_put(port_request(port));
 
-	port_set(port, port_pack(i915_gem_request_get(rq), port_count(port)));
+	port_set(port, port_pack(i915_request_get(rq), port_count(port)));
 	nested_enable_signaling(rq);
 }
 
@@ -579,7 +579,7 @@ static void i915_guc_dequeue(struct intel_engine_cs *engine)
 {
 	struct intel_engine_execlists * const execlists = &engine->execlists;
 	struct execlist_port *port = execlists->port;
-	struct drm_i915_gem_request *last = NULL;
+	struct i915_request *last = NULL;
 	const struct execlist_port * const last_port =
 		&execlists->port[execlists->port_mask];
 	bool submit = false;
@@ -593,7 +593,7 @@ static void i915_guc_dequeue(struct intel_engine_cs *engine)
 	GEM_BUG_ON(rb_first(&execlists->queue) != rb);
 	while (rb) {
 		struct i915_priolist *p = rb_entry(rb, typeof(*p), node);
-		struct drm_i915_gem_request *rq, *rn;
+		struct i915_request *rq, *rn;
 
 		list_for_each_entry_safe(rq, rn, &p->requests, priotree.link) {
 			if (last && rq->ctx != last->ctx) {
@@ -611,8 +611,8 @@ static void i915_guc_dequeue(struct intel_engine_cs *engine)
 			INIT_LIST_HEAD(&rq->priotree.link);
 			rq->priotree.priority = INT_MAX;
 
-			__i915_gem_request_submit(rq);
-			trace_i915_gem_request_in(rq, port_index(port, execlists));
+			__i915_request_submit(rq);
+			trace_i915_request_in(rq, port_index(port, execlists));
 			last = rq;
 			submit = true;
 		}
@@ -640,12 +640,12 @@ static void i915_guc_irq_handler(unsigned long data)
 	struct execlist_port *port = execlists->port;
 	const struct execlist_port * const last_port =
 		&execlists->port[execlists->port_mask];
-	struct drm_i915_gem_request *rq;
+	struct i915_request *rq;
 
 	rq = port_request(&port[0]);
-	while (rq && i915_gem_request_completed(rq)) {
-		trace_i915_gem_request_out(rq);
-		i915_gem_request_put(rq);
+	while (rq && i915_request_completed(rq)) {
+		trace_i915_request_out(rq);
+		i915_request_put(rq);
 
 		execlists_port_complete(execlists, port);
 

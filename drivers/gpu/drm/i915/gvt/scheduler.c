@@ -218,7 +218,7 @@ static int populate_shadow_context(struct intel_vgpu_workload *workload)
 	return 0;
 }
 
-static inline bool is_gvt_request(struct drm_i915_gem_request *req)
+static inline bool is_gvt_request(struct i915_request *req)
 {
 	return i915_gem_context_force_single_submission(req->ctx);
 }
@@ -226,7 +226,7 @@ static inline bool is_gvt_request(struct drm_i915_gem_request *req)
 static int shadow_context_status_change(struct notifier_block *nb,
 		unsigned long action, void *data)
 {
-	struct drm_i915_gem_request *req = (struct drm_i915_gem_request *)data;
+	struct i915_request *req = data;
 	struct intel_gvt *gvt = container_of(nb, struct intel_gvt,
 				shadow_ctx_notifier_block[req->engine->id]);
 	struct intel_gvt_workload_scheduler *scheduler = &gvt->scheduler;
@@ -370,7 +370,7 @@ int intel_gvt_scan_and_shadow_workload(struct intel_vgpu_workload *workload)
 	if (ret)
 		goto err_unpin;
 
-	rq = i915_gem_request_alloc(dev_priv->engine[ring_id], shadow_ctx);
+	rq = i915_request_alloc(dev_priv->engine[ring_id], shadow_ctx);
 	if (IS_ERR(rq)) {
 		gvt_vgpu_err("fail to allocate gem request\n");
 		ret = PTR_ERR(rq);
@@ -379,7 +379,7 @@ int intel_gvt_scan_and_shadow_workload(struct intel_vgpu_workload *workload)
 
 	gvt_dbg_sched("ring id %d get i915 gem request %p\n", ring_id, rq);
 
-	workload->req = i915_gem_request_get(rq);
+	workload->req = i915_request_get(rq);
 
 	/* we consider this as an workaround to avoid the situation that
 	 * PDP's not updated, and right now we only limit it to BXT platform
@@ -507,7 +507,7 @@ out:
 				ring_id, workload->req);
 		shadow_ctx->priority = i915_modparams.gvt_workload_priority =
 			sanitize_priority(i915_modparams.gvt_workload_priority);
-		i915_add_request(workload->req);
+		i915_request_add(workload->req);
 		workload->dispatched = true;
 	}
 
@@ -679,7 +679,7 @@ static void complete_current_workload(struct intel_gvt *gvt, int ring_id)
 				workload->status = 0;
 		}
 
-		i915_gem_request_put(fetch_and_zero(&workload->req));
+		i915_request_put(fetch_and_zero(&workload->req));
 
 		if (!workload->status && !(vgpu->resetting_eng &
 					   ENGINE_MASK(ring_id))) {
@@ -800,10 +800,10 @@ static int workload_thread(void *priv)
 
 		gvt_dbg_sched("ring id %d wait workload %p\n",
 				workload->ring_id, workload);
-		lret = i915_wait_request(workload->req, 0,
+		lret = i915_request_wait(workload->req, 0,
 				MAX_SCHEDULE_TIMEOUT);
 
-		gvt_dbg_sched("i915_wait_request %p returns %ld\n",
+		gvt_dbg_sched("i915_request_wait %p returns %ld\n",
 				workload, lret);
 		if (lret >= 0 && workload->status == -EINPROGRESS)
 			workload->status = 0;

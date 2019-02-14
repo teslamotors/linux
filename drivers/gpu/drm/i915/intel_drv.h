@@ -1985,9 +1985,8 @@ void intel_suspend_gt_powersave(struct drm_i915_private *dev_priv);
 void gen6_rps_busy(struct drm_i915_private *dev_priv);
 void gen6_rps_reset_ei(struct drm_i915_private *dev_priv);
 void gen6_rps_idle(struct drm_i915_private *dev_priv);
-void gen6_rps_boost(struct drm_i915_gem_request *rq,
-		    struct intel_rps_client *rps);
-void intel_queue_rps_boost_for_request(struct drm_i915_gem_request *req);
+void gen6_rps_boost(struct i915_request *rq, struct intel_rps_client *rps);
+void intel_queue_rps_boost_for_request(struct i915_request *rq);
 void g4x_wm_get_hw_state(struct drm_device *dev);
 void vlv_wm_get_hw_state(struct drm_device *dev);
 void ilk_wm_get_hw_state(struct drm_device *dev);

@@ -6521,7 +6521,7 @@ void gen6_rps_idle(struct drm_i915_private *dev_priv)
 	mutex_unlock(&dev_priv->pcu_lock);
 }
 
-void gen6_rps_boost(struct drm_i915_gem_request *rq,
+void gen6_rps_boost(struct i915_request *rq,
 		    struct intel_rps_client *rps)
 {
 	struct drm_i915_private *i915 = rq->i915;
@@ -6535,7 +6535,7 @@ void gen6_rps_boost(struct drm_i915_gem_request *rq,
 
 	boost = false;
 	spin_lock_irq(&rq->lock);
-	if (!rq->waitboost && !i915_gem_request_completed(rq)) {
+	if (!rq->waitboost && !i915_request_completed(rq)) {
 		atomic_inc(&i915->rps.num_waiters);
 		rq->waitboost = true;
 		boost = true;
@@ -8391,7 +8391,7 @@ static void __intel_autoenable_gt_powersave(struct work_struct *work)
 	struct drm_i915_private *dev_priv =
 		container_of(work, typeof(*dev_priv), rps.autoenable_work.work);
 	struct intel_engine_cs *rcs;
-	struct drm_i915_gem_request *req;
+	struct i915_request *rq;
 
 	/*
 	 * ANDROID: In deferred fw mode, we can't submit anything until we know
@@ -8412,15 +8412,15 @@ static void __intel_autoenable_gt_powersave(struct work_struct *work)
 
 	mutex_lock(&dev_priv->drm.struct_mutex);
 
-	req = i915_gem_request_alloc(rcs, dev_priv->kernel_context);
-	if (IS_ERR(req))
+	rq = i915_request_alloc(rcs, dev_priv->kernel_context);
+	if (IS_ERR(rq))
 		goto unlock;
 
-	if (!i915_modparams.enable_execlists && i915_switch_context(req) == 0)
-		rcs->init_context(req);
+	if (!i915_modparams.enable_execlists && i915_switch_context(rq) == 0)
+		rcs->init_context(rq);
 
 	/* Mark the device busy, calling intel_enable_gt_powersave() */
-	i915_add_request(req);
+	i915_request_add(rq);
 
 unlock:
 	mutex_unlock(&dev_priv->drm.struct_mutex);
@@ -9646,39 +9646,39 @@ int intel_freq_opcode(struct drm_i915_private *dev_priv, int val)
 
 struct request_boost {
 	struct work_struct work;
-	struct drm_i915_gem_request *req;
+	struct i915_request *rq;
 };
 
 static void __intel_rps_boost_work(struct work_struct *work)
 {
 	struct request_boost *boost = container_of(work, struct request_boost, work);
-	struct drm_i915_gem_request *req = boost->req;
+	struct i915_request *rq = boost->rq;
 
-	if (!i915_gem_request_completed(req))
-		gen6_rps_boost(req, NULL);
+	if (!i915_request_completed(rq))
+		gen6_rps_boost(rq, NULL);
 
-	i915_gem_request_put(req);
+	i915_request_put(rq);
 	kfree(boost);
 }
 
-void intel_queue_rps_boost_for_request(struct drm_i915_gem_request *req)
+void intel_queue_rps_boost_for_request(struct i915_request *rq)
 {
 	struct request_boost *boost;
 
-	if (req == NULL || INTEL_GEN(req->i915) < 6)
+	if (rq == NULL || INTEL_GEN(rq->i915) < 6)
 		return;
 
-	if (i915_gem_request_completed(req))
+	if (i915_request_completed(rq))
 		return;
 
 	boost = kmalloc(sizeof(*boost), GFP_ATOMIC);
 	if (boost == NULL)
 		return;
 
-	boost->req = i915_gem_request_get(req);
+	boost->rq = i915_request_get(rq);
 
 	INIT_WORK(&boost->work, __intel_rps_boost_work);
-	queue_work(req->i915->wq, &boost->work);
+	queue_work(rq->i915->wq, &boost->work);
 }
 
 void intel_pm_setup(struct drm_i915_private *dev_priv)

@@ -1507,20 +1507,20 @@ int init_workarounds_ring(struct intel_engine_cs *engine)
 	return 0;
 }
 
-int intel_ring_workarounds_emit(struct drm_i915_gem_request *req)
+int intel_ring_workarounds_emit(struct i915_request *rq)
 {
-	struct i915_workarounds *w = &req->i915->workarounds;
+	struct i915_workarounds *w = &rq->i915->workarounds;
 	u32 *cs;
 	int ret, i;
 
 	if (w->count == 0)
 		return 0;
 
-	ret = req->engine->emit_flush(req, EMIT_BARRIER);
+	ret = rq->engine->emit_flush(rq, EMIT_BARRIER);
 	if (ret)
 		return ret;
 
-	cs = intel_ring_begin(req, (w->count * 2 + 2));
+	cs = intel_ring_begin(rq, w->count * 2 + 2);
 	if (IS_ERR(cs))
 		return PTR_ERR(cs);
 
@@ -1531,9 +1531,9 @@ int intel_ring_workarounds_emit(struct drm_i915_gem_request *req)
 	}
 	*cs++ = MI_NOOP;
 
-	intel_ring_advance(req, cs);
+	intel_ring_advance(rq, cs);
 
-	ret = req->engine->emit_flush(req, EMIT_BARRIER);
+	ret = rq->engine->emit_flush(rq, EMIT_BARRIER);
 	if (ret)
 		return ret;
 
@@ -1663,12 +1663,12 @@ bool intel_engine_can_store_dword(struct intel_engine_cs *engine)
 }
 
 static void print_request(struct drm_printer *m,
-			  struct drm_i915_gem_request *rq,
+			  struct i915_request *rq,
 			  const char *prefix)
 {
 	drm_printf(m, "%s%x%s [%x:%x] prio=%d @ %dms: %s\n", prefix,
 		   rq->global_seqno,
-		   i915_gem_request_completed(rq) ? "!" : "",
+		   i915_request_completed(rq) ? "!" : "",
 		   rq->ctx->hw_id, rq->fence.seqno,
 		   rq->priotree.priority,
 		   jiffies_to_msecs(jiffies - rq->emitted_jiffies),
@@ -1681,7 +1681,7 @@ void intel_engine_dump(struct intel_engine_cs *engine, struct drm_printer *m)
 	const struct intel_engine_execlists * const execlists = &engine->execlists;
 	struct i915_gpu_error * const error = &engine->i915->gpu_error;
 	struct drm_i915_private *dev_priv = engine->i915;
-	struct drm_i915_gem_request *rq;
+	struct i915_request *rq;
 	struct rb_node *rb;
 	u64 addr;
 
@@ -1700,12 +1700,12 @@ void intel_engine_dump(struct intel_engine_cs *engine, struct drm_printer *m)
 	drm_printf(m, "\tRequests:\n");
 
 	rq = list_first_entry(&engine->timeline->requests,
-			      struct drm_i915_gem_request, link);
+			      struct i915_request, link);
 	if (&rq->link != &engine->timeline->requests)
 		print_request(m, rq, "\t\tfirst  ");
 
 	rq = list_last_entry(&engine->timeline->requests,
-			     struct drm_i915_gem_request, link);
+			     struct i915_request, link);
 	if (&rq->link != &engine->timeline->requests)
 		print_request(m, rq, "\t\tlast   ");
 

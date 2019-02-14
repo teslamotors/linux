@@ -1012,7 +1012,7 @@ static void ironlake_rps_change_irq_handler(struct drm_i915_private *dev_priv)
 
 static void notify_ring(struct intel_engine_cs *engine)
 {
-	struct drm_i915_gem_request *rq = NULL;
+	struct i915_request *rq = NULL;
 	struct intel_wait *wait;
 
 	atomic_inc(&engine->irq_count);
@@ -1036,13 +1036,13 @@ static void notify_ring(struct intel_engine_cs *engine)
 		 */
 		if (i915_seqno_passed(intel_engine_get_seqno(engine),
 				      wait->seqno)) {
-			struct drm_i915_gem_request *waiter = wait->request;
+			struct i915_request *waiter = wait->request;
 
 			wakeup = true;
 			if (!test_bit(DMA_FENCE_FLAG_SIGNALED_BIT,
 				      &waiter->fence.flags) &&
 			    intel_wait_check_request(wait, waiter))
-				rq = i915_gem_request_get(waiter);
+				rq = i915_request_get(waiter);
 		}
 
 		if (wakeup)
@@ -1054,7 +1054,7 @@ static void notify_ring(struct intel_engine_cs *engine)
 
 	if (rq) {
 		dma_fence_signal(&rq->fence);
-		i915_gem_request_put(rq);
+		i915_request_put(rq);
 	}
 
 	trace_intel_engine_notify(engine, wait);

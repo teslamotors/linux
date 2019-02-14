@@ -217,14 +217,14 @@ err_free:
 	return ret;
 }
 
-int i915_gem_render_state_emit(struct drm_i915_gem_request *req)
+int i915_gem_render_state_emit(struct i915_request *rq)
 {
 	struct intel_render_state *so;
 	int ret;
 
-	lockdep_assert_held(&req->i915->drm.struct_mutex);
+	lockdep_assert_held(&rq->i915->drm.struct_mutex);
 
-	so = req->engine->render_state;
+	so = rq->engine->render_state;
 	if (!so)
 		return 0;
 
@@ -237,30 +237,30 @@ int i915_gem_render_state_emit(struct drm_i915_gem_request *req)
 		return ret;
 
 	if (so->vma->node.start != so->batch_offset) {
-		ret = render_state_setup(so, req->i915);
+		ret = render_state_setup(so, rq->i915);
 		if (ret)
 			goto err_unpin;
 	}
 
-	ret = req->engine->emit_flush(req, EMIT_INVALIDATE);
+	ret = rq->engine->emit_flush(rq, EMIT_INVALIDATE);
 	if (ret)
 		goto err_unpin;
 
-	ret = req->engine->emit_bb_start(req,
+	ret = rq->engine->emit_bb_start(rq,
 					 so->batch_offset, so->batch_size,
 					 I915_DISPATCH_SECURE);
 	if (ret)
 		goto err_unpin;
 
 	if (so->aux_size > 8) {
-		ret = req->engine->emit_bb_start(req,
+		ret = rq->engine->emit_bb_start(rq,
 						 so->aux_offset, so->aux_size,
 						 I915_DISPATCH_SECURE);
 		if (ret)
 			goto err_unpin;
 	}
 
-	i915_vma_move_to_active(so->vma, req, 0);
+	i915_vma_move_to_active(so->vma, rq, 0);
 err_unpin:
 	i915_vma_unpin(so->vma);
 	return ret;
