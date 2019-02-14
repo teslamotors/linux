@@ -113,7 +113,7 @@ static int gpu_fill(struct drm_i915_gem_object *obj,
 {
 	struct drm_i915_private *i915 = to_i915(obj->base.dev);
 	struct i915_address_space *vm =
-		ctx->ppgtt ? &ctx->ppgtt->vm : &i915->ggtt.vm;
+		ctx->ppgtt ? &ctx->ppgtt->base : &i915->ggtt.base;
 	struct i915_request *rq;
 	struct i915_vma *vma;
 	struct i915_vma *batch;

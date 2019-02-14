@@ -1821,7 +1821,7 @@ static int gen8_emit_bb_start(struct i915_request *rq,
 	 * not needed in 48-bit.*/
 	if (rq->ctx->ppgtt &&
 	    (intel_engine_flag(rq->engine) & rq->ctx->ppgtt->pd_dirty_rings) &&
-	    !i915_vm_is_48bit(&rq->ctx->ppgtt->vm) &&
+	    !i915_vm_is_48bit(&rq->ctx->ppgtt->base) &&
 	    !intel_vgpu_active(rq->i915)) {
 		ret = intel_logical_ring_emit_pdps(rq);
 		if (ret)

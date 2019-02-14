@@ -615,7 +615,7 @@ static int i915_gem_batch_pool_info(struct seq_file *m, void *data)
 }
 
 static void print_request(struct seq_file *m,
-			  struct drm_i915_gem_request *rq,
+			  struct i915_request *rq,
 			  const char *prefix)
 {
 	seq_printf(m, "%s%x [%x:%x] prio=%d @ %dms: %s\n", prefix,
@@ -629,7 +629,7 @@ static int i915_gem_request_info(struct seq_file *m, void *data)
 {
 	struct drm_i915_private *dev_priv = node_to_i915(m->private);
 	struct drm_device *dev = &dev_priv->drm;
-	struct drm_i915_gem_request *req;
+	struct i915_request *rq;
 	struct intel_engine_cs *engine;
 	enum intel_engine_id id;
 	int ret, any;
@@ -643,14 +643,14 @@ static int i915_gem_request_info(struct seq_file *m, void *data)
 		int count;
 
 		count = 0;
-		list_for_each_entry(req, &engine->timeline->requests, link)
+		list_for_each_entry(rq, &engine->timeline->requests, link)
 			count++;
 		if (count == 0)
 			continue;
 
 		seq_printf(m, "%s requests: %d\n", engine->name, count);
-		list_for_each_entry(req, &engine->timeline->requests, link)
-			print_request(m, req, "    ");
+		list_for_each_entry(rq, &engine->timeline->requests, link)
+			print_request(m, rq, "    ");
 
 		any++;
 	}
@@ -3353,7 +3353,7 @@ static int i915_engine_info(struct seq_file *m, void *unused)
 
 	for_each_engine(engine, dev_priv, id) {
 		struct intel_breadcrumbs *b = &engine->breadcrumbs;
-		struct drm_i915_gem_request *rq;
+		struct i915_request *rq;
 		struct rb_node *rb;
 		u64 addr;
 
@@ -3372,12 +3372,12 @@ static int i915_engine_info(struct seq_file *m, void *unused)
 		seq_printf(m, "\tRequests:\n");
 
 		rq = list_first_entry(&engine->timeline->requests,
-				      struct drm_i915_gem_request, link);
+				      struct i915_request, link);
 		if (&rq->link != &engine->timeline->requests)
 			print_request(m, rq, "\t\tfirst  ");
 
 		rq = list_last_entry(&engine->timeline->requests,
-				     struct drm_i915_gem_request, link);
+				     struct i915_request, link);
 		if (&rq->link != &engine->timeline->requests)
 			print_request(m, rq, "\t\tlast   ");
 
