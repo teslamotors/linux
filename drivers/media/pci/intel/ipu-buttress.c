@@ -404,10 +404,10 @@ irqreturn_t ipu_buttress_isr(int irq, void *isp_ptr)
 	irqreturn_t ret = IRQ_NONE;
 	u32 disable_irqs = 0;
 	u32 irq_status;
-#ifdef CONFIG_VIDEO_INTEL_IPU4P
-	u32 reg_irq_sts = BUTTRESS_REG_ISR_STATUS;
-#else
+#ifdef CONFIG_VIDEO_INTEL_IPU4
 	u32 reg_irq_sts = BUTTRESS_REG_ISR_ENABLED_STATUS;
+#else
+	u32 reg_irq_sts = BUTTRESS_REG_ISR_STATUS;
 #endif
 	unsigned int i;
 

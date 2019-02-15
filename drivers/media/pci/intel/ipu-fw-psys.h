@@ -280,7 +280,11 @@ struct ipu_fw_generic_process {
 struct ipu_fw_resource_definitions {
 	u32 num_cells;
 	u32 num_cells_type;
+#if defined(CONFIG_VIDEO_INTEL_IPU4) || defined(CONFIG_VIDEO_INTEL_IPU4P)
 	const u32 *cells;
+#else
+	const u8 *cells;
+#endif
 	u32 num_dev_channels;
 	const u16 *dev_channels;
 
@@ -292,7 +296,11 @@ struct ipu_fw_resource_definitions {
 	const u16 *dfms;
 
 	u32 cell_mem_row;
+#if defined(CONFIG_VIDEO_INTEL_IPU4) || defined(CONFIG_VIDEO_INTEL_IPU4P)
 	const enum ipu_mem_id *cell_mem;
+#else
+	const u8 *cell_mem;
+#endif
 	struct ipu_fw_generic_process process;
 };
 

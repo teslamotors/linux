@@ -6,7 +6,7 @@ srcpath := $(srctree)
 endif
 
 ifdef CONFIG_VIDEO_INTEL_ICI
-ccflags-y += -DHAS_DUAL_CMD_CTX_SUPPORT=0 -DIPU_VC_SUPPORT -DIPU_HAS_ISA -DIPU_PSYS_LEGACY -Wframe-larger-than=4096
+ccflags-y += -DHAS_DUAL_CMD_CTX_SUPPORT=0 -Wframe-larger-than=4096
 
 
 # work-around to re-use ipu4-css and libintel-ipu4_ici.c together when

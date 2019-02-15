@@ -73,4 +73,7 @@ struct crl_registers_info {
 /* Set HDR mode exposure ratio */
 #define CRL_CID_EXPOSURE_HDR_RATIO	(V4L2_CID_CRLMODULE_BASE + 24)
 
+/* choose hcg/lcg for linear analog */
+#define CRL_CID_ANALOG_LINEAR_CG	(V4L2_CID_CRLMODULE_BASE + 25)
+
 #endif /* UAPI_LINUX_CRLMODULE_H */

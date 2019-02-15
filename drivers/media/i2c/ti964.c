@@ -343,10 +343,11 @@ static int ti964_get_frame_desc(struct v4l2_subdev *sd,
 	int i;
 
 	desc->type = V4L2_MBUS_FRAME_DESC_TYPE_CSI2;
+	desc->num_entries = min_t(int, va->nstreams, V4L2_FRAME_DESC_ENTRY_MAX);
 
-	for (i = 0; i < min_t(int, va->nstreams, desc->num_entries); i++) {
+	for (i = 0; i < desc->num_entries; i++) {
 		struct v4l2_mbus_framefmt *ffmt =
-			&va->ffmts[i][TI964_PAD_SOURCE];
+			&va->ffmts[TI964_PAD_SOURCE][i];
 		const struct ti964_csi_data_format *csi_format =
 			ti964_validate_csi_data_format(ffmt->code);
 

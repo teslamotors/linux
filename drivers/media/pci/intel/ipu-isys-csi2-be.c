@@ -255,7 +255,6 @@ int ipu_isys_csi2_be_init(struct ipu_isys_csi2_be *csi2_be,
 	csi2_be->asd.pad[CSI2_BE_PAD_SOURCE].flags = MEDIA_PAD_FL_SOURCE;
 	csi2_be->asd.valid_tgts[CSI2_BE_PAD_SOURCE].crop = true;
 	csi2_be->asd.set_ffmt = csi2_be_set_ffmt;
-	csi2_be->asd.isys = isys;
 
 	BUILD_BUG_ON(ARRAY_SIZE(csi2_be_supported_codes) != NR_OF_CSI2_BE_PADS);
 	csi2_be->asd.supported_codes = csi2_be_supported_codes;

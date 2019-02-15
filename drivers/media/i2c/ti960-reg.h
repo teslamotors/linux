@@ -9,6 +9,11 @@ struct ti960_register_write {
 	u8 val;
 };
 
+struct ti960_register_devid {
+	u8 reg;
+	u8 val_expected;
+};
+
 static const struct ti960_register_write ti960_frame_sync_settings[2][5] = {
 	{
 		{0x18, 0x00}, /* Disable frame sync. */
@@ -151,6 +156,9 @@ static const struct ti960_register_write ti960_init_settings_2[] = {
 	{0xb2, 0x04},
 	{0xb1, 0x04},
 	{0xb2, 0x04},
+};
+
+static const struct ti960_register_write ti960_init_settings_3[] = {
 	{0x4c, 0x01},
 	{0x32, 0x01},
 	{0x33, 0x03},
@@ -166,6 +174,15 @@ static const struct ti960_register_write ti953_init_settings_2[] = {
 	{0x0e, 0xf0},
 };
 
+static const struct ti960_register_devid ti953_FPD3_RX_ID[] = {
+	{0xf0, 0x5f},
+	{0xf1, 0x55},
+	{0xf2, 0x42},
+	{0xf3, 0x39},
+	{0xf4, 0x35},
+	{0xf5, 0x33},
+};
+
 /* register definition */
 #define TI960_DEVID		0x0
 #define TI960_RESET		0x1
@@ -173,12 +190,15 @@ static const struct ti960_register_write ti953_init_settings_2[] = {
 #define TI960_FS_CTL		0x18
 #define TI960_FWD_CTL1		0x20
 #define TI960_RX_PORT_SEL	0x4c
+#define TI960_SER_ALIAS_ID	0x5c
 #define TI960_SLAVE_ID0		0x5d
 #define TI960_SLAVE_ALIAS_ID0	0x65
 #define TI960_PORT_CONFIG	0x6d
 #define TI960_BC_GPIO_CTL0	0x6e
+#define TI960_BC_GPIO_CTL1	0x6f
 #define TI960_RAW10_ID		0x70
 #define TI960_RAW12_ID		0x71
+#define TI960_CSI_VC_MAP	0x72
 #define TI960_PORT_CONFIG2	0x7c
 #define TI960_CSI_CTL           0x33
 
@@ -200,6 +220,10 @@ static const struct ti960_register_write ti953_init_settings_2[] = {
 #define TI960_GPIO1_FSIN	0xa0
 #define TI960_GPIO0_MASK	0x0f
 #define TI960_GPIO1_MASK	0xf0
+#define TI960_GPIO2_FSIN	0x0a
+#define TI960_GPIO3_FSIN	0xa0
+#define TI960_GPIO2_MASK	0x0f
+#define TI960_GPIO3_MASK	0xf0
 #define TI960_MIPI_800MBPS	0x2
 #define TI960_MIPI_1600MBPS	0x0
 #define TI960_CSI_ENABLE	0x1

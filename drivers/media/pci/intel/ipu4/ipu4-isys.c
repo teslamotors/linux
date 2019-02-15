@@ -6,6 +6,7 @@
 #include "ipu.h"
 #include "ipu-platform-regs.h"
 #include "ipu-platform-buttress-regs.h"
+#include "ipu-platform-isys-csi2-reg.h"
 #include "ipu-trace.h"
 #include "ipu-isys.h"
 #include "ipu-isys-video.h"
@@ -146,6 +147,28 @@ void isys_setup_hw(struct ipu_isys *isys)
 #endif
 
 #ifdef CONFIG_VIDEO_INTEL_IPU4P
+/*
+ * For new HW, extra common register (en_flush_for_idrain)added to the IBufCtrl
+ * of ISL_IS and CSI that enables the feature to send a DMA command with flush
+ * when draining. This means that a DMA command is send with the flush bit
+ * set(read post write check is performed) when a drain request comes in and
+ * iwake is enabled for that SID proc.
+ * This results in that all data is moved out of the system when the IDone is
+ * given back. Default the feature is off, to keep behavior as is when nothing
+ * is written, writing 0x1 to the register (reg 11 in common reg bank,
+ * addr ibuf_base + 0x2C) to enable this feature.
+ */
+static int ipu4p_isys_flush_idrain_en(struct ipu_isys *isys)
+{
+	void __iomem *base = isys->pdata->base;
+
+	writel(1, base + CSI2_REG_CL0_IBUFCTL_EN_FLUSH_FOR_IDRAIN);
+	writel(1, base + CSI2_REG_CL1_IBUFCTL_EN_FLUSH_FOR_IDRAIN);
+	writel(1, base + IPU_REG_ISYS_IBUFCTL_EN_FLUSH_FOR_IDRAIN);
+
+	return 0;
+}
+
 static void ipu4p_isys_irq_cfg(struct ipu_isys *isys)
 {
 	void __iomem *base = isys->pdata->base;
@@ -179,18 +202,19 @@ static void ipu4p_isys_bb_cfg(struct ipu_isys *isys)
 {
 	void __iomem *isp_base = isys->adev->isp->base;
 	unsigned int i, val;
-	unsigned int bbconfig[4][3] = {
-		{4, 15, 0xf},
-		{6, 15, 0x15},
-		{12, 15, 0xf},
-		{14, 15, 0x15},
+	unsigned int bbconfig[4][4] = {
+		{4, 13, 32, 0xf},
+		{6, 13, 32, 0x15},
+		{12, 13, 32, 0xf},
+		{14, 13, 32, 0x15},
 	};
 
 	/* Config building block */
 	for (i = 0; i < 4; i++) {
 		unsigned int bb = bbconfig[i][0];
 		unsigned int crc = bbconfig[i][1];
-		unsigned int afe = bbconfig[i][2];
+		unsigned int drc = bbconfig[i][2];
+		unsigned int afe = bbconfig[i][3];
 
 		val = readl(isp_base + BUTTRESS_REG_CPHYX_DLL_OVRD(bb));
 		val &= ~0x7e;
@@ -199,8 +223,7 @@ static void ipu4p_isys_bb_cfg(struct ipu_isys *isys)
 		writel(val, isp_base + BUTTRESS_REG_CPHYX_DLL_OVRD(bb));
 		val = readl(isp_base + BUTTRESS_REG_DPHYX_DLL_OVRD(bb));
 		val |= 1;
-		writel(val, isp_base + BUTTRESS_REG_DPHYX_DLL_OVRD(bb));
-		val &= ~1;
+		val |= drc << 1;
 		writel(val, isp_base + BUTTRESS_REG_DPHYX_DLL_OVRD(bb));
 		val = afe | (2 << 29);
 		writel(val, isp_base + BUTTRESS_REG_BBX_AFE_CONFIG(bb));
@@ -224,6 +247,7 @@ void isys_setup_hw(struct ipu_isys *isys)
 	ipu4p_isys_irq_cfg(isys);
 	ipu4p_isys_port_cfg(isys);
 	ipu4p_isys_bb_cfg(isys);
+	ipu4p_isys_flush_idrain_en(isys);
 }
 #endif
 
