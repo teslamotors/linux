@@ -425,21 +425,7 @@ static void skl_tplg_alloc_pipe_mem(struct skl *skl,
 static bool skl_is_pipe_mcps_avail(struct skl *skl,
 				struct skl_module_cfg *mconfig)
 {
-	struct skl_sst *ctx = skl->skl_sst;
-	u8 res_idx = mconfig->res_idx;
-	struct skl_module_res *res = &mconfig->module->resources[res_idx];
-
-	if (skl->resource.mcps + res->cpc*1000 > skl->resource.max_mcps) {
-		dev_err(ctx->dev,
-			"%s: module_id %d instance %d\n", __func__,
-			mconfig->id.module_id, mconfig->id.instance_id);
-		dev_err(ctx->dev,
-			"exceeds ppl mcps available %d > mem %d\n",
-			skl->resource.max_mcps, skl->resource.mcps);
-		return false;
-	} else {
-		return true;
-	}
+	return true;
 }
 
 static void skl_tplg_alloc_pipe_mcps(struct skl *skl,
