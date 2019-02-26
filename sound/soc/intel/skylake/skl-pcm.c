@@ -278,9 +278,10 @@ static int skl_get_format(struct snd_pcm_substream *substream,
 	struct snd_soc_pcm_runtime *rtd = snd_pcm_substream_chip(substream);
 	struct skl_dma_params *dma_params;
 	struct hdac_ext_bus *ebus = dev_get_drvdata(dai->dev);
+	struct hdac_bus *bus = ebus_to_hbus(ebus);
 	int format_val = 0;
 
-	if (ebus->ppcap) {
+	if (bus->ppcap) {
 		struct snd_pcm_runtime *runtime = substream->runtime;
 
 		format_val = snd_hdac_calc_stream_format(runtime->rate,
