@@ -78,8 +78,10 @@ struct ipu_isys_tpg {
 
 	struct v4l2_ctrl *hblank;
 	struct v4l2_ctrl *vblank;
+#if IS_ENABLED(CONFIG_VIDEO_CRLMODULE)
 	struct v4l2_ctrl *llp;
 	struct v4l2_ctrl *fll;
+#endif
 	struct v4l2_ctrl *pixel_rate;
 	struct v4l2_ctrl *store_csi2_header;
 };
@@ -87,10 +89,6 @@ struct ipu_isys_tpg {
 #define to_ipu_isys_tpg(sd)		\
 	container_of(to_ipu_isys_subdev(sd), \
 	struct ipu_isys_tpg, asd)
-#ifdef IPU_TPG_SOF
-void ipu_isys_tpg_sof_event(struct ipu_isys_tpg *tpg);
-extern const struct v4l2_subdev_core_ops tpg_sd_core_ops;
-#endif
 int ipu_isys_tpg_init(struct ipu_isys_tpg *tpg,
 		      struct ipu_isys *isys,
 		      void __iomem *base, void __iomem *sel,

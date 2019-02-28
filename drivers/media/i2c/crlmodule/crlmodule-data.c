@@ -33,6 +33,7 @@
 #include "crl_ar023z_configuration.h"
 #include "crl_ov2775_configuration.h"
 #include "crl_ox03a10_configuration.h"
+#include "crl_ov495_configuration.h"
 
 static const struct crlmodule_sensors supported_sensors[] = {
 	{ "i2c-OVTIF858:00", "ov13858", &ov13858_crl_configuration},
@@ -40,6 +41,7 @@ static const struct crlmodule_sensors supported_sensors[] = {
 	{ "OV13858-2", "ov13858", &ov13858_crl_configuration},
 	{ "i2c-INT3474:00", "ov2740", &ov2740_crl_configuration },
 	{ "OV2740", "ov2740", &ov2740_crl_configuration },
+	{ "OV2740-2", "ov2740", &ov2740_crl_configuration },
 	{ "i2c-SONY214A:00", "imx214", &imx214_crl_configuration },
 	{ "IMX214", "imx214", &imx214_crl_configuration },
 	{ "i2c-SONY132A:00", "imx132", &imx132_crl_configuration },
@@ -74,10 +76,12 @@ static const struct crlmodule_sensors supported_sensors[] = {
 	{ "PIXTER_STUB_G", "pixter_stub_g", &pixter_stub_g_crl_configuration},
 	{ "PIXTER_STUB_H", "pixter_stub_h", &pixter_stub_h_crl_configuration},
 	{ "INT3474", "ov2740", &ov2740_crl_configuration },
+	{ "INT3474-2", "ov2740", &ov2740_crl_configuration },
 	{ "MAGNA", "magna", &magna_crl_configuration },
 	{ "AR023Z", "ar023z", &ar023z_crl_configuration },
 	{ "OV2775", "ov2775", &ov2775_crl_configuration },
 	{ "OX03A10", "ox03a10", &ox03a10_crl_configuration },
+	{ "OV495", "ov495", &ov495_crl_configuration},
 };
 
 /*

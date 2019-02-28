@@ -10,6 +10,9 @@
 #include "ipu.h"
 #include "ipu-pdata.h"
 #include "ipu-fw-psys.h"
+#if defined(CONFIG_VIDEO_INTEL_IPU_ACRN) && defined(CONFIG_VIDEO_INTEL_IPU_VIRTIO_BE)
+#include "ipu-psys-virt.h"
+#endif
 #include "ipu-platform-psys.h"
 
 #define IPU_PSYS_PG_POOL_SIZE 16
@@ -20,7 +23,7 @@
 #define IPU_PSYS_CLOSE_TIMEOUT_US   50
 #define IPU_PSYS_CLOSE_TIMEOUT (100000 / IPU_PSYS_CLOSE_TIMEOUT_US)
 #define IPU_PSYS_WORK_QUEUE		system_power_efficient_wq
-#define IPU_MAX_RESOURCES 32
+#define IPU_MAX_RESOURCES 128
 
 /* Opaque structure. Do not access fields. */
 struct ipu_resource {
@@ -76,6 +79,7 @@ struct ipu_psys_resource_alloc {
 
 struct task_struct;
 struct ipu_psys {
+	struct ipu_psys_capability caps;
 	struct cdev cdev;
 	struct device dev;
 
@@ -93,6 +97,9 @@ struct ipu_psys {
 	struct ia_css_syscom_context *dev_ctx;
 	struct ia_css_syscom_config *syscom_config;
 	struct ia_css_psys_server_init *server_init;
+#ifdef IPU_IRQ_POLL
+	struct task_struct *isr_thread;
+#endif
 	struct task_struct *sched_cmd_thread;
 	struct work_struct watchdog_work;
 	wait_queue_head_t sched_cmd_wq;
@@ -115,12 +122,15 @@ struct ipu_psys {
 };
 
 struct ipu_psys_fh {
+#if defined(CONFIG_VIDEO_INTEL_IPU_ACRN) && defined(CONFIG_VIDEO_INTEL_IPU_VIRTIO_BE)
+	const struct psys_fops_virt *vfops;
+#endif
 	struct ipu_psys *psys;
 	struct mutex mutex;	/* Protects bufmap & kcmds fields */
 	struct list_head list;
 	struct list_head bufmap;
 	wait_queue_head_t wait;
-       struct ipu_psys_scheduler sched;
+	struct ipu_psys_scheduler sched;
 };
 
 struct ipu_psys_pg {
@@ -135,11 +145,7 @@ struct ipu_psys_pg {
 struct ipu_psys_kcmd {
 	struct ipu_psys_fh *fh;
 	struct list_head list;
-#ifndef IPU_PSYS_LEGACY
-       struct ipu_psys_buffer_set *kbuf_set;
-#else
 	struct list_head started_list;
-#endif
 	enum ipu_psys_cmd_state state;
 	void *pg_manifest;
 	size_t pg_manifest_size;

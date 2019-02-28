@@ -33,6 +33,16 @@
 
 #define IA_CSS_ASSERT(expr) assert(expr)
 
+#ifdef __KLOCWORK__
+/* Klocwork does not see that assert will lead to abortion
+ * as there is no good way to tell this to KW and the code
+ * should not depend on assert to function (actually the assert
+ * could be disabled in a release build) it was decided to
+ * disable the assert for KW scans (by defining NDEBUG)
+ */
+#define NDEBUG
+#endif /* __KLOCWORK__ */
+
 /**
  * The following macro can help to test the size of a struct at compile
  * time rather than at run-time. It does not work for all compilers; see

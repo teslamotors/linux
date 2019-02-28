@@ -8,7 +8,6 @@ endif
 ifdef CONFIG_VIDEO_INTEL_IPU4
 ccflags-y += -DHAS_DUAL_CMD_CTX_SUPPORT=0
 ccflags-y += -DIPU_META_DATA_SUPPORT -DI2C_WA
-ccflags-y += -DIPU_VC_SUPPORT -DIPU_HAS_ISA -DIPU_PSYS_LEGACY
 
 intel-ipu4-objs				+= ../ipu.o \
 					   ../ipu-bus.o \

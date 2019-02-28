@@ -56,6 +56,9 @@ HAS_64KB_GDC_MEM                = 1
 # define for enabling mmu_stream_id_lut support
 ENABLE_MMU_STREAM_ID_LUT = 1
 
+# define for enabling rgbir related chnages in devproxy
+HAS_RGBIR = 1
+
 # Specification for Psys server's fixed globals' locations
 REGMEM_OFFSET				= 0
 REGMEM_SECURE_OFFSET			= 4096

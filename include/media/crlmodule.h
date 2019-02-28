@@ -29,7 +29,9 @@ struct crlmodule_platform_data {
 	unsigned int lanes;		/* Number of CSI-2 lanes */
 	const s64 *op_sys_clock;
 
-	int xshutdown;			/* gpio */
+	/* specify gpio pins of Deser for PWDN, FSIN. */
+	int xshutdown;
+	int fsin;
 	struct crl_custom_gpio custom_gpio[CRL_MAX_CUSTOM_GPIO_AMOUNT];
 	char module_name[16]; /* module name from ACPI */
 	int crl_irq_pin;

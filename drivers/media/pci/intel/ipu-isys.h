@@ -13,6 +13,7 @@
 #include <uapi/linux/ipu-isys.h>
 
 #include "ipu.h"
+#include "ipu-isys-media.h"
 #include "ipu-isys-csi2.h"
 #include "ipu-isys-csi2-be.h"
 #include "ipu-isys-tpg.h"
@@ -103,6 +104,10 @@ struct ipu_isys {
 	struct ipu_isys_pipeline *pipes[IPU_ISYS_MAX_STREAMS];
 	void *fwcom;
 	unsigned int line_align;
+#ifdef IPU_IRQ_POLL
+	/* for polling for events if interrupt delivery isn't available */
+	struct task_struct *isr_thread;
+#endif
 	bool reset_needed;
 	bool icache_prefetch;
 	bool csi2_cse_ipc_not_supported;

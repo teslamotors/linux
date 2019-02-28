@@ -95,4 +95,7 @@ void ipu_configure_spc(struct ipu_device *isp,
 		       const struct ipu_hw_variants *hw_variant,
 		       int pkg_dir_idx, void __iomem *base, u64 *pkg_dir,
 		       dma_addr_t pkg_dir_dma_addr);
+int request_cpd_fw(const struct firmware **firmware_p, const char *name,
+		   struct device *device);
+
 #endif /* IPU_H */
