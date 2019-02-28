@@ -493,11 +493,14 @@ void ipu_isys_buffer_list_to_ipu_fw_isys_frame_buff_set(
 
 	set->send_irq_sof = 1;
 	set->send_resp_sof = 1;
-	set->send_irq_eof = 1;
-	set->send_resp_eof = 1;
 #if defined(CONFIG_VIDEO_INTEL_IPU4) || defined(CONFIG_VIDEO_INTEL_IPU4P)
 	set->send_irq_capture_ack = 1;
 	set->send_irq_capture_done = 1;
+	set->send_irq_eof = 1;
+	set->send_resp_eof = 1;
+#else
+	set->send_irq_eof = 0;
+	set->send_resp_eof = 0;
 #endif
 
 	list_for_each_entry(ib, &bl->head, head) {
@@ -1159,8 +1162,8 @@ ipu_isys_buf_calc_sequence_time(struct ipu_isys_buffer *ib,
 	vbuf->vb2_buf.timestamp = ns;
 	vbuf->sequence = sequence;
 
-	dev_dbg(&av->isys->adev->dev, "buffer: %s: buffer done %u\n",
-		av->vdev.name, vb->index);
+	dev_dbg(&av->isys->adev->dev, "buffer: %s: buffer done, CPU-timestamp:%lld, sequence:%d, vc:%d, index:%d, vbuf timestamp:%lld, endl\n",
+		av->vdev.name, ktime_get_ns(), sequence, ip->vc, vb->index, vbuf->vb2_buf.timestamp);
 #endif
 }
 
@@ -1329,11 +1332,14 @@ int ipu_isys_req_prepare(struct media_device *mdev,
 
 	set->send_irq_sof = 1;
 	set->send_resp_sof = 1;
-	set->send_irq_eof = 1;
-	set->send_resp_eof = 1;
 #if defined(CONFIG_VIDEO_INTEL_IPU4) || defined(CONFIG_VIDEO_INTEL_IPU4P)
 	set->send_irq_capture_ack = 1;
 	set->send_irq_capture_done = 1;
+	set->send_irq_eof = 1;
+	set->send_resp_eof = 1;
+#else
+	set->send_irq_eof = 0;
+	set->send_resp_eof = 0;
 #endif
 
 	spin_lock_irqsave(&ireq->lock, flags);

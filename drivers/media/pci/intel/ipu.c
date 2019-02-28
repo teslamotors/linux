@@ -315,6 +315,38 @@ static void ipu_configure_vc_mechanism(struct ipu_device *isp)
 	writel(val, isp->base + BUTTRESS_REG_BTRS_CTRL);
 }
 
+int request_cpd_fw(const struct firmware **firmware_p, const char *name,
+		 struct device *device)
+{
+	const struct firmware *fw;
+	struct firmware *tmp;
+	int ret;
+
+	ret = request_firmware(&fw, name, device);
+	if (ret)
+		return ret;
+
+	if (is_vmalloc_addr(fw->data)) {
+		*firmware_p = fw;
+	} else {
+		tmp = kzalloc(sizeof(struct firmware), GFP_KERNEL);
+		if (!tmp)
+			return -ENOMEM;
+		tmp->size = fw->size;
+		tmp->data = vmalloc(fw->size);
+		if (!tmp->data) {
+			kfree(tmp);
+			return -ENOMEM;
+		}
+		memcpy((void *)tmp->data, fw->data, fw->size);
+		*firmware_p = tmp;
+		release_firmware(fw);
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL(request_cpd_fw);
+
 static int ipu_pci_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 {
 	struct ipu_device *isp;
@@ -332,6 +364,7 @@ static int ipu_pci_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	if (!isp)
 		return -ENOMEM;
 
+	dev_set_name(&pdev->dev, "intel-ipu");
 	isp->pdev = pdev;
 	INIT_LIST_HEAD(&isp->devices);
 
@@ -411,7 +444,7 @@ static int ipu_pci_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	dev_info(&pdev->dev, "cpd file name: %s\n", isp->cpd_fw_name);
 
-	rval = request_firmware(&isp->cpd_fw, isp->cpd_fw_name, &pdev->dev);
+	rval = request_cpd_fw(&isp->cpd_fw, isp->cpd_fw_name, &pdev->dev);
 	if (rval) {
 		dev_err(&isp->pdev->dev, "Requesting signed firmware failed\n");
 		trace_printk("E|TMWK\n");

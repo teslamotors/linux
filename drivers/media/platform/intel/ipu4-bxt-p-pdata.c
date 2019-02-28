@@ -134,6 +134,33 @@ static struct ipu_isys_subdev_info ov2740_crl_sd = {
 		.i2c_adapter_id = 2,
 	}
 };
+
+//for port 2
+static struct crlmodule_platform_data ov2740_pdata_2 = {
+	.xshutdown = GPIO_BASE + 67,
+	.lanes = OV2740_LANES,
+	.ext_clk = 19200000,
+	.op_sys_clock = (uint64_t []){ 72000000 },
+	.module_name = "INT3474-2",
+	.id_string = "0x27 0x40",
+	.suffix = 'b',
+};
+
+static struct ipu_isys_csi2_config ov2740_csi2_cfg_2 = {
+	.nlanes = OV2740_LANES,
+	.port = 4,
+};
+
+static struct ipu_isys_subdev_info ov2740_crl_sd_2 = {
+	.csi2 = &ov2740_csi2_cfg_2,
+	.i2c = {
+		.board_info = {
+			I2C_BOARD_INFO(CRLMODULE_NAME, OV2740_I2C_ADDRESS),
+			.platform_data = &ov2740_pdata_2,
+		},
+	.i2c_adapter_id = 4,
+	}
+};
 #endif
 
 #ifdef CONFIG_INTEL_IPU4_IMX185
@@ -1212,6 +1239,7 @@ static struct ipu_isys_subdev_info max9286_sd = {
  */
 static struct ipu_isys_clk_mapping clk_mapping[] = {
 	{ CLKDEV_INIT("2-0036", NULL, NULL), "OSC_CLK_OUT0" },
+	{ CLKDEV_INIT("4-0036", NULL, NULL), "OSC_CLK_OUT1" },
 	{ CLKDEV_INIT("2-001a", NULL, NULL), "OSC_CLK_OUT0" },
 	{ CLKDEV_INIT("4-001a", NULL, NULL), "OSC_CLK_OUT1" },
 	{ CLKDEV_INIT("2-0010", NULL, NULL), "OSC_CLK_OUT0" },
@@ -1236,6 +1264,7 @@ static struct ipu_isys_subdev_pdata pdata = {
 #endif
 #ifdef CONFIG_INTEL_IPU4_OV2740
 		&ov2740_crl_sd,
+		&ov2740_crl_sd_2,
 #endif
 #ifdef CONFIG_INTEL_IPU4_IMX185
 		&imx185_crl_sd,
