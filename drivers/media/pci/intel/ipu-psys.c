@@ -45,7 +45,7 @@
 #include "ipu-fw-isys.h"
 #include "ipu-fw-com.h"
 
-static bool async_fw_init;
+static bool async_fw_init = 1;
 module_param(async_fw_init, bool, 0664);
 MODULE_PARM_DESC(async_fw_init, "Enable asynchronous firmware initialization");
 
