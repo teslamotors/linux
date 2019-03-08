@@ -288,8 +288,9 @@ static int ti960_map_ser_alias_addr(struct ti960 *va, unsigned short rx_port,
 }
 
 static int ti960_fsin_gpio_init(struct ti960 *va, unsigned short rx_port,
-					unsigned short fsin_gpio)
+		unsigned short ser_alias, unsigned short fsin_gpio)
 {
+	unsigned char gpio_data;
 	int rval;
 	int reg_val;
 
@@ -352,6 +353,15 @@ static int ti960_fsin_gpio_init(struct ti960 *va, unsigned short rx_port,
 			dev_dbg(va->sd.dev, "Failed to set gpio.\n");
 		break;
 	}
+
+	/* enable output and remote control */
+	ti953_reg_write(va, rx_port, ser_alias, TI953_GPIO_INPUT_CTRL, TI953_GPIO_OUT_EN);
+	rval = ti953_reg_read(va, rx_port, ser_alias, TI953_LOCAL_GPIO_DATA,
+			&gpio_data);
+	if (rval)
+		return rval;
+	ti953_reg_write(va, rx_port, ser_alias, TI953_LOCAL_GPIO_DATA,
+			gpio_data | TI953_GPIO0_RMTEN << fsin_gpio);
 
 	return rval;
 }
@@ -982,11 +992,20 @@ static int ti960_set_stream(struct v4l2_subdev *subdev, int enable)
 			 * only do reset for ov495, then it won't break other sensors.
 			 */
 			if (memcmp(va->sub_devs[j].sd_name, "OV495", strlen("OV495")) == 0) {
-				ti953_reg_write(va, rx_port, ser_alias, 0x0e, 0xf0);
+				unsigned char gpio_data;
+
+				ti953_reg_write(va, rx_port, ser_alias, TI953_GPIO_INPUT_CTRL,
+						TI953_GPIO_OUT_EN);
+				rval = ti953_reg_read(va, rx_port, ser_alias, TI953_LOCAL_GPIO_DATA,
+						&gpio_data);
+				if (rval)
+					return rval;
+				gpio_data &= ~TI953_GPIO0_RMTEN;
+				ti953_reg_write(va, rx_port, ser_alias, TI953_LOCAL_GPIO_DATA,
+						gpio_data & ~TI953_GPIO0_OUT);
 				msleep(50);
-				ti953_reg_write(va, rx_port, ser_alias, 0x0d, 00);
-				msleep(50);
-				ti953_reg_write(va, rx_port, ser_alias, 0x0d, 0x1);
+				ti953_reg_write(va, rx_port, ser_alias, TI953_LOCAL_GPIO_DATA,
+						gpio_data | TI953_GPIO0_OUT);
 			}
 
 		}
@@ -1017,6 +1036,7 @@ static int ti960_set_stream(struct v4l2_subdev *subdev, int enable)
 			if (enable && test_bit(i, rx_port_enabled)) {
 				rval = ti960_fsin_gpio_init(va,
 						va->sub_devs[i].rx_port,
+						va->sub_devs[i].ser_i2c_addr,
 						va->sub_devs[i].fsin_gpio);
 				if (rval) {
 					dev_err(va->sd.dev,
@@ -1029,13 +1049,21 @@ static int ti960_set_stream(struct v4l2_subdev *subdev, int enable)
 				 * only do reset for ov495, then it won't break other sensors.
 				 */
 				if (memcmp(va->sub_devs[i].sd_name, "OV495", strlen("OV495")) == 0) {
+					unsigned char gpio_data;
 					rx_port = va->sub_devs[i].rx_port;
 					ser_alias = va->sub_devs[i].ser_i2c_addr;
-					ti953_reg_write(va, rx_port, ser_alias, 0x0e, 0xf0);
+					ti953_reg_write(va, rx_port, ser_alias, TI953_GPIO_INPUT_CTRL,
+							TI953_GPIO_OUT_EN);
+					rval = ti953_reg_read(va, rx_port, ser_alias, TI953_LOCAL_GPIO_DATA,
+							&gpio_data);
+					if (rval)
+						return rval;
+					gpio_data &= ~TI953_GPIO0_RMTEN;
+					ti953_reg_write(va, rx_port, ser_alias, TI953_LOCAL_GPIO_DATA,
+							gpio_data & ~TI953_GPIO0_OUT);
 					msleep(50);
-					ti953_reg_write(va, rx_port, ser_alias, 0x0d, 00);
-					msleep(50);
-					ti953_reg_write(va, rx_port, ser_alias, 0x0d, 0x1);
+					ti953_reg_write(va, rx_port, ser_alias, TI953_LOCAL_GPIO_DATA,
+							gpio_data | TI953_GPIO0_OUT);
 				}
 			}
 		}
@@ -1447,9 +1475,11 @@ static int ti960_init(struct ti960 *va)
 
 	/* reset and power for ti953 */
 	if (!ov495_detected) {
-		ti953_reg_write(va, 0, ser_alias, 0x0d, 00);
+		ti953_reg_write(va, 0, ser_alias, TI953_GPIO_INPUT_CTRL, TI953_GPIO_OUT_EN);
+		ti953_reg_write(va, 0, ser_alias, TI953_LOCAL_GPIO_DATA, 0);
 		msleep(50);
-		ti953_reg_write(va, 0, ser_alias, 0x0d, 0x3);
+		ti953_reg_write(va, 0, ser_alias, TI953_LOCAL_GPIO_DATA,
+				TI953_GPIO0_OUT | TI953_GPIO1_OUT);
 	}
 
 	rval = ti960_map_subdevs_addr(va);

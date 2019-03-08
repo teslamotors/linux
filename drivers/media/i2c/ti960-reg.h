@@ -18,15 +18,15 @@ static const struct ti960_register_write ti960_frame_sync_settings[2][5] = {
 	{
 		{0x18, 0x00}, /* Disable frame sync. */
 		{0x19, 0x00},
-		{0x1a, 0x02},
-		{0x1b, 0x0a},
-		{0x1c, 0xd3},
+		{0x1a, 0x00},
+		{0x1b, 0x00},
+		{0x1c, 0x00},
 	},
 	{
-		{0x19, 0x01}, /* Frame sync high time.*/
-		{0x1a, 0x15},
-		{0x1b, 0x09}, /* Frame sync low time. */
-		{0x1c, 0xC3},
+		{0x19, 0x15}, /* Frame sync high time.*/
+		{0x1a, 0xb3},
+		{0x1b, 0xc3}, /* Frame sync low time. */
+		{0x1c, 0x4f},
 		{0x18, 0x01}, /* Enable frame sync. and use high/low mode */
 	}
 };
@@ -230,4 +230,15 @@ static const struct ti960_register_devid ti953_FPD3_RX_ID[] = {
 #define TI960_CSI_CONTS_CLOCK	0x2
 #define TI960_CSI_SKEWCAL	0x40
 #define TI960_FSIN_ENABLE	0x1
+
+/* register definition */
+#define TI953_LOCAL_GPIO_DATA	0xd
+#define TI953_GPIO_INPUT_CTRL	0xe
+
+/* register value definition */
+#define TI953_GPIO0_RMTEN	0x10
+#define TI953_GPIO0_OUT		0x1
+#define TI953_GPIO1_OUT		(0x1 << 1)
+#define TI953_GPIO_OUT_EN	0xf0
+
 #endif
