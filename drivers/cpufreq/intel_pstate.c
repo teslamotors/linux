@@ -1041,9 +1041,6 @@ static ssize_t store_no_turbo(struct kobject *a, struct attribute *b,
 		return -EPERM;
 	}
 
-	if (notification_registered_flag)
-		return -EAGAIN;
-
 	global.no_turbo = clamp_t(int, input, 0, 1);
 
 	if (global.no_turbo) {

@@ -48,10 +48,6 @@ static int default_role;
 module_param(default_role, int, 0444);
 MODULE_PARM_DESC(default_role, "USB OTG port default role 0:default 1:host 2:device");
 
-static int default_role;
-module_param(default_role, int, 0444);
-MODULE_PARM_DESC(default_role, "USB OTG port default role 0:default 1:host 2:device");
-
 static int intel_xhci_usb_set_role(struct device *dev, enum usb_role role)
 {
 	struct intel_xhci_usb_data *data = dev_get_drvdata(dev);
