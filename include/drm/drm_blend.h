@@ -154,4 +154,21 @@ drm_rgba_bits(struct drm_rgba c, unsigned compshift, unsigned bits) {
 #define DRM_RGBA_BLUEBITS(c, bits)  drm_rgba_bits(c, 16, bits)
 #define DRM_RGBA_ALPHABITS(c, bits) drm_rgba_bits(c, 0, bits)
 
+enum drm_blend_factor {
+	DRM_BLEND_FACTOR_AUTO,
+	DRM_BLEND_FACTOR_ZERO,
+	DRM_BLEND_FACTOR_ONE,
+	DRM_BLEND_FACTOR_SRC_ALPHA,
+	DRM_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+	DRM_BLEND_FACTOR_CONSTANT_ALPHA,
+	DRM_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA,
+	DRM_BLEND_FACTOR_CONSTANT_ALPHA_TIMES_SRC_ALPHA,
+	DRM_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA_TIMES_SRC_ALPHA,
+};
+
+#define DRM_BLEND_FUNC(src_factor, dst_factor)         \
+	(DRM_BLEND_FACTOR_##src_factor << 16 | DRM_BLEND_FACTOR_##dst_factor)
+#define DRM_BLEND_FUNC_SRC_FACTOR(val) (((val) >> 16) & 0xffff)
+#define DRM_BLEND_FUNC_DST_FACTOR(val) ((val) & 0xffff)
+
 #endif

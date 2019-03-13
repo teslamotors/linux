@@ -783,6 +783,10 @@ static int drm_atomic_plane_set_property(struct drm_plane *plane,
 		state->rotation = val;
 	} else if (property == plane->zpos_property) {
 		state->zpos = val;
+	} else if (property == config->prop_blend_func) {
+		state->blend_mode.func = val;
+	} else if (property == config->prop_blend_color) {
+		state->blend_mode.color.v = val;
 	} else if (plane->funcs->atomic_set_property) {
 		return plane->funcs->atomic_set_property(plane, state,
 				property, val);
@@ -842,6 +846,10 @@ drm_atomic_plane_get_property(struct drm_plane *plane,
 		*val = state->rotation;
 	} else if (property == plane->zpos_property) {
 		*val = state->zpos;
+	} else if (property == config->prop_blend_func) {
+		*val = state->blend_mode.func;
+	} else if (property == config->prop_blend_color) {
+		*val = state->blend_mode.color.v;
 	} else if (plane->funcs->atomic_get_property) {
 		return plane->funcs->atomic_get_property(plane, state, property, val);
 	} else {
