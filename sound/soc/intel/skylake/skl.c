@@ -28,16 +28,20 @@
 #include <linux/firmware.h>
 #include <linux/delay.h>
 #include <sound/pcm.h>
+#include <sound/compress_driver.h>
 #include <sound/soc-acpi.h>
 #include <sound/soc-acpi-intel-match.h>
 #include <sound/hda_register.h>
 #include <sound/hdaudio.h>
 #include <sound/hda_i915.h>
-#include <sound/compress_driver.h>
+
 #include "skl.h"
 #include "skl-sst-dsp.h"
 #include "skl-sst-ipc.h"
 #include "skl-topology.h"
+static char *tplg_name = NULL;
+module_param(tplg_name, charp, 0444);
+MODULE_PARM_DESC(tplg_name, "Name of topology binary file");
 
 /*
  * initialize the PCI registers
@@ -659,6 +663,7 @@ static const struct hdac_bus_ops bus_core_ops = {
 	.get_response = snd_hdac_bus_get_response,
 };
 
+#if 1
 static int skl_i915_init(struct hdac_bus *bus)
 {
 	int err;
@@ -677,6 +682,7 @@ static int skl_i915_init(struct hdac_bus *bus)
 
 	return err;
 }
+#endif
 
 static void skl_probe_work(struct work_struct *work)
 {
@@ -851,6 +857,14 @@ static int skl_first_init(struct hdac_ext_bus *ebus)
 
 	skl_dum_set(ebus);
 
+	if (IS_ENABLED(CONFIG_SND_SOC_HDAC_HDMI)) {
+		err = skl_i915_init(bus);
+		if (err < 0)
+			return err;
+	}
+
+	skl_init_chip(bus, true);
+
 	return skl_init_chip(bus, true);
 }
 
@@ -892,7 +906,10 @@ static int skl_probe(struct pci_dev *pci,
 	if (err < 0)
 		goto out_nhlt_free;
 
-	skl_nhlt_update_topology_bin(skl);
+		if (!tplg_name || strlen(tplg_name) >= sizeof(skl->tplg_name))
+			skl_nhlt_update_topology_bin(skl);
+		else
+			snprintf(skl->tplg_name, sizeof(skl->tplg_name), "%s", tplg_name);
 
 #else
 	if (request_firmware(&nhlt_fw, "intel/nhlt_blob.bin", bus->dev)) {
@@ -980,6 +997,9 @@ static void skl_remove(struct pci_dev *pci)
 {
 	struct hdac_ext_bus *ebus = pci_get_drvdata(pci);
 	struct skl *skl = ebus_to_skl(ebus);
+
+	if (IS_ENABLED(CONFIG_SND_SOC_HDAC_HDMI))
+		snd_hdac_i915_exit(&ebus->bus);
 
 	skl_delete_notify_kctl_list(skl->skl_sst);
 	release_firmware(skl->tplg);

@@ -77,6 +77,13 @@ enum skl_bitdepth {
 	SKL_DEPTH_INVALID
 };
 
+enum skl_format {
+	SKL_FMT_S16LE = 2,
+	SKL_FMT_S24LE = 6,
+	SKL_FMT_S32LE = 10,
+	SKL_FMT_FLOATLE = 14,
+	SKL_FMT_S24_3LE = 32
+};
 
 enum skl_s_freq {
 	SKL_FS_8000 = 8000,
@@ -122,7 +129,7 @@ struct skl_audio_data_format {
 } __packed;
 
 struct skl_base_cfg {
-	u32 cps;
+	u32 cpc;
 	u32 ibs;
 	u32 obs;
 	u32 is_pages;
@@ -388,7 +395,6 @@ struct skl_module_pin_resources {
 struct skl_module_res {
 	u8 id;
 	u32 is_pages;
-	u32 cps;
 	u32 ibs;
 	u32 obs;
 	u32 dma_buffer_size;
@@ -446,9 +452,6 @@ struct skl_module_cfg {
 	u8 out_queue_mask;
 	u8 in_queue;
 	u8 out_queue;
-	u32 mcps;
-	u32 ibs;
-	u32 obs;
 	u8 is_loadable;
 	u8 core_id;
 	u8 dev_type;
@@ -548,7 +551,7 @@ int skl_tplg_be_update_params(struct snd_soc_dai *dai,
 	struct skl_pipe_params *params);
 int skl_dsp_set_dma_clk_controls(struct skl_sst *ctx);
 int skl_dsp_set_dma_control(struct skl_sst *ctx, u32 *caps,
-			u32 caps_size, u32 node_id);
+			u32 caps_size, u32 node_id, u32 blob_size);
 void skl_tplg_set_be_dmic_config(struct snd_soc_dai *dai,
 	struct skl_pipe_params *params, int stream);
 int skl_tplg_init(struct snd_soc_platform *platform,
@@ -556,8 +559,9 @@ int skl_tplg_init(struct snd_soc_platform *platform,
 struct skl_module_cfg *skl_tplg_fe_get_cpr_module(
 		struct snd_soc_dai *dai, int stream);
 int skl_tplg_update_pipe_params(struct device *dev,
-		struct skl_module_cfg *mconfig, struct skl_pipe_params *params);
-
+			struct skl_module_cfg *mconfig,
+			struct skl_pipe_params *params,
+			snd_pcm_format_t fmt);
 void skl_tplg_d0i3_get(struct skl *skl, enum d0i3_capability caps);
 void skl_tplg_d0i3_put(struct skl *skl, enum d0i3_capability caps);
 
@@ -611,10 +615,6 @@ struct skl_module_cfg *skl_tplg_be_get_cpr_module(struct snd_soc_dai *dai,
 int is_skl_dsp_widget_type(struct snd_soc_dapm_widget *w, struct device *dev);
 
 enum skl_bitdepth skl_get_bit_depth(int params);
-int skl_pcm_host_dma_prepare(struct device *dev,
-			struct skl_pipe_params *params);
-int skl_pcm_link_dma_prepare(struct device *dev,
-			struct skl_pipe_params *params);
 int skl_tplg_dsp_log_get(struct snd_kcontrol *kcontrol,
 			 struct snd_ctl_elem_value *ucontrol);
 int skl_tplg_dsp_log_set(struct snd_kcontrol *kcontrol,

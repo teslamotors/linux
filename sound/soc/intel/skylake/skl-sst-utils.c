@@ -1133,3 +1133,28 @@ err_sysfs_exit:
 	return ret;
 }
 EXPORT_SYMBOL_GPL(skl_module_sysfs_init);
+
+int skl_validate_fw_version(struct skl_sst *skl)
+{
+	struct skl_fw_version *fw_version = &skl->fw_property.version;
+	const struct skl_dsp_ops *ops = skl->dsp_ops;
+
+	dev_info(skl->dev, "ADSP FW Version: %d.%d.%d.%d\n",
+		 fw_version->major, fw_version->minor,
+		 fw_version->hotfix, fw_version->build);
+
+
+	if (ops->min_fw_ver.major == fw_version->major &&
+	    ops->min_fw_ver.minor == fw_version->minor &&
+	    ops->min_fw_ver.hotfix == fw_version->hotfix &&
+	    ops->min_fw_ver.build <= fw_version->build)
+		return 0;
+
+	dev_err(skl->dev, "Incorrect ADSP FW version = %d.%d.%d.%d, minimum supported FW version = %d.%d.%d.%d\n",
+		fw_version->major, fw_version->minor,
+		fw_version->hotfix, fw_version->build,
+		ops->min_fw_ver.major, ops->min_fw_ver.minor,
+		ops->min_fw_ver.hotfix, ops->min_fw_ver.build);
+
+	return -EINVAL;
+}

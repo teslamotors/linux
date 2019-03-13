@@ -17,8 +17,13 @@ static struct snd_soc_acpi_codecs bxt_codecs = {
 struct snd_soc_acpi_mach snd_soc_acpi_intel_bxt_machines[] = {
 	{
 		.id = "INT343A",
+#if IS_ENABLED(CONFIG_SND_SOC_INTEL_BXTP_IVI_RSE_MACH)
+		.drv_name = "bxt_ivi_rse_i2s",
+		.fw_filename = "dsp_fw_release.bin",
+#else
 		.drv_name = "bxt_alc298s_i2s",
 		.fw_filename = "intel/dsp_fw_bxtn.bin",
+#endif
 	},
 	{
 		.id = "DLGS7219",
@@ -46,11 +51,41 @@ struct snd_soc_acpi_mach snd_soc_acpi_intel_bxt_machines[] = {
 	},
 	{
 		.id = "INT34C3",
+#if IS_ENABLED(CONFIG_SND_SOC_INTEL_BXT_GPMRB_MACH)
+		.drv_name = "gpmrb_machine",
+		.fw_filename = "ADSPFW.bin",
+#else
 		.drv_name = "bxt_tdf8532",
 		.fw_filename = "intel/dsp_fw_bxtn.bin",
 		.sof_fw_filename = "intel/sof-apl.ri",
 		.sof_tplg_filename = "intel/sof-apl-tdf8532.tplg",
 		.asoc_plat_name = "0000:00:0e.0",
+#endif
+	},
+	{
+		.id = "INT344A",
+		.drv_name = "bxt_ivi_hu_i2s",
+		.fw_filename = "dsp_fw_release.bin",
+	},
+	{
+		.id = "INT344B",
+		.drv_name = "bxt_ivi_generic_i2s",
+		.fw_filename = "dsp_fw_release.bin",
+	},
+	{
+		.id = "INT345A",
+		.drv_name = "lhcrb_wm8731_i2s",
+		.fw_filename = "dsp_fw_release.bin",
+	},
+	{
+		.id = "INT345B",
+		.drv_name = "lhcrb_aic3107M_i2s",
+		.fw_filename = "dsp_fw_release.bin",
+	},
+	{
+		.id = "INT345C",
+		.drv_name = "lhcrb_aic3107S_i2s",
+		.fw_filename = "dsp_fw_release.bin",
 	},
 	{},
 };

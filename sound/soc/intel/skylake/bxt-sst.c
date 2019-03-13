@@ -149,8 +149,8 @@ load_library_failed:
  * status on core 1, so power up core 1 also momentarily, keep it in
  * reset/stall and then turn it off
  */
-static int sst_bxt_prepare_fw(struct sst_dsp *ctx,
-			const void *fwdata, u32 fwsize)
+static int sst_bxt_prepare_fw(struct sst_dsp *ctx, const void *fwdata,
+			      u32 fwsize, unsigned int timeout_val)
 {
 	int stream_tag, ret;
 
@@ -211,9 +211,9 @@ static int sst_bxt_prepare_fw(struct sst_dsp *ctx,
 
 	/* Step 7: Wait for ROM init */
 	ret = sst_dsp_register_poll(ctx, BXT_ADSP_FW_STATUS, SKL_FW_STS_MASK,
-			SKL_FW_INIT, BXT_ROM_INIT_TIMEOUT, "ROM Load");
+			SKL_FW_INIT, timeout_val, "ROM Load");
 	if (ret < 0) {
-		dev_err(ctx->dev, "Timeout for ROM init, ret:%d\n", ret);
+		dev_dbg(ctx->dev, "Timeout for ROM init, ret:%d\n", ret);
 		goto base_fw_load_failed;
 	}
 
@@ -249,6 +249,7 @@ static int bxt_load_base_firmware(struct sst_dsp *ctx)
 {
 	struct firmware stripped_fw;
 	struct skl_sst *skl = ctx->thread_context;
+	unsigned int timeout_val = BXT_ROM_INIT_TIMEOUT;
 	int ret, i;
 
 	if (ctx->fw == NULL) {
@@ -270,33 +271,51 @@ static int bxt_load_base_firmware(struct sst_dsp *ctx)
 	stripped_fw.size = ctx->fw->size;
 	skl_dsp_strip_extended_manifest(&stripped_fw);
 
-	for (i = 0; i < BXT_FW_INIT_RETRY; i++) {
-		ret = sst_bxt_prepare_fw(ctx, stripped_fw.data, stripped_fw.size);
+	/* Double the ROM init timeout_val every time recovery fails */
+	for (i = 0; i < BXT_FW_INIT_RETRY; i++, timeout_val *= 2) {
+		ret = sst_bxt_prepare_fw(ctx, stripped_fw.data,
+				stripped_fw.size, timeout_val);
 		if (ret < 0) {
-			dev_err(ctx->dev, "Error code=0x%x: FW status=0x%x\n",
-				sst_dsp_shim_read(ctx, BXT_ADSP_ERROR_CODE),
-				sst_dsp_shim_read(ctx, BXT_ADSP_FW_STATUS));
-
-			dev_err(ctx->dev, "Itertion %d Core En/ROM load fail:%d\n",
-					i, ret);
+			if (i < (BXT_FW_INIT_RETRY - 1)) {
+				dev_dbg(ctx->dev, "Error code=0x%x: FW status=0x%x\n",
+					sst_dsp_shim_read(ctx, BXT_ADSP_ERROR_CODE),
+					sst_dsp_shim_read(ctx, BXT_ADSP_FW_STATUS));
+				dev_dbg(ctx->dev, "Iteration %d Core En/ROM load fail:%d\n",
+						i, ret);
+			}
+			else {
+				dev_err(ctx->dev, "Error code=0x%x: FW status=0x%x\n",
+					sst_dsp_shim_read(ctx, BXT_ADSP_ERROR_CODE),
+					sst_dsp_shim_read(ctx, BXT_ADSP_FW_STATUS));
+				dev_err(ctx->dev, "Iteration %d Core En/ROM load fail:%d\n",
+						i, ret);
+			}
 			continue;
 		}
-		dev_dbg(ctx->dev, "Itertion %d ROM load Success:%d\n",
+		dev_dbg(ctx->dev, "Iteration %d ROM load Success:%d\n",
 				i, ret);
 
 		ret = sst_transfer_fw_host_dma(ctx);
 		if (ret < 0) {
-			dev_err(ctx->dev, "Itertion %d Transfer firmware failed %d\n",
-					i, ret);
-			dev_info(ctx->dev, "Error code=0x%x: FW status=0x%x\n",
-				sst_dsp_shim_read(ctx, BXT_ADSP_ERROR_CODE),
-				sst_dsp_shim_read(ctx, BXT_ADSP_FW_STATUS));
-
+			if (i < (BXT_FW_INIT_RETRY - 1)) {
+				dev_dbg(ctx->dev, "Iteration %d Transfer firmware failed %d\n",
+						i, ret);
+				dev_dbg(ctx->dev, "Error code=0x%x: FW status=0x%x\n",
+					sst_dsp_shim_read(ctx, BXT_ADSP_ERROR_CODE),
+					sst_dsp_shim_read(ctx, BXT_ADSP_FW_STATUS));
+			}
+			else {
+				dev_err(ctx->dev, "Iteration %d Transfer firmware failed %d\n",
+						i, ret);
+				dev_err(ctx->dev, "Error code=0x%x: FW status=0x%x\n",
+					sst_dsp_shim_read(ctx, BXT_ADSP_ERROR_CODE),
+					sst_dsp_shim_read(ctx, BXT_ADSP_FW_STATUS));
+			}
 			skl_dsp_core_power_down(ctx, SKL_DSP_CORE_MASK(1));
 			skl_dsp_disable_core(ctx, SKL_DSP_CORE0_MASK);
 			continue;
 		}
-		dev_dbg(ctx->dev, "Itertion %d FW transfer Success:%d\n",
+		dev_dbg(ctx->dev, "Iteration %d FW transfer Success:%d\n",
 				i, ret);
 
 		if (ret == 0)
@@ -315,6 +334,16 @@ static int bxt_load_base_firmware(struct sst_dsp *ctx)
 			skl_dsp_disable_core(ctx, SKL_DSP_CORE0_MASK);
 			ret = -EIO;
 		} else {
+			ret = skl_get_firmware_configuration(ctx);
+			if (ret < 0) {
+				dev_err(ctx->dev, "FW version query failed\n");
+				goto sst_load_base_firmware_failed;
+			}
+
+			ret = skl_validate_fw_version(skl);
+			if (ret < 0)
+				goto sst_load_base_firmware_failed;
+
 			ret = 0;
 			skl->fw_loaded = true;
 		}
@@ -488,6 +517,8 @@ static int bxt_set_dsp_D0(struct sst_dsp *ctx, unsigned int core_id)
 		}
 		skl->cores.state[core_id] = SKL_DSP_RUNNING;
 		return ret;
+	} else if (skl->cores.state[core_id] == SKL_DSP_RUNNING) {
+		return 0;
 	}
 
 	/* If core 0 is being turned on, turn on core 1 as well */
@@ -531,8 +562,18 @@ static int bxt_set_dsp_D0(struct sst_dsp *ctx, unsigned int core_id)
 				sst_dsp_shim_read(ctx, BXT_ADSP_ERROR_CODE),
 				sst_dsp_shim_read(ctx, BXT_ADSP_FW_STATUS));
 			dev_err(ctx->dev, "Failed to set core0 to D0 state\n");
-			ret = -EIO;
-			goto err;
+
+			dev_err(ctx->dev, "Trying to reinitialize FW to recover audio\n");
+
+			ret = bxt_sst_init_fw(ctx->dev, skl);
+			if (ret < 0)
+			{
+				ret = -EIO;
+				goto err;
+			}
+			else
+				dev_err(ctx->dev, "FW recovery & reinitialization successful!\n");
+
 		}
 	}
 
@@ -636,21 +677,24 @@ static struct sst_dsp_device skl_dev = {
 };
 
 int bxt_sst_dsp_init(struct device *dev, void __iomem *mmio_base, int irq,
-			const char *fw_name, struct skl_dsp_loader_ops dsp_ops,
+			const char *fw_name, const struct skl_dsp_ops *dsp_ops,
 			struct skl_sst **dsp, void *ptr)
 {
 	struct skl_sst *skl;
 	struct sst_dsp *sst;
+	struct skl_dsp_loader_ops loader_ops;
 	u32 dsp_wp[] = {BXT_ADSP_WP_DSP0, BXT_ADSP_WP_DSP1};
 	int ret;
 
-	ret = skl_sst_ctx_init(dev, irq, fw_name, dsp_ops, dsp, &skl_dev);
+	loader_ops = dsp_ops->loader_ops();
+	ret = skl_sst_ctx_init(dev, irq, fw_name, loader_ops, dsp, &skl_dev);
 	if (ret < 0) {
 		dev_err(dev, "%s: no device\n", __func__);
 		return ret;
 	}
 
 	skl = *dsp;
+	skl->dsp_ops = dsp_ops;
 	sst = skl->dsp;
 	sst->fw_ops = bxt_fw_ops;
 	sst->addr.lpe = mmio_base;

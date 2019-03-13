@@ -387,6 +387,30 @@ config SND_SOC_INTEL_BXTP_IVI_GENERIC_MACH
 	   Say Y or m if you have such a device. This is a recommended option.
 	   If unsure select "N".
 
+config SND_SOC_INTEL_BXT_GPMRB_MACH
+	tristate "ASoC Audio driver for BXT IVI GP MRB"
+	select SND_SOC_INTEL_SST
+	select SND_SOC_TDF8532
+	select SND_SOC_COMPRESS
+	default n
+	help
+	   This adds support for ASoC machine driver for Broxton IVI GP MRB platform
+	   Say Y if you have such a device
+	   If unsure select "N".
+
+config SND_SOC_INTEL_BXT_ULL_MACH
+	tristate "ASoC ULL reference driver with dummy codec"
+	select SND_SOC_INTEL_SST
+	select SND_SOC_COMPRESS
+	select DW_DMAC
+	default n
+	help
+	   This adds support for ASoC ULL machine driver with a DSP loop and
+	   Dummy I2S audio codec. Serves as a basic example with no processing
+	   modules embedded in the loop.
+	   Say Y if you have such a device.
+	   If unsure select "N".
+
 endif ## SND_SOC_INTEL_SKYLAKE
 
 if SND_SOC_INTEL_SKYLAKE || SND_SOC_SOF_CANNONLAKE
@@ -402,6 +426,28 @@ config SND_SOC_INTEL_CNL_RT274_MACH
 	   with RT274 I2S audio codec.
 	   Say Y or m if you have such a device. This is a recommended option.
 	   If unsure select "N".
+
+config SND_SOC_INTEL_APLI_LHCRB_WM8731_MACH
+        tristate "ASoC Audio driver for APLI LHCRB WM8731 Codec"
+        depends on X86_INTEL_LPSS && I2C
+        select SND_SOC_WM8731
+        default n
+        help
+          This adds support for ASoC machine driver for  Intel(R)
+          Apollo Lake-I Leaf Hill Customer reference board platform.
+          Say Y if you have such a device
+          If unsure select "N".
+
+config SND_SOC_INTEL_APLI_LHCRB_AIC3107_MACH
+        tristate "ASoC Audio driver for APLI LHCRB AIC3107"
+        depends on X86_INTEL_LPSS && I2C
+        select SND_SOC_TLV320AIC3x
+        default n
+        help
+          This adds support for ASoC machine driver for  Intel(R)
+          Apollo Lake-I Leaf Hill Customer reference board platform.
+          Say Y if you have such a device
+          If unsure select "N".
 
 endif ## SND_SOC_INTEL_SKYLAKE
 

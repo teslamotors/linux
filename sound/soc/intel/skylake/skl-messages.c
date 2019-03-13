@@ -282,7 +282,8 @@ static const struct skl_dsp_ops dsp_ops[] = {
 		.loader_ops = skl_get_loader_ops,
 		.init = skl_sst_dsp_init,
 		.init_fw = skl_sst_init_fw,
-		.cleanup = skl_sst_dsp_cleanup
+		.cleanup = skl_sst_dsp_cleanup,
+		.min_fw_ver = {9, 21, 0, 3173}
 	},
 	{
 		.id = 0x9d71,
@@ -290,7 +291,8 @@ static const struct skl_dsp_ops dsp_ops[] = {
 		.loader_ops = skl_get_loader_ops,
 		.init = skl_sst_dsp_init,
 		.init_fw = skl_sst_init_fw,
-		.cleanup = skl_sst_dsp_cleanup
+		.cleanup = skl_sst_dsp_cleanup,
+		.min_fw_ver = {9, 21, 0, 3173}
 	},
 	{
 		.id = 0x5a98,
@@ -298,7 +300,8 @@ static const struct skl_dsp_ops dsp_ops[] = {
 		.loader_ops = bxt_get_loader_ops,
 		.init = bxt_sst_dsp_init,
 		.init_fw = bxt_sst_init_fw,
-		.cleanup = bxt_sst_dsp_cleanup
+		.cleanup = bxt_sst_dsp_cleanup,
+		.min_fw_ver = {9, 22, 1, 3132}
 	},
 	{
 		.id = 0x3198,
@@ -306,7 +309,8 @@ static const struct skl_dsp_ops dsp_ops[] = {
 		.loader_ops = bxt_get_loader_ops,
 		.init = bxt_sst_dsp_init,
 		.init_fw = bxt_sst_init_fw,
-		.cleanup = bxt_sst_dsp_cleanup
+		.cleanup = bxt_sst_dsp_cleanup,
+		.min_fw_ver = {9, 22, 1, 3366}
 	},
 	{
 		.id = 0x9dc8,
@@ -314,7 +318,8 @@ static const struct skl_dsp_ops dsp_ops[] = {
 		.loader_ops = bxt_get_loader_ops,
 		.init = cnl_sst_dsp_init,
 		.init_fw = cnl_sst_init_fw,
-		.cleanup = cnl_sst_dsp_cleanup
+		.cleanup = cnl_sst_dsp_cleanup,
+		.min_fw_ver = {10, 23, 0, 1233}
 	},
 	{
 		.id = 0x34c8,
@@ -322,7 +327,8 @@ static const struct skl_dsp_ops dsp_ops[] = {
 		.loader_ops = bxt_get_loader_ops,
 		.init = cnl_sst_dsp_init,
 		.init_fw = cnl_sst_init_fw,
-		.cleanup = cnl_sst_dsp_cleanup
+		.cleanup = cnl_sst_dsp_cleanup,
+		.min_fw_ver = {10, 23, 0, 1233}
 	},
 };
 
@@ -461,7 +467,7 @@ static int cnl_sdw_bra_pipe_cfg_pb(struct skl_sst *ctx,
 		goto error_delete_pipeline;
 	}
 
-	host_cpr_cfg->module->resources[0].cps = 100000;
+	host_cpr_cfg->module->resources[0].cpc = 100000000;
 	host_cpr_cfg->module->resources[0].is_pages = 0;
 	host_cpr_cfg->module->resources[0].ibs = 384;
 	host_cpr_cfg->module->resources[0].obs = 384;
@@ -734,7 +740,7 @@ static int cnl_sdw_bra_pipe_cfg_cp(struct skl_sst *ctx,
 		goto error_delete_pipeline;
 	}
 
-	link_cpr_cfg->module->resources[0].cps = 100000;
+	link_cpr_cfg->module->resources[0].cpc = 100000000;
 	link_cpr_cfg->module->resources[0].is_pages = 0;
 	link_cpr_cfg->module->resources[0].ibs = 1152;
 	link_cpr_cfg->module->resources[0].obs = 1152;
@@ -1215,7 +1221,6 @@ int skl_init_dsp(struct skl *skl)
 	void __iomem *mmio_base;
 	struct hdac_ext_bus *ebus = &skl->ebus;
 	struct hdac_bus *bus = ebus_to_hbus(ebus);
-	struct skl_dsp_loader_ops loader_ops;
 	int irq = bus->irq;
 	const struct skl_dsp_ops *ops;
 	struct skl_dsp_cores *cores;
@@ -1238,14 +1243,12 @@ int skl_init_dsp(struct skl *skl)
 		goto unmap_mmio;
 	}
 
-	loader_ops = ops->loader_ops();
-	ret = ops->init(bus->dev, mmio_base, irq, skl->fw_name, loader_ops,
+	ret = ops->init(bus->dev, mmio_base, irq, skl->fw_name, ops,
 					&skl->skl_sst, &cnl_sdw_bra_ops);
 
 	if (ret < 0)
 		goto unmap_mmio;
 
-	skl->skl_sst->dsp_ops = ops;
 	cores = &skl->skl_sst->cores;
 	cores->count = ops->num_cores;
 
@@ -1447,7 +1450,7 @@ static void skl_set_base_module_format(struct skl_sst *ctx,
 
 	base_cfg->audio_fmt.interleaving = format->interleaving_style;
 
-	base_cfg->cps = res->cps;
+	base_cfg->cpc = res->cpc;
 	base_cfg->ibs = res->ibs;
 	base_cfg->obs = res->obs;
 	base_cfg->is_pages = res->is_pages;
@@ -1611,19 +1614,16 @@ skip_buf_size_calc:
 #define DMA_I2S_BLOB_SIZE 21
 
 int skl_dsp_set_dma_control(struct skl_sst *ctx, u32 *caps,
-				u32 caps_size, u32 node_id)
+				u32 caps_size, u32 node_id, u32 blob_size)
 {
 	struct skl_dma_control *dma_ctrl;
 	struct skl_ipc_large_config_msg msg = {0};
 	int err = 0;
 
-
-	/*
-	 * if blob size zero, then return
-	 */
-	if (caps_size == 0)
+	if (caps_size == blob_size) {
+		dev_dbg(ctx->dev, "No dma control included\n");
 		return 0;
-
+	}
 	msg.large_param_id = DMA_CONTROL_ID;
 	msg.param_data_size = sizeof(struct skl_dma_control) + caps_size;
 
@@ -1633,14 +1633,8 @@ int skl_dsp_set_dma_control(struct skl_sst *ctx, u32 *caps,
 
 	dma_ctrl->node_id = node_id;
 
-	/*
-	 * NHLT blob may contain additional configs along with i2s blob.
-	 * firmware expects only the I2S blob size as the config_length. So fix to i2s
-	 * blob size.
-	 *
-	 * size in dwords.
-	 */
-	dma_ctrl->config_length = DMA_I2S_BLOB_SIZE;
+	/* size in dwords */
+	dma_ctrl->config_length = blob_size / 4;
 
 	memcpy(dma_ctrl->config_data, caps, caps_size);
 
@@ -1718,7 +1712,7 @@ int skl_dsp_set_dma_clk_controls(struct skl_sst *ctx)
 							hdr->tdm_slot);
 
 			ret = skl_dsp_set_dma_control(ctx, (u32 *)i2s_config,
-							i2s_config_size, node_id);
+							i2s_config_size, node_id, cfg->size);
 
 			kfree(i2s_config);
 
