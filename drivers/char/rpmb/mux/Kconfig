@@ -1,0 +1,14 @@
+config RPMB_MUX
+	tristate "RPMB Mux kernel module interface /dev/rpmbmux"
+	default n
+	depends on RPMB
+	select CRYPTO_SHA256
+	select CRYPTO_HMAC
+	help
+	  Say yes here if you want to access RPMB from user space
+	  via character device interface /dev/rpmbmux, which is acted
+	  as a multiplexor for RPMB by calling RPMB native driver directly.
+
+	  It owns RPMB authentication key internally for RPMB
+	  virtualization usage.The users who don't own RPMB key
+	  in such a RPMB virtualization use case could enable it.

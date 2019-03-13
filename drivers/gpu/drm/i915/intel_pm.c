@@ -5126,9 +5126,18 @@ skl_compute_ddb(struct drm_atomic_state *state)
 	memcpy(ddb, &dev_priv->wm.skl_hw.ddb, sizeof(*ddb));
 
 #if IS_ENABLED(CONFIG_DRM_I915_GVT)
-	/* In GVT environemnt, we only use the statically allocated ddb */
+	/*
+	 * In GVT environemnt, allocate ddb for all planes in active crtc.
+	 * When there is active pipe change, intel_state active_crtcs is
+	 * not zero and updated before dev_priv, so use intel_state
+	 * active_crtc when it is not zero.
+	 */
 	if (dev_priv->gvt) {
-		memcpy(ddb, &dev_priv->gvt->ddb, sizeof(*ddb));
+		unsigned int active_crtcs;
+
+		active_crtcs = intel_state->active_crtcs ?
+			intel_state->active_crtcs : dev_priv->active_crtcs;
+		intel_gvt_allocate_ddb(dev_priv->gvt, ddb, active_crtcs);
 		return 0;
 	}
 #endif

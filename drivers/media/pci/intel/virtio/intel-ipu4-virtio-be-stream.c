@@ -138,7 +138,39 @@ int process_set_format(int domid, struct ipu4_virtio_req *req)
 
 int process_poll(int domid, struct ipu4_virtio_req *req)
 {
-	return 0;
+	struct stream_node *sn = NULL;
+	struct ici_isys_stream *as;
+	bool found, empty;
+	unsigned long flags = 0;
+
+	pr_debug("%s: %d %d", __func__, hash_initialised, req->op[0]);
+
+	if (!hash_initialised)
+		return -1;
+
+	found = false;
+	hash_for_each_possible(STREAM_NODE_HASH, sn, node, req->op[0]) {
+		if (sn != NULL) {
+			pr_debug("process_put_buf: node %d %p", req->op[0], sn);
+			found = true;
+			break;
+		}
+	}
+
+	if (!found) {
+		pr_debug("%s: stream not found %d\n", __func__, req->op[0]);
+		return -1;
+	}
+
+	as = dev_to_stream(sn->f->private_data);
+	spin_lock_irqsave(&as->buf_list.lock, flags);
+	empty = list_empty(&as->buf_list.putbuf_list);
+	spin_unlock_irqrestore(&as->buf_list.lock, flags);
+	if (!empty) {
+		req->func_ret = 1;
+		return IPU4_REQ_PROCESSED;
+	} else
+		return IPU4_REQ_NEEDS_FOLLOW_UP;
 }
 
 int process_put_buf(int domid, struct ipu4_virtio_req *req)
@@ -344,13 +376,14 @@ int process_stream_off(int domid, struct ipu4_virtio_req *req)
 		return -1;
 	}
 
-	as = dev_to_stream(strm_dev);
-	as->frame_done_notify_queue = NULL;
-
 	err = strm_dev->ipu_ioctl_ops->ici_stream_off(sn->f, strm_dev);
 
 	if (err)
 		pr_err("process_stream_off: stream off failed\n");
+
+	as = dev_to_stream(strm_dev);
+	as->frame_done_notify_queue();
+	as->frame_done_notify_queue = NULL;
 
 	return 0;
 }

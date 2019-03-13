@@ -29,8 +29,8 @@
  * create a table with those in 1st level shared pages then return reference
  * numbers for this top level table.
  */
-int xen_be_share_pages(struct page **pages, int domid, int nents,
-		    void **refs_info);
+long xen_be_share_pages(struct page **pages, int domid, int nents,
+			void **refs_info);
 
 int xen_be_unshare_pages(void **refs_info, int nents);
 

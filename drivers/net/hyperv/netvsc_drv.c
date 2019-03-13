@@ -29,6 +29,7 @@
 #include <linux/netdevice.h>
 #include <linux/inetdevice.h>
 #include <linux/etherdevice.h>
+#include <linux/pci.h>
 #include <linux/skbuff.h>
 #include <linux/if_vlan.h>
 #include <linux/in.h>
@@ -1895,9 +1896,13 @@ static int netvsc_register_vf(struct net_device *vf_netdev)
 {
 	struct net_device *ndev;
 	struct net_device_context *net_device_ctx;
+	struct device *pdev = vf_netdev->dev.parent;
 	struct netvsc_device *netvsc_dev;
 
 	if (vf_netdev->addr_len != ETH_ALEN)
+		return NOTIFY_DONE;
+
+	if (!pdev || !dev_is_pci(pdev) || dev_is_pf(pdev))
 		return NOTIFY_DONE;
 
 	/*
@@ -2039,6 +2044,16 @@ static int netvsc_probe(struct hv_device *dev,
 
 	memcpy(net->dev_addr, device_info.mac_adr, ETH_ALEN);
 
+	/* We must get rtnl lock before scheduling nvdev->subchan_work,
+	 * otherwise netvsc_subchan_work() can get rtnl lock first and wait
+	 * all subchannels to show up, but that may not happen because
+	 * netvsc_probe() can't get rtnl lock and as a result vmbus_onoffer()
+	 * -> ... -> device_add() -> ... -> __device_attach() can't get
+	 * the device lock, so all the subchannels can't be processed --
+	 * finally netvsc_subchan_work() hangs for ever.
+	 */
+	rtnl_lock();
+
 	if (nvdev->num_chn > 1)
 		schedule_work(&nvdev->subchan_work);
 
@@ -2057,7 +2072,6 @@ static int netvsc_probe(struct hv_device *dev,
 	else
 		net->max_mtu = ETH_DATA_LEN;
 
-	rtnl_lock();
 	ret = register_netdevice(net);
 	if (ret != 0) {
 		pr_err("Unable to register netdev.\n");
@@ -2096,17 +2110,15 @@ static int netvsc_remove(struct hv_device *dev)
 
 	cancel_delayed_work_sync(&ndev_ctx->dwork);
 
-	rcu_read_lock();
-	nvdev = rcu_dereference(ndev_ctx->nvdev);
-
-	if  (nvdev)
+	rtnl_lock();
+	nvdev = rtnl_dereference(ndev_ctx->nvdev);
+	if (nvdev)
 		cancel_work_sync(&nvdev->subchan_work);
 
 	/*
 	 * Call to the vsc driver to let it know that the device is being
 	 * removed. Also blocks mtu and channel changes.
 	 */
-	rtnl_lock();
 	vf_netdev = rtnl_dereference(ndev_ctx->vf_netdev);
 	if (vf_netdev)
 		netvsc_unregister_vf(vf_netdev);
@@ -2118,7 +2130,6 @@ static int netvsc_remove(struct hv_device *dev)
 	list_del(&ndev_ctx->list);
 
 	rtnl_unlock();
-	rcu_read_unlock();
 
 	hv_set_drvdata(dev, NULL);
 

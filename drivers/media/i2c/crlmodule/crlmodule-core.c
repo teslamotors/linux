@@ -2443,6 +2443,10 @@ static int crlmodule_set_routing(struct v4l2_subdev *subdev,
 		    t->sink_pad != CRL_PAD_SINK)
 			continue;
 
+		if (sensor->src->route_flags[t->source_stream] &
+			V4L2_SUBDEV_ROUTE_FL_IMMUTABLE)
+			continue;
+
 		if (t->flags & V4L2_SUBDEV_ROUTE_FL_ACTIVE)
 			sensor->src->route_flags[t->source_stream] |=
 				V4L2_SUBDEV_ROUTE_FL_ACTIVE;
@@ -2749,6 +2753,7 @@ static const struct media_entity_operations crlmodule_entity_ops;
 static int crlmodule_init_subdevs(struct v4l2_subdev *subdev)
 {
 	struct crl_sensor *sensor = to_crlmodule_sensor(subdev);
+	struct crlmodule_platform_data *platform_data = sensor->platform_data;
 	struct i2c_client *client = v4l2_get_subdevdata(&sensor->src->sd);
 	struct crl_subdev *prev_sd = NULL;
 	int i = 0, j;
@@ -2818,10 +2823,18 @@ static int crlmodule_init_subdevs(struct v4l2_subdev *subdev)
 			sd->source_pad = 1;
 		}
 
-		snprintf(sd->sd.name,
-			 sizeof(sd->sd.name), "%s %d-%4.4x",
-			 sensor->sensor_ds->subdevs[i].name,
-			 i2c_adapter_id(client->adapter), client->addr);
+		if (platform_data->suffix)
+			snprintf(sd->sd.name,
+				 sizeof(sd->sd.name), "%s %c",
+				 sensor->sensor_ds->subdevs[i].name,
+				 platform_data->suffix);
+		else
+			snprintf(sd->sd.name,
+				 sizeof(sd->sd.name), "%s %d-%4.4x",
+				 sensor->sensor_ds->subdevs[i].name,
+				 i2c_adapter_id(client->adapter),
+				 client->addr);
+
 
 		sd->sink_fmt.width =
 			sensor->sensor_ds->sensor_limits->x_addr_max;
@@ -2849,7 +2862,8 @@ static int crlmodule_init_subdevs(struct v4l2_subdev *subdev)
 				sd->route_flags[j] =
 					V4L2_SUBDEV_ROUTE_FL_SOURCE;
 			sd->route_flags[0] |=
-					V4L2_SUBDEV_ROUTE_FL_ACTIVE;
+					V4L2_SUBDEV_ROUTE_FL_ACTIVE |
+					V4L2_SUBDEV_ROUTE_FL_IMMUTABLE;
 		}
 
 		sd->sd.entity.ops = &crlmodule_entity_ops;

@@ -37,8 +37,14 @@ struct __packed ipu_cpd_hdr {
 	u8 hdr_ver;
 	u8 ent_ver;
 	u8 hdr_len;
+#if defined(CONFIG_VIDEO_INTEL_IPU4) || defined(CONFIG_VIDEO_INTEL_IPU4P)
 	u8 chksm;
 	u32 name;
+#else
+	u8 rsvd;
+	u32 sub_partition_name;
+	u32 chksm;
+#endif
 };
 
 struct __packed ipu_cpd_ent {

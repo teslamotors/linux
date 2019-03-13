@@ -50,8 +50,10 @@ const struct ipu_isys_pixelformat ipu_isys_pfmts_be_soc[] = {
 	 IPU_FW_ISYS_FRAME_FORMAT_UYVY},
 	{V4L2_PIX_FMT_YUYV, 16, 16, 0, MEDIA_BUS_FMT_YUYV8_1X16,
 	 IPU_FW_ISYS_FRAME_FORMAT_YUYV},
-	{V4L2_PIX_FMT_NV16, 16, 16, 8, MEDIA_BUS_FMT_YUYV8_1X16,
+	{V4L2_PIX_FMT_NV16, 16, 16, 8, MEDIA_BUS_FMT_UYVY8_1X16,
 	 IPU_FW_ISYS_FRAME_FORMAT_NV16},
+	{V4L2_PIX_FMT_YUV420, 12, 0, 8, MEDIA_BUS_FMT_UYVY8_2X8,
+	 IPU_FW_ISYS_FRAME_FORMAT_YUV420},
 	{V4L2_PIX_FMT_XRGB32, 32, 32, 0, MEDIA_BUS_FMT_RGB565_1X16,
 	 IPU_FW_ISYS_FRAME_FORMAT_RGBA888},
 	{V4L2_PIX_FMT_XBGR32, 32, 32, 0, MEDIA_BUS_FMT_RGB888_1X24,
@@ -163,6 +165,11 @@ static int video_open(struct file *file)
 	struct ipu_isys *isys = av->isys;
 	struct ipu_bus_device *adev = to_ipu_bus_device(&isys->adev->dev);
 	struct ipu_device *isp = adev->isp;
+#ifdef IPU_IRQ_POLL
+	const struct sched_param param = {
+			.sched_priority = MAX_USER_RT_PRIO / 2,
+	};
+#endif
 	int rval;
 
 	mutex_lock(&isys->mutex);
@@ -227,6 +234,18 @@ static int video_open(struct file *file)
 		ipu_fw_isys_cleanup(isys);
 	}
 
+#ifdef IPU_IRQ_POLL
+	isys->isr_thread = kthread_run(ipu_isys_isr_run,
+				       av->isys,
+				       IPU_ISYS_ENTITY_PREFIX);
+
+	if (IS_ERR(isys->isr_thread)) {
+		rval = PTR_ERR(isys->isr_thread);
+		goto out_ipu_pipeline_pm_use;
+	}
+
+	sched_setscheduler(isys->isr_thread, SCHED_FIFO, &param);
+#endif
 
 	rval = ipu_fw_isys_init(av->isys, num_stream_support);
 	if (rval < 0)
@@ -237,6 +256,11 @@ static int video_open(struct file *file)
 	return 0;
 
 out_lib_init:
+#ifdef IPU_IRQ_POLL
+	kthread_stop(isys->isr_thread);
+
+out_ipu_pipeline_pm_use:
+#endif /* IPU_IRQ_POLL */
 	isys->video_opened--;
 	mutex_unlock(&isys->mutex);
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
@@ -263,6 +287,9 @@ static int video_release(struct file *file)
 	mutex_lock(&av->isys->mutex);
 
 	if (!--av->isys->video_opened) {
+#ifdef IPU_IRQ_POLL
+		kthread_stop(av->isys->isr_thread);
+#endif
 		ipu_fw_isys_close(av->isys);
 		if (av->isys->fwcom) {
 			av->isys->reset_needed = true;
@@ -614,6 +641,26 @@ static int vidioc_try_fmt_vid_cap(struct file *file, void *fh,
 	return 0;
 }
 
+static long ipu_isys_vidioc_private(struct file *file, void *fh,
+				    bool valid_prio, unsigned int cmd,
+				    void *arg)
+{
+	struct ipu_isys_video *av = video_drvdata(file);
+	int ret = 0;
+
+	switch (cmd) {
+	case VIDIOC_IPU_GET_DRIVER_VERSION:
+		*(u32 *)arg = IPU_DRIVER_VERSION;
+		break;
+
+	default:
+		dev_dbg(&av->isys->adev->dev, "unsupported private ioctl %x\n",
+			cmd);
+	}
+
+	return ret;
+}
+
 static int vidioc_enum_input(struct file *file, void *fh,
 			     struct v4l2_input *input)
 {
@@ -704,7 +751,7 @@ static int link_validate(struct media_link *link)
 
 	if (ip->external) {
 		struct v4l2_mbus_frame_desc desc = {
-			.num_entries = IPU_ISYS_MAX_STREAMS,
+			.num_entries = V4L2_FRAME_DESC_ENTRY_MAX,
 		};
 
 		sd = media_entity_to_v4l2_subdev(ip->external->entity);
@@ -945,7 +992,6 @@ void ipu_isys_prepare_firmware_stream_cfg_default(
 {
 	struct ipu_isys_pipeline *ip =
 	    to_ipu_isys_pipeline(av->vdev.entity.pipe);
-
 	struct ipu_isys_queue *aq = &av->aq;
 	struct ipu_fw_isys_output_pin_info_abi *pin_info;
 	int pin = cfg->nof_output_pins++;
@@ -1419,7 +1465,11 @@ int ipu_isys_video_prepare_streaming(struct ipu_isys_video *av,
 
 	/* Gather all entities in the graph. */
 	mutex_lock(&mdev->graph_mutex);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0)
+	media_graph_walk_start(&graph, &av->vdev.entity);
+#else
 	media_graph_walk_start(&graph, &av->vdev.entity.pads[0]);
+#endif
 	while ((entity = media_graph_walk_next(&graph)))
 		media_entity_enum_set(&ip->entity_enum, entity);
 
@@ -1525,7 +1575,9 @@ int ipu_isys_video_set_streaming(struct ipu_isys_video *av,
 		if (ip->csi2) {
 			if (ip->csi2->stream_count == 1) {
 				v4l2_subdev_call(esd, video, s_stream, state);
+#if defined(CONFIG_VIDEO_INTEL_IPU4) || defined(CONFIG_VIDEO_INTEL_IPU4P)
 				ipu_isys_csi2_wait_last_eof(ip->csi2);
+#endif
 			}
 		} else {
 			v4l2_subdev_call(esd, video, s_stream, state);
@@ -1539,7 +1591,11 @@ int ipu_isys_video_set_streaming(struct ipu_isys_video *av,
 				      ip->
 #endif
 				      graph,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0)
+				      &av->vdev.entity);
+#else
 				      &av->vdev.entity.pads[0]);
+#endif
 
 	while ((entity = media_graph_walk_next(&
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
@@ -1623,7 +1679,11 @@ out_media_entity_stop_streaming:
 				      ip->
 #endif
 				      graph,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0)
+				      &av->vdev.entity);
+#else
 				      &av->vdev.entity.pads[0]);
+#endif
 
 	while (state && (entity2 = media_graph_walk_next(&
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
@@ -1681,6 +1741,7 @@ static const struct v4l2_ioctl_ops ioctl_ops_splane = {
 	.vidioc_streamon = vb2_ioctl_streamon,
 	.vidioc_streamoff = vb2_ioctl_streamoff,
 	.vidioc_expbuf = vb2_ioctl_expbuf,
+	.vidioc_default = ipu_isys_vidioc_private,
 	.vidioc_enum_input = vidioc_enum_input,
 	.vidioc_g_input = vidioc_g_input,
 	.vidioc_s_input = vidioc_s_input,
@@ -1701,6 +1762,7 @@ static const struct v4l2_ioctl_ops ioctl_ops_mplane = {
 	.vidioc_streamon = vb2_ioctl_streamon,
 	.vidioc_streamoff = vb2_ioctl_streamoff,
 	.vidioc_expbuf = vb2_ioctl_expbuf,
+	.vidioc_default = ipu_isys_vidioc_private,
 	.vidioc_enum_input = vidioc_enum_input,
 	.vidioc_g_input = vidioc_g_input,
 	.vidioc_s_input = vidioc_s_input,

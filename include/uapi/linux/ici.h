@@ -57,8 +57,8 @@ enum ici_format
 #define ICI_LINK_FLAG_BACKLINK	(1 << 1)
 
 enum {
-	ICI_MEM_USERPTR = 1,
-	ICI_MEM_DMABUF = 2,
+	ICI_MEM_USERPTR = 2,
+	ICI_MEM_DMABUF = 4,
 };
 
 enum {

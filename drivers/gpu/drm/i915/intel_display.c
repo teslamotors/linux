@@ -5983,7 +5983,7 @@ static void haswell_crtc_disable(struct intel_crtc_state *old_crtc_state,
 		intel_ddi_set_vc_payload_alloc(intel_crtc->config, false);
 
 	if (!transcoder_is_dsi(cpu_transcoder))
-		intel_ddi_disable_transcoder_func(dev_priv, cpu_transcoder);
+		intel_ddi_disable_transcoder_func(old_crtc_state);
 
 	if (INTEL_GEN(dev_priv) >= 9)
 		skylake_scaler_disable(intel_crtc);
@@ -13886,10 +13886,7 @@ intel_skl_plane_create(struct drm_i915_private *dev_priv, enum pipe pipe,
 	intel_plane->id = plane;
 	plane_formats = skl_primary_formats;
 
-	if (pipe < PIPE_C)
-		modifiers = skl_format_modifiers_ccs;
-	else
-		modifiers = skl_format_modifiers_noccs;
+	modifiers = i9xx_format_modifiers;
 
 	num_formats = ARRAY_SIZE(skl_primary_formats);
 
@@ -15059,6 +15056,18 @@ static void quirk_increase_t12_delay(struct drm_device *dev)
 	DRM_INFO("Applying T12 delay quirk\n");
 }
 
+/*
+ * GeminiLake NUC HDMI outputs require additional off time
+ * this allows the onboard retimer to correctly sync to signal
+ */
+static void quirk_increase_ddi_disabled_time(struct drm_device *dev)
+{
+	struct drm_i915_private *dev_priv = to_i915(dev);
+
+	dev_priv->quirks |= QUIRK_INCREASE_DDI_DISABLED_TIME;
+	DRM_INFO("Applying Increase DDI Disabled quirk\n");
+}
+
 struct intel_quirk {
 	int device;
 	int subsystem_vendor;
@@ -15145,6 +15154,13 @@ static struct intel_quirk intel_quirks[] = {
 
 	/* Toshiba Satellite P50-C-18C */
 	{ 0x191B, 0x1179, 0xF840, quirk_increase_t12_delay },
+
+	/* GeminiLake NUC */
+	{ 0x3185, 0x8086, 0x2072, quirk_increase_ddi_disabled_time },
+	{ 0x3184, 0x8086, 0x2072, quirk_increase_ddi_disabled_time },
+	/* ASRock ITX*/
+	{ 0x3185, 0x1849, 0x2212, quirk_increase_ddi_disabled_time },
+	{ 0x3184, 0x1849, 0x2212, quirk_increase_ddi_disabled_time },
 };
 
 static void intel_init_quirks(struct drm_device *dev)
@@ -15285,6 +15301,8 @@ fail:
 
 static int intel_sanitize_plane_restriction(struct drm_i915_private *dev_priv)
 {
+	unsigned int mask;
+
 	/*plane restriction feature is only for APL and KBL for now*/
 	if (!(IS_BROXTON(dev_priv) || IS_KABYLAKE(dev_priv)) ||
 	    (!intel_vgpu_active(dev_priv) &&
@@ -15293,7 +15311,21 @@ static int intel_sanitize_plane_restriction(struct drm_i915_private *dev_priv)
 		DRM_INFO("Turning off Plane Restrictions feature\n");
 	}
 
-	return i915_modparams.avail_planes_per_pipe;
+	mask = i915_modparams.avail_planes_per_pipe;
+
+	/* make sure SOS has a (dummy) plane per pipe. */
+	if ((IS_BROXTON(dev_priv) || IS_KABYLAKE(dev_priv)) &&
+			intel_gvt_active(dev_priv)) {
+		enum pipe pipe;
+
+		for_each_pipe(dev_priv, pipe) {
+			if (!AVAIL_PLANE_PER_PIPE(dev_priv, mask, pipe))
+				mask |=  (1 << pipe * BITS_PER_PIPE);
+		}
+		DRM_INFO("Fix internal plane mask: 0x%06x --> 0x%06x",
+				i915_modparams.avail_planes_per_pipe, mask);
+	}
+	return mask;
 }
 
 int intel_modeset_init(struct drm_device *dev)
@@ -15422,7 +15454,7 @@ int intel_modeset_init(struct drm_device *dev)
 	for_each_intel_crtc(dev, crtc) {
 		struct intel_initial_plane_config plane_config = {};
 
-		if (!crtc->active)
+		if (!crtc->active || !crtc->base.primary)
 			continue;
 
 		/*
@@ -15618,12 +15650,8 @@ static void intel_sanitize_crtc(struct intel_crtc *crtc,
 			   I915_READ(reg) & ~PIPECONF_FRAME_START_DELAY_MASK);
 	}
 
-	/* restore vblank interrupts to correct state */
-	drm_crtc_vblank_reset(&crtc->base);
 	if (crtc->active) {
 		struct intel_plane *plane;
-
-		drm_crtc_vblank_on(&crtc->base);
 
 		/* Disable everything but the primary plane */
 		for_each_intel_plane_on_crtc(dev, crtc, plane) {
@@ -15945,7 +15973,6 @@ intel_modeset_setup_hw_state(struct drm_device *dev,
 			     struct drm_modeset_acquire_ctx *ctx)
 {
 	struct drm_i915_private *dev_priv = to_i915(dev);
-	enum pipe pipe;
 	struct intel_crtc *crtc;
 	struct intel_encoder *encoder;
 	int i;
@@ -15964,15 +15991,23 @@ intel_modeset_setup_hw_state(struct drm_device *dev,
 	/* HW state is read out, now we need to sanitize this mess. */
 	get_encoder_power_domains(dev_priv);
 
-	intel_sanitize_plane_mapping(dev_priv);
+	/*
+	 * intel_sanitize_plane_mapping() may need to do vblank
+	 * waits, so we need vblank interrupts restored beforehand.
+	 */
+	for_each_intel_crtc(&dev_priv->drm, crtc) {
+		drm_crtc_vblank_reset(&crtc->base);
 
-	for_each_intel_encoder(dev, encoder) {
-		intel_sanitize_encoder(encoder);
+		if (crtc->active)
+			drm_crtc_vblank_on(&crtc->base);
 	}
 
-	for_each_pipe(dev_priv, pipe) {
-		crtc = intel_get_crtc_for_pipe(dev_priv, pipe);
+	intel_sanitize_plane_mapping(dev_priv);
 
+	for_each_intel_encoder(dev, encoder)
+		intel_sanitize_encoder(encoder);
+
+	for_each_intel_crtc(&dev_priv->drm, crtc) {
 		if (crtc) {
 			intel_sanitize_crtc(crtc, ctx);
 			intel_dump_pipe_config(crtc, crtc->config,

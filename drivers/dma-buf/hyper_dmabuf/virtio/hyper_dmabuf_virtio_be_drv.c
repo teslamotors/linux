@@ -204,7 +204,7 @@ static int virtio_be_handle_kick(int client_id, unsigned long *ioreqs_map)
  */
 static int virtio_be_register_vhm_client(struct virtio_dev_info *d)
 {
-	unsigned int vmid;
+	int vmid;
 	struct vm_info info;
 	struct virtio_fe_info *fe_info;
 	int ret;
@@ -234,7 +234,7 @@ static int virtio_be_register_vhm_client(struct virtio_dev_info *d)
 	ret = acrn_ioreq_add_iorange(fe_info->client_id,
 				    d->io_range_type ? REQ_MMIO : REQ_PORTIO,
 				    d->io_range_start,
-				    d->io_range_start + d->io_range_len);
+				    d->io_range_start + d->io_range_len - 1);
 
 	if (ret < 0) {
 		dev_err(hy_drv_priv->dev,
@@ -247,7 +247,7 @@ static int virtio_be_register_vhm_client(struct virtio_dev_info *d)
 		acrn_ioreq_del_iorange(fe_info->client_id,
 				      d->io_range_type ? REQ_MMIO : REQ_PORTIO,
 				      d->io_range_start,
-				      d->io_range_start + d->io_range_len);
+				      d->io_range_start + d->io_range_len - 1);
 
 		dev_err(hy_drv_priv->dev, "Failed in vhm_get_vm_info\n");
 		goto err;
@@ -260,7 +260,7 @@ static int virtio_be_register_vhm_client(struct virtio_dev_info *d)
 		acrn_ioreq_del_iorange(fe_info->client_id,
 				      d->io_range_type ? REQ_MMIO : REQ_PORTIO,
 				      d->io_range_start,
-				      d->io_range_start + d->io_range_len);
+				      d->io_range_start + d->io_range_len - 1);
 
 		dev_err(hy_drv_priv->dev, "Failed in acrn_ioreq_get_reqbuf\n");
 		goto err;
@@ -319,22 +319,54 @@ static int vbs_k_open(struct inode *inode, struct file *f)
 	return 0;
 }
 
+static void cleanup_fe(struct virtio_fe_info *fe_info, void *attr)
+{
+	struct virtio_be_priv *priv = attr;
+	if (fe_info->priv == priv) {
+		acrn_ioreq_del_iorange(fe_info->client_id,
+				priv->dev.io_range_type ? REQ_MMIO : REQ_PORTIO,
+				priv->dev.io_range_start,
+				priv->dev.io_range_start + priv->dev.io_range_len - 1);
+
+		acrn_ioreq_destroy_client(fe_info->client_id);
+		virtio_fe_remove(fe_info->client_id);
+		kfree(fe_info);
+	}
+}
+
 static int vbs_k_release(struct inode *inode, struct file *f)
 {
 	struct virtio_be_priv *priv =
 		(struct virtio_be_priv *) f->private_data;
-	int i;
-
-//	virtio_dev_stop(&priv->dev);
-//	virtio_dev_cleanup(&priv->dev, false);
-
-	for (i = 0; i < HDMA_VIRTIO_QUEUE_MAX; i++)
-		virtio_vq_reset(&priv->vqs[i]);
 
 	kfree(priv->pending_tx_req);
 	virtio_comm_ring_free(&priv->tx_ring);
+
+	/*
+	 * Find and cleanup virtio frontend that
+	 * has been using released vbs k file
+	 */
+	virtio_fe_foreach(cleanup_fe, priv);
+
+	virtio_dev_reset(&priv->dev);
+
 	kfree(priv);
 	return 0;
+}
+
+static int vbs_k_reset(struct virtio_be_priv *priv)
+{
+	int ret = 0;
+	virtio_comm_ring_free(&priv->tx_ring);
+
+	virtio_fe_foreach(cleanup_fe, priv);
+
+	virtio_dev_reset(&priv->dev);
+
+	ret = virtio_comm_ring_init(&priv->tx_ring,
+			      sizeof(struct virtio_be_tx_data),
+			      REQ_RING_SIZE);
+	return ret;
 }
 
 static long vbs_k_ioctl(struct file *f, unsigned int ioctl,
@@ -343,7 +375,7 @@ static long vbs_k_ioctl(struct file *f, unsigned int ioctl,
 	struct virtio_be_priv *priv =
 		(struct virtio_be_priv *) f->private_data;
 	void __user *argp = (void __user *)arg;
-	int r;
+	int r = 0;
 
 	if (priv == NULL) {
 		dev_err(hy_drv_priv->dev,
@@ -352,19 +384,25 @@ static long vbs_k_ioctl(struct file *f, unsigned int ioctl,
 		return -EINVAL;
 	}
 
-	if (ioctl == VBS_SET_VQ) {
-		/* Overridden to call additionally
-		 * virtio_be_register_vhm_client */
-		r = virtio_vqs_ioctl(&priv->dev, ioctl, argp);
-		if (r == -ENOIOCTLCMD)
-			return -EFAULT;
-
-		if (virtio_be_register_vhm_client(&priv->dev) < 0)
-			return -EFAULT;
-	} else {
-		r = virtio_dev_ioctl(&priv->dev, ioctl, argp);
-		if (r == -ENOIOCTLCMD)
+	switch(ioctl) {
+		case VBS_SET_VQ:
+			/* Overridden to call additionally
+			 * virtio_be_register_vhm_client */
 			r = virtio_vqs_ioctl(&priv->dev, ioctl, argp);
+			if (r == -ENOIOCTLCMD)
+				return -EFAULT;
+
+			if (virtio_be_register_vhm_client(&priv->dev) < 0)
+				return -EFAULT;
+			break;
+		case VBS_RESET_DEV:
+			vbs_k_reset(priv);
+			break;
+		default:
+			r = virtio_dev_ioctl(&priv->dev, ioctl, argp);
+			if (r == -ENOIOCTLCMD)
+				r = virtio_vqs_ioctl(&priv->dev, ioctl, argp);
+			break;
 	}
 
 	return r;

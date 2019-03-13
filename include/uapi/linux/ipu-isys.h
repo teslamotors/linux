@@ -21,4 +21,19 @@
 #define V4L2_FMT_IPU_ISA_CFG	v4l2_fourcc('i', 'p', '4', 'c')
 #define V4L2_FMT_IPU_ISYS_META	v4l2_fourcc('i', 'p', '4', 'm')
 
+#ifdef IPU_OTF_SUPPORT
+struct ipu_frame_counter {
+	uint32_t frame_counter;
+	uint32_t index;
+} __attribute__ ((packed));
+
+#define VIDIOC_IPU_SET_LINK_ID _IOWR('v', BASE_VIDIOC_PRIVATE + 1, uint8_t)
+#define VIDIOC_IPU_SET_FRAME_COUNTER\
+	_IOWR('v', BASE_VIDIOC_PRIVATE + 2, struct ipu_frame_counter)
+
+#endif /* IPU_OTF_SUPPORT */
+
+#define VIDIOC_IPU_GET_DRIVER_VERSION \
+	_IOWR('v', BASE_VIDIOC_PRIVATE + 3, uint32_t)
+
 #endif /* UAPI_LINUX_IPU_ISYS_H */

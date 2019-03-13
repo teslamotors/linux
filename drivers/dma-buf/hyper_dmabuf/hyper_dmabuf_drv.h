@@ -83,7 +83,7 @@ struct hyper_dmabuf_bknd_ops {
 	int (*get_vm_id)(void);
 
 	/* get pages shared via hypervisor-specific method */
-	int (*share_pages)(struct page **, int, int, void **);
+	long (*share_pages)(struct page **, int, int, void **);
 
 	/* make shared pages unshared via hypervisor specific method */
 	int (*unshare_pages)(void **, int);

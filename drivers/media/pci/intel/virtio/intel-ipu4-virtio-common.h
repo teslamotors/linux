@@ -124,8 +124,6 @@ void ipu4_virtio_fe_table_init(void);
 
 int ipu4_virtio_fe_add(struct ipu4_virtio_fe_info *fe_info);
 
-int ipu4_virtio_remove_fe(int client_id);
-
 struct ipu4_virtio_fe_info *ipu4_virtio_fe_find(int client_id);
 
 struct ipu4_virtio_fe_info *ipu4_virtio_fe_find_by_vmid(int vmid);

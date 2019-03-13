@@ -80,6 +80,7 @@
 #define IC_DEASSERT_IRQLINE            _IC_ID(IC_ID, IC_ID_IRQ_BASE + 0x01)
 #define IC_PULSE_IRQLINE               _IC_ID(IC_ID, IC_ID_IRQ_BASE + 0x02)
 #define IC_INJECT_MSI                  _IC_ID(IC_ID, IC_ID_IRQ_BASE + 0x03)
+#define IC_VM_INTR_MONITOR             _IC_ID(IC_ID, IC_ID_IRQ_BASE + 0x04)
 
 /* DM ioreq management */
 #define IC_ID_IOREQ_BASE                0x30UL
@@ -108,6 +109,11 @@
 #define IC_ID_PM_BASE                   0x60UL
 #define IC_PM_GET_CPU_STATE            _IC_ID(IC_ID, IC_ID_PM_BASE + 0x00)
 #define IC_PM_SET_SSTATE_DATA          _IC_ID(IC_ID, IC_ID_PM_BASE + 0x01)
+
+/* VHM eventfd */
+#define IC_ID_EVENT_BASE		0x70UL
+#define IC_EVENT_IOEVENTFD		_IC_ID(IC_ID, IC_ID_EVENT_BASE + 0x00)
+#define IC_EVENT_IRQFD			_IC_ID(IC_ID, IC_ID_EVENT_BASE + 0x01)
 
 /**
  * struct vm_memseg - memory segment info for guest
@@ -215,4 +221,22 @@ struct api_version {
 	uint32_t minor_version;
 };
 
+#define ACRN_IOEVENTFD_FLAG_PIO		0x01
+#define ACRN_IOEVENTFD_FLAG_DATAMATCH	0x02
+#define ACRN_IOEVENTFD_FLAG_DEASSIGN	0x04
+struct acrn_ioeventfd {
+	int32_t fd;
+	uint32_t flags;
+	uint64_t addr;
+	uint32_t len;
+	uint32_t reserved;
+	uint64_t data;
+};
+
+#define ACRN_IRQFD_FLAG_DEASSIGN	0x01
+struct acrn_irqfd {
+	int32_t fd;
+	uint32_t flags;
+	struct acrn_msi_entry msi;
+};
 #endif /* __VHM_IOCTL_DEFS_H__ */

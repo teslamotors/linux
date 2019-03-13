@@ -1,0 +1,19 @@
+# updates for the system pci.ids file
+#
+# IMPORTANT!  Entries in this list must be sorted as they
+#             would appear in the system pci.ids file.  Entries
+#             are sorted by ven, dev, subven, subdev
+#             (numerical order).
+#
+8086  Intel Corporation
+	1533  I210 Gigabit Network Connection
+		103c 0003  Ethernet I210-T1 GbE NIC
+		8086 0001  Ethernet Server Adapter I210-T1
+		8086 0002  Ethernet Server Adapter I210-T1
+	1534  I210 Gigabit Network Connection
+	1535  I210 Gigabit Network Connection
+	1536  I210 Gigabit Fiber Network Connection
+	1537  I210 Gigabit Backplane Network Connection
+	1538  I210 Gigabit Network Connection
+	157b  I210 Gigabit Network Connection
+	157c  I210 Gigabit Backplane Connection

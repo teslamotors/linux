@@ -20,9 +20,11 @@
 #define DS_FSYNC_PERIOD_HIGH      0x08
 #define DS_FWDCCEN_REVCCEN        0x0A
 #define DS_LINK_OUTORD            0x0B
+#define DS_HS_VS                  0x0C
 #define DS_CSI_DBL_DT             0x12
 #define DS_CSI_VC_CTL             0x15
 #define DS_ENEQ                   0x1B
+#define DS_HIGHIMM                0x1C
 #define DS_MAX9286_DEVID          0x1E
 #define DS_FSYNC_LOCKED           0x31
 #define DS_I2CLOCACK              0x34
@@ -50,6 +52,7 @@
 #define S_VS_H_2                  0x47
 #define S_VS_H_1                  0x48
 #define S_VS_H_0                  0x49
+#define S_DBL_ALIGN_TO            0x67
 #define S_RSVD_97                 0x97
 
 struct max9286_register_write {
@@ -57,7 +60,7 @@ struct max9286_register_write {
 	u8 val;
 };
 
-static const struct max9286_register_write max9286_byte_order_settings[] = {
+static const struct max9286_register_write max9286_byte_order_settings_12bit[] = {
 	{0x20, 0x0B},
 	{0x21, 0x0A},
 	{0x22, 0x09},
@@ -82,6 +85,29 @@ static const struct max9286_register_write max9286_byte_order_settings[] = {
 	{0x39, 0x12},
 	{0x3A, 0x11},
 	{0x3B, 0x10},
+};
+
+static const struct max9286_register_write max9286_byte_order_settings_10bit[] = {
+	{0x20, 0x09},
+	{0x21, 0x08},
+	{0x22, 0x07},
+	{0x23, 0x06},
+	{0x24, 0x05},
+	{0x25, 0x04},
+	{0x26, 0x03},
+	{0x27, 0x02},
+	{0x28, 0x01},
+	{0x29, 0x00},
+	{0x30, 0x19},
+	{0x31, 0x18},
+	{0x32, 0x17},
+	{0x33, 0x16},
+	{0x34, 0x15},
+	{0x35, 0x14},
+	{0x36, 0x13},
+	{0x37, 0x12},
+	{0x38, 0x11},
+	{0x39, 0x10},
 };
 
 #endif

@@ -227,6 +227,45 @@ done:
 	spin_unlock_bh(&nn->reconfig_lock);
 }
 
+static void nfp_net_reconfig_sync_enter(struct nfp_net *nn)
+{
+	bool cancelled_timer = false;
+	u32 pre_posted_requests;
+
+	spin_lock_bh(&nn->reconfig_lock);
+
+	nn->reconfig_sync_present = true;
+
+	if (nn->reconfig_timer_active) {
+		nn->reconfig_timer_active = false;
+		cancelled_timer = true;
+	}
+	pre_posted_requests = nn->reconfig_posted;
+	nn->reconfig_posted = 0;
+
+	spin_unlock_bh(&nn->reconfig_lock);
+
+	if (cancelled_timer) {
+		del_timer_sync(&nn->reconfig_timer);
+		nfp_net_reconfig_wait(nn, nn->reconfig_timer.expires);
+	}
+
+	/* Run the posted reconfigs which were issued before we started */
+	if (pre_posted_requests) {
+		nfp_net_reconfig_start(nn, pre_posted_requests);
+		nfp_net_reconfig_wait(nn, jiffies + HZ * NFP_NET_POLL_TIMEOUT);
+	}
+}
+
+static void nfp_net_reconfig_wait_posted(struct nfp_net *nn)
+{
+	nfp_net_reconfig_sync_enter(nn);
+
+	spin_lock_bh(&nn->reconfig_lock);
+	nn->reconfig_sync_present = false;
+	spin_unlock_bh(&nn->reconfig_lock);
+}
+
 /**
  * nfp_net_reconfig() - Reconfigure the firmware
  * @nn:      NFP Net device to reconfigure
@@ -240,32 +279,9 @@ done:
  */
 int nfp_net_reconfig(struct nfp_net *nn, u32 update)
 {
-	bool cancelled_timer = false;
-	u32 pre_posted_requests;
 	int ret;
 
-	spin_lock_bh(&nn->reconfig_lock);
-
-	nn->reconfig_sync_present = true;
-
-	if (nn->reconfig_timer_active) {
-		del_timer(&nn->reconfig_timer);
-		nn->reconfig_timer_active = false;
-		cancelled_timer = true;
-	}
-	pre_posted_requests = nn->reconfig_posted;
-	nn->reconfig_posted = 0;
-
-	spin_unlock_bh(&nn->reconfig_lock);
-
-	if (cancelled_timer)
-		nfp_net_reconfig_wait(nn, nn->reconfig_timer.expires);
-
-	/* Run the posted reconfigs which were issued before we started */
-	if (pre_posted_requests) {
-		nfp_net_reconfig_start(nn, pre_posted_requests);
-		nfp_net_reconfig_wait(nn, jiffies + HZ * NFP_NET_POLL_TIMEOUT);
-	}
+	nfp_net_reconfig_sync_enter(nn);
 
 	nfp_net_reconfig_start(nn, update);
 	ret = nfp_net_reconfig_wait(nn, jiffies + HZ * NFP_NET_POLL_TIMEOUT);
@@ -1071,7 +1087,7 @@ static bool nfp_net_xdp_complete(struct nfp_net_tx_ring *tx_ring)
  * @dp:		NFP Net data path struct
  * @tx_ring:	TX ring structure
  *
- * Assumes that the device is stopped
+ * Assumes that the device is stopped, must be idempotent.
  */
 static void
 nfp_net_tx_ring_reset(struct nfp_net_dp *dp, struct nfp_net_tx_ring *tx_ring)
@@ -1273,12 +1289,17 @@ static void nfp_net_rx_give_one(const struct nfp_net_dp *dp,
  * nfp_net_rx_ring_reset() - Reflect in SW state of freelist after disable
  * @rx_ring:	RX ring structure
  *
- * Warning: Do *not* call if ring buffers were never put on the FW freelist
- *	    (i.e. device was not enabled)!
+ * Assumes that the device is stopped, must be idempotent.
  */
 static void nfp_net_rx_ring_reset(struct nfp_net_rx_ring *rx_ring)
 {
 	unsigned int wr_idx, last_idx;
+
+	/* wr_p == rd_p means ring was never fed FL bufs.  RX rings are always
+	 * kept at cnt - 1 FL bufs.
+	 */
+	if (rx_ring->wr_p == 0 && rx_ring->rd_p == 0)
+		return;
 
 	/* Move the empty entry to the end of the list */
 	wr_idx = D_IDX(rx_ring, rx_ring->wr_p);
@@ -2037,14 +2058,17 @@ nfp_ctrl_rx_one(struct nfp_net *nn, struct nfp_net_dp *dp,
 	return true;
 }
 
-static void nfp_ctrl_rx(struct nfp_net_r_vector *r_vec)
+static bool nfp_ctrl_rx(struct nfp_net_r_vector *r_vec)
 {
 	struct nfp_net_rx_ring *rx_ring = r_vec->rx_ring;
 	struct nfp_net *nn = r_vec->nfp_net;
 	struct nfp_net_dp *dp = &nn->dp;
+	unsigned int budget = 512;
 
-	while (nfp_ctrl_rx_one(nn, dp, r_vec, rx_ring))
+	while (nfp_ctrl_rx_one(nn, dp, r_vec, rx_ring) && budget--)
 		continue;
+
+	return budget;
 }
 
 static void nfp_ctrl_poll(unsigned long arg)
@@ -2056,9 +2080,13 @@ static void nfp_ctrl_poll(unsigned long arg)
 	__nfp_ctrl_tx_queued(r_vec);
 	spin_unlock_bh(&r_vec->lock);
 
-	nfp_ctrl_rx(r_vec);
-
-	nfp_net_irq_unmask(r_vec->nfp_net, r_vec->irq_entry);
+	if (nfp_ctrl_rx(r_vec)) {
+		nfp_net_irq_unmask(r_vec->nfp_net, r_vec->irq_entry);
+	} else {
+		tasklet_schedule(&r_vec->tasklet);
+		nn_dp_warn(&r_vec->nfp_net->dp,
+			   "control message budget exceeded!\n");
+	}
 }
 
 /* Setup and Configuration
@@ -2489,6 +2517,8 @@ static void nfp_net_vec_clear_ring_data(struct nfp_net *nn, unsigned int idx)
 /**
  * nfp_net_clear_config_and_disable() - Clear control BAR and disable NFP
  * @nn:      NFP Net device to reconfigure
+ *
+ * Warning: must be fully idempotent.
  */
 static void nfp_net_clear_config_and_disable(struct nfp_net *nn)
 {
@@ -3560,6 +3590,7 @@ struct nfp_net *nfp_net_alloc(struct pci_dev *pdev, bool needs_netdev,
  */
 void nfp_net_free(struct nfp_net *nn)
 {
+	WARN_ON(timer_pending(&nn->reconfig_timer) || nn->reconfig_posted);
 	if (nn->xdp_prog)
 		bpf_prog_put(nn->xdp_prog);
 
@@ -3829,4 +3860,5 @@ void nfp_net_clean(struct nfp_net *nn)
 		return;
 
 	unregister_netdev(nn->dp.netdev);
+	nfp_net_reconfig_wait_posted(nn);
 }

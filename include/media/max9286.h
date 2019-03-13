@@ -40,12 +40,14 @@ struct max9286_csi_data_format {
 struct max9286_subdev_i2c_info {
 	struct i2c_board_info board_info;
 	int i2c_adapter_id;
+	const char suffix; /* suffix for subdevs */
 };
 
 struct max9286_pdata {
 	unsigned int subdev_num;
 	struct max9286_subdev_i2c_info *subdev_info;
 	unsigned int reset_gpio;
+	const char suffix; /* suffix for multi aggregators, abcd... */
 };
 
 #endif

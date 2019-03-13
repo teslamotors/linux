@@ -404,10 +404,10 @@ irqreturn_t ipu_buttress_isr(int irq, void *isp_ptr)
 	irqreturn_t ret = IRQ_NONE;
 	u32 disable_irqs = 0;
 	u32 irq_status;
-#ifdef CONFIG_VIDEO_INTEL_IPU4P
-	u32 reg_irq_sts = BUTTRESS_REG_ISR_STATUS;
-#else
+#ifdef CONFIG_VIDEO_INTEL_IPU4
 	u32 reg_irq_sts = BUTTRESS_REG_ISR_ENABLED_STATUS;
+#else
+	u32 reg_irq_sts = BUTTRESS_REG_ISR_STATUS;
 #endif
 	unsigned int i;
 
@@ -1260,6 +1260,37 @@ static void ipu_buttress_read_psys_fused_freqs(struct ipu_device *isp)
 	fused_freq->efficient_freq = efficient_ratio * BUTTRESS_PS_FREQ_STEP;
 }
 
+#ifdef I2C_WA
+/*
+ * The dev_id was hard code in platform data, as i2c bus number
+ * may change dynamiclly, we need to update this bus id
+ * accordingly.
+ *
+ * @adapter_id: hardware i2c adapter id, this was fixed in platform data
+ * return: i2c bus id registered in system
+ */
+int ipu_get_i2c_bus_id(int adapter_id)
+{
+	struct i2c_adapter *adapter;
+	char name[32];
+	int i = 0;
+
+	snprintf(name, sizeof(name), "i2c_designware.%d", adapter_id);
+	while ((adapter = i2c_get_adapter(i)) != NULL) {
+		struct device *parent = adapter->dev.parent;
+
+		if (parent && !strncmp(name, dev_name(parent), sizeof(name)))
+			return i;
+		i++;
+	}
+
+	/* Not found, should never happen! */
+	WARN_ON_ONCE(1);
+	return -1;
+}
+EXPORT_SYMBOL_GPL(ipu_get_i2c_bus_id);
+#endif
+
 static int ipu_buttress_clk_init(struct ipu_device *isp)
 {
 	struct ipu_buttress *b = &isp->buttress;
@@ -1342,6 +1373,15 @@ static int ipu_buttress_clk_init(struct ipu_device *isp)
 		return 0;
 
 	while (clkmap->clkdev_data.dev_id) {
+#ifdef I2C_WA
+		char *dev_id = kstrdup(clkmap->clkdev_data.dev_id, GFP_KERNEL);
+		int adapter_id = clkmap->clkdev_data.dev_id[0] - '0';
+		char *addr = strpbrk(clkmap->clkdev_data.dev_id, "-");
+		int bus_id = ipu_get_i2c_bus_id(adapter_id);
+
+		snprintf(dev_id, PAGE_SIZE, "%d-%s", bus_id, addr + 1);
+#endif
+
 		/*
 		 * Lookup table must be NULL terminated
 		 * CLKDEV_INIT(NULL, NULL, NULL)
@@ -1350,6 +1390,9 @@ static int ipu_buttress_clk_init(struct ipu_device *isp)
 			if (!strcmp(clkmap->platform_clock_name,
 				    clk_data[i].name)) {
 				clkmap->clkdev_data.clk = b->clk_sensor[i];
+#ifdef I2C_WA
+				clkmap->clkdev_data.dev_id = dev_id;
+#endif
 				clkdev_add(&clkmap->clkdev_data);
 				break;
 			}

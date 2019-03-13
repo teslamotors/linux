@@ -71,10 +71,6 @@ typedef enum ia_css_terminal_type {
  * Dimensions of the data objects. Note that a C-style
  * data order is assumed. Data stored by row.
  */
-/* A strange problem with hivecc compiler which is described
- * here https://icggerrit.ir.intel.com/#/c/51630/1 forces this
- * enum to be explicitly initialized for the moment
- */
 typedef enum ia_css_dimension {
 	/**< The number of columns, i.e. the size of the row */
 	IA_CSS_COL_DIMENSION = 0,

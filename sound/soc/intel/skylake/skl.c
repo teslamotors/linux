@@ -39,6 +39,9 @@
 #include "skl-sst-dsp.h"
 #include "skl-sst-ipc.h"
 #include "skl-topology.h"
+static char *tplg_name = NULL;
+module_param(tplg_name, charp, 0444);
+MODULE_PARM_DESC(tplg_name, "Name of topology binary file");
 
 /*
  * initialize the PCI registers
@@ -160,9 +163,11 @@ void skl_update_d0i3c(struct device *dev, bool enable)
 
 static void skl_get_total_bytes_transferred(struct hdac_stream *hstr)
 {
-	int pos, prev_pos, no_of_bytes;
+	int pos, no_of_bytes;
+	unsigned int prev_pos;
 
-	prev_pos = hstr->curr_pos % hstr->stream->runtime->buffer_size;
+	div_u64_rem(hstr->curr_pos,
+		   hstr->stream->runtime->buffer_size, &prev_pos);
 	pos = snd_hdac_stream_get_pos_posbuf(hstr);
 
 	if (pos < prev_pos)
@@ -806,7 +811,7 @@ static int skl_first_init(struct hdac_ext_bus *ebus)
 		return -ENXIO;
 	}
 
-	skl_init_chip(bus, true);
+	snd_hdac_bus_reset_link(bus, true);
 
 	snd_hdac_bus_parse_capabilities(bus);
 
@@ -901,7 +906,10 @@ static int skl_probe(struct pci_dev *pci,
 	if (err < 0)
 		goto out_nhlt_free;
 
-	skl_nhlt_update_topology_bin(skl);
+		if (!tplg_name || strlen(tplg_name) >= sizeof(skl->tplg_name))
+			skl_nhlt_update_topology_bin(skl);
+		else
+			snprintf(skl->tplg_name, sizeof(skl->tplg_name), "%s", tplg_name);
 
 #else
 	if (request_firmware(&nhlt_fw, "intel/nhlt_blob.bin", bus->dev)) {

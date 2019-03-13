@@ -1590,6 +1590,7 @@ fail:
 	sg_mark_end(sg);
 	free_ggtt_virtual_page_table(mm);
 	kfree(pages);
+	gm->st = NULL;
 	return NULL;
 }
 
@@ -1624,8 +1625,12 @@ static int gen8_mm_alloc_page_table(struct intel_vgpu_mm *mm)
 		mm->page_table_entry_size = mm->page_table_entry_cnt *
 			info->gtt_entry_size;
 		mem = alloc_ggtt_virtual_page_table(mm);
-		if (!mem)
-			return -ENOMEM;
+		if (!mem) {
+			DRM_INFO("fail to alloc contiguous pages, fallback\n");
+			mem = vzalloc(mm->page_table_entry_size);
+			if (!mem)
+				return -ENOMEM;
+		}
 		mm->virtual_page_table = mem;
 	}
 	return 0;
@@ -1637,8 +1642,14 @@ static void gen8_mm_free_page_table(struct intel_vgpu_mm *mm)
 		kfree(mm->virtual_page_table);
 	} else if (mm->type == INTEL_GVT_MM_GGTT) {
 		if (mm->virtual_page_table) {
-			map_gttmmio(mm->vgpu, false);
-			free_ggtt_virtual_page_table(mm);
+			struct intel_vgpu *vgpu = mm->vgpu;
+			struct intel_vgpu_gm *gm = &vgpu->gm;
+
+			if (gm->st) {
+				map_gttmmio(mm->vgpu, false);
+				free_ggtt_virtual_page_table(mm);
+			} else
+				vfree(mm->virtual_page_table);
 		}
 	}
 	mm->virtual_page_table = mm->shadow_page_table = NULL;
@@ -2363,6 +2374,7 @@ void intel_vgpu_clean_gtt(struct intel_vgpu *vgpu)
 
 	intel_vgpu_free_mm(vgpu, INTEL_GVT_MM_PPGTT);
 	intel_vgpu_free_mm(vgpu, INTEL_GVT_MM_GGTT);
+	intel_vgpu_reset_ggtt(vgpu);
 	kfree(vgpu->cached_guest_entry);
 }
 

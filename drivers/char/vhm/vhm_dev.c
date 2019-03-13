@@ -83,6 +83,7 @@
 #include <linux/vhm/acrn_vhm_mm.h>
 #include <linux/vhm/vhm_vm_mngt.h>
 #include <linux/vhm/vhm_hypercall.h>
+#include <linux/vhm/vhm_eventfd.h>
 
 #include <asm/hypervisor.h>
 
@@ -158,7 +159,7 @@ static long vhm_dev_ioctl(struct file *filep,
 	long ret = 0;
 	struct vhm_vm *vm;
 
-	trace_printk("[%s] ioctl_num=0x%x\n", __func__, ioctl_num);
+	pr_debug("[%s] ioctl_num=0x%x\n", __func__, ioctl_num);
 
 	if (ioctl_num == IC_GET_API_VERSION) {
 		struct api_version api_version;
@@ -232,6 +233,9 @@ static long vhm_dev_ioctl(struct file *filep,
 				goto ioreq_buf_fail;
 		}
 
+		acrn_ioeventfd_init(vm->vmid);
+		acrn_irqfd_init(vm->vmid);
+
 		pr_info("vhm: VM %d created\n", created_vm.vmid);
 		break;
 ioreq_buf_fail:
@@ -272,13 +276,15 @@ create_vm_fail:
 	}
 
 	case IC_DESTROY_VM: {
-		if (vm->trusty_host_gpa)
-			deinit_trusty(vm);
+		acrn_ioeventfd_deinit(vm->vmid);
+		acrn_irqfd_deinit(vm->vmid);
 		ret = hcall_destroy_vm(vm->vmid);
 		if (ret < 0) {
 			pr_err("failed to destroy VM %ld\n", vm->vmid);
 			return -EFAULT;
 		}
+		if (vm->trusty_host_gpa)
+			deinit_trusty(vm);
 		vm->vmid = ACRN_INVALID_VMID;
 		break;
 	}
@@ -628,6 +634,41 @@ create_vm_fail:
 			break;
 		}
 
+		break;
+	}
+
+	case IC_VM_INTR_MONITOR: {
+		struct page *page;
+
+		ret = get_user_pages_fast(ioctl_param, 1, 1, &page);
+		if (unlikely(ret != 1) || (page == NULL)) {
+			pr_err("vhm-dev: failed to pin intr hdr buffer!\n");
+			return -ENOMEM;
+		}
+
+		ret = hcall_vm_intr_monitor(vm->vmid, page_to_phys(page));
+		if (ret < 0) {
+			pr_err("vhm-dev: monitor intr data err=%ld\n", ret);
+			return -EFAULT;
+		}
+		break;
+	}
+
+	case IC_EVENT_IOEVENTFD: {
+		struct acrn_ioeventfd args;
+
+		if (copy_from_user(&args, (void *)ioctl_param, sizeof(args)))
+			return -EFAULT;
+		ret = acrn_ioeventfd(vm->vmid, &args);
+		break;
+	}
+
+	case IC_EVENT_IRQFD: {
+		struct acrn_irqfd args;
+
+		if (copy_from_user(&args, (void *)ioctl_param, sizeof(args)))
+			return -EFAULT;
+		ret = acrn_irqfd(vm->vmid, &args);
 		break;
 	}
 

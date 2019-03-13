@@ -113,6 +113,11 @@ struct ipu_trace_block psys_trace_blocks[] = {
 	}
 };
 
+static int ipu_psys_kcmd_abort(struct ipu_psys *psys,
+			       struct ipu_psys_kcmd *kcmd);
+static int ipu_psys_kcmd_queue(struct ipu_psys *psys,
+			       struct ipu_psys_kcmd *kcmd);
+
 static void set_sp_info_bits(void *base)
 {
 	int i;
@@ -203,11 +208,6 @@ void ipu_psys_kcmd_free(struct ipu_psys_kcmd *kcmd)
 	if (kcmd->kpg)
 		kcmd->kpg->pg_size = 0;
 	spin_unlock_irqrestore(&psys->pgs_lock, flags);
-
-	mutex_lock(&kcmd->fh->bs_mutex);
-	if (kcmd->kbuf_set)
-		kcmd->kbuf_set->buf_set_size = 0;
-	mutex_unlock(&kcmd->fh->bs_mutex);
 
 	kfree(kcmd->pg_manifest);
 	kfree(kcmd->kbufs);
@@ -353,9 +353,9 @@ static void ipu_psys_kcmd_run(struct ipu_psys *psys)
 
 	if (ret != -ENOSPC || !psys->active_kcmds) {
 		dev_err(&psys->adev->dev,
-			"kcmd %p failed to alloc resources (running (%d, psys->active_kcmds = %d))\n",
-			kcmd, ret, psys->active_kcmds);
-		ipu_psys_kcmd_abort(psys, kcmd, ret);
+		  "kcmd %p failed to alloc resources %d, active_kcmds %d\n",
+		  kcmd, ret, psys->active_kcmds);
+		ipu_psys_kcmd_abort(psys, kcmd);
 		return;
 	}
 }
@@ -484,7 +484,7 @@ void ipu_psys_run_next(struct ipu_psys *psys)
 
 				mutex_lock(&fh->mutex);
 
-				kcmd = fh->new_kcmd_tail[p];
+				kcmd = fh->sched.new_kcmd_tail[p];
 				/*
 				 * If concurrency is disabled and there are
 				 * already commands running on the PSYS, do not
@@ -505,14 +505,15 @@ void ipu_psys_run_next(struct ipu_psys *psys)
 					goto next;
 
 				/* Update pointer to the first new kcmd */
-				fh->new_kcmd_tail[p] = NULL;
-				while (kcmd != list_last_entry(&fh->kcmds[p],
-							       struct
-							       ipu_psys_kcmd,
-							       list)) {
+				fh->sched.new_kcmd_tail[p] = NULL;
+				while (kcmd != list_last_entry(
+						&fh->sched.kcmds[p],
+						struct ipu_psys_kcmd,
+						list)) {
 					kcmd = list_next_entry(kcmd, list);
 					if (kcmd->state == KCMD_STATE_NEW) {
-						fh->new_kcmd_tail[p] = kcmd;
+						fh->sched.new_kcmd_tail[p] =
+							kcmd;
 						break;
 					}
 				}
@@ -533,8 +534,7 @@ next:
  * Move kcmd into completed state. If kcmd is currently running,
  * abort it.
  */
-int ipu_psys_kcmd_abort(struct ipu_psys *psys,
-			struct ipu_psys_kcmd *kcmd, int error)
+int ipu_psys_kcmd_abort(struct ipu_psys *psys, struct ipu_psys_kcmd *kcmd)
 {
 	int ret = 0;
 
@@ -653,8 +653,8 @@ static void ipu_psys_flush_kcmds(struct ipu_psys *psys, int error)
 	list_for_each_entry(fh, &psys->fhs, list) {
 		mutex_lock(&fh->mutex);
 		for (p = 0; p < IPU_PSYS_CMD_PRIORITY_NUM; p++) {
-			fh->new_kcmd_tail[p] = NULL;
-			list_for_each_entry(kcmd, &fh->kcmds[p], list) {
+			fh->sched.new_kcmd_tail[p] = NULL;
+			list_for_each_entry(kcmd, &fh->sched.kcmds[p], list) {
 				if (kcmd->state == KCMD_STATE_COMPLETE)
 					continue;
 				ipu_psys_kcmd_complete(psys, kcmd, error);
@@ -714,8 +714,8 @@ void ipu_psys_watchdog_work(struct work_struct *work)
 		for (p = 0; p < IPU_PSYS_CMD_PRIORITY_NUM; p++) {
 			struct ipu_psys_kcmd *kcmd;
 
-			list_for_each_entry(kcmd, &fh->kcmds[p], list) {
-				if (fh->new_kcmd_tail[p] == kcmd)
+			list_for_each_entry(kcmd, &fh->sched.kcmds[p], list) {
+				if (fh->sched.new_kcmd_tail[p] == kcmd)
 					break;
 				if (kcmd->state != KCMD_STATE_RUNNING)
 					continue;
@@ -726,7 +726,7 @@ void ipu_psys_watchdog_work(struct work_struct *work)
 				dev_err(&psys->adev->dev,
 					"kcmd:0x%llx[0x%llx] taking too long\n",
 					kcmd->user_token, kcmd->issue_id);
-				r = ipu_psys_kcmd_abort(psys, kcmd, -ETIME);
+				r = ipu_psys_kcmd_abort(psys, kcmd);
 				if (r)
 					goto stop_failed;
 			}
@@ -819,7 +819,7 @@ static bool ipu_psys_kcmd_is_valid(struct ipu_psys *psys,
 	list_for_each_entry(fh, &psys->fhs, list) {
 		mutex_lock(&fh->mutex);
 		for (p = 0; p < IPU_PSYS_CMD_PRIORITY_NUM; p++) {
-			list_for_each_entry(kcmd0, &fh->kcmds[p], list) {
+			list_for_each_entry(kcmd0, &fh->sched.kcmds[p], list) {
 				if (kcmd0 == kcmd) {
 					mutex_unlock(&fh->mutex);
 					return true;
@@ -832,7 +832,8 @@ static bool ipu_psys_kcmd_is_valid(struct ipu_psys *psys,
 	return false;
 }
 
-int ipu_psys_kcmd_queue(struct ipu_psys *psys, struct ipu_psys_kcmd *kcmd)
+static int ipu_psys_kcmd_queue(struct ipu_psys *psys,
+			       struct ipu_psys_kcmd *kcmd)
 {
 	int ret;
 
@@ -926,9 +927,10 @@ int ipu_psys_kcmd_new(struct ipu_psys_command *cmd, struct ipu_psys_fh *fh)
 		goto error;
 
 	mutex_lock(&fh->mutex);
-	list_add_tail(&kcmd->list, &fh->kcmds[cmd->priority]);
-	if (!fh->new_kcmd_tail[cmd->priority] && kcmd->state == KCMD_STATE_NEW) {
-		fh->new_kcmd_tail[cmd->priority] = kcmd;
+	list_add_tail(&kcmd->list, &fh->sched.kcmds[cmd->priority]);
+	if (!fh->sched.new_kcmd_tail[cmd->priority] &&
+	    kcmd->state == KCMD_STATE_NEW) {
+		fh->sched.new_kcmd_tail[cmd->priority] = kcmd;
 		/* Kick command scheduler thread */
 		atomic_set(&psys->wakeup_sched_thread_count, 1);
 		wake_up_interruptible(&psys->sched_cmd_wq);
@@ -985,4 +987,123 @@ void ipu_psys_handle_events(struct ipu_psys *psys)
 		atomic_set(&psys->wakeup_sched_thread_count, 1);
 		wake_up_interruptible(&psys->sched_cmd_wq);
 	} while (1);
+}
+
+int ipu_psys_fh_init(struct ipu_psys_fh *fh)
+{
+	struct ipu_psys *psys = fh->psys;
+	int p;
+
+	pm_runtime_use_autosuspend(&psys->adev->dev);
+	for (p = 0; p < IPU_PSYS_CMD_PRIORITY_NUM; p++)
+		INIT_LIST_HEAD(&fh->sched.kcmds[p]);
+
+	return 0;
+}
+
+int ipu_psys_fh_deinit(struct ipu_psys_fh *fh)
+{
+	struct ipu_psys *psys = fh->psys;
+	struct ipu_psys_kcmd *kcmd, *kcmd0;
+	int p;
+
+	mutex_lock(&psys->mutex);
+	mutex_lock(&fh->mutex);
+
+	/*
+	 * Set pg_user to NULL so that completed kcmds don't write
+	 * their result to user space anymore.
+	 */
+	for (p = 0; p < IPU_PSYS_CMD_PRIORITY_NUM; p++)
+		list_for_each_entry(kcmd, &fh->sched.kcmds[p], list)
+			kcmd->pg_user = NULL;
+
+	/* Prevent scheduler from running more kcmds */
+	memset(fh->sched.new_kcmd_tail, 0,
+		sizeof(fh->sched.new_kcmd_tail));
+
+	/* Wait until kcmds are completed in this queue and free them */
+	for (p = 0; p < IPU_PSYS_CMD_PRIORITY_NUM; p++) {
+		fh->sched.new_kcmd_tail[p] = NULL;
+		list_for_each_entry_safe(
+			kcmd, kcmd0, &fh->sched.kcmds[p], list) {
+			ipu_psys_kcmd_abort(psys, kcmd);
+			ipu_psys_kcmd_free(kcmd);
+		}
+	}
+
+	/* disable runtime autosuspend for the last fh */
+	if (list_empty(&psys->fhs))
+		pm_runtime_dont_use_autosuspend(&psys->adev->dev);
+
+	mutex_unlock(&fh->mutex);
+	mutex_unlock(&psys->mutex);
+
+	return 0;
+}
+
+struct ipu_psys_kcmd *__ipu_get_completed_kcmd(struct ipu_psys_fh *fh)
+{
+	int p;
+
+	for (p = 0; p < IPU_PSYS_CMD_PRIORITY_NUM; p++) {
+		struct ipu_psys_kcmd *kcmd;
+
+		if (list_empty(&fh->sched.kcmds[p]))
+			continue;
+
+		kcmd = list_first_entry(&fh->sched.kcmds[p],
+					struct ipu_psys_kcmd, list);
+		if (kcmd->state != KCMD_STATE_COMPLETE)
+			continue;
+		/* Found a kcmd in completed state */
+		return kcmd;
+
+	}
+
+	return NULL;
+}
+
+struct ipu_psys_kcmd *ipu_get_completed_kcmd(struct ipu_psys_fh *fh)
+{
+	struct ipu_psys_kcmd *kcmd;
+
+	mutex_lock(&fh->mutex);
+	kcmd = __ipu_get_completed_kcmd(fh);
+	mutex_unlock(&fh->mutex);
+
+	return kcmd;
+}
+
+long ipu_ioctl_dqevent(struct ipu_psys_event *event,
+			      struct ipu_psys_fh *fh, unsigned int f_flags)
+{
+	struct ipu_psys *psys = fh->psys;
+	struct ipu_psys_kcmd *kcmd = NULL;
+	int rval;
+
+	dev_dbg(&psys->adev->dev, "IOC_DQEVENT\n");
+
+	if (!(f_flags & O_NONBLOCK)) {
+		rval = wait_event_interruptible(fh->wait,
+						(kcmd =
+						 ipu_get_completed_kcmd(fh)));
+		if (rval == -ERESTARTSYS)
+			return rval;
+	}
+
+	mutex_lock(&fh->mutex);
+	if (!kcmd) {
+		kcmd = __ipu_get_completed_kcmd(fh);
+		if (!kcmd) {
+			mutex_unlock(&fh->mutex);
+			return -ENODATA;
+		}
+	}
+
+	*event = kcmd->ev;
+	ipu_psys_kcmd_free(kcmd);
+	mutex_unlock(&fh->mutex);
+
+	return 0;
 }

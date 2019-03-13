@@ -122,3 +122,9 @@ config INTEL_IPU4_OV2775
 	depends on INTEL_IPU4_BXT_P_PDATA
 	---help---
 	"Omnivision OV2775 camera sensor"
+
+config INTEL_IPU4_OX03A10
+	bool "Compile platorm data for OX03A10"
+	depends on INTEL_IPU4_BXT_P_PDATA
+	---help---
+	"ox03a10 camera sensor"

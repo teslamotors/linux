@@ -869,6 +869,13 @@ struct vmbus_channel {
 
 	bool probe_done;
 
+	/*
+	 * We must offload the handling of the primary/sub channels
+	 * from the single-threaded vmbus_connection.work_queue to
+	 * two different workqueue, otherwise we can block
+	 * vmbus_connection.work_queue and hang: see vmbus_process_offer().
+	 */
+	struct work_struct add_channel_work;
 };
 
 static inline bool is_hvsock_channel(const struct vmbus_channel *c)
@@ -1026,6 +1033,8 @@ extern int vmbus_establish_gpadl(struct vmbus_channel *channel,
 extern int vmbus_teardown_gpadl(struct vmbus_channel *channel,
 				     u32 gpadl_handle);
 
+void vmbus_reset_channel_cb(struct vmbus_channel *channel);
+
 extern int vmbus_recvpacket(struct vmbus_channel *channel,
 				  void *buffer,
 				  u32 bufferlen,
@@ -1121,8 +1130,9 @@ struct hv_ring_buffer_debug_info {
 	u32 bytes_avail_towrite;
 };
 
-void hv_ringbuffer_get_debuginfo(const struct hv_ring_buffer_info *ring_info,
-			    struct hv_ring_buffer_debug_info *debug_info);
+
+int hv_ringbuffer_get_debuginfo(const struct hv_ring_buffer_info *ring_info,
+				struct hv_ring_buffer_debug_info *debug_info);
 
 /* Vmbus interface */
 #define vmbus_driver_register(driver)	\

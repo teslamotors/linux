@@ -16,6 +16,7 @@
 #define IPU_ISYS_MIPI_CSI2_TYPE_BLANKING	0x11
 #define IPU_ISYS_MIPI_CSI2_TYPE_EMBEDDED8	0x12
 #define IPU_ISYS_MIPI_CSI2_TYPE_YUV422_8	0x1e
+#define IPU_ISYS_MIPI_CSI2_TYPE_YUV422_10	0x1f
 #define IPU_ISYS_MIPI_CSI2_TYPE_RGB565	0x22
 #define IPU_ISYS_MIPI_CSI2_TYPE_RGB888	0x24
 #define IPU_ISYS_MIPI_CSI2_TYPE_RAW6	0x28
@@ -120,7 +121,7 @@ u32 ipu_isys_subdev_code_to_uncompressed(u32 sink_code);
 
 enum ipu_isys_subdev_pixelorder ipu_isys_subdev_get_pixelorder(u32 code);
 
-void ipu_isys_subdev_fmt_propagate(struct v4l2_subdev *sd,
+int ipu_isys_subdev_fmt_propagate(struct v4l2_subdev *sd,
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 1, 0)
 				   struct v4l2_subdev_fh *cfg,
 #else
@@ -131,7 +132,7 @@ void ipu_isys_subdev_fmt_propagate(struct v4l2_subdev *sd,
 				   enum isys_subdev_prop_tgt tgt,
 				   unsigned int pad, unsigned int which);
 
-void ipu_isys_subdev_set_ffmt_default(struct v4l2_subdev *sd,
+int ipu_isys_subdev_set_ffmt_default(struct v4l2_subdev *sd,
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 1, 0)
 				      struct v4l2_subdev_fh *cfg,
 #else

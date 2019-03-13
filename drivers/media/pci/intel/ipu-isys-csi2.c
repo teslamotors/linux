@@ -28,6 +28,7 @@ static const u32 csi2_supported_codes_pad_sink[] = {
 	MEDIA_BUS_FMT_RGB888_1X24,
 	MEDIA_BUS_FMT_UYVY8_1X16,
 	MEDIA_BUS_FMT_YUYV8_1X16,
+	MEDIA_BUS_FMT_YUYV10_1X20,
 	MEDIA_BUS_FMT_SBGGR10_1X10,
 	MEDIA_BUS_FMT_SGBRG10_1X10,
 	MEDIA_BUS_FMT_SGRBG10_1X10,
@@ -57,6 +58,7 @@ static const u32 csi2_supported_codes_pad_source[] = {
 	MEDIA_BUS_FMT_RGB888_1X24,
 	MEDIA_BUS_FMT_UYVY8_1X16,
 	MEDIA_BUS_FMT_YUYV8_1X16,
+	MEDIA_BUS_FMT_YUYV10_1X20,
 	MEDIA_BUS_FMT_SBGGR10_1X10,
 	MEDIA_BUS_FMT_SGBRG10_1X10,
 	MEDIA_BUS_FMT_SGRBG10_1X10,
@@ -136,7 +138,9 @@ static int ipu_get_frame_desc_entry_by_dt(struct v4l2_subdev *sd,
 					  struct v4l2_mbus_frame_desc_entry
 					  *entry, u8 data_type)
 {
-	struct v4l2_mbus_frame_desc desc;
+	struct v4l2_mbus_frame_desc desc = {
+		.num_entries = V4L2_FRAME_DESC_ENTRY_MAX,
+	};
 	int rval, i;
 
 	rval = v4l2_subdev_call(sd, pad, get_frame_desc, 0, &desc);
@@ -644,7 +648,6 @@ void ipu_isys_csi2_cleanup(struct ipu_isys_csi2 *csi2)
 	ipu_isys_subdev_cleanup(&csi2->asd);
 	for (i = 0; i < NR_OF_CSI2_SOURCE_PADS; i++)
 		ipu_isys_video_cleanup(&csi2->av[i]);
-	
 #ifdef IPU_META_DATA_SUPPORT
 	ipu_isys_video_cleanup(&csi2->av_meta);
 #endif
@@ -874,8 +877,8 @@ void ipu_isys_csi2_sof_event(struct ipu_isys_csi2 *csi2, unsigned int vc)
 	trace_ipu_sof_seqid(ev.u.frame_sync.frame_sequence, csi2->index, vc);
 	v4l2_event_queue(vdev, &ev);
 	dev_dbg(&csi2->isys->adev->dev,
-		"sof_event::csi2-%i sequence: %i, vc: %d, stream_id: %d\n",
-		csi2->index, ev.u.frame_sync.frame_sequence, vc, ip->stream_id);
+		"sof_event::csi2-%i CPU-timestamp:%lld, sequence:%i, vc:%d, stream_id:%d\n",
+		csi2->index, ktime_get_ns(), ev.u.frame_sync.frame_sequence, vc, ip->stream_id);
 }
 
 void ipu_isys_csi2_eof_event(struct ipu_isys_csi2 *csi2, unsigned int vc)
@@ -903,7 +906,7 @@ void ipu_isys_csi2_eof_event(struct ipu_isys_csi2 *csi2, unsigned int vc)
 	if (ip) {
 		frame_sequence = atomic_read(&ip->sequence);
 
-		trace_ipu_eof_seqid(frame_sequence, csi2->index, vc);
+	trace_ipu_eof_seqid(frame_sequence, csi2->index, vc);
 
 		dev_dbg(&csi2->isys->adev->dev,
 			"eof_event::csi2-%i sequence: %i, vc: %d, stream_id: %d\n",

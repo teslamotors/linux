@@ -13,6 +13,9 @@
 #include <linux/mm.h>
 #include <linux/module.h>
 #include <linux/pm_runtime.h>
+#if defined(CONFIG_VIDEO_INTEL_IPU_ACRN) && defined(CONFIG_VIDEO_INTEL_IPU_VIRTIO_BE)
+#include <linux/syscalls.h>
+#endif
 #include <linux/version.h>
 #include <linux/poll.h>
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0)
@@ -37,6 +40,7 @@
 #include "ipu-cpd.h"
 #include "ipu-fw-psys.h"
 #include "ipu-psys.h"
+#include "ipu-platform-psys.h"
 #include "ipu-platform-regs.h"
 #include "ipu-fw-isys.h"
 #include "ipu-fw-com.h"
@@ -71,15 +75,13 @@ static struct fw_init_task {
 	struct ipu_psys *psys;
 } fw_init_task;
 
+#ifdef IPU_IRQ_POLL
+static int ipu_psys_isr_run(void *data);
+#endif
 static void ipu_psys_remove(struct ipu_bus_device *adev);
 
 static struct bus_type ipu_psys_bus = {
 	.name = IPU_PSYS_NAME,
-};
-
-static struct ipu_psys_capability caps = {
-	.version = 1,
-	.driver = "ipu-psys",
 };
 
 struct ipu_psys_pg *__get_pg_buf(struct ipu_psys *psys, size_t pg_size)
@@ -162,6 +164,13 @@ static int ipu_psys_get_userpages(struct ipu_dma_buf_attach *attach)
 	if (!sgt)
 		return -ENOMEM;
 
+	if (attach->npages != 0) {
+		pages = attach->pages;
+		npages = attach->npages;
+		attach->vma_is_io = 1;
+		goto skip_pages;
+	}
+
 	if (array_size <= PAGE_SIZE)
 		pages = kzalloc(array_size, GFP_KERNEL);
 	else
@@ -218,6 +227,10 @@ static int ipu_psys_get_userpages(struct ipu_dma_buf_attach *attach)
 	}
 	up_read(&current->mm->mmap_sem);
 
+	attach->pages = pages;
+	attach->npages = npages;
+
+skip_pages:
 	ret = sg_alloc_table_from_pages(sgt, pages, npages,
 					start & ~PAGE_MASK, attach->len,
 					GFP_KERNEL);
@@ -225,8 +238,6 @@ static int ipu_psys_get_userpages(struct ipu_dma_buf_attach *attach)
 		goto error;
 
 	attach->sgt = sgt;
-	attach->pages = pages;
-	attach->npages = npages;
 
 	return 0;
 
@@ -372,10 +383,11 @@ static void ipu_dma_buf_release(struct dma_buf *buf)
 	if (!kbuf)
 		return;
 
-	dev_dbg(&kbuf->psys->adev->dev, "releasing buffer %d\n", kbuf->fd);
-
-	if (kbuf->db_attach)
+	if (kbuf->db_attach) {
+		dev_dbg(kbuf->db_attach->dev,
+			"releasing buffer %d\n", kbuf->fd);
 		ipu_psys_put_userpages(kbuf->db_attach->priv);
+	}
 	kfree(kbuf);
 }
 
@@ -425,7 +437,7 @@ static void ipu_dma_buf_vunmap(struct dma_buf *dmabuf, void *vaddr)
 	vm_unmap_ram(vaddr, ipu_attach->npages);
 }
 
-static struct dma_buf_ops ipu_dma_buf_ops = {
+struct dma_buf_ops ipu_dma_buf_ops = {
 	.attach = ipu_dma_buf_attach,
 	.detach = ipu_dma_buf_detach,
 	.map_dma_buf = ipu_dma_buf_map,
@@ -449,8 +461,7 @@ static int ipu_psys_open(struct inode *inode, struct file *file)
 	struct ipu_psys *psys = inode_to_ipu_psys(inode);
 	struct ipu_device *isp = psys->adev->isp;
 	struct ipu_psys_fh *fh;
-	struct ipu_psys_buffer_set *kbuf_set, *kbuf_set_tmp;
-	int i, rval;
+	int rval;
 
 	if (isp->flr_done)
 		return -EIO;
@@ -461,61 +472,58 @@ static int ipu_psys_open(struct inode *inode, struct file *file)
 		return rval;
 	}
 
-	pm_runtime_use_autosuspend(&psys->adev->dev);
-
 	fh = kzalloc(sizeof(*fh), GFP_KERNEL);
 	if (!fh)
 		return -ENOMEM;
 
-	mutex_init(&fh->mutex);
-	INIT_LIST_HEAD(&fh->bufmap);
-	for (i = 0; i < IPU_PSYS_CMD_PRIORITY_NUM; i++)
-		INIT_LIST_HEAD(&fh->kcmds[i]);
-
-	init_waitqueue_head(&fh->wait);
-
-	mutex_init(&fh->bs_mutex);
-	INIT_LIST_HEAD(&fh->buf_sets);
-
-	/* allocate and map memory for buf_sets */
-	for (i = 0; i < IPU_PSYS_BUF_SET_POOL_SIZE; i++) {
-		kbuf_set = kzalloc(sizeof(*kbuf_set), GFP_KERNEL);
-		if (!kbuf_set)
-			goto out_free_buf_sets;
-		kbuf_set->kaddr = dma_alloc_attrs(&psys->adev->dev,
-						  IPU_PSYS_BUF_SET_MAX_SIZE,
-						  &kbuf_set->dma_addr,
-						  GFP_KERNEL,
-						  DMA_ATTR_NON_CONSISTENT);
-		if (!kbuf_set->kaddr) {
-			kfree(kbuf_set);
-			goto out_free_buf_sets;
-		}
-		kbuf_set->size = IPU_PSYS_BUF_SET_MAX_SIZE;
-		list_add(&kbuf_set->list, &fh->buf_sets);
-	}
-
 	fh->psys = psys;
+
+#if defined(CONFIG_VIDEO_INTEL_IPU_ACRN) && defined(CONFIG_VIDEO_INTEL_IPU_VIRTIO_BE)
+	fh->vfops = &psys_vfops;
+#endif
+
 	file->private_data = fh;
 
+	mutex_init(&fh->mutex);
+	INIT_LIST_HEAD(&fh->bufmap);
+	init_waitqueue_head(&fh->wait);
+
+	rval = ipu_psys_fh_init(fh);
+	if (rval)
+		goto open_failed;
+
 	mutex_lock(&psys->mutex);
+#ifdef IPU_IRQ_POLL
+	if (list_empty(&psys->fhs)) {
+		static const struct sched_param param = {
+			.sched_priority = MAX_USER_RT_PRIO / 2,
+		};
+		psys->isr_thread = kthread_run(ipu_psys_isr_run, psys,
+					       IPU_PSYS_NAME);
+
+		if (IS_ERR(psys->isr_thread)) {
+			mutex_unlock(&psys->mutex);
+			goto open_failed;
+		}
+
+		sched_setscheduler(psys->isr_thread, SCHED_FIFO, &param);
+	}
+#endif
 	list_add_tail(&fh->list, &psys->fhs);
 	mutex_unlock(&psys->mutex);
 
 	return 0;
 
-out_free_buf_sets:
-	list_for_each_entry_safe(kbuf_set, kbuf_set_tmp, &fh->buf_sets, list) {
-		dma_free_attrs(&psys->adev->dev,
-			       kbuf_set->size, kbuf_set->kaddr,
-			       kbuf_set->dma_addr, DMA_ATTR_NON_CONSISTENT);
-		list_del(&kbuf_set->list);
-		kfree(kbuf_set);
+open_failed:
+#ifdef IPU_IRQ_POLL
+	if (list_empty(&psys->fhs) && psys->isr_thread) {
+		kthread_stop(psys->isr_thread);
+		psys->isr_thread = NULL;
 	}
-	mutex_destroy(&fh->bs_mutex);
+#endif
 	mutex_destroy(&fh->mutex);
 	kfree(fh);
-	return -ENOMEM;
+	return rval;
 }
 
 static int ipu_psys_release(struct inode *inode, struct file *file)
@@ -523,75 +531,58 @@ static int ipu_psys_release(struct inode *inode, struct file *file)
 	struct ipu_psys *psys = inode_to_ipu_psys(inode);
 	struct ipu_psys_fh *fh = file->private_data;
 	struct ipu_psys_kbuffer *kbuf, *kbuf0;
-	struct ipu_psys_kcmd *kcmd, *kcmd0;
-	struct ipu_psys_buffer_set *kbuf_set, *kbuf_set0;
-	int p;
+#if defined(CONFIG_VIDEO_INTEL_IPU_ACRN) && defined(CONFIG_VIDEO_INTEL_IPU_VIRTIO_BE)
+	struct ipu_dma_buf_attach *ipu_attach;
+#endif
+
+	mutex_lock(&fh->mutex);
+	/* clean up buffers */
+	if (!list_empty(&fh->bufmap)) {
+		list_for_each_entry_safe(kbuf, kbuf0, &fh->bufmap, list) {
+			list_del(&kbuf->list);
+			   /* Unmap and release buffers */
+			if (kbuf->dbuf && kbuf->db_attach) {
+				struct dma_buf *dbuf;
+				kbuf->valid = false;
+#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 17, 0) && defined(CONFIG_VIDEO_INTEL_IPU_ACRN) && defined(CONFIG_VIDEO_INTEL_IPU_VIRTIO_BE)
+				ipu_attach = kbuf->db_attach->priv;
+				if (ipu_attach->vma_is_io)
+					ksys_close(kbuf->fd);
+#endif
+				dma_buf_vunmap(kbuf->dbuf, kbuf->kaddr);
+				dma_buf_unmap_attachment(kbuf->db_attach,
+							 kbuf->sgt,
+							 DMA_BIDIRECTIONAL);
+				dma_buf_detach(kbuf->dbuf, kbuf->db_attach);
+				dbuf = kbuf->dbuf;
+				kbuf->dbuf = NULL;
+				kbuf->db_attach = NULL;
+				dma_buf_put(dbuf);
+#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 17, 0) && defined(CONFIG_VIDEO_INTEL_IPU_ACRN) && defined(CONFIG_VIDEO_INTEL_IPU_VIRTIO_BE)
+				ksys_close(kbuf->fd);
+#endif
+			} else {
+				if (kbuf->db_attach)
+					ipu_psys_put_userpages(
+						kbuf->db_attach->priv);
+				kfree(kbuf);
+			}
+		}
+	}
+	mutex_unlock(&fh->mutex);
 
 	mutex_lock(&psys->mutex);
-	mutex_lock(&fh->mutex);
-
-	/*
-	 * Set pg_user to NULL so that completed kcmds don't write
-	 * their result to user space anymore.
-	 */
-	for (p = 0; p < IPU_PSYS_CMD_PRIORITY_NUM; p++)
-		list_for_each_entry(kcmd, &fh->kcmds[p], list)
-			kcmd->pg_user = NULL;
-
-	/* Prevent scheduler from running more kcmds */
-	memset(fh->new_kcmd_tail, 0, sizeof(fh->new_kcmd_tail));
-
-	/* Wait until kcmds are completed in this queue and free them */
-	for (p = 0; p < IPU_PSYS_CMD_PRIORITY_NUM; p++) {
-		fh->new_kcmd_tail[p] = NULL;
-		list_for_each_entry_safe(kcmd, kcmd0, &fh->kcmds[p], list) {
-			ipu_psys_kcmd_abort(psys, kcmd, -EIO);
-			ipu_psys_kcmd_free(kcmd);
-		}
-	}
-
-	mutex_lock(&fh->bs_mutex);
-	list_for_each_entry_safe(kbuf_set, kbuf_set0, &fh->buf_sets, list) {
-		dma_free_attrs(&psys->adev->dev,
-			       kbuf_set->size, kbuf_set->kaddr,
-			       kbuf_set->dma_addr, DMA_ATTR_NON_CONSISTENT);
-		list_del(&kbuf_set->list);
-		kfree(kbuf_set);
-	}
-	mutex_unlock(&fh->bs_mutex);
-
-	/* clean up buffers */
-	list_for_each_entry_safe(kbuf, kbuf0, &fh->bufmap, list) {
-		list_del(&kbuf->list);
-		/* Unmap and release buffers */
-		if (kbuf->dbuf && kbuf->db_attach) {
-			struct dma_buf *dbuf;
-
-			dma_buf_vunmap(kbuf->dbuf, kbuf->kaddr);
-			dma_buf_unmap_attachment(kbuf->db_attach, kbuf->sgt,
-						 DMA_BIDIRECTIONAL);
-			dma_buf_detach(kbuf->dbuf, kbuf->db_attach);
-			dbuf = kbuf->dbuf;
-			kbuf->dbuf = NULL;
-			kbuf->db_attach = NULL;
-			dma_buf_put(dbuf);
-		} else {
-			if (kbuf->db_attach)
-				ipu_psys_put_userpages(kbuf->db_attach->priv);
-			kfree(kbuf);
-		}
-	}
-
 	list_del(&fh->list);
 
-	/* disable runtime autosuspend for the last fh */
-	if (list_empty(&psys->fhs))
-		pm_runtime_dont_use_autosuspend(&psys->adev->dev);
-
-	mutex_unlock(&fh->mutex);
+#ifdef IPU_IRQ_POLL
+	if (list_empty(&psys->fhs) && psys->isr_thread) {
+		kthread_stop(psys->isr_thread);
+		psys->isr_thread = NULL;
+	}
+#endif
 	mutex_unlock(&psys->mutex);
 
-	mutex_destroy(&fh->bs_mutex);
+	ipu_psys_fh_deinit(fh);
 	mutex_destroy(&fh->mutex);
 	kfree(fh);
 
@@ -647,8 +638,6 @@ static int ipu_psys_getbuf(struct ipu_psys_buffer *buf, struct ipu_psys_fh *fh)
 
 	kbuf->fd = ret;
 	buf->base.fd = ret;
-	kbuf->psys = psys;
-	kbuf->fh = fh;
 	kbuf->flags = buf->flags &= ~IPU_BUFFER_FLAG_USERPTR;
 	kbuf->flags = buf->flags |= IPU_BUFFER_FLAG_DMA_HANDLE;
 
@@ -663,73 +652,6 @@ static int ipu_psys_getbuf(struct ipu_psys_buffer *buf, struct ipu_psys_fh *fh)
 
 static int ipu_psys_putbuf(struct ipu_psys_buffer *buf, struct ipu_psys_fh *fh)
 {
-	return 0;
-}
-
-static struct ipu_psys_kcmd *__ipu_get_completed_kcmd(struct ipu_psys *psys,
-						      struct ipu_psys_fh *fh)
-{
-	int p;
-
-	for (p = 0; p < IPU_PSYS_CMD_PRIORITY_NUM; p++) {
-		struct ipu_psys_kcmd *kcmd;
-
-		if (list_empty(&fh->kcmds[p]))
-			continue;
-		kcmd = list_first_entry(&fh->kcmds[p],
-					struct ipu_psys_kcmd, list);
-		if (kcmd->state != KCMD_STATE_COMPLETE)
-			continue;
-		/* Found a kcmd in completed state */
-		return kcmd;
-	}
-
-	return NULL;
-}
-
-static struct ipu_psys_kcmd *ipu_get_completed_kcmd(struct ipu_psys *psys,
-						    struct ipu_psys_fh *fh)
-{
-	struct ipu_psys_kcmd *kcmd;
-
-	mutex_lock(&fh->mutex);
-	kcmd = __ipu_get_completed_kcmd(psys, fh);
-	mutex_unlock(&fh->mutex);
-
-	return kcmd;
-}
-
-static long ipu_ioctl_dqevent(struct ipu_psys_event *event,
-			      struct ipu_psys_fh *fh, unsigned int f_flags)
-{
-	struct ipu_psys *psys = fh->psys;
-	struct ipu_psys_kcmd *kcmd = NULL;
-	int rval;
-
-	dev_dbg(&psys->adev->dev, "IOC_DQEVENT\n");
-
-	if (!(f_flags & O_NONBLOCK)) {
-		rval = wait_event_interruptible(fh->wait,
-						(kcmd =
-						 ipu_get_completed_kcmd(psys,
-									fh)));
-		if (rval == -ERESTARTSYS)
-			return rval;
-	}
-
-	mutex_lock(&fh->mutex);
-	if (!kcmd) {
-		kcmd = __ipu_get_completed_kcmd(psys, fh);
-		if (!kcmd) {
-			mutex_unlock(&fh->mutex);
-			return -ENODATA;
-		}
-	}
-
-	*event = kcmd->ev;
-	ipu_psys_kcmd_free(kcmd);
-	mutex_unlock(&fh->mutex);
-
 	return 0;
 }
 
@@ -754,8 +676,6 @@ static long ipu_psys_mapbuf(int fd, struct ipu_psys_fh *fh)
 			return -ENOMEM;
 		}
 
-		kbuf->psys = psys;
-		kbuf->fh = fh;
 		list_add_tail(&kbuf->list, &fh->bufmap);
 	}
 
@@ -829,7 +749,7 @@ error_put:
 	return ret;
 }
 
-static long ipu_psys_unmapbuf(int fd, struct ipu_psys_fh *fh)
+long ipu_psys_unmapbuf(int fd, struct ipu_psys_fh *fh)
 {
 	struct ipu_psys_kbuffer *kbuf;
 	struct ipu_psys *psys = fh->psys;
@@ -880,7 +800,7 @@ static unsigned int ipu_psys_poll(struct file *file,
 
 	poll_wait(file, &fh->wait, wait);
 
-	if (ipu_get_completed_kcmd(psys, fh))
+	if (ipu_get_completed_kcmd(fh))
 		res = POLLIN;
 
 	dev_dbg(&psys->adev->dev, "ipu psys poll res %u\n", res);
@@ -968,7 +888,7 @@ static long ipu_psys_ioctl(struct file *file, unsigned int cmd,
 		err = ipu_psys_unmapbuf(arg, fh);
 		break;
 	case IPU_IOC_QUERYCAP:
-		karg.caps = caps;
+		karg.caps = fh->psys->caps;
 		break;
 	case IPU_IOC_GETBUF:
 		err = ipu_psys_getbuf(&karg.buf, fh);
@@ -1136,7 +1056,7 @@ static int cpd_fw_reload(struct ipu_device *isp)
 		dev_info(&isp->pdev->dev, "Old FW removed\n");
 	}
 
-	rval = request_firmware(&isp->cpd_fw, isp->cpd_fw_name,
+	rval = request_cpd_fw(&isp->cpd_fw, isp->cpd_fw_name,
 				&isp->pdev->dev);
 	if (rval) {
 		dev_err(&isp->pdev->dev, "Requesting firmware(%s) failed\n",
@@ -1528,9 +1448,9 @@ static int ipu_psys_probe(struct ipu_bus_device *adev)
 	isp->pkg_dir_dma_addr = psys->pkg_dir_dma_addr;
 	isp->pkg_dir_size = psys->pkg_dir_size;
 
-	caps.pg_count = ipu_cpd_pkg_dir_get_num_entries(psys->pkg_dir);
+	psys->caps.pg_count = ipu_cpd_pkg_dir_get_num_entries(psys->pkg_dir);
 
-	dev_info(&adev->dev, "pkg_dir entry count:%d\n", caps.pg_count);
+	dev_info(&adev->dev, "pkg_dir entry count:%d\n", psys->caps.pg_count);
 	if (async_fw_init) {
 		INIT_DELAYED_WORK((struct delayed_work *)&fw_init_task,
 				  run_fw_init_work);
@@ -1557,8 +1477,8 @@ static int ipu_psys_probe(struct ipu_bus_device *adev)
 	}
 
 	/* Add the hw stepping information to caps */
-	strlcpy(caps.dev_model, IPU_MEDIA_DEV_MODEL_NAME,
-		sizeof(caps.dev_model));
+	strlcpy(psys->caps.dev_model, IPU_MEDIA_DEV_MODEL_NAME,
+		sizeof(psys->caps.dev_model));
 
 	pm_runtime_allow(&adev->dev);
 	pm_runtime_enable(&adev->dev);
@@ -1710,6 +1630,39 @@ static irqreturn_t psys_isr_threaded(struct ipu_bus_device *adev)
 	return status ? IRQ_HANDLED : IRQ_NONE;
 }
 
+#ifdef IPU_IRQ_POLL
+static int ipu_psys_isr_run(void *data)
+{
+	struct ipu_psys *psys = data;
+	int r;
+
+	while (!kthread_should_stop()) {
+		usleep_range(100, 500);
+#ifdef CONFIG_PM
+		if (!READ_ONCE(psys->power))
+			continue;
+#endif
+		r = mutex_trylock(&psys->mutex);
+		if (!r)
+			continue;
+#ifdef CONFIG_PM
+		r = pm_runtime_get_sync(&psys->adev->dev);
+		if (r < 0) {
+			pm_runtime_put(&psys->adev->dev);
+			mutex_unlock(&psys->mutex);
+			continue;
+		}
+#endif
+		ipu_psys_handle_events(psys);
+
+		pm_runtime_mark_last_busy(&psys->adev->dev);
+		pm_runtime_put_autosuspend(&psys->adev->dev);
+		mutex_unlock(&psys->mutex);
+	}
+
+	return 0;
+}
+#endif /* IPU_IRQ_POLL */
 
 static struct ipu_bus_driver ipu_psys_driver = {
 	.probe = ipu_psys_probe,

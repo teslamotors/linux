@@ -18,6 +18,8 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
+#include <linux/pm_runtime.h>
+#include <linux/property.h>
 #include <linux/usb/role.h>
 
 /* register definition */
@@ -25,6 +27,9 @@
 #define SW_VBUS_VALID			BIT(24)
 #define SW_IDPIN_EN			BIT(21)
 #define SW_IDPIN			BIT(20)
+#define SW_SWITCH_EN_CFG0		BIT(16)
+#define SW_DRD_STATIC_HOST_CFG0		1
+#define SW_DRD_STATIC_DEV_CFG0		2
 
 #define DUAL_ROLE_CFG1			0x6c
 #define HOST_MODE			BIT(29)
@@ -36,28 +41,12 @@
 struct intel_xhci_usb_data {
 	struct usb_role_switch *role_sw;
 	void __iomem *base;
+	bool disable_sw_switch;
 };
 
-static const struct acpi_device_id typec_port_devices[] = {
-	{ "PNP0CA0", 0 }, /* UCSI */
-	{ "INT33FE", 0 }, /* CHT USB Type-C PHY */
-	{ },
-};
-
-static acpi_status intel_xhci_userspace_ctrl(acpi_handle handle, u32 level,
-					     void *ctx, void **ret)
-{
-	struct acpi_device *adev;
-
-	if (acpi_bus_get_device(handle, &adev))
-		return AE_OK;
-
-	/* Don't allow userspace-control with Type-C ports */
-	if (!acpi_match_device_ids(adev, typec_port_devices))
-		return AE_ACCESS;
-
-	return AE_OK;
-}
+static int default_role;
+module_param(default_role, int, 0444);
+MODULE_PARM_DESC(default_role, "USB OTG port default role 0:default 1:host 2:device");
 
 static int default_role;
 module_param(default_role, int, 0444);
@@ -81,23 +70,41 @@ static int intel_xhci_usb_set_role(struct device *dev, enum usb_role role)
 		return -EIO;
 	}
 
-	/* Set idpin value as requested */
+	pm_runtime_get_sync(dev);
+
+	/*
+	 * Set idpin value as requested.
+	 * Since many CHT devices rely on firmware setting DRD_CONFIG and
+	 * SW_SWITCH_EN_CFG0 bits to be zero for role switch,
+	 * do not set these bits for CHT.
+	 */
 	val = readl(data->base + DUAL_ROLE_CFG0);
 	switch (role) {
 	case USB_ROLE_NONE:
 		val |= SW_IDPIN;
 		val &= ~SW_VBUS_VALID;
+		val &= ~(SW_DRD_STATIC_DEV_CFG0 | SW_DRD_STATIC_HOST_CFG0);
 		break;
 	case USB_ROLE_HOST:
 		val &= ~SW_IDPIN;
 		val &= ~SW_VBUS_VALID;
+		if (!data->disable_sw_switch) {
+			val &= ~SW_DRD_STATIC_DEV_CFG0;
+			val |= SW_DRD_STATIC_HOST_CFG0;
+		}
 		break;
 	case USB_ROLE_DEVICE:
 		val |= SW_IDPIN;
 		val |= SW_VBUS_VALID;
+		if (!data->disable_sw_switch) {
+			val &= ~SW_DRD_STATIC_HOST_CFG0;
+			val |= SW_DRD_STATIC_DEV_CFG0;
+		}
 		break;
 	}
 	val |= SW_IDPIN_EN;
+	if (!data->disable_sw_switch)
+		val |= SW_SWITCH_EN_CFG0;
 
 	writel(val, data->base + DUAL_ROLE_CFG0);
 
@@ -109,12 +116,16 @@ static int intel_xhci_usb_set_role(struct device *dev, enum usb_role role)
 	/* Polling on CFG1 register to confirm mode switch.*/
 	do {
 		val = readl(data->base + DUAL_ROLE_CFG1);
-		if (!!(val & HOST_MODE) == (role == USB_ROLE_HOST))
+		if (!!(val & HOST_MODE) == (role == USB_ROLE_HOST)) {
+			pm_runtime_put(dev);
 			return 0;
+		}
 
 		/* Interval for polling is set to about 5 - 10 ms */
 		usleep_range(5000, 10000);
 	} while (time_before(jiffies, timeout));
+
+	pm_runtime_put(dev);
 
 	dev_warn(dev, "Timeout waiting for role-switch\n");
 	return -ETIMEDOUT;
@@ -126,7 +137,9 @@ static enum usb_role intel_xhci_usb_get_role(struct device *dev)
 	enum usb_role role;
 	u32 val;
 
+	pm_runtime_get_sync(dev);
 	val = readl(data->base + DUAL_ROLE_CFG0);
+	pm_runtime_put(dev);
 
 	if (!(val & SW_IDPIN))
 		role = USB_ROLE_HOST;
@@ -138,9 +151,10 @@ static enum usb_role intel_xhci_usb_get_role(struct device *dev)
 	return role;
 }
 
-static struct usb_role_switch_desc sw_desc = {
+static const struct usb_role_switch_desc sw_desc = {
 	.set = intel_xhci_usb_set_role,
 	.get = intel_xhci_usb_get_role,
+	.allow_userspace_control = true,
 };
 
 static int intel_xhci_usb_probe(struct platform_device *pdev)
@@ -148,28 +162,29 @@ static int intel_xhci_usb_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct intel_xhci_usb_data *data;
 	struct resource *res;
-	acpi_status status;
 
 	data = devm_kzalloc(dev, sizeof(*data), GFP_KERNEL);
 	if (!data)
 		return -ENOMEM;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!res)
+		return -EINVAL;
 	data->base = devm_ioremap_nocache(dev, res->start, resource_size(res));
-	if (IS_ERR(data->base))
-		return PTR_ERR(data->base);
-
-	status = acpi_walk_namespace(ACPI_TYPE_DEVICE, ACPI_ROOT_OBJECT,
-				     ACPI_UINT32_MAX, intel_xhci_userspace_ctrl,
-				     NULL, NULL, NULL);
-	if (ACPI_SUCCESS(status))
-		sw_desc.allow_userspace_control = true;
+	if (!data->base)
+		return -ENOMEM;
 
 	platform_set_drvdata(pdev, data);
+
+	data->disable_sw_switch = device_property_read_bool
+				(dev, "drd,sw_switch_disable");
 
 	data->role_sw = usb_role_switch_register(dev, &sw_desc);
 	if (IS_ERR(data->role_sw))
 		return PTR_ERR(data->role_sw);
+
+	pm_runtime_set_active(dev);
+	pm_runtime_enable(dev);
 
 	intel_xhci_usb_set_role(dev, USB_ROLE_HOST);
 	msleep(10);

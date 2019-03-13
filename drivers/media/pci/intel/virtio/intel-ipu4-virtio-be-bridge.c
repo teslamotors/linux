@@ -35,8 +35,9 @@ int intel_ipu4_virtio_msg_parse(int domid, struct ipu4_virtio_req *req)
 			 * op0 - virtual device node number
 			 * op1 - Actual device fd. By default set to 0
 			 */
-			pr_debug("POLL: virtual_dev_id:%d actual_fd:%d\n", req->op[0], req->op[1]);
-			req->stat = IPU4_REQ_NEEDS_FOLLOW_UP;
+			pr_debug("%s: process_poll pre", __func__);
+			req->stat = process_poll(domid, req);
+			pr_debug("%s: process_poll post", __func__);
 			break;
 	case IPU4_CMD_DEVICE_OPEN:
 			/*

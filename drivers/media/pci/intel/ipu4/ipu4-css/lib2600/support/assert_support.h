@@ -39,9 +39,6 @@
  * should not depend on assert to function (actually the assert
  * could be disabled in a release build) it was decided to
  * disable the assert for KW scans (by defining NDEBUG)
- * see also:
- * http://www.klocwork.com/products/documentation/current/
- * Tuning_C/C%2B%2B_analysis#Assertions
  */
 #define NDEBUG
 #endif /* __KLOCWORK__ */

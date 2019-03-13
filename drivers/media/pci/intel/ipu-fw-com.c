@@ -126,8 +126,10 @@ enum regmem_id {
 	SYSCOM_COMMAND_REG = 3,
 	/* Store interrupt status - updated by SP */
 	SYSCOM_IRQ_REG = 4,
+	/* Store VTL0_ADDR_MASK in trusted secure regision - provided by host.*/
+	SYSCOM_VTL0_ADDR_MASK = 5,
 	/* first syscom queue pointer register */
-	SYSCOM_QPR_BASE_REG = 5
+	SYSCOM_QPR_BASE_REG = 6
 };
 
 enum message_direction {
