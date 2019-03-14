@@ -16,6 +16,11 @@
 #ifndef _DAL_KEYSTORE_API_H_
 #define _DAL_KEYSTORE_API_H_
 
+/**
+ * KEYSTORE_DAL_MAX_IV_SIZE - Maximum size of the Initialization Vector for the DAL backend
+ */
+#define KEYSTORE_DAL_MAX_IV_SIZE    12
+
 #include "dal_context.h"
 
 void set_dal_keystore_conf(void);
