@@ -428,13 +428,13 @@ void buf_stream_cancel(struct virtual_stream *vstream)
 	struct ici_frame_buf_wrapper *buf;
 	struct ici_frame_buf_wrapper *next_buf;
 
-	list_for_each_entry_safe(buf, next_buf, &buf_list->getbuf_list, node) {
-		list_del(&buf->node);
-		unmap_buf(buf);
+	list_for_each_entry_safe(buf, next_buf,
+			&buf_list->getbuf_list, uos_node) {
+		list_del(&buf->uos_node);
 	}
-	list_for_each_entry_safe(buf, next_buf, &buf_list->putbuf_list, node) {
-		list_del(&buf->node);
-		unmap_buf(buf);
+	list_for_each_entry_safe(buf, next_buf,
+			&buf_list->putbuf_list, uos_node) {
+		list_del(&buf->uos_node);
 	}
 }
 
@@ -529,7 +529,7 @@ static int virt_isys_stream_off(struct file *file, void *fh)
 	}
 	kfree(req);
 
-//	buf_stream_cancel(vstream);
+	buf_stream_cancel(vstream);
 
 	return rval;
 }
@@ -659,7 +659,7 @@ static int virt_stream_fop_open(struct inode *inode, struct file *file)
 	struct ipu4_virtio_ctx *fe_ctx = vstream->ctx;
 	int rval = 0;
 	int op[3];
-	dev_info(&strm_dev->dev, "virtual stream open\n");
+	pr_debug("%s %d", __func__, vstream->virt_dev_id);
 	get_device(&strm_dev->dev);
 
 	file->private_data = strm_dev;
@@ -702,14 +702,14 @@ static int virt_stream_fop_release(struct inode *inode, struct file *file)
 	struct ipu4_virtio_ctx *fe_ctx = vstream->ctx;
 	int rval = 0;
 	int op[2];
-	dev_info(&strm_dev->dev, "IPU virtual stream close\n");
+	pr_debug("%s %d", __func__, vstream->virt_dev_id);
 	put_device(&strm_dev->dev);
 
 	req = kcalloc(1, sizeof(*req), GFP_KERNEL);
 	if (!req)
 		return -ENOMEM;
 
-	op[0] = strm_dev->virt_dev_id;
+	op[0] = vstream->virt_dev_id;
 	op[1] = 0;
 
 	intel_ipu4_virtio_create_req(req, IPU4_CMD_DEVICE_CLOSE, &op[0]);

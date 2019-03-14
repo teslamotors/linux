@@ -23,6 +23,8 @@ static const u32 csi2_be_soc_supported_codes_pad[] = {
 	MEDIA_BUS_FMT_Y10_1X10,
 	MEDIA_BUS_FMT_RGB565_1X16,
 	MEDIA_BUS_FMT_RGB888_1X24,
+	/* YUV420 plannar */
+	MEDIA_BUS_FMT_UYVY8_2X8,
 	MEDIA_BUS_FMT_UYVY8_1X16,
 	MEDIA_BUS_FMT_YUYV8_1X16,
 	MEDIA_BUS_FMT_SBGGR14_1X14,
@@ -192,6 +194,7 @@ static void csi2_be_soc_set_ffmt(struct v4l2_subdev *sd,
 		ffmt->height = r->height;
 		ffmt->code = sink_ffmt->code;
 		ffmt->field = sink_ffmt->field;
+
 	}
 }
 
@@ -284,20 +287,24 @@ int ipu_isys_csi2_be_soc_init(struct ipu_isys_csi2_be_soc *csi2_be_soc,
 		    = 0;
 	}
 	for (i = 0; i < NR_OF_CSI2_BE_SOC_STREAMS; i++) {
-		csi2_be_soc->asd.route[i].flags = V4L2_SUBDEV_ROUTE_FL_ACTIVE |
-		    V4L2_SUBDEV_ROUTE_FL_IMMUTABLE;
+		csi2_be_soc->asd.route[i].flags = V4L2_SUBDEV_ROUTE_FL_ACTIVE;
 		bitmap_set(csi2_be_soc->asd.stream[CSI2_BE_SOC_PAD_SINK(i)].
 			   streams_stat, 0, 1);
 		bitmap_set(csi2_be_soc->asd.stream[CSI2_BE_SOC_PAD_SOURCE(i)].
 			   streams_stat, 0, 1);
 	}
+	csi2_be_soc->asd.route[0].flags |= V4L2_SUBDEV_ROUTE_FL_IMMUTABLE;
 	mutex_unlock(&csi2_be_soc->asd.mutex);
 	for (i = 0; i < NR_OF_CSI2_BE_SOC_SOURCE_PADS; i++) {
 		snprintf(csi2_be_soc->av[i].vdev.name,
 			 sizeof(csi2_be_soc->av[i].vdev.name),
 			 IPU_ISYS_ENTITY_PREFIX " BE SOC capture %d", i);
+		/*
+		 * Pin type could be overwritten for YUV422 to I420 case, at
+		 * set_format phase
+		 */
 		csi2_be_soc->av[i].aq.css_pin_type =
-		    IPU_FW_ISYS_PIN_TYPE_RAW_SOC;
+			IPU_FW_ISYS_PIN_TYPE_RAW_SOC;
 		csi2_be_soc->av[i].isys = isys;
 		csi2_be_soc->av[i].pfmts = ipu_isys_pfmts_be_soc;
 

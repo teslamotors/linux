@@ -234,6 +234,7 @@ static int cbc_device_open(struct inode *inode, struct file *file)
 					inode->i_rdev)];
 	int ret = 0;
 	u32 num_open_files = 0;
+	unsigned long flags;
 	struct cbc_file_data *file_data = kmalloc(sizeof(struct cbc_file_data),
 								GFP_KERNEL);
 
@@ -267,7 +268,9 @@ static int cbc_device_open(struct inode *inode, struct file *file)
 	if (ret == 0) {
 		cbc_file_init(file_data);
 		file_data->cbc_device = device_data;
+		spin_lock_irqsave(&device_data->cbc_device_lock, flags);
 		list_add(&file_data->list, &device_data->open_files_head);
+		spin_unlock_irqrestore(&device_data->cbc_device_lock, flags);
 		file->private_data = file_data;
 	} else {
 		kfree(file_data);
@@ -285,9 +288,14 @@ static int cbc_device_release(struct inode *inode, struct file *file)
 {
 	u32 dev_idx = MINOR(inode->i_rdev);
 	struct cbc_file_data *file_data = file->private_data;
+	unsigned long flags;
 
 	if (file_data) {
+		spin_lock_irqsave(
+			&file_data->cbc_device->cbc_device_lock, flags);
 		list_del(&file_data->list);
+		spin_unlock_irqrestore(
+			&file_data->cbc_device->cbc_device_lock, flags);
 
 		pr_debug("cbc-core: device_release: %d.%d %s\n",
 			MAJOR(inode->i_rdev), dev_idx,
@@ -299,6 +307,7 @@ static int cbc_device_release(struct inode *inode, struct file *file)
 		kfree(file_data);
 		file->private_data = NULL;
 	}
+
 	return 0;
 }
 
@@ -796,6 +805,7 @@ static void demuxed_receive(void *void_data, struct cbc_buffer *cbc_buffer)
 			(struct cbc_device_data *) void_data;
 	struct list_head *current_item;
 	struct cbc_file_data *current_file_data;
+	unsigned long flags;
 
 	if (device_data && cbc_buffer
 			&& cbc_buffer->frame_length >
@@ -836,6 +846,7 @@ static void demuxed_receive(void *void_data, struct cbc_buffer *cbc_buffer)
 		/* else, do not touch payload_length in a debug-channel */
 
 		/* Enqueue */
+		spin_lock_irqsave(&device_data->cbc_device_lock, flags);
 		for (current_item = device_data->open_files_head.next
 		; current_item != &device_data->open_files_head; current_item =
 							current_item->next) {
@@ -845,6 +856,7 @@ static void demuxed_receive(void *void_data, struct cbc_buffer *cbc_buffer)
 			/* File_enqueue increases ref. count. */
 			cbc_file_enqueue(current_file_data, cbc_buffer);
 		}
+		spin_unlock_irqrestore(&device_data->cbc_device_lock, flags);
 	} else {
 		pr_err("cbc-core: (<- IOC) dev_receive data is null\n");
 	}

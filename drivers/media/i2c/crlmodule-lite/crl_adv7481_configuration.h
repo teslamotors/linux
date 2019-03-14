@@ -272,8 +272,6 @@ static struct crl_sensor_detect_config adv7481_sensor_detect_regset[] = {
 	},
 };
 
-static const s64 adv7481_op_sys_clock[] =  {400000000, };
-
 static struct crl_pll_configuration adv7481_pll_configurations[] = {
 	{
 		.input_clk = 24000000,
@@ -607,7 +605,6 @@ static struct crl_ctrl_data adv7481_ctrls[] = {
 		.type = CRL_CTRL_TYPE_MENU_INT,
 		.data.int_menu.def = 0,
 		.data.int_menu.max = ARRAY_SIZE(adv7481_pll_configurations) - 1,
-		.data.int_menu.menu = adv7481_op_sys_clock,
 		.flags = 0,
 		.impact = CRL_IMPACTS_NO_IMPACT,
 		.regs_items = 0,
@@ -686,7 +683,6 @@ static struct crl_sensor_configuration adv7481_crl_configuration = {
 
 	.pll_config_items = ARRAY_SIZE(adv7481_pll_configurations),
 	.pll_configs = adv7481_pll_configurations,
-	.op_sys_clk = adv7481_op_sys_clock,
 
 	.modes_items = ARRAY_SIZE(adv7481_modes),
 	.modes = adv7481_modes,

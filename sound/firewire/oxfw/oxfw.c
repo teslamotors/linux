@@ -20,6 +20,7 @@
 #define VENDOR_LACIE		0x00d04b
 #define VENDOR_TASCAM		0x00022e
 #define OUI_STANTON		0x001260
+#define OUI_APOGEE		0x0003db
 
 #define MODEL_SATELLITE		0x00200f
 
@@ -136,6 +137,7 @@ static void oxfw_free(struct snd_oxfw *oxfw)
 
 	kfree(oxfw->spec);
 	mutex_destroy(&oxfw->mutex);
+	kfree(oxfw);
 }
 
 /*
@@ -213,6 +215,7 @@ static int detect_quirks(struct snd_oxfw *oxfw)
 static void do_registration(struct work_struct *work)
 {
 	struct snd_oxfw *oxfw = container_of(work, struct snd_oxfw, dwork.work);
+	int i;
 	int err;
 
 	if (oxfw->registered)
@@ -275,7 +278,15 @@ error:
 	snd_oxfw_stream_destroy_simplex(oxfw, &oxfw->rx_stream);
 	if (oxfw->has_output)
 		snd_oxfw_stream_destroy_simplex(oxfw, &oxfw->tx_stream);
+	for (i = 0; i < SND_OXFW_STREAM_FORMAT_ENTRIES; ++i) {
+		kfree(oxfw->tx_stream_formats[i]);
+		oxfw->tx_stream_formats[i] = NULL;
+		kfree(oxfw->rx_stream_formats[i]);
+		oxfw->rx_stream_formats[i] = NULL;
+	}
 	snd_card_free(oxfw->card);
+	kfree(oxfw->spec);
+	oxfw->spec = NULL;
 	dev_info(&oxfw->unit->device,
 		 "Sound card registration failed: %d\n", err);
 }
@@ -431,6 +442,13 @@ static const struct ieee1394_device_id oxfw_id_table[] = {
 				  IEEE1394_MATCH_MODEL_ID,
 		.vendor_id	= OUI_STANTON,
 		.model_id	= 0x002000,
+	},
+	// APOGEE, duet FireWire
+	{
+		.match_flags	= IEEE1394_MATCH_VENDOR_ID |
+				  IEEE1394_MATCH_MODEL_ID,
+		.vendor_id	= OUI_APOGEE,
+		.model_id	= 0x01dddd,
 	},
 	{ }
 };

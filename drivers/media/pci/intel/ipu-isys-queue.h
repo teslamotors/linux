@@ -13,6 +13,7 @@
 #include <media/videobuf2-v4l2.h>
 #endif
 
+#include "ipu-isys-media.h"
 
 struct ipu_isys_video;
 struct ipu_isys_pipeline;

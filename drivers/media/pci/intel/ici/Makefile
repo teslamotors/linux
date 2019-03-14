@@ -6,7 +6,7 @@ srcpath := $(srctree)
 endif
 
 ifdef CONFIG_VIDEO_INTEL_ICI
-ccflags-y += -DHAS_DUAL_CMD_CTX_SUPPORT=0 -DIPU_VC_SUPPORT -DIPU_HAS_ISA -DIPU_PSYS_LEGACY -Wframe-larger-than=4096
+ccflags-y += -DHAS_DUAL_CMD_CTX_SUPPORT=0 -DIPU_VC_SUPPORT -DIPU_HAS_ISA -DIPU_PSYS_LEGACY -DI2C_WA -Wframe-larger-than=4096
 
 
 # work-around to re-use ipu4-css and libintel-ipu4_ici.c together when
@@ -43,6 +43,7 @@ ici-isys-mod-objs += \
 obj-$(CONFIG_VIDEO_INTEL_IPU)          += ici-isys-mod.o
 
 intel-ipu4-psys-objs	+= ../ipu-psys.o \
+			   ../ipu-psys-virt.o \
 			   ../ipu4/ipu4-resources.o \
 			   ../ipu4/ipu4-psys.o \
 
@@ -62,11 +63,11 @@ include $(srcpath)/$(src)/ipu4-css/Makefile.isyslib
 include $(srcpath)/$(src)/ipu4-css/Makefile.psyslib
 endif
 
-ccflags-y += -I$(srcpath)/$(src)/../../../../../include/
-ccflags-y += -I$(srcpath)/$(src)/../
-ccflags-y += -I$(srcpath)/$(src)/../ipu4/
-ccflags-y += -I$(srcpath)/$(src)/
-ccflags-y += -I$(srcpath)/$(src)/ipu4-css
+subdir-ccflags-y += -I$(srcpath)/$(src)/../../../../../include/
+subdir-ccflags-y += -I$(srcpath)/$(src)/../
+subdir-ccflags-y += -I$(srcpath)/$(src)/../ipu4/
+subdir-ccflags-y += -I$(srcpath)/$(src)/
+subdir-ccflags-y += -I$(srcpath)/$(src)/ipu4-css
 
 ccflags-y += -DPARAMETER_INTERFACE_V2
 

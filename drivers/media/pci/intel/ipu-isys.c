@@ -40,7 +40,7 @@
  * The param was passed from module to indicate if port
  * could be optimized.
  */
-static bool csi2_port_optimized;
+static bool csi2_port_optimized = true;
 module_param(csi2_port_optimized, bool, 0660);
 MODULE_PARM_DESC(csi2_port_optimized, "IPU CSI2 port optimization");
 
@@ -407,21 +407,32 @@ static int isys_register_ext_subdev(struct ipu_isys *isys,
 				    struct ipu_isys_subdev_info *sd_info,
 				    bool acpi_only)
 {
-	struct i2c_adapter *adapter =
-	    i2c_get_adapter(sd_info->i2c.i2c_adapter_id);
+	struct i2c_adapter *adapter;
 	struct v4l2_subdev *sd;
 	struct i2c_client *client;
 	int rval;
+	int bus;
 
-	dev_info(&isys->adev->dev,
-		 "creating new i2c subdev for %s (address %2.2x, bus %d)",
-		 sd_info->i2c.board_info.type, sd_info->i2c.board_info.addr,
-		 sd_info->i2c.i2c_adapter_id);
-
+#ifdef I2C_WA
+	bus = ipu_get_i2c_bus_id(sd_info->i2c.i2c_adapter_id);
+	if (bus < 0) {
+		dev_err(&isys->adev->dev, "Failed to find adapter!");
+		return -ENOENT;
+	}
+#else
+	bus = sd_info->i2c.i2c_adapter_id;
+#endif
+	adapter = i2c_get_adapter(bus);
 	if (!adapter) {
 		dev_warn(&isys->adev->dev, "can't find adapter\n");
 		return -ENOENT;
 	}
+
+	dev_info(&isys->adev->dev,
+		 "creating new i2c subdev for %s (address %2.2x, bus %d)",
+		 sd_info->i2c.board_info.type, sd_info->i2c.board_info.addr,
+		 bus);
+
 	if (sd_info->csi2) {
 		dev_info(&isys->adev->dev, "sensor device on CSI port: %d\n",
 			 sd_info->csi2->port);
@@ -483,6 +494,7 @@ static int isys_register_ext_subdev(struct ipu_isys *isys,
 		rval = -EINVAL;
 		goto skip_put_adapter;
 	}
+
 	if (!sd_info->csi2)
 		return 0;
 
@@ -550,6 +562,7 @@ static void isys_register_ext_subdevs(struct ipu_isys *isys)
                         isys_register_ext_subdev(isys, *sd_info, false);
         } else {
 		dev_info(&isys->adev->dev, "no subdevice info provided\n");
+		return;
 	}
 
         /* Handle real ACPI stuff */
@@ -720,7 +733,8 @@ static int isys_register_subdevices(struct ipu_isys *isys)
 			    media_create_pad_link(&isys->tpg[i].asd.sd.entity,
 						  TPG_PAD_SOURCE,
 						  &isys->csi2_be_soc.asd.sd.
-						  entity, k, 0);
+						  entity, k,
+						  MEDIA_LNK_FL_DYNAMIC);
 			if (rval) {
 				dev_info(&isys->adev->dev,
 					 "can't create link tpg->be_soc\n");
@@ -750,9 +764,11 @@ static struct media_device_ops isys_mdev_ops = {
 #else
 	.link_notify = v4l2_pipeline_link_notify,
 #endif
+#ifdef MEDIA_IOC_REQUEST_CMD
 	.req_alloc = ipu_isys_req_alloc,
 	.req_free = ipu_isys_req_free,
 	.req_queue = ipu_isys_req_queue,
+#endif /* MEDIA_IOC_REQUEST_CMD */
 };
 
 static int isys_register_devices(struct ipu_isys *isys)
@@ -1142,16 +1158,17 @@ static int isys_probe(struct ipu_bus_device *adev)
 	struct ipu_mmu *mmu = dev_get_drvdata(adev->iommu);
 	struct ipu_isys *isys;
 	struct ipu_device *isp = adev->isp;
+#if defined(CONFIG_VIDEO_INTEL_IPU4) || defined(CONFIG_VIDEO_INTEL_IPU4P)
 	const u32 trace_size = IPU_ISYS_SHORT_PACKET_TRACE_BUFFER_SIZE;
 	dma_addr_t *trace_dma_addr;
-
-	const struct firmware *uninitialized_var(fw);
-	int rval = 0;
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
 	struct dma_attrs attrs;
 #else
 	unsigned long attrs;
 #endif
+#endif
+	const struct firmware *uninitialized_var(fw);
+	int rval = 0;
 
 	trace_printk("B|%d|TMWK\n", current->pid);
 
@@ -1276,6 +1293,7 @@ release_firmware:
 
 	if (isys->short_packet_source == IPU_ISYS_SHORT_PACKET_FROM_TUNIT) {
 		mutex_destroy(&isys->short_packet_tracing_mutex);
+#if defined(CONFIG_VIDEO_INTEL_IPU4) || defined(CONFIG_VIDEO_INTEL_IPU4P)
 		dma_free_attrs(&adev->dev, trace_size,
 			       isys->short_packet_trace_buffer,
 			       isys->short_packet_trace_buffer_dma_addr,
@@ -1283,6 +1301,7 @@ release_firmware:
 			       &attrs);
 #else
 			       attrs);
+#endif
 #endif
 	}
 
@@ -1466,10 +1485,6 @@ int isys_isr_one(struct ipu_bus_device *adev)
 
 		break;
 	case IPU_FW_ISYS_RESP_TYPE_FRAME_SOF:
-#ifdef IPU_TPG_SOF
-		if (pipe->tpg)
-			ipu_isys_tpg_sof_event(pipe->tpg);
-#endif
 		pipe->seq[pipe->seq_index].sequence =
 		    atomic_read(&pipe->sequence) - 1;
 		pipe->seq[pipe->seq_index].timestamp = ts;

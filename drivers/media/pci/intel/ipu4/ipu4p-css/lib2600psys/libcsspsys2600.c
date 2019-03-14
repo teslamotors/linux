@@ -257,6 +257,7 @@ int ipu_fw_psys_pg_get_protocol(
 }
 EXPORT_SYMBOL_GPL(ipu_fw_psys_pg_get_protocol);
 
+static int libcsspsys2600_init(void);
 int ipu_fw_psys_open(struct ipu_psys *psys)
 {
 	bool opened;
@@ -264,6 +265,8 @@ int ipu_fw_psys_open(struct ipu_psys *psys)
 
 	ipu_wrapper_init(PSYS_MMID, &psys->adev->dev,
 				psys->pdata->base);
+	/* When fw psys open, make sure csslib init first */
+	libcsspsys2600_init();
 
 	server_init->icache_prefetch_sp = psys->icache_prefetch_sp;
 	server_init->icache_prefetch_isp = psys->icache_prefetch_isp;
@@ -420,9 +423,13 @@ int ipu_fw_psys_get_program_manifest_by_process(
 }
 EXPORT_SYMBOL_GPL(ipu_fw_psys_get_program_manifest_by_process);
 
-static int __init libcsspsys2600_init(void)
+static int libcsspsys2600_init(void)
 {
 	int rval;
+	static bool csslib_init;
+
+	if (csslib_init)
+		return 0;
 
 	syscom_buffer = kzalloc(ia_css_sizeof_psys(NULL), GFP_KERNEL);
 	if (!syscom_buffer)
@@ -455,6 +462,7 @@ static int __init libcsspsys2600_init(void)
 					IPU_DEVICE_SP2600_CONTROL_REGS);
 	syscom_config->dmem_addr = ipu_device_cell_memory_address(SPC0,
 					IPU_DEVICE_SP2600_CONTROL_DMEM);
+	csslib_init = true;
 
 	return 0;
 

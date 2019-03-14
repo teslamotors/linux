@@ -86,6 +86,7 @@ static int send_export_msg(struct exported_sgt_info *exported,
 	struct hyper_dmabuf_req *req;
 	int op[MAX_NUMBER_OF_OPERANDS] = {0};
 	int ret, i;
+	long tmp;
 
 	/* now create request for importer via ring */
 	op[0] = exported->hid.id;
@@ -97,18 +98,20 @@ static int send_export_msg(struct exported_sgt_info *exported,
 		op[4] = pg_info->nents;
 		op[5] = pg_info->frst_ofst;
 		op[6] = pg_info->last_len;
-		op[7] = bknd_ops->share_pages(pg_info->pgs, exported->rdomid,
+		tmp = bknd_ops->share_pages(pg_info->pgs, exported->rdomid,
 					 pg_info->nents, &exported->refs_info);
-		if (op[7] < 0) {
+		if (tmp < 0) {
 			dev_err(hy_drv_priv->dev, "pages sharing failed\n");
-			return op[7];
+			return tmp;
 		}
+		op[7] = tmp & 0xffffffff;
+		op[8] = (tmp >> 32) & 0xffffffff;
 	}
 
-	op[8] = exported->sz_priv;
+	op[9] = exported->sz_priv;
 
 	/* driver/application specific private info */
-	memcpy(&op[9], exported->priv, op[8]);
+	memcpy(&op[10], exported->priv, op[9]);
 
 	req = kcalloc(1, sizeof(*req), GFP_KERNEL);
 
@@ -501,7 +504,7 @@ static int hyper_dmabuf_export_fd_ioctl(struct file *filp, void *data)
 	ret = 0;
 
 	dev_dbg(hy_drv_priv->dev,
-		"Found buffer gref %d off %d\n",
+		"Found buffer gref 0x%lx off %d\n",
 		imported->ref_handle, imported->frst_ofst);
 
 	dev_dbg(hy_drv_priv->dev,

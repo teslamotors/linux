@@ -3,7 +3,9 @@
 
 #include <linux/device.h>
 #include <linux/module.h>
+#if IS_ENABLED(CONFIG_VIDEO_CRLMODULE)
 #include <linux/crlmodule.h>
+#endif
 
 #include <media/media-entity.h>
 #include <media/v4l2-device.h>
@@ -57,6 +59,7 @@ static int ipu_isys_tpg_s_ctrl(struct v4l2_ctrl *ctrl)
 	case V4L2_CID_VBLANK:
 		writel(ctrl->val, tpg->base + MIPI_GEN_REG_SYNG_VBLANK_CYC);
 		break;
+#if IS_ENABLED(CONFIG_VIDEO_CRLMODULE)
 	case V4L2_CID_LINE_LENGTH_PIXELS:
 		if (ctrl->val > tpg->asd.ffmt[TPG_PAD_SOURCE][0].width)
 			writel(ctrl->val -
@@ -69,6 +72,7 @@ static int ipu_isys_tpg_s_ctrl(struct v4l2_ctrl *ctrl)
 				   tpg->asd.ffmt[TPG_PAD_SOURCE][0].height,
 				   tpg->base + MIPI_GEN_REG_SYNG_VBLANK_CYC);
 		break;
+#endif
 	case V4L2_CID_TEST_PATTERN:
 		writel(ctrl->val, tpg->base + MIPI_GEN_REG_TPG_MODE);
 		break;
@@ -118,6 +122,7 @@ static void ipu_isys_tpg_init_controls(struct v4l2_subdev *sd)
 {
 	struct ipu_isys_tpg *tpg = to_ipu_isys_tpg(sd);
 	int hblank;
+#if IS_ENABLED(CONFIG_VIDEO_CRLMODULE)
 	struct v4l2_ctrl_config cfg = {
 		.ops = &ipu_isys_tpg_ctrl_ops,
 		.type = V4L2_CTRL_TYPE_INTEGER,
@@ -127,6 +132,7 @@ static void ipu_isys_tpg_init_controls(struct v4l2_subdev *sd)
 		.qmenu = NULL,
 		.elem_size = 0,
 	};
+#endif
 
 	hblank = 1024;
 
@@ -138,6 +144,7 @@ static void ipu_isys_tpg_init_controls(struct v4l2_subdev *sd)
 					&ipu_isys_tpg_ctrl_ops,
 					V4L2_CID_VBLANK, 8, 65535, 1, 1024);
 
+#if IS_ENABLED(CONFIG_VIDEO_CRLMODULE)
 	cfg.id = V4L2_CID_LINE_LENGTH_PIXELS;
 	cfg.name = "Line Length Pixels";
 	cfg.def = 1024 + 4096;
@@ -149,6 +156,7 @@ static void ipu_isys_tpg_init_controls(struct v4l2_subdev *sd)
 	cfg.def = 1024 + 3072;
 	tpg->fll = v4l2_ctrl_new_custom(&tpg->asd.ctrl_handler, &cfg, NULL);
 
+#endif
 	tpg->pixel_rate = v4l2_ctrl_new_std(&tpg->asd.ctrl_handler,
 					    &ipu_isys_tpg_ctrl_ops,
 					    V4L2_CID_PIXEL_RATE, 0, 0, 1, 0);
@@ -237,10 +245,6 @@ static int subscribe_event(struct v4l2_subdev *sd, struct v4l2_fh *fh,
 			   struct v4l2_event_subscription *sub)
 {
 	switch (sub->type) {
-#ifdef IPU_TPG_SOF
-	case V4L2_EVENT_FRAME_SYNC:
-		return v4l2_event_subscribe(fh, sub, 10, NULL);
-#endif
 	case V4L2_EVENT_CTRL:
 		return v4l2_ctrl_subscribe_event(fh, sub);
 	default:

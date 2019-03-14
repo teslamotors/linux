@@ -1,3 +1,4 @@
+subdir-ccflags-$(CONFIG_HYPER_DMABUF) := -Werror
 TARGET_MODULE:=hyper_dmabuf
 
 # If we running by kernel building system

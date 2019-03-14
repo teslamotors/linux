@@ -19,6 +19,14 @@
 #define IPU_PCI_ID	0x5a19
 #endif
 
+/*
+ * IPU version definitions to reflect the IPU driver changes.
+ * Both ISYS and PSYS share the same version.
+ */
+#define IPU_MAJOR_VERSION 1
+#define IPU_MINOR_VERSION 0
+#define IPU_DRIVER_VERSION (IPU_MAJOR_VERSION << 16 | IPU_MINOR_VERSION)
+
 /* processing system frequency: 25Mhz x ratio, Legal values [8,32] */
 #define PS_FREQ_CTL_DEFAULT_RATIO	0x12
 
@@ -87,4 +95,7 @@ void ipu_configure_spc(struct ipu_device *isp,
 		       const struct ipu_hw_variants *hw_variant,
 		       int pkg_dir_idx, void __iomem *base, u64 *pkg_dir,
 		       dma_addr_t pkg_dir_dma_addr);
+int request_cpd_fw(const struct firmware **firmware_p, const char *name,
+		   struct device *device);
+
 #endif /* IPU_H */

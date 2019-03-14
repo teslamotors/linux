@@ -704,8 +704,13 @@ static void complete_current_workload(struct intel_gvt *gvt, int ring_id)
 
 	mutex_lock(&gvt->lock);
 	list_del_init(&workload->list);
-	if (workload->status == -EIO)
-		intel_vgpu_reset_execlist(vgpu, 1 << ring_id);
+	if (workload->status == -EIO) {
+		/* Once a request caused HW GPU hang, the pending workloads
+		 * from guests should be cleaned up here. GVT will notify
+		 * guests to do the vGPU reset job.
+		 */
+		clean_workloads(vgpu, 1 << ring_id);
+	}
 
 	workload->complete(workload);
 

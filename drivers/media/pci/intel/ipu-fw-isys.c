@@ -499,6 +499,10 @@ ipu_fw_isys_dump_stream_cfg(struct device *dev,
 			stream_cfg->output_pins[i].send_irq);
 		dev_dbg(dev, "Reserve compression %d\n",
 			stream_cfg->output_pins[i].reserve_compression);
+		dev_dbg(dev, "snoopable %d\n",
+			stream_cfg->output_pins[i].snoopable);
+		dev_dbg(dev, "sensor type %d\n",
+			stream_cfg->output_pins[i].sensor_type);
 		dev_dbg(dev, "----------------\n");
 	}
 
@@ -553,8 +557,5 @@ void ipu_fw_isys_dump_frame_buff_set(struct device *dev,
 #if defined(CONFIG_VIDEO_INTEL_IPU4) || defined(CONFIG_VIDEO_INTEL_IPU4P)
 	dev_dbg(dev, "send_irq_capture_ack 0x%x\n", buf->send_irq_capture_ack);
 	dev_dbg(dev, "send_irq_capture_done 0x%x\n", buf->send_irq_capture_done);
-#endif
-#ifdef IPU_OTF_SUPPORT
-	dev_dbg(dev, "frame_counter 0x%x\n", buf->frame_counter);
 #endif
 }

@@ -47,7 +47,6 @@
 		((a)->lrca == (b)->lrca))
 
 bool gvt_shadow_wa_ctx = false;
-static void clean_workloads(struct intel_vgpu *vgpu, unsigned long engine_mask);
 
 static int context_switch_events[] = {
 	[RCS] = RCS_AS_CONTEXT_SWITCH,
@@ -839,7 +838,7 @@ static void init_vgpu_execlist(struct intel_vgpu *vgpu, int ring_id)
 	vgpu_vreg(vgpu, ctx_status_ptr_reg) = ctx_status_ptr.dw;
 }
 
-static void clean_workloads(struct intel_vgpu *vgpu, unsigned long engine_mask)
+void clean_workloads(struct intel_vgpu *vgpu, unsigned long engine_mask)
 {
 	struct drm_i915_private *dev_priv = vgpu->gvt->dev_priv;
 	struct intel_engine_cs *engine;

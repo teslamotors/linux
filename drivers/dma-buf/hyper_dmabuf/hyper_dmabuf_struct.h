@@ -117,7 +117,7 @@ struct imported_sgt_info {
 	hyper_dmabuf_id_t hid; /* unique id for shared dmabuf imported */
 
 	/* hypervisor-specific handle to pages */
-	int ref_handle;
+	unsigned long ref_handle;
 
 	/* offset and size info of DMA_BUF */
 	int frst_ofst;

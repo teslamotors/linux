@@ -10,6 +10,7 @@
 #include <media/ipu-isys.h>
 #include <media/crlmodule.h>
 #include <media/ti964.h>
+#include <media/ti960.h>
 #include <media/max9286.h>
 #include "ipu.h"
 #include <media/dw9714.h>
@@ -115,6 +116,7 @@ static struct crlmodule_platform_data ov2740_pdata = {
 	.op_sys_clock = (uint64_t []){ 72000000 },
 	.module_name = "INT3474",
 	.id_string = "0x27 0x40",
+	.suffix = 'a',
 };
 
 static struct ipu_isys_csi2_config ov2740_csi2_cfg = {
@@ -132,6 +134,33 @@ static struct ipu_isys_subdev_info ov2740_crl_sd = {
 		.i2c_adapter_id = 2,
 	}
 };
+
+//for port 2
+static struct crlmodule_platform_data ov2740_pdata_2 = {
+	.xshutdown = GPIO_BASE + 67,
+	.lanes = OV2740_LANES,
+	.ext_clk = 19200000,
+	.op_sys_clock = (uint64_t []){ 72000000 },
+	.module_name = "INT3474-2",
+	.id_string = "0x27 0x40",
+	.suffix = 'b',
+};
+
+static struct ipu_isys_csi2_config ov2740_csi2_cfg_2 = {
+	.nlanes = OV2740_LANES,
+	.port = 4,
+};
+
+static struct ipu_isys_subdev_info ov2740_crl_sd_2 = {
+	.csi2 = &ov2740_csi2_cfg_2,
+	.i2c = {
+		.board_info = {
+			I2C_BOARD_INFO(CRLMODULE_NAME, OV2740_I2C_ADDRESS),
+			.platform_data = &ov2740_pdata_2,
+		},
+	.i2c_adapter_id = 4,
+	}
+};
 #endif
 
 #ifdef CONFIG_INTEL_IPU4_IMX185
@@ -146,6 +175,7 @@ static struct crlmodule_platform_data imx185_pdata = {
 					111375000, 222750000 },
 	.module_name = "IMX185",
 	.id_string = "0x1 0x85",
+	.suffix = 'a',
 };
 
 static struct ipu_isys_csi2_config imx185_csi2_cfg = {
@@ -177,6 +207,7 @@ static struct crlmodule_platform_data imx185_li_pdata = {
 					111375000, 222750000 },
 	.module_name = "IMX185",
 	.id_string = "0x1 0x85",
+	.suffix = 'b',
 };
 
 static struct ipu_isys_csi2_config imx185_li_csi2_cfg = {
@@ -208,6 +239,7 @@ static struct crlmodule_platform_data ar023z_pdata = {
 	.op_sys_clock = (uint64_t []){317250000},
 	.module_name = "AR023Z",
 	.id_string = "0x4401 0x64",
+	.suffix = 'a',
 };
 
 static struct ipu_isys_csi2_config ar023z_csi2_cfg = {
@@ -233,6 +265,7 @@ static struct crlmodule_platform_data ar023z_b_pdata = {
 	.op_sys_clock = (uint64_t []){317250000},
 	.module_name = "AR023Z",
 	.id_string = "0x4401 0x64",
+	.suffix = 'b',
 };
 
 static struct ipu_isys_csi2_config ar023z_b_csi2_cfg = {
@@ -264,6 +297,7 @@ static struct crlmodule_platform_data imx477_pdata_master = {
 	.op_sys_clock = (uint64_t []){600000000},
 	.module_name = "IMX477-MASTER",
 	.id_string = "0x4 0x77",
+	.suffix = 'a',
 };
 
 static struct ipu_isys_csi2_config imx477_csi2_cfg_master = {
@@ -289,6 +323,7 @@ static struct crlmodule_platform_data imx477_pdata_slave_1 = {
 	.op_sys_clock = (uint64_t []){600000000},
 	.module_name = "IMX477-SLAVE-1",
 	.id_string = "0x4 0x77",
+	.suffix = 'b',
 };
 
 static struct ipu_isys_csi2_config imx477_csi2_cfg_slave_1 = {
@@ -320,6 +355,7 @@ static struct crlmodule_platform_data imx274_pdata = {
 	.op_sys_clock = (uint64_t []){720000000},
 	.module_name = "IMX274",
 	.id_string = "0x6 0x9",
+	.suffix = 'a',
 };
 
 static struct ipu_isys_csi2_config imx274_csi2_cfg = {
@@ -345,6 +381,7 @@ static struct crlmodule_platform_data imx274_b_pdata = {
 	.op_sys_clock = (uint64_t []){720000000},
 	.module_name = "IMX274",
 	.id_string = "0x6 0x9",
+	.suffix = 'b',
 };
 
 static struct ipu_isys_csi2_config imx274_b_csi2_cfg = {
@@ -376,6 +413,7 @@ static struct crlmodule_platform_data imx290_pdata = {
 	.op_sys_clock = (uint64_t []){222750000, 445500000},
 	.module_name = "IMX290",
 	.id_string = "0x2 0x90",
+	.suffix = 'a',
 };
 
 static struct ipu_isys_csi2_config imx290_csi2_cfg = {
@@ -405,7 +443,8 @@ static struct crlmodule_platform_data ov13860_pdata = {
 	.lanes = OV13860_LANES,
 	.ext_clk = 24000000,
 	.op_sys_clock = (uint64_t []){ 600000000, 300000000},
-	.module_name = "OV13860"
+	.module_name = "OV13860",
+	.suffix = 'a',
 };
 
 static struct ipu_isys_csi2_config ov13860_csi2_cfg = {
@@ -437,6 +476,7 @@ static struct crlmodule_platform_data ov9281_pdata = {
 	.op_sys_clock = (uint64_t []){400000000},
 	.module_name = "OV9281",
 	.id_string = "0x92 0x81",
+	.suffix = 'a',
 };
 
 static struct ipu_isys_csi2_config ov9281_csi2_cfg = {
@@ -482,7 +522,8 @@ static struct crlmodule_platform_data adv7481_pdata = {
 	.lanes = ADV7481_LANES,
 	.ext_clk = 24000000,
 	.op_sys_clock = (uint64_t []){600000000},
-	.module_name = "ADV7481"
+	.module_name = "ADV7481",
+	.suffix = 'a',
 };
 
 static struct ipu_isys_csi2_config adv7481_csi2_cfg = {
@@ -515,7 +556,8 @@ static struct crlmodule_platform_data adv7481_eval_pdata = {
 	.lanes = ADV7481_LANES,
 	.ext_clk = 24000000,
 	.op_sys_clock = (uint64_t []){600000000},
-	.module_name = "ADV7481_EVAL"
+	.module_name = "ADV7481_EVAL",
+	.suffix = 'a',
 };
 
 static struct ipu_isys_csi2_config adv7481_eval_csi2_cfg = {
@@ -541,7 +583,8 @@ static struct crlmodule_platform_data adv7481b_eval_pdata = {
 	.lanes = ADV7481_LANES,
 	.ext_clk = 24000000,
 	.op_sys_clock = (uint64_t []){600000000},
-	.module_name = "ADV7481B_EVAL"
+	.module_name = "ADV7481B_EVAL",
+	.suffix = 'b',
 };
 
 static struct ipu_isys_csi2_config adv7481b_eval_csi2_cfg = {
@@ -649,7 +692,7 @@ static struct crlmodule_platform_data ov10635_pdata = {
 	 * The number here stands for which GPIO to connect with.
 	 * 1 means to connect sensor xshutdown to GPIO1
 	 */
-	.xshutdown = 1,
+	.xshutdown = 0,
 };
 #endif
 
@@ -704,6 +747,7 @@ static struct ti964_subdev_info ti964_subdevs[] = {
 		.i2c_adapter_id = TI964_I2C_ADAPTER,
 		.rx_port = 0,
 		.phy_i2c_addr = OV10635_I2C_PHY_ADDR,
+		.suffix = 'a',
 	},
 	{
 		.board_info = {
@@ -714,6 +758,7 @@ static struct ti964_subdev_info ti964_subdevs[] = {
 		.i2c_adapter_id = TI964_I2C_ADAPTER,
 		.rx_port = 1,
 		.phy_i2c_addr = OV10635_I2C_PHY_ADDR,
+		.suffix = 'b',
 	},
 	{
 		.board_info = {
@@ -724,6 +769,7 @@ static struct ti964_subdev_info ti964_subdevs[] = {
 		.i2c_adapter_id = TI964_I2C_ADAPTER,
 		.rx_port = 2,
 		.phy_i2c_addr = OV10635_I2C_PHY_ADDR,
+		.suffix = 'c',
 	},
 	{
 		.board_info = {
@@ -734,6 +780,7 @@ static struct ti964_subdev_info ti964_subdevs[] = {
 		.i2c_adapter_id = TI964_I2C_ADAPTER,
 		.rx_port = 3,
 		.phy_i2c_addr = OV10635_I2C_PHY_ADDR,
+		.suffix = 'd',
 	},
 #endif
 #ifdef CONFIG_INTEL_IPU4_OV10640
@@ -746,6 +793,7 @@ static struct ti964_subdev_info ti964_subdevs[] = {
 		.i2c_adapter_id = TI964_I2C_ADAPTER,
 		.rx_port = 0,
 		.phy_i2c_addr = OV10640_I2C_PHY_ADDR,
+		.suffix = 'a',
 	},
 	{
 		.board_info = {
@@ -756,6 +804,7 @@ static struct ti964_subdev_info ti964_subdevs[] = {
 		.i2c_adapter_id = TI964_I2C_ADAPTER,
 		.rx_port = 1,
 		.phy_i2c_addr = OV10640_I2C_PHY_ADDR,
+		.suffix = 'b',
 	},
 	{
 		.board_info = {
@@ -766,6 +815,7 @@ static struct ti964_subdev_info ti964_subdevs[] = {
 		.i2c_adapter_id = TI964_I2C_ADAPTER,
 		.rx_port = 2,
 		.phy_i2c_addr = OV10640_I2C_PHY_ADDR,
+		.suffix = 'c',
 	},
 	{
 		.board_info = {
@@ -776,6 +826,7 @@ static struct ti964_subdev_info ti964_subdevs[] = {
 		.i2c_adapter_id = TI964_I2C_ADAPTER,
 		.rx_port = 3,
 		.phy_i2c_addr = OV10640_I2C_PHY_ADDR,
+		.suffix = 'd',
 	},
 #endif
 #ifdef CONFIG_INTEL_IPU4_MAGNA
@@ -788,6 +839,7 @@ static struct ti964_subdev_info ti964_subdevs[] = {
 		.i2c_adapter_id = TI964_I2C_ADAPTER,
 		.rx_port = 0,
 		.phy_i2c_addr = MAGNA_PHY_ADDR,
+		.suffix = 'a',
 	},
 #endif
 };
@@ -803,6 +855,7 @@ static struct ti964_subdev_info ti964_subdevs_2[] = {
 		.i2c_adapter_id = TI964_I2C_ADAPTER_2,
 		.rx_port = 0,
 		.phy_i2c_addr = OV10635_I2C_PHY_ADDR,
+		.suffix = 'e',
 	},
 	{
 		.board_info = {
@@ -813,6 +866,7 @@ static struct ti964_subdev_info ti964_subdevs_2[] = {
 		.i2c_adapter_id = TI964_I2C_ADAPTER_2,
 		.rx_port = 1,
 		.phy_i2c_addr = OV10635_I2C_PHY_ADDR,
+		.suffix = 'f',
 	},
 	{
 		.board_info = {
@@ -823,6 +877,7 @@ static struct ti964_subdev_info ti964_subdevs_2[] = {
 		.i2c_adapter_id = TI964_I2C_ADAPTER_2,
 		.rx_port = 2,
 		.phy_i2c_addr = OV10635_I2C_PHY_ADDR,
+		.suffix = 'g',
 	},
 	{
 		.board_info = {
@@ -833,6 +888,7 @@ static struct ti964_subdev_info ti964_subdevs_2[] = {
 		.i2c_adapter_id = TI964_I2C_ADAPTER_2,
 		.rx_port = 3,
 		.phy_i2c_addr = OV10635_I2C_PHY_ADDR,
+		.suffix = 'h',
 	},
 #endif
 #ifdef CONFIG_INTEL_IPU4_OV10640
@@ -845,6 +901,7 @@ static struct ti964_subdev_info ti964_subdevs_2[] = {
 		.i2c_adapter_id = TI964_I2C_ADAPTER_2,
 		.rx_port = 0,
 		.phy_i2c_addr = OV10640_I2C_PHY_ADDR,
+		.suffix = 'e',
 	},
 	{
 		.board_info = {
@@ -855,6 +912,7 @@ static struct ti964_subdev_info ti964_subdevs_2[] = {
 		.i2c_adapter_id = TI964_I2C_ADAPTER_2,
 		.rx_port = 1,
 		.phy_i2c_addr = OV10640_I2C_PHY_ADDR,
+		.suffix = 'f',
 	},
 	{
 		.board_info = {
@@ -865,6 +923,7 @@ static struct ti964_subdev_info ti964_subdevs_2[] = {
 		.i2c_adapter_id = TI964_I2C_ADAPTER_2,
 		.rx_port = 2,
 		.phy_i2c_addr = OV10640_I2C_PHY_ADDR,
+		.suffix = 'g',
 	},
 	{
 		.board_info = {
@@ -875,6 +934,7 @@ static struct ti964_subdev_info ti964_subdevs_2[] = {
 		.i2c_adapter_id = TI964_I2C_ADAPTER_2,
 		.rx_port = 3,
 		.phy_i2c_addr = OV10640_I2C_PHY_ADDR,
+		.suffix = 'h',
 	},
 #endif
 };
@@ -883,6 +943,7 @@ static struct ti964_pdata ti964_pdata = {
 	.subdev_info = ti964_subdevs,
 	.subdev_num = ARRAY_SIZE(ti964_subdevs),
 	.reset_gpio = GPIO_BASE + 63,
+	.suffix = 'a',
 };
 
 static struct ipu_isys_subdev_info ti964_sd = {
@@ -901,6 +962,7 @@ static struct ti964_pdata ti964_pdata_2 = {
 	.subdev_info = ti964_subdevs_2,
 	.subdev_num = ARRAY_SIZE(ti964_subdevs_2),
 	.reset_gpio = GPIO_BASE + 66,
+	.suffix = 'b',
 };
 
 static struct ipu_isys_subdev_info ti964_sd_2 = {
@@ -927,6 +989,7 @@ static struct crlmodule_platform_data ov2775_pdata = {
 	.op_sys_clock = (uint64_t []){ 480000000 },
 	.module_name = "OV2775",
 	.id_string = "0x27 0x70",
+	.suffix = 'a',
 	/*
 	 * The pin number of xshutdown will be determined
 	 * and replaced inside TI960 driver.
@@ -949,6 +1012,137 @@ static struct ipu_isys_subdev_info ov2775_crl_sd = {
 			.platform_data = &ov2775_pdata,
 		},
 		.i2c_adapter_id = OV2775_I2C_ADAPTER,
+	}
+};
+#endif
+
+#ifdef CONFIG_INTEL_IPU4_OX03A10
+#define OX03A10_LANES	4
+#define OX03A10_I2C_PHY_ADDR   0x6c
+#define OX03A10A_I2C_ADDRESS   0x30
+#define OX03A10B_I2C_ADDRESS   0x31
+
+#define OX03A10A_SER_ADDRESS   0x58
+#define OX03A10B_SER_ADDRESS   0x59
+
+static struct crlmodule_platform_data ox03a10_pdata = {
+	.lanes = OX03A10_LANES,
+	.ext_clk = 27000000,
+	.op_sys_clock = (uint64_t[]){ 87750000 },
+	.module_name = "OX03A10",
+	.id_string = "0x58 0x3 0x41",
+	.xshutdown = 1,
+};
+#endif
+
+#if IS_ENABLED(CONFIG_VIDEO_TI960)
+#define TI960_I2C_ADAPTER	2
+#define TI960_I2C_ADAPTER_2	7
+#define TI960_LANES	4
+
+static struct ipu_isys_csi2_config ti960_csi2_cfg = {
+	.nlanes = TI960_LANES,
+	.port = 0,
+};
+
+static struct ipu_isys_csi2_config ti960_csi2_cfg_2 = {
+	.nlanes = TI960_LANES,
+	.port = 4,
+};
+
+static struct ti960_subdev_info ti960_subdevs[] = {
+#ifdef CONFIG_INTEL_IPU4_OX03A10
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = OX03A10A_I2C_ADDRESS,
+			.platform_data = &ox03a10_pdata,
+		},
+		.i2c_adapter_id = TI960_I2C_ADAPTER,
+		.rx_port = 0,
+		.phy_i2c_addr = OX03A10_I2C_PHY_ADDR,
+		.ser_alias = OX03A10A_SER_ADDRESS,
+		.suffix = 'a',
+	},
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = OX03A10B_I2C_ADDRESS,
+			.platform_data = &ox03a10_pdata,
+		},
+		.i2c_adapter_id = TI960_I2C_ADAPTER,
+		.rx_port = 1,
+		.phy_i2c_addr = OX03A10_I2C_PHY_ADDR,
+		.ser_alias = OX03A10B_SER_ADDRESS,
+		.suffix = 'b',
+	},
+#endif
+};
+
+static struct ti960_subdev_info ti960_subdevs_2[] = {
+#ifdef CONFIG_INTEL_IPU4_OX03A10
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = OX03A10A_I2C_ADDRESS,
+			.platform_data = &ox03a10_pdata,
+		},
+		.i2c_adapter_id = TI960_I2C_ADAPTER_2,
+		.rx_port = 0,
+		.phy_i2c_addr = OX03A10_I2C_PHY_ADDR,
+		.ser_alias = OX03A10A_SER_ADDRESS,
+		.suffix = 'e',
+	},
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = OX03A10B_I2C_ADDRESS,
+			.platform_data = &ox03a10_pdata,
+		},
+		.i2c_adapter_id = TI960_I2C_ADAPTER_2,
+		.rx_port = 1,
+		.phy_i2c_addr = OX03A10_I2C_PHY_ADDR,
+		.ser_alias = OX03A10B_SER_ADDRESS,
+		.suffix = 'f',
+	},
+#endif
+};
+
+static struct ti960_pdata ti960_pdata = {
+	.subdev_info = ti960_subdevs,
+	.subdev_num = ARRAY_SIZE(ti960_subdevs),
+	.reset_gpio = GPIO_BASE + 63,
+	.suffix = 'a',
+};
+
+static struct ipu_isys_subdev_info ti960_sd = {
+	.csi2 = &ti960_csi2_cfg,
+	.i2c = {
+		.board_info = {
+			 .type = "ti960",
+			 .addr = TI960_I2C_ADDRESS,
+			 .platform_data = &ti960_pdata,
+		},
+		.i2c_adapter_id = TI960_I2C_ADAPTER,
+	}
+};
+
+static struct ti960_pdata ti960_pdata_2 = {
+	.subdev_info = ti960_subdevs_2,
+	.subdev_num = ARRAY_SIZE(ti960_subdevs_2),
+	.reset_gpio = GPIO_BASE + 66,
+	.suffix = 'b',
+};
+
+static struct ipu_isys_subdev_info ti960_sd_2 = {
+	.csi2 = &ti960_csi2_cfg_2,
+	.i2c = {
+		.board_info = {
+			 .type = "ti960",
+			 .addr = TI960_I2C_ADDRESS,
+			 .platform_data = &ti960_pdata_2,
+		},
+		.i2c_adapter_id = TI960_I2C_ADAPTER_2,
 	}
 };
 #endif
@@ -987,6 +1181,7 @@ static struct max9286_subdev_i2c_info max9286_subdevs[] = {
 				.platform_data = &ar0231at_pdata,
 			},
 			.i2c_adapter_id = DS_MAX9286_I2C_ADAPTER,
+			.suffix = 'a',
 		},
 		{
 			.board_info = {
@@ -995,6 +1190,7 @@ static struct max9286_subdev_i2c_info max9286_subdevs[] = {
 				.platform_data = &ar0231at_pdata,
 			},
 			.i2c_adapter_id = DS_MAX9286_I2C_ADAPTER,
+			.suffix = 'b',
 		},
 		{
 			.board_info = {
@@ -1003,6 +1199,7 @@ static struct max9286_subdev_i2c_info max9286_subdevs[] = {
 				.platform_data = &ar0231at_pdata,
 			},
 			.i2c_adapter_id = DS_MAX9286_I2C_ADAPTER,
+			.suffix = 'c',
 		},
 		{
 			.board_info = {
@@ -1011,6 +1208,7 @@ static struct max9286_subdev_i2c_info max9286_subdevs[] = {
 				.platform_data = &ar0231at_pdata,
 			},
 			.i2c_adapter_id = DS_MAX9286_I2C_ADAPTER,
+			.suffix = 'd',
 		},
 #endif
 };
@@ -1019,6 +1217,7 @@ static struct max9286_pdata max9286_pdata = {
 	.subdev_info = max9286_subdevs,
 	.subdev_num = ARRAY_SIZE(max9286_subdevs),
 	.reset_gpio = GPIO_BASE + 63,
+	.suffix = 'a',
 };
 
 static struct ipu_isys_subdev_info max9286_sd = {
@@ -1040,6 +1239,7 @@ static struct ipu_isys_subdev_info max9286_sd = {
  */
 static struct ipu_isys_clk_mapping clk_mapping[] = {
 	{ CLKDEV_INIT("2-0036", NULL, NULL), "OSC_CLK_OUT0" },
+	{ CLKDEV_INIT("4-0036", NULL, NULL), "OSC_CLK_OUT1" },
 	{ CLKDEV_INIT("2-001a", NULL, NULL), "OSC_CLK_OUT0" },
 	{ CLKDEV_INIT("4-001a", NULL, NULL), "OSC_CLK_OUT1" },
 	{ CLKDEV_INIT("2-0010", NULL, NULL), "OSC_CLK_OUT0" },
@@ -1064,6 +1264,7 @@ static struct ipu_isys_subdev_pdata pdata = {
 #endif
 #ifdef CONFIG_INTEL_IPU4_OV2740
 		&ov2740_crl_sd,
+		&ov2740_crl_sd_2,
 #endif
 #ifdef CONFIG_INTEL_IPU4_IMX185
 		&imx185_crl_sd,
@@ -1109,6 +1310,10 @@ static struct ipu_isys_subdev_pdata pdata = {
 #if IS_ENABLED(CONFIG_VIDEO_TI964)
 		&ti964_sd,
 		&ti964_sd_2,
+#endif
+#if IS_ENABLED(CONFIG_VIDEO_TI960)
+		&ti960_sd,
+		&ti960_sd_2,
 #endif
 #ifdef CONFIG_INTEL_IPU4_OV2775
 		&ov2775_crl_sd,

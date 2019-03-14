@@ -948,43 +948,46 @@ struct v4l2_subdev_routing32 {
 	__u32 reserved[5];
 };
 
-static int get_v4l2_subdev_routing(struct v4l2_subdev_routing *kp,
+static int get_v4l2_subdev_routing(struct v4l2_subdev_routing __user *kp,
 				   struct v4l2_subdev_routing32 __user *up)
 {
 	compat_caddr_t p;
+	u32 num_routes;
 
 	if (!access_ok(VERIFY_READ, up, sizeof(*up)) ||
 	    get_user(p, &up->routes) ||
-	    get_user(kp->num_routes, &up->num_routes) ||
+	    put_user(compat_ptr(p), &kp->routes) ||
+	    get_user(num_routes, &kp->num_routes) ||
+	    assign_in_user(&kp->num_routes, &up->num_routes) ||
 	    !access_ok(VERIFY_READ, up->reserved, sizeof(*up->reserved)) ||
-	    kp->num_routes > U32_MAX / sizeof(*kp->routes))
+	    num_routes > U32_MAX / sizeof(*kp->routes))
 		return -EFAULT;
 
-	kp->routes = compat_ptr(p);
-
-	if (!access_ok(VERIFY_READ, kp->routes,
-		       kp->num_routes * (u32)sizeof(*kp->routes)))
+	if (!access_ok(VERIFY_READ, compat_ptr(p),
+		       num_routes * (u32)sizeof(*kp->routes)))
 		return -EFAULT;
 
 	return 0;
 }
 
-static int put_v4l2_subdev_routing(struct v4l2_subdev_routing *kp,
+static int put_v4l2_subdev_routing(struct v4l2_subdev_routing __user *kp,
 				   struct v4l2_subdev_routing32 __user *up)
 {
 	struct v4l2_subdev_route __user *uroutes;
 	compat_caddr_t p;
+	u32 num_routes;
 
 	if (!access_ok(VERIFY_WRITE, up, sizeof(*up)) ||
 	    get_user(p, &up->routes) ||
-	    put_user(kp->num_routes, &up->num_routes) ||
+	    get_user(num_routes, &kp->num_routes) ||
+	    assign_in_user(&up->num_routes, &kp->num_routes) ||
 	    !access_ok(VERIFY_WRITE, up->reserved, sizeof(*up->reserved)))
 		return -EFAULT;
 
 	uroutes = compat_ptr(p);
 
 	if (!access_ok(VERIFY_WRITE, uroutes,
-		       kp->num_routes * sizeof(*kp->routes)))
+		       num_routes * sizeof(*kp->routes)))
 		return -EFAULT;
 
 	return 0;
@@ -1268,8 +1271,9 @@ static long do_video_ioctl(struct file *file, unsigned int cmd, unsigned long ar
 	case VIDIOC_SUBDEV_G_ROUTING:
 	case VIDIOC_SUBDEV_S_ROUTING:
 		err = alloc_userspace(sizeof(struct v4l2_subdev_routing), 0, &up_native);
-                if (!err)
-                        err = put_v4l2_subdev_routing(up_native, up);
+		if (!err)
+			if (put_v4l2_subdev_routing(up_native, up))
+				err = -EFAULT;
 		break;
 	}
 	if (err)

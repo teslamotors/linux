@@ -73,8 +73,8 @@
  *
  * Returns refid of top level page.
  */
-int xen_be_share_pages(struct page **pages, int domid, int nents,
-		       void **refs_info)
+long xen_be_share_pages(struct page **pages, int domid, int nents,
+		        void **refs_info)
 {
 	grant_ref_t lvl3_gref;
 	grant_ref_t *lvl2_table;

@@ -180,10 +180,6 @@ struct ipu_fw_isys_resp_info_abi *ipu_fw_isys_get_resp(
 	response->process_group_light.addr =
 		apiresp.process_group_light.addr;
 	response->acc_id = apiresp.acc_id;
-#ifdef IPU_OTF_SUPPORT
-	response->frame_counter = apiresp.frame_counter;
-	response->written_direct = apiresp.written_direct;
-#endif
 
 	return response;
 }
@@ -250,9 +246,6 @@ static void output_pin_info_abi_to_api(
 	api->payload_buf_size = abi->payload_buf_size;
 	api->send_irq = abi->send_irq;
 	api->ft = abi->ft;
-#ifdef IPU_OTF_SUPPORT
-	api->link_id = abi->link_id;
-#endif
 	api->reserve_compression = abi->reserve_compression;
 }
 

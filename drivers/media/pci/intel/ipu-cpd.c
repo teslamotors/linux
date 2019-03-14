@@ -7,8 +7,10 @@
 #include "ipu.h"
 #include "ipu-cpd.h"
 
+#ifdef CONFIG_VIDEO_INTEL_IPU_FW_LIB
 #include <ia_css_fw_pkg_release.h>
 
+#endif
 /* 15 entries + header*/
 #define MAX_PKG_DIR_ENT_CNT		16
 /* 2 qword per entry/header */
@@ -46,10 +48,12 @@
 #define ipu_cpd_get_metadata(cpd) ipu_cpd_get_entry(cpd, CPD_METADATA_IDX)
 #define ipu_cpd_get_moduledata(cpd) ipu_cpd_get_entry(cpd, CPD_MODULEDATA_IDX)
 
+#ifdef CONFIG_VIDEO_INTEL_IPU_FW_LIB
 static bool fw_version_check = true;
 module_param(fw_version_check, bool, 0444);
 MODULE_PARM_DESC(fw_version_check, "enable/disable checking firmware version");
 
+#endif
 static const struct ipu_cpd_metadata_cmpnt *
 ipu_cpd_metadata_get_cmpnt(struct ipu_device *isp,
 			   const void *metadata,
@@ -349,6 +353,7 @@ static int ipu_cpd_validate_moduledata(struct ipu_device *isp,
 		return -EINVAL;
 	}
 
+#ifdef CONFIG_VIDEO_INTEL_IPU_FW_LIB
 	if (fw_version_check && mod_hdr->fw_pkg_date != IA_CSS_FW_PKG_RELEASE) {
 		dev_err(&isp->pdev->dev,
 			"Moduledata and library version mismatch (%x != %x)\n",
@@ -361,6 +366,9 @@ static int ipu_cpd_validate_moduledata(struct ipu_device *isp,
 		 mod_hdr->fw_pkg_date, IA_CSS_FW_PKG_RELEASE);
 
 	dev_info(&isp->pdev->dev, "CSS release: %x\n", IA_CSS_FW_PKG_RELEASE);
+#else
+	dev_info(&isp->pdev->dev, "FW version: %x\n", mod_hdr->fw_pkg_date);
+#endif
 	rval = ipu_cpd_validate_cpd(isp, moduledata +
 				    mod_hdr->hdr_len,
 				    moduledata_size -

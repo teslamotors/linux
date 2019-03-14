@@ -372,6 +372,7 @@ struct ipu_bus_device *ipu_bus_add_device(struct pci_dev *pdev,
 				      IPU_MMU_ADDRESS_BITS :
 				      IPU_MMU_ADDRESS_BITS_NON_SECURE);
 	adev->dev.dma_mask = &adev->dma_mask;
+	adev->dev.coherent_dma_mask = adev->dma_mask;
 	adev->iommu = iommu;
 	adev->ctrl = ctrl;
 	adev->pdata = pdata;

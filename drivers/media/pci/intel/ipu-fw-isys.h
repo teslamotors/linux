@@ -16,7 +16,11 @@
 #define IPU_MAX_OPINS ((IPU_MAX_IPINS) + 2)
 
 /* Max number of supported virtual streams */
+#if defined(CONFIG_VIDEO_INTEL_IPU4) || defined(CONFIG_VIDEO_INTEL_IPU4P)
 #define IPU_STREAM_ID_MAX 8
+#else
+#define IPU_STREAM_ID_MAX 16
+#endif
 
 /* Aligned with the approach of having one dedicated per stream */
 #define IPU_N_MAX_MSG_SEND_QUEUES (IPU_STREAM_ID_MAX)
@@ -541,6 +545,8 @@ struct ipu_fw_isys_output_pin_info_abi {
 	u8 ft;
 	u8 reserved;
 	u8 reserve_compression;
+	u8 snoopable;
+	u32 sensor_type;
 };
 
 /**
@@ -563,12 +569,6 @@ struct ipu_fw_isys_param_pin_abi {
  *		     (enum ipu_fw_isys_mipi_store_mode)
  * @bits_per_pix: native bits per pixel
  * @mapped_dt: actual data type from sensor
-#if !defined(CONFIG_VIDEO_INTEL_IPU4) && !defined(CONFIG_VIDEO_INTEL_IPU4P)
- * @crop_first_and_last_lines    Control whether to crop the
- *                              first and last line of the
- *                              input image. Crop done by HW
- *                              device.
-#endif
  */
 struct ipu_fw_isys_input_pin_info_abi {
 	struct ipu_fw_isys_resolution_abi input_res;
@@ -576,9 +576,6 @@ struct ipu_fw_isys_input_pin_info_abi {
 	u8 mipi_store_mode;
 	u8 bits_per_pix;
 	u8 mapped_dt;
-#if !defined(CONFIG_VIDEO_INTEL_IPU4) && !defined(CONFIG_VIDEO_INTEL_IPU4P)
-	u8 crop_first_and_last_lines;
-#endif
 };
 
 /**

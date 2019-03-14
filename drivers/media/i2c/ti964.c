@@ -343,10 +343,11 @@ static int ti964_get_frame_desc(struct v4l2_subdev *sd,
 	int i;
 
 	desc->type = V4L2_MBUS_FRAME_DESC_TYPE_CSI2;
+	desc->num_entries = min_t(int, va->nstreams, V4L2_FRAME_DESC_ENTRY_MAX);
 
-	for (i = 0; i < min_t(int, va->nstreams, desc->num_entries); i++) {
+	for (i = 0; i < desc->num_entries; i++) {
 		struct v4l2_mbus_framefmt *ffmt =
-			&va->ffmts[i][TI964_PAD_SOURCE];
+			&va->ffmts[TI964_PAD_SOURCE][i];
 		const struct ti964_csi_data_format *csi_format =
 			ti964_validate_csi_data_format(ffmt->code);
 
@@ -457,6 +458,7 @@ static int ti964_open(struct v4l2_subdev *subdev,
 static int ti964_registered(struct v4l2_subdev *subdev)
 {
 	struct ti964 *va = to_ti964(subdev);
+	struct i2c_client *client = v4l2_get_subdevdata(subdev);
 	int i, j, k, l, rval;
 
 	for (i = 0, k = 0; i < va->pdata->subdev_num; i++) {
@@ -465,7 +467,6 @@ static int ti964_registered(struct v4l2_subdev *subdev)
 		struct crlmodule_platform_data *pdata =
 			(struct crlmodule_platform_data *)
 			info->board_info.platform_data;
-		struct i2c_adapter *adapter;
 
 		if (k >= va->nsinks)
 			break;
@@ -484,6 +485,9 @@ static int ti964_registered(struct v4l2_subdev *subdev)
 
 		/* If 0 is xshutdown, then 1 would be FSIN, vice versa. */
 		va->sub_devs[k].fsin_gpio = 1 - va->subdev_pdata[k].xshutdown;
+
+		/* Spin sensor subdev suffix name */
+		va->subdev_pdata[k].suffix = info->suffix;
 
 		/*
 		 * Change the gpio value to have xshutdown
@@ -511,11 +515,10 @@ static int ti964_registered(struct v4l2_subdev *subdev)
 		if (rval)
 			return rval;
 
-		adapter = i2c_get_adapter(info->i2c_adapter_id);
+		/* aggre and subdves share the same i2c bus */
 		va->sub_devs[k].sd = v4l2_i2c_new_subdev_board(
-			va->sd.v4l2_dev, adapter,
+			va->sd.v4l2_dev, client->adapter,
 			&info->board_info, 0);
-		i2c_put_adapter(adapter);
 		if (!va->sub_devs[k].sd) {
 			dev_err(va->sd.dev,
 				"can't create new i2c subdev %d-%04x\n",
@@ -1024,8 +1027,8 @@ static int ti964_register_subdev(struct ti964 *va)
 	struct i2c_client *client = v4l2_get_subdevdata(&va->sd);
 
 	v4l2_subdev_init(&va->sd, &ti964_sd_ops);
-	snprintf(va->sd.name, sizeof(va->sd.name), "TI964 %d-%4.4x",
-		i2c_adapter_id(client->adapter), client->addr);
+	snprintf(va->sd.name, sizeof(va->sd.name), "TI964 %c",
+		 va->pdata->suffix);
 
 	va->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE |
 			V4L2_SUBDEV_FL_HAS_SUBSTREAMS;

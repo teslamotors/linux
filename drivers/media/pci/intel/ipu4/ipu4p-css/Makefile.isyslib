@@ -10,11 +10,6 @@ IPU_ISYSLIB_ROOT = $(srcpath)/$(src)/$(IPU_ISYSLIB_ROOT_REL)
 include $(srcpath)/$(src)/ipu4p-css/Makefile.ipu4pisys_inc
 include $(srcpath)/$(src)/ipu4p-css/Makefile.ipu4pisys_src
 
-#
-# copy wrapper here only for isys usage, psys would use the original one
-#
-$(shell cp -f $(srcpath)/$(src)/../ipu-wrapper.c $(srcpath)/$(src)/ipu4p-css/ipu-wrapper.c)
-
 intel-ipu4p-isys-csslib-objs := \
 		ipu4p-css/libintel-ipu4p.o \
 		$(IPU_ISYSLIB_SRC)
