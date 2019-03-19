@@ -223,8 +223,12 @@ u64 shared_memory_alloc(unsigned int mmid, size_t bytes)
 	struct my_css_memory_buffer_item *buf;
 	unsigned long flags;
 
-	if (mine)
-		dev_dbg(mine->dev, "%s: in, size: %zu\n", __func__, bytes);
+	if (!mine) {
+                pr_err("Invalid mem subsystem, return. mmid=%d", mmid);
+                return 0;
+        }
+
+	dev_dbg(mine->dev, "%s: in, size: %zu\n", __func__, bytes);
 
 	if (!bytes)
 		return (unsigned long)&alloc_cookie;
@@ -314,7 +318,7 @@ u32 shared_memory_map(unsigned int ssid, unsigned int mmid, u64 addr)
 
 	if (!mine) {
 		pr_err("Invalid mem subsystem, return NULL. mmid=%d", mmid);
-		return NULL;
+		return 0;
 	}
 
 	if ((void *)(unsigned long)addr == &alloc_cookie)
@@ -402,9 +406,14 @@ void shared_memory_store(unsigned int mmid, u64 addr, const void *data,
 			"access: %s: Enter addr = 0x%lx bytes = 0x%zx\n", __func__,
 			(unsigned long)addr, bytes);
 
-	if (!data && get_mem_sub_system(mmid)) {
-		dev_err(get_mem_sub_system(mmid)->dev,
-			"%s: data ptr is null\n", __func__);
+	if (!data) {
+		if (get_mem_sub_system(mmid))
+			dev_err(get_mem_sub_system(mmid)->dev,
+				"%s: data ptr is null\n", __func__);
+		else
+			pr_err("data ptr is null. mmid=%d\n", mmid);
+
+		return;
 	} else {
 		const u8 *pdata = data;
 		u8 *paddr = (u8 *)(unsigned long)addr;
@@ -498,10 +507,14 @@ void shared_memory_load(unsigned int mmid, u64 addr, void *data, size_t bytes)
 			"access: %s: Enter addr = 0x%lx bytes = 0x%zx\n", __func__,
 			(unsigned long)addr, bytes);
 
-	if (!data && get_mem_sub_system(mmid)) {
-		dev_err(get_mem_sub_system(mmid)->dev,
-			"%s: data ptr is null\n", __func__);
+	if (!data) {
+		if (get_mem_sub_system(mmid))
+			dev_err(get_mem_sub_system(mmid)->dev,
+				"%s: data ptr is null\n", __func__);
+		else
+			pr_err("data ptr is null. mmid=%d\n", mmid);
 
+		return;
 	} else {
 		u8 *pdata = data;
 		u8 *paddr = (u8 *)(unsigned long)addr;
