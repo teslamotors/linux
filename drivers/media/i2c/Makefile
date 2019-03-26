@@ -102,6 +102,7 @@ obj-$(CONFIG_VIDEO_VCM_STUB) += vcm_stub.o
 obj-$(CONFIG_VIDEO_CRLMODULE) += crlmodule/
 obj-$(CONFIG_VIDEO_CRLMODULE_LITE) += crlmodule-lite/
 obj-$(CONFIG_VIDEO_TI964) += ti964.o
+ti960-objs	:=	ti953-ser.o ti960-des.o
 obj-$(CONFIG_VIDEO_TI960) += ti960.o
 obj-$(CONFIG_VIDEO_LC898122) += lc898122/
 obj-$(CONFIG_VIDEO_AS3638) += as3638.o
