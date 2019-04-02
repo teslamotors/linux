@@ -372,7 +372,7 @@ static int tpm_request_locality(struct tpm_chip *chip, unsigned int flags)
 {
 	int rc;
 
-	if (flags & __TPM_TRANSMIT_RAW)
+	if (flags & TPM_TRANSMIT_RAW)
 		return 0;
 
 	if (!chip->ops->request_locality)
@@ -391,7 +391,7 @@ static void tpm_relinquish_locality(struct tpm_chip *chip, unsigned int flags)
 {
 	int rc;
 
-	if (flags & __TPM_TRANSMIT_RAW)
+	if (flags & TPM_TRANSMIT_RAW)
 		return 0;
 
 	if (!chip->ops->relinquish_locality)
@@ -406,7 +406,7 @@ static void tpm_relinquish_locality(struct tpm_chip *chip, unsigned int flags)
 
 static int tpm_cmd_ready(struct tpm_chip *chip, unsigned int flags)
 {
-	if (flags & __TPM_TRANSMIT_RAW)
+	if (flags & TPM_TRANSMIT_RAW)
 		return 0;
 
 	if (!chip->ops->cmd_ready)
@@ -417,7 +417,7 @@ static int tpm_cmd_ready(struct tpm_chip *chip, unsigned int flags)
 
 static int tpm_go_idle(struct tpm_chip *chip, unsigned int flags)
 {
-	if (flags & __TPM_TRANSMIT_RAW)
+	if (flags & TPM_TRANSMIT_RAW)
 		return 0;
 
 	if (!chip->ops->go_idle)
