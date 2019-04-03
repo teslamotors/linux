@@ -413,15 +413,7 @@ static int isys_register_ext_subdev(struct ipu_isys *isys,
 	int rval;
 	int bus;
 
-#ifdef I2C_WA
-	bus = ipu_get_i2c_bus_id(sd_info->i2c.i2c_adapter_id);
-	if (bus < 0) {
-		dev_err(&isys->adev->dev, "Failed to find adapter!");
-		return -ENOENT;
-	}
-#else
 	bus = sd_info->i2c.i2c_adapter_id;
-#endif
 	adapter = i2c_get_adapter(bus);
 	if (!adapter) {
 		dev_warn(&isys->adev->dev, "can't find adapter\n");
@@ -562,7 +554,6 @@ static void isys_register_ext_subdevs(struct ipu_isys *isys)
                         isys_register_ext_subdev(isys, *sd_info, false);
         } else {
 		dev_info(&isys->adev->dev, "no subdevice info provided\n");
-		return;
 	}
 
         /* Handle real ACPI stuff */
