@@ -416,6 +416,21 @@ static const struct ti960_csi_data_format
 	return &va_csi_data_formats[0];
 }
 
+static int ti960_get_routing_remote_pad(struct v4l2_subdev *sd,
+	unsigned int pad)
+{
+	struct ti960 *va = to_ti960(sd);
+	int i;
+
+	for (i = 0; i < va->nstreams; ++i) {
+		if (va->ti960_route[i].sink_pad == pad)
+			return va->ti960_route[i].source_pad;
+		if (va->ti960_route[i].source_pad == pad)
+			return va->ti960_route[i].sink_pad;
+	}
+	return -1;
+}
+
 static int ti960_get_frame_desc(struct v4l2_subdev *sd,
 	unsigned int pad, struct v4l2_mbus_frame_desc *desc)
 {
@@ -423,24 +438,22 @@ static int ti960_get_frame_desc(struct v4l2_subdev *sd,
 	struct v4l2_mbus_frame_desc_entry *entry = desc->entry;
 	u8 vc = 0;
 	int i;
+	struct v4l2_subdev_routing route;
+	int sink_pad = pad;
 
-	desc->type = V4L2_MBUS_FRAME_DESC_TYPE_CSI2;
-	desc->num_entries = min_t(int, va->nstreams, V4L2_FRAME_DESC_ENTRY_MAX);
+	if (va->pad[pad].flags & MEDIA_PAD_FL_SOURCE)
+		sink_pad = ti960_get_routing_remote_pad(sd, pad);
+	if (sink_pad >= 0) {
+		struct media_pad *remote_pad =
+			media_entity_remote_pad(&sd->entity.pads[sink_pad]);
+		if (remote_pad) {
+			struct v4l2_subdev *rsd = media_entity_to_v4l2_subdev(remote_pad->entity);
 
-	for (i = 0; i < desc->num_entries; i++) {
-		struct v4l2_mbus_framefmt *ffmt =
-			&va->ffmts[TI960_PAD_SOURCE][i];
-		const struct ti960_csi_data_format *csi_format =
-			ti960_validate_csi_data_format(ffmt->code);
-
-		entry->size.two_dim.width = ffmt->width;
-		entry->size.two_dim.height = ffmt->height;
-		entry->pixelcode = ffmt->code;
-		entry->bus.csi2.channel = vc++;
-		entry->bpp = csi_format->compressed;
-		entry++;
-	}
-
+			dev_dbg(sd->dev, "%s remote sd: %s\n", __func__, rsd->name);
+			v4l2_subdev_call(rsd, pad, get_frame_desc, 0, desc);
+		}
+	} else
+		dev_err(sd->dev, "can't find the frame desc\n");
 	return 0;
 }
 
