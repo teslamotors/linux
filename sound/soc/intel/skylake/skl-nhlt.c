@@ -152,11 +152,11 @@ skl_get_nhlt_specific_cfg(struct skl *skl, u32 instance, u8 link_type,
 
 	/* update the blob based on virtual bus_id*/
 	if (!skl->nhlt_override) {
-		dev_warn(ebus_to_hbus(ebus)->dev, "Querying NHLT blob from ACPI NHLT table !!\n");
+		dev_dbg(ebus_to_hbus(ebus)->dev, "Querying NHLT blob from ACPI NHLT table !!\n");
 		cfg = skl_get_ep_blob(skl, instance, link_type, s_fmt,
 				num_ch, s_rate, dir, dev_type);
 	} else {
-		dev_warn(ebus_to_hbus(ebus)->dev, "Querying NHLT blob from Debugfs!!\n");
+		dev_dbg(ebus_to_hbus(ebus)->dev, "Querying NHLT blob from Debugfs!!\n");
 		cfg = skl_nhlt_get_debugfs_blob(skl->debugfs, link_type, instance, dir);
 	}
 
