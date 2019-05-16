@@ -75,7 +75,7 @@ int ipu_buttress_ipc_reset(struct ipu_device *isp, struct ipu_buttress_ipc *ipc)
 {
 	struct ipu_buttress *b = &isp->buttress;
 	unsigned long tout_jfs;
-	unsigned int tout = 5000;
+	unsigned int tout = BUTTRESS_IPC_VALIDITY_TIMEOUT;
 	u32 val = 0, csr_in_clr;
 
 	mutex_lock(&b->ipc_mutex);
