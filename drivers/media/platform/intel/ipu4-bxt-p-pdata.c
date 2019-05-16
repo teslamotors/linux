@@ -1094,7 +1094,7 @@ static struct crlmodule_platform_data ov495_pdata = {
 
 #if IS_ENABLED(CONFIG_VIDEO_TI960)
 #define TI960_I2C_ADAPTER	2
-#define TI960_I2C_ADAPTER_2	7
+#define TI960_I2C_ADAPTER_2	4
 #define TI960_LANES	4
 
 static struct ipu_isys_csi2_config ti960_csi2_cfg = {
@@ -1325,7 +1325,7 @@ static struct ti960_subdev_info ti960_subdevs_2[] = {
 static struct ti960_pdata ti960_pdata = {
 	.subdev_info = ti960_subdevs,
 	.subdev_num = ARRAY_SIZE(ti960_subdevs),
-	.reset_gpio = GPIO_BASE + 63,
+	.reset_gpio = GPIO_BASE + 62,
 	.suffix = 'a',
 };
 
@@ -1344,7 +1344,7 @@ static struct ipu_isys_subdev_info ti960_sd = {
 static struct ti960_pdata ti960_pdata_2 = {
 	.subdev_info = ti960_subdevs_2,
 	.subdev_num = ARRAY_SIZE(ti960_subdevs_2),
-	.reset_gpio = GPIO_BASE + 66,
+	.reset_gpio = GPIO_BASE + 69,
 	.suffix = 'b',
 };
 
