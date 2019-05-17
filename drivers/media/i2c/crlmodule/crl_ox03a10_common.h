@@ -1274,6 +1274,36 @@ static struct crl_flip_data ox03a10_flip_configurations[] = {
 	},
 };
 
+static struct crl_dynamic_register_access ox03a10_llp_regs[] = {
+	{
+		.address = 0x380c,
+		.len = CRL_REG_LEN_08BIT,
+		.ops_items = ARRAY_SIZE(bits_15_8),
+		.ops = bits_15_8,
+	},
+	{
+		.address = 0x380d,
+		.len = CRL_REG_LEN_08BIT,
+		.ops_items = ARRAY_SIZE(bits_7_0),
+		.ops = bits_7_0,
+	}
+};
+
+static struct crl_dynamic_register_access ox03a10_fll_regs[] = {
+	{
+		.address = 0x380e,
+		.len = CRL_REG_LEN_08BIT,
+		.ops_items = ARRAY_SIZE(bits_15_8),
+		.ops = bits_15_8,
+	},
+	{
+		.address = 0x380f,
+		.len = CRL_REG_LEN_08BIT,
+		.ops_items = ARRAY_SIZE(bits_7_0),
+		.ops = bits_7_0,
+	}
+};
+
 struct crl_v4l2_ctrl ox03a10_v4l2_ctrls[] = {
 	{
 		.sd_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
@@ -1509,8 +1539,8 @@ struct crl_v4l2_ctrl ox03a10_v4l2_ctrls[] = {
 		.flags = V4L2_CTRL_FLAG_UPDATE,
 		.impact = CRL_IMPACTS_NO_IMPACT,
 		.ctrl = 0,
-		.regs_items = ARRAY_SIZE(ar0231at_llp_regs),
-		.regs = ar0231at_llp_regs,
+		.regs_items = ARRAY_SIZE(ox03a10_llp_regs),
+		.regs = ox03a10_llp_regs,
 		.dep_items = 0,
 		.dep_ctrls = 0,
 		.v4l2_type = V4L2_CTRL_TYPE_INTEGER,
@@ -1529,8 +1559,8 @@ struct crl_v4l2_ctrl ox03a10_v4l2_ctrls[] = {
 		.flags = V4L2_CTRL_FLAG_UPDATE,
 		.impact = CRL_IMPACTS_NO_IMPACT,
 		.ctrl = 0,
-		.regs_items = ARRAY_SIZE(ar0231at_fll_regs),
-		.regs = ar0231at_fll_regs,
+		.regs_items = ARRAY_SIZE(ox03a10_fll_regs),
+		.regs = ox03a10_fll_regs,
 		.dep_items = 0,
 		.dep_ctrls = 0,
 		.v4l2_type = V4L2_CTRL_TYPE_INTEGER,
