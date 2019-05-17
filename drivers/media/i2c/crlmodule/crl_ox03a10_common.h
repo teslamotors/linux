@@ -1016,10 +1016,6 @@ struct crl_ctrl_data_pair ox03a10_ctrl_data_modes[] = {
 	{
 		.ctrl_id = CRL_CID_EXPOSURE_MODE,
 		.data = 1,
-	},
-	{
-		.ctrl_id = CRL_CID_EXPOSURE_MODE,
-		.data = 2,
 	}
 };
 
