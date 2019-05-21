@@ -105,32 +105,6 @@ struct pipeline_format_data {
 	struct ici_pad_framefmt pff;
 };
 
-static int set_pipeline_node_format(void* cb_data,
-	struct ici_isys_node* node,
-	struct node_pipe* pipe)
-{
-	int ret;
-	struct pipeline_format_data* fmt_data = cb_data;
-	struct ici_isys_stream *as = fmt_data->as;
-	dev_info(&as->isys->adev->dev,
-		"Set ext sd \"%s\" format %d, width %d, height %d\n",
-		node->name,
-		fmt_data->pff.ffmt.pixelformat,
-		fmt_data->pff.ffmt.width,
-		fmt_data->pff.ffmt.height);
-	fmt_data->pff.pad.pad_idx = 0;
-	ret = node_set_format(node, &fmt_data->pff);
-	if (ret < 0)
-		return ret;
-	if (node->nr_pads > 1) {
-		fmt_data->pff.pad.pad_idx = 1;
-		ret = node_set_format(node, &fmt_data->pff);
-		if (ret < 0)
-			return ret;
-	}
-	return 0;
-}
-
 struct pipeline_power_data {
 	struct ici_isys_stream *as;
 	int power;
