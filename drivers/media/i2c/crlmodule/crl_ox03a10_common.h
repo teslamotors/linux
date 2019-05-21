@@ -532,9 +532,9 @@ static struct crl_register_write_rep ox03a10_1920_1088_12DCG[] = {
 	{ 0x483e, CRL_REG_LEN_08BIT, 0x02 },/* frame counter */
 	{ 0x3501, CRL_REG_LEN_08BIT, 0x02 },/* DCG exp */
 	{ 0x3581, CRL_REG_LEN_08BIT, 0x02 },/* VS exp */
-	{ 0x350a, CRL_REG_LEN_08BIT, 0x02 },/* HCG Dgain */
-	{ 0x354a, CRL_REG_LEN_08BIT, 0x02 },/* LCG Dgain */
-	{ 0x358a, CRL_REG_LEN_08BIT, 0x02 },/* VS Dgain */
+	{ 0x350a, CRL_REG_LEN_08BIT, 0x03 },/* HCG Dgain */
+	{ 0x354a, CRL_REG_LEN_08BIT, 0x03 },/* LCG Dgain */
+	{ 0x358a, CRL_REG_LEN_08BIT, 0x03 },/* VS Dgain */
 	{ 0x3508, CRL_REG_LEN_08BIT, 0x02 },/* HCG Again */
 	{ 0x3548, CRL_REG_LEN_08BIT, 0x02 },/* LCG Again */
 	{ 0x3588, CRL_REG_LEN_08BIT, 0x02 },/* VS Again */
