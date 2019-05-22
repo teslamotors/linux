@@ -103,7 +103,7 @@ config SND_SST_ATOM_HIFI2_PLATFORM_ACPI
 
 config SND_SOC_INTEL_SKYLAKE
 	tristate "SKL/BXT/KBL/GLK/CNL... Platforms"
-	depends on PCI && ACPI
+	depends on PCI && ACPI && X86
 	select SND_HDA_EXT_CORE
 	select SND_HDA_DSP_LOADER
 	select SND_SOC_TOPOLOGY
