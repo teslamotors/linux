@@ -435,10 +435,6 @@ static int ti960_get_frame_desc(struct v4l2_subdev *sd,
 	unsigned int pad, struct v4l2_mbus_frame_desc *desc)
 {
 	struct ti960 *va = to_ti960(sd);
-	struct v4l2_mbus_frame_desc_entry *entry = desc->entry;
-	u8 vc = 0;
-	int i;
-	struct v4l2_subdev_routing route;
 	int sink_pad = pad;
 
 	if (va->pad[pad].flags & MEDIA_PAD_FL_SOURCE)
