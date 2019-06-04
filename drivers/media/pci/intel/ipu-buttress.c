@@ -705,7 +705,7 @@ ipu_buttress_add_psys_constraint(struct ipu_device *isp,
 						  b->psys_fused_freqs.max_freq);
 		ipu_buttress_set_psys_freq(isp, b->psys_min_freq);
 	}
-	mutex_unlock(&isp->buttress.cons_mutex);
+	mutex_unlock(&b->cons_mutex);
 }
 EXPORT_SYMBOL_GPL(ipu_buttress_add_psys_constraint);
 
