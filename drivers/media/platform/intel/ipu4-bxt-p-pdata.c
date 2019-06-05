@@ -1031,13 +1031,70 @@ static struct crlmodule_platform_data ox03a10_pdata = {
 	.op_sys_clock = (uint64_t[]){ 87750000 },
 	.module_name = "OX03A10",
 	.id_string = "0x58 0x3 0x41",
-	.xshutdown = 1,
+	/*
+	 * TI960 has 4 gpio pins, for PWDN, FSIN, and etc.
+	 * it depends connection between serializer and sensor,
+	 * please specify xshutdown, fsin as needed.
+	 */
+	.fsin = 0, /* gpio 0 used for FSIN */
+	.gpio_powerup_seq = {0, 3, -1, -1},
+	.module_flags = CRL_MODULE_FL_INIT_SER | CRL_MODULE_FL_POWERUP,
+};
+#endif
+
+#ifdef CONFIG_INTEL_IPU4_OX03A10_FICOSA
+#define OX03A10_FICOSA_LANES		4
+#define OX03A10_FICOSA_I2C_PHY_ADDR	0x6c
+#define OX03A10_FICOSAA_I2C_ADDRESS	0x30
+#define OX03A10_FICOSAB_I2C_ADDRESS	0x31
+
+#define OX03A10_FICOSAA_SER_ADDRESS	0x58
+#define OX03A10_FICOSAB_SER_ADDRESS	0x59
+
+static struct crlmodule_platform_data ox03a10_ficosa_pdata = {
+	.lanes = OX03A10_FICOSA_LANES,
+	.ext_clk = 27000000,
+	.op_sys_clock = (uint64_t[]){ 87750000 },
+	.module_name = "OX03A10_FICOSA",
+	.id_string = "0x58 0x3 0x41",
+	.gpio_powerup_seq = {0x2, 0xa, 0xe, -1},
+	.module_flags = CRL_MODULE_FL_INIT_SER | CRL_MODULE_FL_POWERUP,
+};
+#endif
+
+#ifdef CONFIG_INTEL_IPU4_OV495
+#define OV495_LANES    4
+#define OV495_I2C_PHY_ADDR   0x48
+#define OV495A_I2C_ADDRESS   0x30
+#define OV495B_I2C_ADDRESS   0x31
+#define OV495C_I2C_ADDRESS   0x32
+#define OV495D_I2C_ADDRESS   0x33
+
+#define OV495A_SER_ADDRESS   0x58
+#define OV495B_SER_ADDRESS   0x59
+#define OV495C_SER_ADDRESS   0x5a
+#define OV495D_SER_ADDRESS   0x5b
+
+static struct crlmodule_platform_data ov495_pdata = {
+	.lanes = OV495_LANES,
+	.ext_clk = 27000000,
+	.op_sys_clock = (uint64_t[]){ 87750000 },
+	.module_name = "OV495",
+	.id_string = "0x51 0x49 0x56 0x4f",
+	/*
+	 * TI960 has 4 gpio pins, for PWDN, FSIN, and etc.
+	 * it depends connection between serializer and sensor,
+	 * please specify xshutdown, fsin as needed.
+	 */
+	.fsin = 2, /* gpio 2 used for FSIN */
+	.reset = 0, /* gpio 0 used for RESET */
+	.module_flags = CRL_MODULE_FL_RESET,
 };
 #endif
 
 #if IS_ENABLED(CONFIG_VIDEO_TI960)
 #define TI960_I2C_ADAPTER	2
-#define TI960_I2C_ADAPTER_2	7
+#define TI960_I2C_ADAPTER_2	4
 #define TI960_LANES	4
 
 static struct ipu_isys_csi2_config ti960_csi2_cfg = {
@@ -1051,6 +1108,61 @@ static struct ipu_isys_csi2_config ti960_csi2_cfg_2 = {
 };
 
 static struct ti960_subdev_info ti960_subdevs[] = {
+#ifdef CONFIG_INTEL_IPU4_OV495
+/*
+ * FIXME: ov495 need to be detected first.
+ * it causes side effect on ov495, that initial sequence
+ * of serializer TI953 for other sensors.
+ */
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = OV495A_I2C_ADDRESS,
+			.platform_data = &ov495_pdata,
+		},
+		.i2c_adapter_id = TI960_I2C_ADAPTER,
+		.rx_port = 0,
+		.phy_i2c_addr = OV495_I2C_PHY_ADDR,
+		.ser_alias = OV495A_SER_ADDRESS,
+		.suffix = 'a',
+	},
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = OV495B_I2C_ADDRESS,
+			.platform_data = &ov495_pdata,
+		},
+		.i2c_adapter_id = TI960_I2C_ADAPTER,
+		.rx_port = 1,
+		.phy_i2c_addr = OV495_I2C_PHY_ADDR,
+		.ser_alias = OV495B_SER_ADDRESS,
+		.suffix = 'b',
+	},
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = OV495C_I2C_ADDRESS,
+			.platform_data = &ov495_pdata,
+		},
+		.i2c_adapter_id = TI960_I2C_ADAPTER,
+		.rx_port = 2,
+		.phy_i2c_addr = OV495_I2C_PHY_ADDR,
+		.ser_alias = OV495C_SER_ADDRESS,
+		.suffix = 'c',
+	},
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = OV495D_I2C_ADDRESS,
+			.platform_data = &ov495_pdata,
+		},
+		.i2c_adapter_id = TI960_I2C_ADAPTER,
+		.rx_port = 3,
+		.phy_i2c_addr = OV495_I2C_PHY_ADDR,
+		.ser_alias = OV495D_SER_ADDRESS,
+		.suffix = 'd',
+	},
+#endif
 #ifdef CONFIG_INTEL_IPU4_OX03A10
 	{
 		.board_info = {
@@ -1077,9 +1189,85 @@ static struct ti960_subdev_info ti960_subdevs[] = {
 		.suffix = 'b',
 	},
 #endif
+#ifdef CONFIG_INTEL_IPU4_OX03A10_FICOSA
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = OX03A10_FICOSAA_I2C_ADDRESS,
+			.platform_data = &ox03a10_ficosa_pdata,
+		},
+		.i2c_adapter_id = TI960_I2C_ADAPTER,
+		.rx_port = 0,
+		.phy_i2c_addr = OX03A10_FICOSA_I2C_PHY_ADDR,
+		.ser_alias = OX03A10_FICOSAA_SER_ADDRESS,
+		.suffix = 'a',
+	},
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = OX03A10_FICOSAB_I2C_ADDRESS,
+			.platform_data = &ox03a10_ficosa_pdata,
+		},
+		.i2c_adapter_id = TI960_I2C_ADAPTER,
+		.rx_port = 1,
+		.phy_i2c_addr = OX03A10_FICOSA_I2C_PHY_ADDR,
+		.ser_alias = OX03A10_FICOSAB_SER_ADDRESS,
+		.suffix = 'b',
+	},
+#endif
 };
 
 static struct ti960_subdev_info ti960_subdevs_2[] = {
+#ifdef CONFIG_INTEL_IPU4_OV495
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = OV495A_I2C_ADDRESS,
+			.platform_data = &ov495_pdata,
+		},
+		.i2c_adapter_id = TI960_I2C_ADAPTER_2,
+		.rx_port = 0,
+		.phy_i2c_addr = OV495_I2C_PHY_ADDR,
+		.ser_alias = OV495A_SER_ADDRESS,
+		.suffix = 'e',
+	},
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = OV495B_I2C_ADDRESS,
+			.platform_data = &ov495_pdata,
+		},
+		.i2c_adapter_id = TI960_I2C_ADAPTER_2,
+		.rx_port = 1,
+		.phy_i2c_addr = OV495_I2C_PHY_ADDR,
+		.ser_alias = OV495B_SER_ADDRESS,
+		.suffix = 'f',
+	},
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = OV495C_I2C_ADDRESS,
+			.platform_data = &ov495_pdata,
+		},
+		.i2c_adapter_id = TI960_I2C_ADAPTER_2,
+		.rx_port = 2,
+		.phy_i2c_addr = OV495_I2C_PHY_ADDR,
+		.ser_alias = OV495C_SER_ADDRESS,
+		.suffix = 'g',
+	},
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = OV495D_I2C_ADDRESS,
+			.platform_data = &ov495_pdata,
+		},
+		.i2c_adapter_id = TI960_I2C_ADAPTER_2,
+		.rx_port = 3,
+		.phy_i2c_addr = OV495_I2C_PHY_ADDR,
+		.ser_alias = OV495D_SER_ADDRESS,
+		.suffix = 'h',
+	},
+#endif
 #ifdef CONFIG_INTEL_IPU4_OX03A10
 	{
 		.board_info = {
@@ -1106,12 +1294,38 @@ static struct ti960_subdev_info ti960_subdevs_2[] = {
 		.suffix = 'f',
 	},
 #endif
+#ifdef CONFIG_INTEL_IPU4_OX03A10_FICOSA
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = OX03A10_FICOSAA_I2C_ADDRESS,
+			.platform_data = &ox03a10_ficosa_pdata,
+		},
+		.i2c_adapter_id = TI960_I2C_ADAPTER_2,
+		.rx_port = 0,
+		.phy_i2c_addr = OX03A10_FICOSA_I2C_PHY_ADDR,
+		.ser_alias = OX03A10_FICOSAA_SER_ADDRESS,
+		.suffix = 'e',
+	},
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = OX03A10_FICOSAB_I2C_ADDRESS,
+			.platform_data = &ox03a10_ficosa_pdata,
+		},
+		.i2c_adapter_id = TI960_I2C_ADAPTER_2,
+		.rx_port = 1,
+		.phy_i2c_addr = OX03A10_FICOSA_I2C_PHY_ADDR,
+		.ser_alias = OX03A10_FICOSAB_SER_ADDRESS,
+		.suffix = 'f',
+	},
+#endif
 };
 
 static struct ti960_pdata ti960_pdata = {
 	.subdev_info = ti960_subdevs,
 	.subdev_num = ARRAY_SIZE(ti960_subdevs),
-	.reset_gpio = GPIO_BASE + 63,
+	.reset_gpio = GPIO_BASE + 62,
 	.suffix = 'a',
 };
 
@@ -1130,7 +1344,7 @@ static struct ipu_isys_subdev_info ti960_sd = {
 static struct ti960_pdata ti960_pdata_2 = {
 	.subdev_info = ti960_subdevs_2,
 	.subdev_num = ARRAY_SIZE(ti960_subdevs_2),
-	.reset_gpio = GPIO_BASE + 66,
+	.reset_gpio = GPIO_BASE + 69,
 	.suffix = 'b',
 };
 
