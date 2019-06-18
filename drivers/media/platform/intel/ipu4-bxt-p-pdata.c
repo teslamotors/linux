@@ -1325,7 +1325,7 @@ static struct ti960_subdev_info ti960_subdevs_2[] = {
 static struct ti960_pdata ti960_pdata = {
 	.subdev_info = ti960_subdevs,
 	.subdev_num = ARRAY_SIZE(ti960_subdevs),
-	.reset_gpio = GPIO_BASE + 62,
+	.reset_gpio = GPIO_BASE + 63,
 	.suffix = 'a',
 };
 
@@ -1344,7 +1344,7 @@ static struct ipu_isys_subdev_info ti960_sd = {
 static struct ti960_pdata ti960_pdata_2 = {
 	.subdev_info = ti960_subdevs_2,
 	.subdev_num = ARRAY_SIZE(ti960_subdevs_2),
-	.reset_gpio = GPIO_BASE + 69,
+	.reset_gpio = GPIO_BASE + 66,
 	.suffix = 'b',
 };
 
