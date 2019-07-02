@@ -20,7 +20,7 @@
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/io.h>
-#ifdef CONFIG_SND_SOC_INTEL_SKYLAKE
+#if IS_ENABLED(CONFIG_SND_SOC_INTEL_SKYLAKE)
 #include <asm/pgtable.h>
 #include <asm/set_memory.h>
 #endif
@@ -59,7 +59,7 @@ static u8 hdac_ext_readb(u8 __iomem *addr)
 	return readb(addr);
 }
 
-#ifdef CONFIG_SND_SOC_INTEL_SKYLAKE
+#if IS_ENABLED(CONFIG_SND_SOC_INTEL_SKYLAKE)
 static void hdac_ext_mark_pages_uc(struct snd_dma_buffer *dmab, bool enable)
 {
 	int pages;
@@ -92,7 +92,7 @@ static int hdac_ext_dma_alloc_pages(struct hdac_bus *bus, int type,
 	int ret;
 
 	ret = snd_dma_alloc_pages(type, bus->dev, size, buf);
-#ifdef CONFIG_SND_SOC_INTEL_SKYLAKE
+#if IS_ENABLED(CONFIG_SND_SOC_INTEL_SKYLAKE)
 	if (ret < 0)
 		return ret;
 	hdac_ext_mark_pages_uc(buf, true);
@@ -102,7 +102,7 @@ static int hdac_ext_dma_alloc_pages(struct hdac_bus *bus, int type,
 
 static void hdac_ext_dma_free_pages(struct hdac_bus *bus, struct snd_dma_buffer *buf)
 {
-#ifdef CONFIG_SND_SOC_INTEL_SKYLAKE
+#if IS_ENABLED(CONFIG_SND_SOC_INTEL_SKYLAKE)
 	hdac_ext_mark_pages_uc(buf, false);
 #endif
 	snd_dma_free_pages(buf);
@@ -117,7 +117,7 @@ static const struct hdac_io_ops hdac_ext_default_io = {
 	.reg_readb = hdac_ext_readb,
 	.dma_alloc_pages = hdac_ext_dma_alloc_pages,
 	.dma_free_pages = hdac_ext_dma_free_pages,
-#ifdef CONFIG_SND_SOC_INTEL_SKYLAKE
+#if IS_ENABLED(CONFIG_SND_SOC_INTEL_SKYLAKE)
 	.mark_pages_uc = hdac_ext_mark_pages_uc,
 #endif
 };
