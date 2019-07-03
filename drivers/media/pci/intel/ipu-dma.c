@@ -258,7 +258,8 @@ static void ipu_dma_free(struct device *dev, size_t size, void *vaddr,
 	if (WARN_ON(!area->pages))
 		return;
 
-	WARN_ON(!iova);
+	if (WARN_ON(!iova))
+		return;
 
 	size = PAGE_ALIGN(size);
 
@@ -323,7 +324,8 @@ static void ipu_dma_unmap_sg(struct device *dev,
 	if (!nents)
 		return;
 
-	WARN_ON(!iova);
+	if (WARN_ON(!iova))
+		return;
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
 	if (!dma_get_attr(DMA_ATTR_SKIP_CPU_SYNC, attrs))

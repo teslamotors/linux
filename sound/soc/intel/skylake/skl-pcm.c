@@ -313,6 +313,8 @@ static int skl_pcm_prepare(struct snd_pcm_substream *substream,
 	dev_dbg(dai->dev, "%s: %s\n", __func__, dai->name);
 
 	mconfig = skl_tplg_fe_get_cpr_module(dai, substream->stream);
+	if (!mconfig)
+		return -EINVAL;
 
 	format_val = skl_get_format(substream, dai);
 	dev_dbg(dai->dev, "stream_tag=%d formatvalue=%d\n",
@@ -322,13 +324,19 @@ static int skl_pcm_prepare(struct snd_pcm_substream *substream,
 	 * In case of XRUN recovery or in the case when the application
 	 * calls prepare another time, reset the FW pipe to clean state
 	 */
-	if (mconfig &&
-		((substream->runtime->status->state == SNDRV_PCM_STATE_XRUN) ||
-		(mconfig->pipe->state == SKL_PIPE_CREATED) ||
-		(mconfig->pipe->state == SKL_PIPE_PAUSED)))
-			skl_reset_pipe(skl->skl_sst, mconfig->pipe);
-
-	snd_hdac_stream_reset(hdac_stream(stream));
+	if (substream->runtime->status->state == SNDRV_PCM_STATE_XRUN ||
+		mconfig->pipe->state == SKL_PIPE_PAUSED) {
+		ret = skl_reset_pipe(skl->skl_sst, mconfig->pipe);
+		if (ret < 0)
+			return ret;
+	}
+	if (mconfig->pipe->state == SKL_PIPE_CREATED ||
+		mconfig->pipe->state == SKL_PIPE_RESET) {
+		ret = skl_pcm_host_dma_prepare(dai->dev,
+					mconfig->pipe->p_params);
+		if (ret < 0)
+			return ret;
+	}
 
 	err = snd_hdac_stream_set_params(hdac_stream(stream), format_val);
 	if (err < 0)

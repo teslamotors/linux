@@ -128,3 +128,15 @@ config INTEL_IPU4_OX03A10
 	depends on INTEL_IPU4_BXT_P_PDATA
 	---help---
 	"ox03a10 camera sensor"
+
+config INTEL_IPU4_OX03A10_FICOSA
+	bool "Compile platorm data for OX03A10 FICOSA"
+	depends on INTEL_IPU4_BXT_P_PDATA
+	---help---
+	"ox03a10 ficosa camera sensor"
+
+config INTEL_IPU4_OV495
+	bool "Compile platorm data for OV495"
+	depends on INTEL_IPU4_BXT_P_PDATA
+	---help---
+	"ov495 camera sensor"

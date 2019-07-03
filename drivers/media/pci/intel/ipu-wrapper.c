@@ -223,6 +223,11 @@ u64 shared_memory_alloc(unsigned int mmid, size_t bytes)
 	struct my_css_memory_buffer_item *buf;
 	unsigned long flags;
 
+	if (!mine) {
+                pr_err("Invalid mem subsystem, return. mmid=%d", mmid);
+                return 0;
+        }
+
 	dev_dbg(mine->dev, "%s: in, size: %zu\n", __func__, bytes);
 
 	if (!bytes)
@@ -266,6 +271,11 @@ void shared_memory_free(unsigned int mmid, u64 addr)
 	struct my_css_memory_buffer_item *buf = NULL;
 	unsigned long flags;
 
+	if (!mine) {
+                pr_err("Invalid mem subsystem, return. mmid=%d", mmid);
+                return;
+        }
+
 	if ((void *)(unsigned long)addr == &alloc_cookie)
 		return;
 
@@ -306,6 +316,11 @@ u32 shared_memory_map(unsigned int ssid, unsigned int mmid, u64 addr)
 	struct my_css_memory_buffer_item *buf = NULL;
 	unsigned long flags;
 
+	if (!mine) {
+		pr_err("Invalid mem subsystem, return NULL. mmid=%d", mmid);
+		return 0;
+	}
+
 	if ((void *)(unsigned long)addr == &alloc_cookie)
 		return 0;
 
@@ -337,9 +352,10 @@ void shared_memory_unmap(unsigned int ssid, unsigned int mmid, u32 addr)
  */
 void shared_memory_store_8(unsigned int mmid, u64 addr, u8 data)
 {
-	dev_dbg(get_mem_sub_system(mmid)->dev,
-		"access: %s: Enter addr = 0x%llx data = 0x%x\n",
-		__func__, addr, data);
+	if (get_mem_sub_system(mmid))
+		dev_dbg(get_mem_sub_system(mmid)->dev,
+			"access: %s: Enter addr = 0x%llx data = 0x%x\n",
+			__func__, addr, data);
 
 	*((u8 *)(unsigned long) addr) = data;
 	/*Invalidate the cache lines to flush the content to ddr. */
@@ -352,9 +368,10 @@ void shared_memory_store_8(unsigned int mmid, u64 addr, u8 data)
  */
 void shared_memory_store_16(unsigned int mmid, u64 addr, u16 data)
 {
-	dev_dbg(get_mem_sub_system(mmid)->dev,
-		"access: %s: Enter addr = 0x%llx data = 0x%x\n",
-		__func__, addr, data);
+	if (get_mem_sub_system(mmid))
+		dev_dbg(get_mem_sub_system(mmid)->dev,
+			"access: %s: Enter addr = 0x%llx data = 0x%x\n",
+			__func__, addr, data);
 
 	*((u16 *)(unsigned long) addr) = data;
 	/*Invalidate the cache lines to flush the content to ddr. */
@@ -367,9 +384,10 @@ void shared_memory_store_16(unsigned int mmid, u64 addr, u16 data)
  */
 void shared_memory_store_32(unsigned int mmid, u64 addr, u32 data)
 {
-	dev_dbg(get_mem_sub_system(mmid)->dev,
-		"access: %s: Enter addr = 0x%llx data = 0x%x\n",
-		__func__, addr, data);
+	if (get_mem_sub_system(mmid))
+		dev_dbg(get_mem_sub_system(mmid)->dev,
+			"access: %s: Enter addr = 0x%llx data = 0x%x\n",
+			__func__, addr, data);
 
 	*((u32 *)(unsigned long) addr) = data;
 	/* Invalidate the cache lines to flush the content to ddr. */
@@ -383,13 +401,19 @@ void shared_memory_store_32(unsigned int mmid, u64 addr, u32 data)
 void shared_memory_store(unsigned int mmid, u64 addr, const void *data,
 			 size_t bytes)
 {
-	dev_dbg(get_mem_sub_system(mmid)->dev,
-		"access: %s: Enter addr = 0x%lx bytes = 0x%zx\n", __func__,
-		(unsigned long)addr, bytes);
+	if (get_mem_sub_system(mmid))
+		dev_dbg(get_mem_sub_system(mmid)->dev,
+			"access: %s: Enter addr = 0x%lx bytes = 0x%zx\n", __func__,
+			(unsigned long)addr, bytes);
 
 	if (!data) {
-		dev_err(get_mem_sub_system(mmid)->dev,
-			"%s: data ptr is null\n", __func__);
+		if (get_mem_sub_system(mmid))
+			dev_err(get_mem_sub_system(mmid)->dev,
+				"%s: data ptr is null\n", __func__);
+		else
+			pr_err("data ptr is null. mmid=%d\n", mmid);
+
+		return;
 	} else {
 		const u8 *pdata = data;
 		u8 *paddr = (u8 *)(unsigned long)addr;
@@ -409,9 +433,10 @@ void shared_memory_store(unsigned int mmid, u64 addr, const void *data,
  */
 void shared_memory_zero(unsigned int mmid, u64 addr, size_t bytes)
 {
-	dev_dbg(get_mem_sub_system(mmid)->dev,
-		"access: %s: Enter addr = 0x%llx data = 0x%zx\n",
-		__func__, (unsigned long long)addr, bytes);
+	if (get_mem_sub_system(mmid))
+		dev_dbg(get_mem_sub_system(mmid)->dev,
+			"access: %s: Enter addr = 0x%llx data = 0x%zx\n",
+			__func__, (unsigned long long)addr, bytes);
 
 	memset((void *)(unsigned long)addr, 0, bytes);
 	clflush_cache_range((void *)(unsigned long)addr, bytes);
@@ -425,8 +450,9 @@ u8 shared_memory_load_8(unsigned int mmid, u64 addr)
 {
 	u8 data = 0;
 
-	dev_dbg(get_mem_sub_system(mmid)->dev,
-		"access: %s: Enter addr = 0x%llx\n", __func__, addr);
+	if (get_mem_sub_system(mmid))
+		dev_dbg(get_mem_sub_system(mmid)->dev,
+			"access: %s: Enter addr = 0x%llx\n", __func__, addr);
 
 	/* Invalidate the cache lines to flush the content to ddr. */
 	clflush_cache_range((void *)(unsigned long)addr, sizeof(u8));
@@ -442,8 +468,9 @@ u16 shared_memory_load_16(unsigned int mmid, u64 addr)
 {
 	u16 data = 0;
 
-	dev_dbg(get_mem_sub_system(mmid)->dev,
-		"access: %s: Enter addr = 0x%llx\n", __func__, addr);
+	if (get_mem_sub_system(mmid))
+		dev_dbg(get_mem_sub_system(mmid)->dev,
+			"access: %s: Enter addr = 0x%llx\n", __func__, addr);
 
 	/* Invalidate the cache lines to flush the content to ddr. */
 	clflush_cache_range((void *)(unsigned long)addr, sizeof(u16));
@@ -459,8 +486,9 @@ u32 shared_memory_load_32(unsigned int mmid, u64 addr)
 {
 	u32 data = 0;
 
-	dev_dbg(get_mem_sub_system(mmid)->dev,
-		"access: %s: Enter addr = 0x%llx\n", __func__, addr);
+	if (get_mem_sub_system(mmid))
+		dev_dbg(get_mem_sub_system(mmid)->dev,
+			"access: %s: Enter addr = 0x%llx\n", __func__, addr);
 
 	/* Invalidate the cache lines to flush the content to ddr. */
 	clflush_cache_range((void *)(unsigned long)addr, sizeof(u32));
@@ -474,14 +502,19 @@ u32 shared_memory_load_32(unsigned int mmid, u64 addr)
  */
 void shared_memory_load(unsigned int mmid, u64 addr, void *data, size_t bytes)
 {
-	dev_dbg(get_mem_sub_system(mmid)->dev,
-		"access: %s: Enter addr = 0x%lx bytes = 0x%zx\n", __func__,
-		(unsigned long)addr, bytes);
+	if (get_mem_sub_system(mmid))
+		dev_dbg(get_mem_sub_system(mmid)->dev,
+			"access: %s: Enter addr = 0x%lx bytes = 0x%zx\n", __func__,
+			(unsigned long)addr, bytes);
 
 	if (!data) {
-		dev_err(get_mem_sub_system(mmid)->dev,
-			"%s: data ptr is null\n", __func__);
+		if (get_mem_sub_system(mmid))
+			dev_err(get_mem_sub_system(mmid)->dev,
+				"%s: data ptr is null\n", __func__);
+		else
+			pr_err("data ptr is null. mmid=%d\n", mmid);
 
+		return;
 	} else {
 		u8 *pdata = data;
 		u8 *paddr = (u8 *)(unsigned long)addr;
@@ -508,6 +541,10 @@ void ipu_wrapper_init(int mmid, struct device *dev, void __iomem *base)
 {
 	struct wrapper_base *sys = get_mem_sub_system(mmid);
 
+	if (!sys) {
+                pr_err("Invalid mem subsystem, return. mmid=%d", mmid);
+                return;
+        }
 	init_wrapper(sys);
 	sys->dev = dev;
 	sys->sys_base = base;

@@ -332,6 +332,36 @@ static struct snd_soc_dai_link apli_lhcrb_aic3107_dais[] = {
 	},
 };
 
+/* Northwest - GPIO 74 */
+#define I2S_1_BASE 0xD0C40000
+#define I2S_1 0x610
+#define I2S_1_VALUE 0x44000400
+static int aic3107M_resume(struct snd_soc_card *card){
+	// GPIO re-initialization code starts
+	char *gpio_addr;
+	u32 gpio_value;
+
+	gpio_addr = (void *)ioremap_nocache(I2S_1_BASE + I2S_1, 0x30);
+	gpio_value = I2S_1_VALUE;
+
+	pr_err("%p has %#x\n", gpio_addr, *(u32 *)gpio_addr);
+
+	memcpy_toio(gpio_addr, &gpio_value, sizeof(gpio_value));
+	memcpy_toio(gpio_addr + 0x8, &gpio_value, sizeof(gpio_value));
+	memcpy_toio(gpio_addr + 0x10, &gpio_value, sizeof(gpio_value));
+	memcpy_toio(gpio_addr + 0x18, &gpio_value, sizeof(gpio_value));
+	memcpy_toio(gpio_addr + 0x20, &gpio_value, sizeof(gpio_value));
+
+	pr_err("%p has %#x\n", gpio_addr, *(u32 *)gpio_addr);
+	pr_err("%p has %#x\n", gpio_addr + 0x8, *(u32 *)(gpio_addr + 0x8));
+	pr_err("%p has %#x\n", gpio_addr + 0x10, *(u32 *)(gpio_addr + 0x10));
+	pr_err("%p has %#x\n", gpio_addr + 0x18, *(u32 *)(gpio_addr + 0x18));
+	pr_err("%p has %#x\n", gpio_addr + 0x20, *(u32 *)(gpio_addr + 0x18));
+
+	iounmap(gpio_addr);
+	return 0;
+}
+
 /* apli audio machine driver for aic3107 Proto Board*/
 static struct snd_soc_card apli_lhcrb_aic3107 = {
 	.name = "apli-lhcrb-aic3107_i2s",
@@ -345,6 +375,7 @@ static struct snd_soc_card apli_lhcrb_aic3107 = {
 	.dapm_routes = apli_lhcrb_aic3107_map,
 	.num_dapm_routes = ARRAY_SIZE(apli_lhcrb_aic3107_map),
 	.fully_routed = true,
+	.resume_post = aic3107M_resume,
 };
 
 /* Northwest - GPIO 74 */
@@ -392,6 +423,7 @@ static struct platform_driver apli_audio = {
 	.remove = apli_audio_remove,
 	.driver = {
 		.name = "lhcrb_aic3107M_i2s",
+		.pm = &snd_soc_pm_ops,
 	},
 };
 

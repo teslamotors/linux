@@ -107,11 +107,11 @@ out:
 	return ret;
 }
 
-static uint8_t tdf8532_single_read(struct tdf8532_priv *dev_data,
+static int tdf8532_single_read(struct tdf8532_priv *dev_data,
 					char **repl_buff)
 {
 	struct device *dev = &(dev_data->i2c->dev);
-	uint8_t recv_len;
+	int recv_len;
 	int ret;
 
 	ret = tdf8532_read_wait_ack(dev_data, msecs_to_jiffies(ACK_TIMEOUT));
