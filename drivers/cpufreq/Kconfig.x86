@@ -17,6 +17,18 @@ config X86_INTEL_PSTATE
 
 	  If in doubt, say N.
 
+config X86_INTEL_TFM_GOVERNOR
+	tristate "Intel CPU/GPU Turbo Frequency Mode (TFM) governor"
+	depends on X86 && (X86_INTEL_PSTATE || DRM_I915) && m
+	help
+	  This driver is to manage the Turbo Frequency Mode (TFM)
+	  usage and budget over the processor lifetime to keep the
+	  quality and reliability goals of silicon.
+
+	  This driver is intended for Apollo Lake (E3900 series).
+
+	  If in doubt, say N.
+
 config X86_PCC_CPUFREQ
 	tristate "Processor Clocking Control interface driver"
 	depends on ACPI && ACPI_PROCESSOR

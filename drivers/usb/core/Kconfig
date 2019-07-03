@@ -90,3 +90,11 @@ config USB_LEDS_TRIGGER_USBPORT
 	  This driver allows LEDs to be controlled by USB events. Enabling this
 	  trigger allows specifying list of USB ports that should turn on LED
 	  when some USB device gets connected.
+
+config USB_OC_NOTIFICATION
+	bool "Enable Over Current Notification"
+	default n
+	help
+	  Say Y here if you want to send uevent to userland for
+	  over current condition on USB ports and ports coming to
+	  normal state after over current condition is over.
