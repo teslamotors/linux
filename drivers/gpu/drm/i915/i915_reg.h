@@ -1753,6 +1753,13 @@ enum i915_power_well_id {
 #define CHV_TX_DW14(ch, lane) _TXLANE(ch, lane, 0xb8)
 #define   DPIO_UPAR_SHIFT		30
 
+/* BXT DSI Regulator registers */
+#define BXT_DSI_CFG                    _MMIO(0x160020)
+#define   STRAP_SELECT                 (1 << 0)
+
+#define BXT_DSI_TXCNTRL                _MMIO(0x160054)
+#define   HS_IO_CONTROL_SELECT         0x0
+
 /* BXT PHY registers */
 #define _BXT_PHY0_BASE			0x6C000
 #define _BXT_PHY1_BASE			0x162000
@@ -2285,6 +2292,10 @@ enum i915_power_well_id {
 #define RING_START(base)	_MMIO((base)+0x38)
 #define RING_CTL(base)		_MMIO((base)+0x3c)
 #define   RING_CTL_SIZE(size)	((size) - PAGE_SIZE) /* in bytes -> pages */
+#define RING_CNTR(base)		_MMIO((base) + 0x178)
+#define   GEN9_WATCHDOG_ENABLE		0
+#define   GEN9_WATCHDOG_DISABLE		1
+#define RING_THRESH(base)      _MMIO((base) + 0x17C)
 #define RING_SYNC_0(base)	_MMIO((base)+0x40)
 #define RING_SYNC_1(base)	_MMIO((base)+0x44)
 #define RING_SYNC_2(base)	_MMIO((base)+0x48)
@@ -2774,6 +2785,7 @@ enum i915_power_well_id {
 #define GT_BSD_USER_INTERRUPT			(1 << 12)
 #define GT_RENDER_L3_PARITY_ERROR_INTERRUPT_S1	(1 << 11) /* hsw+; rsvd on snb, ivb, vlv */
 #define GT_CONTEXT_SWITCH_INTERRUPT		(1 <<  8)
+#define GT_GEN9_WATCHDOG_INTERRUPT		(1 <<  6) /* gen9+ */
 #define GT_RENDER_L3_PARITY_ERROR_INTERRUPT	(1 <<  5) /* !snb */
 #define GT_RENDER_PIPECTL_NOTIFY_INTERRUPT	(1 <<  4)
 #define GT_RENDER_CS_MASTER_ERROR_INTERRUPT	(1 <<  3)
@@ -3813,6 +3825,19 @@ enum {
 #define GEN9_CLKGATE_DIS_0		_MMIO(0x46530)
 #define   PWM2_GATING_DIS		(1 << 14)
 #define   PWM1_GATING_DIS		(1 << 13)
+
+#define _CLKGATE_DIS_PSL_A		0x46520
+#define _CLKGATE_DIS_PSL_B		0x46524
+#define _CLKGATE_DIS_PSL_C		0x46528
+#define   DUPS1_GATING_DIS		(1 << 15)
+#define   DUPS2_GATING_DIS		(1 << 19)
+#define   DUPS3_GATING_DIS		(1 << 23)
+#define   DPF_GATING_DIS		(1 << 10)
+#define   DPF_RAM_GATING_DIS		(1 << 9)
+#define   DPFR_GATING_DIS		(1 << 8)
+
+#define CLKGATE_DIS_PSL(pipe) \
+	_MMIO_PIPE(pipe, _CLKGATE_DIS_PSL_A, _CLKGATE_DIS_PSL_B)
 
 /*
  * GEN10 clock gating regs
@@ -6415,6 +6440,10 @@ enum {
 #define _PLANE_KEYMAX_2(pipe) _PIPE(pipe, _PLANE_KEYMAX_2_A, _PLANE_KEYMAX_2_B)
 #define PLANE_KEYMAX(pipe, plane)	\
 	_MMIO_PLANE(plane, _PLANE_KEYMAX_1(pipe), _PLANE_KEYMAX_2(pipe))
+
+#define PLANE_KEYMAX_ALPHA_MASK			0x00ffffff
+#define PLANE_KEY_MASK_ALPHA_EN			31
+#define PLANE_KEY_MAX_ALPHA_SHIFT		24
 
 #define _PLANE_BUF_CFG_1_B			0x7127c
 #define _PLANE_BUF_CFG_2_B			0x7137c

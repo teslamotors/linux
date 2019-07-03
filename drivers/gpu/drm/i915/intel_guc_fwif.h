@@ -132,12 +132,23 @@
 #define   GUC_WQ_TRACK_ENABLED		(1 << 8)
 #define   GUC_ADS_ENABLED		(1 << 9)
 #define   GUC_DEBUG_RESERVED		(1 << 10)
+#define   GUC_V9_CRITICAL_LOGGING_DISABLED	(1 << 10)
 #define   GUC_ADS_ADDR_SHIFT		11
 #define   GUC_ADS_ADDR_MASK		0xfffff800
 
-#define GUC_CTL_RSRVD			9
+#define GUC_CTL_SHARED_DATA		9
 
 #define GUC_CTL_MAX_DWORDS		(SOFT_SCRATCH_COUNT - 2) /* [1..14] */
+
+/*
+ * Critical logging in GuC is to be enabled always from GuC v9+.
+ * (for KBL - v9.39+)
+ */
+#define NEEDS_GUC_CRITICAL_LOGGING(dev_priv, guc_fw)	\
+	(((IS_SKYLAKE(dev_priv) || IS_BROXTON(dev_priv)) && \
+				    guc_fw->major_ver_found >= 9) || \
+	  (IS_KABYLAKE(dev_priv) && guc_fw->major_ver_found >= 9 && \
+				    guc_fw->minor_ver_found >= 39))
 
 /**
  * DOC: GuC Firmware Layout
@@ -439,7 +450,6 @@ struct guc_policies {
 #define GUC_REGSET_SAVE_CURRENT_VALUE	0x10
 
 #define GUC_REGSET_MAX_REGISTERS	25
-#define GUC_MMIO_WHITE_LIST_START	0x24d0
 #define GUC_MMIO_WHITE_LIST_MAX		12
 #define GUC_S3_SAVE_SPACE_PAGES		10
 
@@ -543,7 +553,8 @@ union guc_log_control {
 		u32 logging_enabled:1;
 		u32 reserved1:3;
 		u32 verbosity:4;
-		u32 reserved2:24;
+		u32 critical_logging_enabled:1;
+		u32 reserved2:23;
 	};
 	u32 value;
 } __packed;
