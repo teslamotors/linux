@@ -142,7 +142,7 @@ void gpu_unregister_notification(void)
 }
 
 static ssize_t show_gpu_freq_stats(struct kobject *kobj,
-		struct attribute *attr, char *buf)
+		struct kobj_attribute *attr, char *buf)
 {
 	ssize_t ret = 0;
 	int i;
@@ -167,7 +167,7 @@ static ssize_t show_gpu_freq_stats(struct kobject *kobj,
 }
 
 static ssize_t show_tfm_gpu_budget_ms(struct kobject *kobj,
-		struct attribute *attr, char *buf)
+		struct kobj_attribute *attr, char *buf)
 {
 	ssize_t ret = 0;
 
@@ -178,7 +178,7 @@ static ssize_t show_tfm_gpu_budget_ms(struct kobject *kobj,
 }
 
 static ssize_t store_tfm_gpu_budget_ms(struct kobject *kobj,
-		struct attribute *attr, const char *buf, size_t count)
+		struct kobj_attribute *attr, const char *buf, size_t count)
 {
 	int ret;
 	long input;
@@ -195,7 +195,7 @@ static ssize_t store_tfm_gpu_budget_ms(struct kobject *kobj,
 }
 
 static ssize_t show_gpu_tfm_time_ms(struct kobject *kobj,
-		struct attribute *attr, char *buf)
+		struct kobj_attribute *attr, char *buf)
 {
 	ssize_t ret = 0;
 
@@ -509,7 +509,7 @@ void cpu_unregister_notification(void)
 }
 
 static ssize_t show_cpu_freq_stats(struct kobject *kobj,
-		struct attribute *attr, char *buf)
+		struct kobj_attribute *attr, char *buf)
 {
 	ssize_t ret = 0;
 	int i, j;
@@ -569,7 +569,7 @@ static ssize_t show_cpu_freq_stats(struct kobject *kobj,
 }
 
 static ssize_t show_cpu_tfm_time_ms(struct kobject *kobj,
-		struct attribute *attr, char *buf)
+		struct kobj_attribute *attr, char *buf)
 {
 	ssize_t ret;
 
@@ -579,7 +579,7 @@ static ssize_t show_cpu_tfm_time_ms(struct kobject *kobj,
 }
 
 static ssize_t show_tfm_cpu_budget_ms(struct kobject *kobj,
-		struct attribute *attr, char *buf)
+		struct kobj_attribute *attr, char *buf)
 {
 	ssize_t ret = 0;
 
@@ -590,7 +590,7 @@ static ssize_t show_tfm_cpu_budget_ms(struct kobject *kobj,
 }
 
 static ssize_t store_tfm_cpu_budget_ms(struct kobject *kobj,
-		struct attribute *attr, const char *buf, size_t count)
+		struct kobj_attribute *attr, const char *buf, size_t count)
 {
 	int ret;
 	long input;
@@ -952,7 +952,7 @@ static void tfmg_sysfs_cleanup(void)
 }
 
 static ssize_t show_tfm_control(struct kobject *kobj,
-		struct attribute *attr, char *buf)
+		struct kobj_attribute *attr, char *buf)
 {
 	ssize_t ret;
 
@@ -962,7 +962,7 @@ static ssize_t show_tfm_control(struct kobject *kobj,
 }
 
 static ssize_t store_tfm_control(struct kobject *kobj,
-		struct attribute *attr, const char *buf, size_t count)
+		struct kobj_attribute *attr, const char *buf, size_t count)
 {
 	int ret;
 	long input;
@@ -985,7 +985,7 @@ static ssize_t store_tfm_control(struct kobject *kobj,
 }
 
 static ssize_t show_tfm_hysteresis_ms(struct kobject *kobj,
-		struct attribute *attr, char *buf)
+		struct kobj_attribute *attr, char *buf)
 {
 	ssize_t ret;
 
@@ -996,7 +996,7 @@ static ssize_t show_tfm_hysteresis_ms(struct kobject *kobj,
 }
 
 static ssize_t store_tfm_hysteresis_ms(struct kobject *kobj,
-		struct attribute *attr, const char *buf, size_t count)
+		struct kobj_attribute *attr, const char *buf, size_t count)
 {
 	int ret;
 	long input;

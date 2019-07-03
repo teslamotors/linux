@@ -141,4 +141,5 @@ static const struct ti960_register_write ti960_init_settings[] = {
 #define TI960_CSI_CONTS_CLOCK	0x2
 #define TI960_CSI_SKEWCAL	0x40
 #define TI960_FSIN_ENABLE	0x1
+
 #endif

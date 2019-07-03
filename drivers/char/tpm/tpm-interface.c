@@ -372,7 +372,7 @@ static int tpm_request_locality(struct tpm_chip *chip, unsigned int flags)
 {
 	int rc;
 
-	if (flags & __TPM_TRANSMIT_RAW)
+	if (flags & TPM_TRANSMIT_RAW)
 		return 0;
 
 	if (!chip->ops->request_locality)
@@ -391,7 +391,7 @@ static void tpm_relinquish_locality(struct tpm_chip *chip, unsigned int flags)
 {
 	int rc;
 
-	if (flags & __TPM_TRANSMIT_RAW)
+	if (flags & TPM_TRANSMIT_RAW)
 		return 0;
 
 	if (!chip->ops->relinquish_locality)
@@ -406,7 +406,7 @@ static void tpm_relinquish_locality(struct tpm_chip *chip, unsigned int flags)
 
 static int tpm_cmd_ready(struct tpm_chip *chip, unsigned int flags)
 {
-	if (flags & __TPM_TRANSMIT_RAW)
+	if (flags & TPM_TRANSMIT_RAW)
 		return 0;
 
 	if (!chip->ops->cmd_ready)
@@ -417,7 +417,7 @@ static int tpm_cmd_ready(struct tpm_chip *chip, unsigned int flags)
 
 static int tpm_go_idle(struct tpm_chip *chip, unsigned int flags)
 {
-	if (flags & __TPM_TRANSMIT_RAW)
+	if (flags & TPM_TRANSMIT_RAW)
 		return 0;
 
 	if (!chip->ops->go_idle)
@@ -496,8 +496,17 @@ static ssize_t tpm_try_transmit(struct tpm_chip *chip,
 	if (rc < 0) {
 		if (rc != -EPIPE)
 			dev_err(&chip->dev,
-				"%s: tpm_send: error %d\n", __func__, rc);
+				"%s: send(): error %d\n", __func__, rc);
 		goto out;
+	}
+
+	/* A sanity check. send() should just return zero on success e.g.
+	 * not the command length.
+	 */
+	if (rc > 0) {
+		dev_warn(&chip->dev,
+			 "%s: send(): invalid value %d\n", __func__, rc);
+		rc = 0;
 	}
 
 	if (chip->flags & TPM_CHIP_FLAG_IRQ)

@@ -625,7 +625,7 @@ static void execlists_dequeue(struct intel_engine_cs *engine)
 
 		if (can_preempt(engine) &&
 		    rb_entry(rb, struct i915_priolist, node)->priority >
-		    max(last->priotree.priority, 0)) {
+		    max(last->priotree.priority, -1)) {
 			/*
 			 * Switch to our empty preempt context so
 			 * the state of the GPU is known (idle).

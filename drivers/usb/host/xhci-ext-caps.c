@@ -56,7 +56,7 @@ static int xhci_create_intel_xhci_sw_pdev(struct xhci_hcd *xhci, u32 cap_offset)
 	if (pci->device == PCI_DEVICE_ID_INTEL_CHERRYVIEW_XHCI) {
 		ret = platform_device_add_properties(pdev, role_switch_props);
 		if (ret) {
-			dev_err(dev, "couldn't add properties to",
+			dev_err(dev, "couldn't add properties to"
 					" intel_xhci_usb_sw pdev\n");
 			return ret;
 		}

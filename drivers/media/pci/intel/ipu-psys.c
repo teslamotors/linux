@@ -531,7 +531,7 @@ static int ipu_psys_release(struct inode *inode, struct file *file)
 	struct ipu_psys *psys = inode_to_ipu_psys(inode);
 	struct ipu_psys_fh *fh = file->private_data;
 	struct ipu_psys_kbuffer *kbuf, *kbuf0;
-#if defined(CONFIG_VIDEO_INTEL_IPU_ACRN) && defined(CONFIG_VIDEO_INTEL_IPU_VIRTIO_BE)
+#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 17, 0) && defined(CONFIG_VIDEO_INTEL_IPU_ACRN) && defined(CONFIG_VIDEO_INTEL_IPU_VIRTIO_BE)
 	struct ipu_dma_buf_attach *ipu_attach;
 #endif
 

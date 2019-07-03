@@ -18,12 +18,6 @@ struct hdac_ext_bus {
 	int num_streams;
 	int idx;
 
-	void __iomem *ppcap;
-	void __iomem *spbcap;
-	void __iomem *mlcap;
-	void __iomem *gtscap;
-	void __iomem *drsmcap;
-
 	struct list_head hlink_list;
 
 	struct mutex lock;

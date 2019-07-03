@@ -705,7 +705,7 @@ ipu_buttress_add_psys_constraint(struct ipu_device *isp,
 						  b->psys_fused_freqs.max_freq);
 		ipu_buttress_set_psys_freq(isp, b->psys_min_freq);
 	}
-	mutex_unlock(&isp->buttress.cons_mutex);
+	mutex_unlock(&b->cons_mutex);
 }
 EXPORT_SYMBOL_GPL(ipu_buttress_add_psys_constraint);
 
@@ -1261,6 +1261,25 @@ static void ipu_buttress_read_psys_fused_freqs(struct ipu_device *isp)
 }
 
 #ifdef I2C_WA
+
+static struct ipu_isys_clk_mapping *clkmap_dynamic;
+
+static int ipu_clk_mapping_num(struct ipu_isys_clk_mapping *clkmap)
+{
+	int num = 0;
+
+	if (!clkmap)
+		return 0;
+
+	while (clkmap->clkdev_data.dev_id) {
+		num++;
+		clkmap++;
+	}
+
+	/* include the NULL terminated */
+	return num + 1;
+}
+
 /*
  * The dev_id was hard code in platform data, as i2c bus number
  * may change dynamiclly, we need to update this bus id
@@ -1372,6 +1391,19 @@ static int ipu_buttress_clk_init(struct ipu_device *isp)
 	if (!clkmap)
 		return 0;
 
+#ifdef I2C_WA
+	clkmap_dynamic = devm_kzalloc(&isp->pdev->dev,
+		ipu_clk_mapping_num(clkmap) * sizeof(*clkmap_dynamic), GFP_KERNEL);
+	if (!clkmap_dynamic) {
+		rval = -ENOMEM;
+		goto err;
+	}
+	memcpy(clkmap_dynamic, clkmap,
+	       ipu_clk_mapping_num(clkmap) * sizeof(*clkmap_dynamic));
+
+	clkmap = clkmap_dynamic;
+#endif
+
 	while (clkmap->clkdev_data.dev_id) {
 #ifdef I2C_WA
 		char *dev_id = kstrdup(clkmap->clkdev_data.dev_id, GFP_KERNEL);
@@ -1417,6 +1449,9 @@ static void ipu_buttress_clk_exit(struct ipu_device *isp)
 {
 	struct ipu_buttress *b = &isp->buttress;
 	int i;
+#ifdef I2C_WA
+	struct ipu_isys_clk_mapping *clkmap;
+#endif
 
 	/* It is safe to call clk_unregister with null pointer */
 	for (i = 0; i < IPU_BUTTRESS_NUM_OF_SENS_CKS; i++)
@@ -1424,6 +1459,22 @@ static void ipu_buttress_clk_exit(struct ipu_device *isp)
 
 	for (i = 0; i < ARRAY_SIZE(ipu_buttress_sensor_pll_data); i++)
 		clk_unregister(b->pll_sensor[i]);
+
+#ifdef I2C_WA
+	if (!clkmap_dynamic)
+		return;
+
+	clkmap = clkmap_dynamic;
+	while (clkmap->clkdev_data.dev_id) {
+		clkdev_drop(&clkmap->clkdev_data);
+		kfree(clkmap->clkdev_data.dev_id);
+		clkmap->clkdev_data.dev_id = NULL;
+		clkmap++;
+	}
+
+	devm_kfree(&isp->pdev->dev, clkmap_dynamic);
+	clkmap_dynamic = NULL;
+#endif
 }
 
 int ipu_buttress_tsc_read(struct ipu_device *isp, u64 *val)

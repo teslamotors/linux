@@ -49,6 +49,9 @@ struct crl_sensor_configuration ox03a10_crl_configuration = {
 	.streamoff_regs_items = ARRAY_SIZE(ox03a10_streamoff_regs),
 	.streamoff_regs = ox03a10_streamoff_regs,
 
+	.powerup_regs_items = ARRAY_SIZE(ox03a10_powerup_regs),
+	.powerup_regs = ox03a10_powerup_regs,
+
 	.frame_desc_entries = ARRAY_SIZE(ox03a10_frame_desc),
 	.frame_desc_type = CRL_V4L2_MBUS_FRAME_DESC_TYPE_CSI2,
 	.frame_desc = ox03a10_frame_desc,
