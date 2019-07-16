@@ -1092,25 +1092,6 @@ static struct crlmodule_platform_data ov495_pdata = {
 };
 #endif
 
-#ifdef CONFIG_INTEL_IPU4_OX03A10_FICOSA
-#define OX03A10_FICOSA_LANES		4
-#define OX03A10_FICOSA_I2C_PHY_ADDR	0x6c
-#define OX03A10_FICOSAA_I2C_ADDRESS	0x30
-#define OX03A10_FICOSAB_I2C_ADDRESS	0x31
-
-#define OX03A10_FICOSAA_SER_ADDRESS	0x58
-#define OX03A10_FICOSAB_SER_ADDRESS	0x59
-
-static struct crlmodule_platform_data ox03a10_ficosa_pdata = {
-	.lanes = OX03A10_FICOSA_LANES,
-	.ext_clk = 27000000,
-	.op_sys_clock = (uint64_t[]){ 87750000 },
-	.module_name = "OX03A10_FICOSA",
-	.id_string = "0x58 0x3 0x41",
-	.gpio_powerup_seq = {0x2, 0xa, 0xe, -1},
-	.module_flags = CRL_MODULE_FL_INIT_SER | CRL_MODULE_FL_POWERUP,
-};
-#endif
 #if IS_ENABLED(CONFIG_VIDEO_TI960)
 #define TI960_I2C_ADAPTER	2
 #define TI960_I2C_ADAPTER_2	4
