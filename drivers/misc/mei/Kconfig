@@ -54,5 +54,4 @@ config INTEL_MEI_VIRTIO
 	  Enable this if your virtual machine supports virtual mei
 	  device over virtio.
 
-source "drivers/misc/mei/dal/Kconfig"
 source "drivers/misc/mei/spd/Kconfig"

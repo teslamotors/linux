@@ -57,14 +57,6 @@ keystore-$(CONFIG_KEYSTORE_FULL) +=\
 	crypto/aes/aes_ecb.o\
 	crypto/aes/aes_siv.o
 
-keystore-$(CONFIG_DAL_KEYSTORE) +=\
-	dal-client/api_dal.o\
-	dal-client/dal_client.o\
-	dal-client/applet_read.o\
-	dal-client/dal_keystore_conf.o\
-	dal-client/dal_context.o\
-	dal-client/dal_context_safe.o
-
 keystore-$(CONFIG_KEYSTORE_DEBUG) +=\
 	debug.o
 

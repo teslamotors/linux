@@ -217,30 +217,3 @@ config KEYSTORE_HARD_CODED_SEED
                 to attack.
 
                 If in doubt, select "N".
-
-config DAL_KEYSTORE
-        bool "DAL Keystore"
-        depends on INTEL_MEI_DAL && KEYSTORE_FULL
-        help
-                Enable DAL Keystore
-
-config DAL_KEYSTORE_APPLET_PATH
-	string "DAL Keystore Applet path"
-	depends on DAL_KEYSTORE
-	default "/var/lib/intel/dal/applets/Keystore.pack"
-	help
-		The path for DAL Keystore applet file.
-
-config DAL_KEYSTORE_APPLET_ID
-	string "DAL Keystore Applet UUID"
-	depends on DAL_KEYSTORE
-	default "c12452f0adc640a78623708f0f4f0e52"
-	help
-		DAL Keystore applet UUID.
-
-config DAL_KEYSTORE_CONF_PATH
-	string "DAL Keystore Configuration File"
-	depends on DAL_KEYSTORE
-	default "/opt/ias/etc/dal-keystore.conf"
-	help
-		The path for DAL Keystore configuration file.
