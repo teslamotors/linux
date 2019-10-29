@@ -112,6 +112,15 @@ static void __net_exit tipc_exit_net(struct net *net)
 		cond_resched();
 }
 
+static void __net_exit tipc_pernet_pre_exit(struct net *net)
+{
+	tipc_node_pre_cleanup_net(net);
+}
+
+static struct pernet_operations tipc_pernet_pre_exit_ops = {
+	.pre_exit = tipc_pernet_pre_exit,
+};
+
 static struct pernet_operations tipc_net_ops = {
 	.init = tipc_init_net,
 	.exit = tipc_exit_net,
@@ -150,6 +159,10 @@ static int __init tipc_init(void)
 	if (err)
 		goto out_pernet_topsrv;
 
+	err = register_pernet_subsys(&tipc_pernet_pre_exit_ops);
+	if (err)
+		goto out_register_pernet_subsys;
+
 	err = tipc_bearer_setup();
 	if (err)
 		goto out_bearer;
@@ -170,6 +183,8 @@ out_netlink_compat:
 out_netlink:
 	tipc_bearer_cleanup();
 out_bearer:
+	unregister_pernet_subsys(&tipc_pernet_pre_exit_ops);
+out_register_pernet_subsys:
 	unregister_pernet_device(&tipc_topsrv_net_ops);
 out_pernet_topsrv:
 	tipc_socket_stop();
@@ -187,6 +202,7 @@ static void __exit tipc_exit(void)
 	tipc_netlink_compat_stop();
 	tipc_netlink_stop();
 	tipc_bearer_cleanup();
+	unregister_pernet_subsys(&tipc_pernet_pre_exit_ops);
 	unregister_pernet_device(&tipc_topsrv_net_ops);
 	tipc_socket_stop();
 	unregister_pernet_device(&tipc_net_ops);
