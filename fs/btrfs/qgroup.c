@@ -1411,7 +1411,7 @@ int btrfs_add_qgroup_relation(struct btrfs_trans_handle *trans, u64 src,
 
 	mutex_lock(&fs_info->qgroup_ioctl_lock);
 	if (!fs_info->quota_root) {
-		ret = -EINVAL;
+		ret = -ENOTCONN;
 		goto out;
 	}
 	member = find_qgroup_rb(fs_info, src);
@@ -1470,7 +1470,7 @@ static int __del_qgroup_relation(struct btrfs_trans_handle *trans, u64 src,
 		return -ENOMEM;
 
 	if (!fs_info->quota_root) {
-		ret = -EINVAL;
+		ret = -ENOTCONN;
 		goto out;
 	}
 
@@ -1536,7 +1536,7 @@ int btrfs_create_qgroup(struct btrfs_trans_handle *trans, u64 qgroupid)
 
 	mutex_lock(&fs_info->qgroup_ioctl_lock);
 	if (!fs_info->quota_root) {
-		ret = -EINVAL;
+		ret = -ENOTCONN;
 		goto out;
 	}
 	quota_root = fs_info->quota_root;
@@ -1570,7 +1570,7 @@ int btrfs_remove_qgroup(struct btrfs_trans_handle *trans, u64 qgroupid)
 
 	mutex_lock(&fs_info->qgroup_ioctl_lock);
 	if (!fs_info->quota_root) {
-		ret = -EINVAL;
+		ret = -ENOTCONN;
 		goto out;
 	}
 
@@ -1621,7 +1621,7 @@ int btrfs_limit_qgroup(struct btrfs_trans_handle *trans, u64 qgroupid,
 
 	mutex_lock(&fs_info->qgroup_ioctl_lock);
 	if (!fs_info->quota_root) {
-		ret = -EINVAL;
+		ret = -ENOTCONN;
 		goto out;
 	}
 
