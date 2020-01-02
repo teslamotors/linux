@@ -70,6 +70,37 @@
 				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
 			};
 
+			/* Tegra UARTB <->  FTDI: Debug console.
+			 * Removed on PROD. Pulldown the corresponding pins.
+			 */
+			uart2_tx_px0 {
+				nvidia,pins = "uart2_tx_px0";
+				nvidia,function = "uartb";
+				nvidia,pull = <TEGRA_PIN_PULL_DOWN>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
+			};
+			uart2_rx_px1 {
+				nvidia,pins = "uart2_rx_px1";
+				nvidia,function = "uartb";
+				nvidia,pull = <TEGRA_PIN_PULL_DOWN>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
+			};
+			uart2_cts_px3 {
+				nvidia,pins = "uart2_cts_px3";
+				nvidia,function = "uartb";
+				nvidia,pull = <TEGRA_PIN_PULL_DOWN>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
+			};
+			uart2_rts_px2 {
+				nvidia,pins = "uart2_rts_px2";
+				nvidia,function = "uartb";
+				nvidia,pull = <TEGRA_PIN_PULL_DOWN>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+				nvidia,enable-input = <TEGRA_PIN_DISABLE>;
+			};
 		};
 	};
 
@@ -85,6 +116,13 @@
 	serial@c280000 { /* Tegra UARTC <-> Aurix UART: Debug console  */
 		/* to maintain 115200 baud, clock frequency changed with 480MHz */
 		clock-frequency = <480000000>;
+	};
+
+	/* Tegra UARTB <->  FTDI: Debug console.
+	 * Removed on PROD. Disable the serial port.
+	 */
+	serial@3110000 {
+		status = "disabled";
 	};
 
 	/delete-node/isc-mgr.0;

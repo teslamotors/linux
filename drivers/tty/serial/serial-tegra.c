@@ -1236,24 +1236,23 @@ scrub:
 static void tegra_uart_dma_channel_free(struct tegra_uart_port *tup,
 		bool dma_to_memory)
 {
-	struct dma_chan *dma_chan;
-
 	if (dma_to_memory) {
+		dmaengine_terminate_all(tup->rx_dma_chan);
+		dma_release_channel(tup->rx_dma_chan);
 		dma_free_coherent(tup->uport.dev, TEGRA_UART_RX_DMA_BUFFER_SIZE,
 				tup->rx_dma_buf_virt, tup->rx_dma_buf_phys);
-		dma_chan = tup->rx_dma_chan;
 		tup->rx_dma_chan = NULL;
 		tup->rx_dma_buf_phys = 0;
 		tup->rx_dma_buf_virt = NULL;
 	} else {
+		dmaengine_terminate_all(tup->tx_dma_chan);
+		dma_release_channel(tup->tx_dma_chan);
 		dma_unmap_single(tup->uport.dev, tup->tx_dma_buf_phys,
 			UART_XMIT_SIZE, DMA_TO_DEVICE);
-		dma_chan = tup->tx_dma_chan;
 		tup->tx_dma_chan = NULL;
 		tup->tx_dma_buf_phys = 0;
 		tup->tx_dma_buf_virt = NULL;
 	}
-	dma_release_channel(dma_chan);
 }
 
 static int tegra_uart_startup(struct uart_port *u)
@@ -1301,6 +1300,9 @@ fail_rx_dma:
 static void tegra_uart_shutdown(struct uart_port *u)
 {
 	struct tegra_uart_port *tup = to_tegra_uport(u);
+
+	/* make sure irq is disabled before deinitializing hw */
+	disable_irq(u->irq);
 
 	tegra_uart_hw_deinit(tup);
 
@@ -1668,6 +1670,10 @@ board_file:
 	u->type = PORT_TEGRA;
 	u->fifosize = 32;
 	tup->cdata = cdata;
+
+	if (u->dev->of_node &&
+		of_property_read_bool(u->dev->of_node, "low-latency"))
+		u->flags |= UPF_LOW_LATENCY;
 
 	platform_set_drvdata(pdev, tup);
 	resource = platform_get_resource(pdev, IORESOURCE_MEM, 0);

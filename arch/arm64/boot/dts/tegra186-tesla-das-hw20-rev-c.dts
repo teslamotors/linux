@@ -1685,6 +1685,7 @@
 	};
 
 	serial@3130000 { /* Tegra UARTD: GPS RX */
+		low-latency;
 		status = "okay";
 		nvidia,adjust-baud-rates = <460800 460800 100>;
 	};

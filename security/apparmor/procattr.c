@@ -33,50 +33,29 @@
  *
  * Returns: size of string placed in @string else error code on failure
  */
-int aa_getprocattr(struct aa_profile *profile, char **string)
+int aa_getprocattr(struct aa_label *label, char **string)
 {
-	char *str;
-	int len = 0, mode_len = 0, ns_len = 0, name_len;
-	const char *mode_str = aa_profile_mode_names[profile->mode];
-	const char *ns_name = NULL;
-	struct aa_namespace *ns = profile->ns;
-	struct aa_namespace *current_ns = __aa_current_profile()->ns;
-	char *s;
+	struct aa_namespace *ns = labels_ns(label);
+	struct aa_namespace *current_ns = labels_ns(aa_current_label());
+	int len;
 
 	if (!aa_ns_visible(current_ns, ns))
 		return -EACCES;
 
-	ns_name = aa_ns_name(current_ns, ns);
-	ns_len = strlen(ns_name);
+	len = aa_label_snprint(NULL, 0, current_ns, label, true);
+	AA_BUG(len < 0);
 
-	/* if the visible ns_name is > 0 increase size for : :// seperator */
-	if (ns_len)
-		ns_len += 4;
-
-	/* unconfined profiles don't have a mode string appended */
-	if (!unconfined(profile))
-		mode_len = strlen(mode_str) + 3;	/* + 3 for _() */
-
-	name_len = strlen(profile->base.hname);
-	len = mode_len + ns_len + name_len + 1;	    /* + 1 for \n */
-	s = str = kmalloc(len + 1, GFP_KERNEL);	    /* + 1 \0 */
-	if (!str)
+	*string = kmalloc(len + 2, GFP_KERNEL);
+	if (!*string)
 		return -ENOMEM;
 
-	if (ns_len) {
-		/* skip over prefix current_ns->base.hname and separating // */
-		sprintf(s, ":%s://", ns_name);
-		s += ns_len;
-	}
-	if (unconfined(profile))
-		/* mode string not being appended */
-		sprintf(s, "%s\n", profile->base.hname);
-	else
-		sprintf(s, "%s (%s)\n", profile->base.hname, mode_str);
-	*string = str;
+	len = aa_label_snprint(*string, len + 2, current_ns, label, true);
+	if (len < 0)
+		return len;
+	(*string)[len] = '\n';
+	(*string)[len + 1] = 0;
 
-	/* NOTE: len does not include \0 of string, not saved as part of file */
-	return len;
+	return len + 1;
 }
 
 /**
@@ -138,12 +117,13 @@ int aa_setprocattr_changehat(char *args, size_t size, int test)
 		for (count = 0; (hat < end) && count < 16; ++count) {
 			char *next = hat + strlen(hat) + 1;
 			hats[count] = hat;
+			AA_DEBUG("%s: (pid %d) Magic 0x%llx count %d hat '%s'\n"
+				 , __func__, current->pid, token, count, hat);
 			hat = next;
 		}
-	}
-
-	AA_DEBUG("%s: Magic 0x%llx Hat '%s'\n",
-		 __func__, token, hat ? hat : NULL);
+	} else
+		AA_DEBUG("%s: (pid %d) Magic 0x%llx count %d Hat '%s'\n",
+			 __func__, current->pid, token, count, "<NULL>");
 
 	return aa_change_hat(hats, count, token, test);
 }

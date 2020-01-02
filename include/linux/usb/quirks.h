@@ -56,6 +56,9 @@
  */
 #define USB_QUIRK_LINEAR_FRAME_INTR_BINTERVAL	BIT(11)
 
+/* Device needs a pause after every control message. */
+#define USB_QUIRK_DELAY_CTRL_MSG		BIT(13)
+
 #define USB_QUIRK_OTG_COMPLIANCE		BIT(30)
 
 #endif /* __LINUX_USB_QUIRKS_H */

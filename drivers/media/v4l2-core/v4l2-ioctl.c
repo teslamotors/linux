@@ -1,5 +1,4 @@
 /*
- * Copyright (c) 2016, NVIDIA Corporation. All rights reserved.
  * Video capture interface for Linux version 2
  *
  * A generic framework to process V4L2 ioctl commands.
@@ -2402,11 +2401,11 @@ static int check_array_args(unsigned int cmd, void *parg, size_t *array_size,
 {
 	int ret = 0;
 
-	switch (_IOC_NR(cmd)) {
-	case _IOC_NR(VIDIOC_PREPARE_BUF):
-	case _IOC_NR(VIDIOC_QUERYBUF):
-	case _IOC_NR(VIDIOC_QBUF):
-	case _IOC_NR(VIDIOC_DQBUF): {
+	switch (cmd) {
+	case VIDIOC_PREPARE_BUF:
+	case VIDIOC_QUERYBUF:
+	case VIDIOC_QBUF:
+	case VIDIOC_DQBUF: {
 		struct v4l2_buffer *buf = parg;
 
 		if (V4L2_TYPE_IS_MULTIPLANAR(buf->type) && buf->length > 0) {
@@ -2422,8 +2421,8 @@ static int check_array_args(unsigned int cmd, void *parg, size_t *array_size,
 		break;
 	}
 
-	case _IOC_NR(VIDIOC_G_EDID):
-	case _IOC_NR(VIDIOC_S_EDID): {
+	case VIDIOC_G_EDID:
+	case VIDIOC_S_EDID: {
 		struct v4l2_edid *edid = parg;
 
 		if (edid->blocks) {
@@ -2439,9 +2438,9 @@ static int check_array_args(unsigned int cmd, void *parg, size_t *array_size,
 		break;
 	}
 
-	case _IOC_NR(VIDIOC_S_EXT_CTRLS):
-	case _IOC_NR(VIDIOC_G_EXT_CTRLS):
-	case _IOC_NR(VIDIOC_TRY_EXT_CTRLS): {
+	case VIDIOC_S_EXT_CTRLS:
+	case VIDIOC_G_EXT_CTRLS:
+	case VIDIOC_TRY_EXT_CTRLS: {
 		struct v4l2_ext_controls *ctrls = parg;
 
 		if (ctrls->count != 0) {
@@ -2540,8 +2539,11 @@ video_usercopy(struct file *file, unsigned int cmd, unsigned long arg,
 
 	/* Handles IOCTL */
 	err = func(file, cmd, parg);
-	if (err == -ENOIOCTLCMD)
+	if (err == -ENOTTY || err == -ENOIOCTLCMD) {
 		err = -ENOTTY;
+		goto out;
+	}
+
 	if (err == 0) {
 		if (cmd == VIDIOC_DQBUF)
 			trace_v4l2_dqbuf(video_devdata(file)->minor, parg);

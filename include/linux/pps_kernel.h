@@ -47,8 +47,9 @@ struct pps_source_info {
 };
 
 struct pps_event_time {
-	struct timespec ts_raw;
-	struct timespec ts_real;
+	struct timespec ts; /* monotonic */
+	struct timespec ts_raw; /* monotonic_raw */
+	struct timespec ts_real; /* real */
 };
 
 /* The main struct */
@@ -63,6 +64,8 @@ struct pps_device {
 	struct pps_ktime clear_tu;
 	struct pps_ktime assert_raw_tu;
 	struct pps_ktime clear_raw_tu;
+	struct pps_ktime assert_mono_tu;
+	struct pps_ktime clear_mono_tu;
 	int current_mode;			/* PPS mode at event time */
 
 	unsigned int last_ev;			/* last PPS event id */
@@ -113,7 +116,7 @@ static inline void timespec_to_pps_ktime(struct pps_ktime *kt,
 
 static inline void pps_get_ts(struct pps_event_time *ts)
 {
-	getnstime_raw_and_real(&ts->ts_raw, &ts->ts_real);
+	getnstime_raw_and_real(&ts->ts, &ts->ts_raw, &ts->ts_real);
 }
 
 /* Subtract known time delay from PPS event time(s) */

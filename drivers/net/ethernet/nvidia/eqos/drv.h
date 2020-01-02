@@ -53,9 +53,9 @@ static void eqos_set_rx_mode(struct net_device *);
 
 static int eqos_start_xmit(struct sk_buff *, struct net_device *);
 
-static void process_tx_completions(struct net_device *,
+static int process_tx_completions(struct net_device *,
 				   struct eqos_prv_data *,
-				   uint qinx);
+				   int quota, uint qinx);
 
 static struct net_device_stats *eqos_get_stats(struct net_device *);
 

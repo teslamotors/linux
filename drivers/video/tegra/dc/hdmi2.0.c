@@ -1,7 +1,7 @@
 /*
  * drivers/video/tegra/dc/hdmi2.0.c
  *
- * Copyright (c) 2014-2017, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2014-2018, NVIDIA CORPORATION, All rights reserved.
  * Author: Animesh Kishore <ankishore@nvidia.com>
  *
  * This software is licensed under the terms of the GNU General Public
@@ -1599,21 +1599,21 @@ static void tegra_hdmi_config(struct tegra_hdmi *hdmi)
 #endif
 	u32 hblank, max_ac, rekey;
 	unsigned long val;
-	u32 dispclk_div_8_2;
+	u32 arm_video_range;
 
 	if (tegra_platform_is_linsim())
 		return;
 
+	arm_video_range = NV_SOR_INPUT_CONTROL_ARM_VIDEO_RANGE_FULL;
 	tegra_sor_write_field(sor, NV_SOR_INPUT_CONTROL,
-			NV_SOR_INPUT_CONTROL_ARM_VIDEO_RANGE_LIMITED |
-			NV_SOR_INPUT_CONTROL_HDMI_SRC_SELECT_DISPLAYB,
-			NV_SOR_INPUT_CONTROL_ARM_VIDEO_RANGE_FULL |
-			NV_SOR_INPUT_CONTROL_HDMI_SRC_SELECT_DISPLAYB);
+			NV_SOR_INPUT_CONTROL_ARM_VIDEO_RANGE_LIMITED,
+			arm_video_range);
 
-	dispclk_div_8_2 = clk_get_rate(hdmi->sor->sor_clk) / 1000000 * 4;
-	tegra_sor_writel(sor, NV_SOR_REFCLK,
-			NV_SOR_REFCLK_DIV_INT(dispclk_div_8_2 >> 2) |
-			NV_SOR_REFCLK_DIV_FRAC(dispclk_div_8_2));
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	tegra_sor_write_field(sor, NV_SOR_INPUT_CONTROL,
+			NV_SOR_INPUT_CONTROL_HDMI_SRC_SELECT_DISPLAYB,
+			NV_SOR_INPUT_CONTROL_HDMI_SRC_SELECT_DISPLAYB);
+#endif
 
 	/*
 	 * The rekey register and corresponding eq want to operate
@@ -2433,24 +2433,46 @@ static int tegra_hdmi_controller_enable(struct tegra_hdmi *hdmi)
 {
 	struct tegra_dc *dc = hdmi->dc;
 	struct tegra_dc_sor_data *sor = hdmi->sor;
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	u32 dispclk_div_8_2 = 0;
+#endif
+	int val = NV_SOR_CLK_CNTRL_DP_LINK_SPEED_G2_7;
 
 	tegra_dc_get(dc);
 	tegra_hdmi_get(dc);
+
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+	dispclk_div_8_2 = (dc->mode.pclk) / 1000000 * 4;
+	tegra_sor_writel(sor, NV_SOR_REFCLK,
+			NV_SOR_REFCLK_DIV_INT(dispclk_div_8_2 >> 2) |
+			NV_SOR_REFCLK_DIV_FRAC(dispclk_div_8_2));
+#endif
+
+	/* half rate and double vco */
+	if (hdmi->dc->mode.pclk > 340000000)
+		val = NV_SOR_CLK_CNTRL_DP_LINK_SPEED_G5_4;
+
+	val |= NV_SOR_CLK_CNTRL_DP_CLK_SEL_SINGLE_PCLK;
+	tegra_sor_writel(hdmi->sor, NV_SOR_CLK_CNTRL, val);
+
+	tegra_hdmi_config_tmds(hdmi);
 
 	tegra_sor_hdmi_pad_power_up(sor);
 
 	tegra_sor_power_lanes(sor, 4, true);
 
+	tegra_sor_config_xbar(hdmi->sor);
+
+	tegra_hdmi_config_clk(hdmi, TEGRA_HDMI_BRICK_CLK);
+
 	tegra_dc_sor_set_internal_panel(sor, false);
+
 	tegra_hdmi_config(hdmi);
 	tegra_hdmi_avi_infoframe(hdmi);
 	tegra_hdmi_vendor_infoframe(hdmi);
 
-	tegra_sor_pad_cal_power(sor, true);
-	tegra_hdmi_config_tmds(hdmi);
-	tegra_sor_pad_cal_power(sor, false);
-	tegra_hdmi_config_clk(hdmi, TEGRA_HDMI_BRICK_CLK);
 	tegra_dc_sor_attach(sor);
+
 	/* enable hdcp */
 #ifdef CONFIG_HDCP
 	tegra_nvhdcp_set_plug(hdmi->nvhdcp, true);
@@ -2462,9 +2484,6 @@ static int tegra_hdmi_controller_enable(struct tegra_hdmi *hdmi)
 	tegra_dc_setup_clk(dc, dc->clk);
 	tegra_dc_hdmi_setup_clk(dc, hdmi->sor->sor_clk);
 #endif
-	tegra_hdmi_config(hdmi);
-
-	tegra_sor_config_xbar(hdmi->sor);
 
 	/* IS THE POWER ENABLE AFTER ATTACH IS VALID*/
 	/* TODO: Confirm sequence with HW */
@@ -2525,20 +2544,10 @@ static void tegra_hdmi_config_clk(struct tegra_hdmi *hdmi, u32 clk_type)
 	if (clk_type == TEGRA_HDMI_BRICK_CLK) {
 
 		struct tegra_dc_sor_data *sor = hdmi->sor;
-		int val = NV_SOR_CLK_CNTRL_DP_LINK_SPEED_G2_7;
+		long rate = clk_get_rate(sor->sor_clk);
 
-		if (hdmi->dc->mode.pclk > 340000000) {
-			long rate = clk_get_rate(sor->sor_clk);
-
-			/*half rate and double vco*/
-			val = NV_SOR_CLK_CNTRL_DP_LINK_SPEED_G5_4;
-			/* Set Rate to SOR_CLK*/
+		if (hdmi->dc->mode.pclk > 340000000)
 			clk_set_rate(sor->sor_clk, (rate >> 1));
-		}
-
-		val |= NV_SOR_CLK_CNTRL_DP_CLK_SEL_SINGLE_PCLK;
-		tegra_sor_writel(hdmi->sor, NV_SOR_CLK_CNTRL, val);
-		usleep_range(250, 300); /* sor brick pll stabilization delay */
 
 		clk_set_parent(sor->src_switch_clk, sor->brick_clk);
 
@@ -2577,14 +2586,11 @@ static void tegra_hdmi_config_clk(struct tegra_hdmi *hdmi, u32 clk_type)
 			clk_set_rate(sor->src_switch_clk, rate);
 		}
 
-		/* Select brick muxes */
 		val = (hdmi->dc->mode.pclk < 340000000) ?
 			NV_SOR_CLK_CNTRL_DP_LINK_SPEED_G2_7 :
 			NV_SOR_CLK_CNTRL_DP_LINK_SPEED_G5_4;
 
 		val |= NV_SOR_CLK_CNTRL_DP_CLK_SEL_SINGLE_PCLK;
-		tegra_sor_writel(hdmi->sor, NV_SOR_CLK_CNTRL, val);
-		usleep_range(250, 300); /* sor brick pll stabilization delay */
 
 		/*
 		 * Report brick configuration and rate, so that SOR clock tree

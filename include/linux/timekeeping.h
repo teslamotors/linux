@@ -187,8 +187,9 @@ extern void timekeeping_inject_sleeptime(struct timespec *delta);
 /*
  * PPS accessor
  */
-extern void getnstime_raw_and_real(struct timespec *ts_raw,
-				   struct timespec *ts_real);
+extern void getnstime_raw_and_real(struct timespec *ts,
+								   struct timespec *ts_raw,
+								   struct timespec *ts_real);
 
 /*
  * Persistent clock related interfaces

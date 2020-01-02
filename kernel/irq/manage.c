@@ -1084,9 +1084,21 @@ __setup_irq(unsigned int irq, struct irq_desc *desc, struct irqaction *new)
 	 */
 	if (new->thread_fn && !nested) {
 		struct task_struct *t;
-		static const struct sched_param param = {
+		struct sched_param param = {
 			.sched_priority = MAX_USER_RT_PRIO/2,
 		};
+
+		/*
+		 * If the userspace task which is spawning this irq thread has higher
+		 * priority, use slightly higher priority than that for the irq thread.
+		 */
+		if (current->mm && current->policy == SCHED_FIFO &&
+			current->rt_priority > param.sched_priority) {
+			if (current->rt_priority >= MAX_USER_RT_PRIO - 1)
+				param.sched_priority = MAX_USER_RT_PRIO - 1;
+			else
+				param.sched_priority = current->rt_priority + 1;
+		}
 
 		t = kthread_create(irq_thread, new, "irq/%d-%s", irq,
 				   new->name);

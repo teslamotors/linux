@@ -1,7 +1,7 @@
 /*
  * drivers/video/tegra/dc/sor.c
  *
- * Copyright (c) 2011-2016, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2018, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -1104,12 +1104,16 @@ void tegra_sor_hdmi_pad_power_up(struct tegra_dc_sor_data *sor)
 	/* seamless */
 	if (sor->dc->initialized)
 		return;
-	tegra_io_dpd_disable(&hdmi_dpd);
-	usleep_range(20, 70);
 
 	tegra_sor_write_field(sor, NV_SOR_PLL2,
 				NV_SOR_PLL2_AUX9_LVDSEN_OVERRIDE,
 				NV_SOR_PLL2_AUX9_LVDSEN_OVERRIDE);
+	tegra_sor_write_field(sor, NV_SOR_PLL2,
+				NV_SOR_PLL2_AUX0_MASK,
+				NV_SOR_PLL2_AUX0_SEQ_PLL_PULLDOWN_OVERRIDE);
+	tegra_sor_write_field(sor, NV_SOR_PLL2,
+				NV_SOR_PLL2_CLKGEN_MODE_MASK,
+				NV_SOR_PLL2_CLKGEN_MODE_DP_TMDS);
 	tegra_sor_write_field(sor, NV_SOR_PLL2,
 				NV_SOR_PLL2_AUX2_MASK,
 				NV_SOR_PLL2_AUX2_OVERRIDE_POWERDOWN);
@@ -1117,15 +1121,22 @@ void tegra_sor_hdmi_pad_power_up(struct tegra_dc_sor_data *sor)
 				NV_SOR_PLL2_AUX1_SEQ_MASK,
 				NV_SOR_PLL2_AUX1_SEQ_PLLCAPPD_OVERRIDE);
 	tegra_sor_write_field(sor, NV_SOR_PLL2,
-				NV_SOR_PLL2_AUX0_MASK,
-				NV_SOR_PLL2_AUX0_SEQ_PLL_PULLDOWN_OVERRIDE);
-	tegra_sor_write_field(sor, NV_SOR_PLL0, NV_SOR_PLL0_PWR_MASK,
-						NV_SOR_PLL0_PWR_ON);
-	tegra_sor_write_field(sor, NV_SOR_PLL0, NV_SOR_PLL0_VCOPD_MASK,
-						NV_SOR_PLL0_VCOPD_RESCIND);
+				NV_SOR_PLL2_AUX6_BANDGAP_POWERDOWN_MASK,
+				NV_SOR_PLL2_AUX6_BANDGAP_POWERDOWN_ENABLE);
 	tegra_sor_write_field(sor, NV_SOR_PLL2,
-				NV_SOR_PLL2_CLKGEN_MODE_MASK,
-				NV_SOR_PLL2_CLKGEN_MODE_DP_TMDS);
+				NV_SOR_PLL2_AUX7_PORT_POWERDOWN_MASK,
+				NV_SOR_PLL2_AUX7_PORT_POWERDOWN_ENABLE);
+	tegra_sor_write_field(sor, NV_SOR_PLL2,
+				NV_SOR_PLL2_AUX8_SEQ_PLLCAPPD_ENFORCE_MASK,
+				NV_SOR_PLL2_AUX8_SEQ_PLLCAPPD_ENFORCE_ENABLE);
+	tegra_sor_write_field(sor, NV_SOR_PLL0, NV_SOR_PLL0_PWR_MASK,
+						NV_SOR_PLL0_PWR_OFF);
+	tegra_sor_write_field(sor, NV_SOR_PLL0, NV_SOR_PLL0_VCOPD_MASK,
+						NV_SOR_PLL0_VCOPD_ASSERT);
+	tegra_sor_pad_cal_power(sor, false);
+	usleep_range(20, 70);
+
+	tegra_io_dpd_disable(&hdmi_dpd);
 	usleep_range(20, 70);
 
 	tegra_sor_write_field(sor, NV_SOR_PLL2,
@@ -1133,6 +1144,10 @@ void tegra_sor_hdmi_pad_power_up(struct tegra_dc_sor_data *sor)
 				NV_SOR_PLL2_AUX6_BANDGAP_POWERDOWN_DISABLE);
 	usleep_range(50, 100);
 
+	tegra_sor_write_field(sor, NV_SOR_PLL0, NV_SOR_PLL0_PWR_MASK,
+						NV_SOR_PLL0_PWR_ON);
+	tegra_sor_write_field(sor, NV_SOR_PLL0, NV_SOR_PLL0_VCOPD_MASK,
+						NV_SOR_PLL0_VCOPD_RESCIND);
 	tegra_sor_write_field(sor, NV_SOR_PLL2,
 				NV_SOR_PLL2_AUX8_SEQ_PLLCAPPD_ENFORCE_MASK,
 				NV_SOR_PLL2_AUX8_SEQ_PLLCAPPD_ENFORCE_DISABLE);
@@ -1144,6 +1159,7 @@ void tegra_sor_hdmi_pad_power_up(struct tegra_dc_sor_data *sor)
 	tegra_sor_write_field(sor, NV_SOR_PLL1,
 				NV_SOR_PLL1_TMDS_TERM_ENABLE,
 				NV_SOR_PLL1_TMDS_TERM_ENABLE);
+	usleep_range(10, 20);
 }
 
 void tegra_sor_hdmi_pad_power_down(struct tegra_dc_sor_data *sor)
@@ -1171,8 +1187,10 @@ void tegra_sor_hdmi_pad_power_down(struct tegra_dc_sor_data *sor)
 	tegra_sor_write_field(sor, NV_SOR_PLL2,
 				NV_SOR_PLL2_AUX6_BANDGAP_POWERDOWN_MASK,
 				NV_SOR_PLL2_AUX6_BANDGAP_POWERDOWN_ENABLE);
+	tegra_sor_pad_cal_power(sor, false);
 
 	tegra_io_dpd_enable(&hdmi_dpd);
+	usleep_range(20, 70);
 }
 
 void tegra_sor_config_hdmi_clk(struct tegra_dc_sor_data *sor)
@@ -1676,10 +1694,6 @@ void tegra_dc_sor_attach(struct tegra_dc_sor_data *sor)
 			DC_CMD_STATE_ACCESS);
 
 	tegra_dc_sor_config_panel(sor, false);
-
-	/* WAR for bug 1428181 */
-	tegra_dc_sor_enable_sor(sor, true);
-	tegra_dc_sor_enable_sor(sor, false);
 
 #if defined(CONFIG_ARCH_TEGRA_12x_SOC) || defined(CONFIG_ARCH_TEGRA_13x_SOC)
 	/* Awake request */

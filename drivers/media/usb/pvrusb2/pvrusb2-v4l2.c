@@ -3,7 +3,6 @@
  *
  *  Copyright (C) 2005 Mike Isely <isely@pobox.com>
  *  Copyright (C) 2004 Aurelien Alleaume <slts@free.fr>
- * Copyright (c) 2016, NVIDIA Corporation. All rights reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -934,12 +933,12 @@ static long pvr2_v4l2_ioctl(struct file *file,
 	}
 
 	/* check priority */
-	switch (_IOC_NR(cmd)) {
-	case _IOC_NR(VIDIOC_S_CTRL):
-	case _IOC_NR(VIDIOC_S_STD):
-	case _IOC_NR(VIDIOC_S_INPUT):
-	case _IOC_NR(VIDIOC_S_TUNER):
-	case _IOC_NR(VIDIOC_S_FREQUENCY):
+	switch (cmd) {
+	case VIDIOC_S_CTRL:
+	case VIDIOC_S_STD:
+	case VIDIOC_S_INPUT:
+	case VIDIOC_S_TUNER:
+	case VIDIOC_S_FREQUENCY:
 		ret = v4l2_prio_check(&vp->prio, fh->prio);
 		if (ret)
 			return ret;
