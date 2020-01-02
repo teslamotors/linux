@@ -1288,6 +1288,7 @@ static int alloc_all_mem(struct r8152 *tp)
 	spin_lock_init(&tp->tx_lock);
 	INIT_LIST_HEAD(&tp->rx_done);
 	INIT_LIST_HEAD(&tp->tx_free);
+	INIT_LIST_HEAD(&tp->rx_done);
 	skb_queue_head_init(&tp->tx_queue);
 
 	for (i = 0; i < RTL8152_MAX_RX; i++) {
@@ -1625,7 +1626,7 @@ static int r8152_tx_agg_fill(struct r8152 *tp, struct tx_agg *agg)
 
 		tx_data += len;
 		agg->skb_len += len;
-		agg->skb_num++;
+		agg->skb_num += skb_shinfo(skb)->gso_segs ?: 1;
 
 		dev_kfree_skb_any(skb);
 

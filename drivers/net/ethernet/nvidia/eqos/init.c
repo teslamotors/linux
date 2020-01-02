@@ -952,10 +952,10 @@ int eqos_probe(struct platform_device *pdev)
 	for (i = 0; i < num_chans; i++) {
 		pchinfo = &pdata->chinfo[i];
 		pchinfo->chan_num = i;
-		pchinfo->int_mask = VIRT_INTR_CH_CRTL_RX_WR_MASK;
+		pchinfo->rx_int_mask = VIRT_INTR_CH_CRTL_RX_WR_MASK;
 
 		/* enable tx interrupts for all chan */
-		pchinfo->int_mask |= VIRT_INTR_CH_CRTL_TX_WR_MASK;
+		pchinfo->tx_int_mask = VIRT_INTR_CH_CRTL_TX_WR_MASK;
 	}
 
 	pdata->interface = eqos_get_phy_interface(pdata);
@@ -1019,11 +1019,18 @@ int eqos_probe(struct platform_device *pdev)
 		enable_irq_wake(ndev->irq);
 	}
 
+	for (i = 0; i < EQOS_TX_QUEUE_CNT; i++) {
+		struct eqos_tx_queue *tx_queue = GET_TX_QUEUE_PTR(i);
+		netif_napi_add(ndev, &tx_queue->napi,
+			       eqos_napi_tx_mq, pdt_cfg->chan_napi_quota[i]);
+		tx_queue->chan_num = i;
+	}
+
 	for (i = 0; i < EQOS_RX_QUEUE_CNT; i++) {
 		struct eqos_rx_queue *rx_queue = GET_RX_QUEUE_PTR(i);
 
 		netif_napi_add(ndev, &rx_queue->napi,
-			       eqos_napi_mq, pdt_cfg->chan_napi_quota[i]);
+			       eqos_napi_rx_mq, pdt_cfg->chan_napi_quota[i]);
 		rx_queue->chan_num = i;
 	}
 
@@ -1055,6 +1062,7 @@ int eqos_probe(struct platform_device *pdev)
 	pdata->dev_state |= ndev->features;
 
 	eqos_init_rx_coalesce(pdata);
+	eqos_init_tx_coalesce(pdata);
 
 #ifdef EQOS_CONFIG_PTP
 	eqos_ptp_init(pdata);
@@ -1064,11 +1072,10 @@ int eqos_probe(struct platform_device *pdev)
 	spin_lock_init(&pdata->tx_lock);
 	spin_lock_init(&pdata->pmt_lock);
 
-	for (i = 0; i < num_chans; i++)
+	for (i = 0; i < num_chans; i++) {
 		spin_lock_init(&pdata->chinfo[i].chan_lock);
-
-	for (i = 0; i < num_chans; i++)
-		spin_lock_init(&pdata->chinfo[i].irq_lock);
+		spin_lock_init(&pdata->chinfo[i].chan_tx_lock);
+	}
 
 	ret = register_netdev(ndev);
 	if (ret) {
@@ -1142,11 +1149,17 @@ int eqos_probe(struct platform_device *pdev)
 	eqos_ptp_remove(pdata);
 #endif	/* end of EQOS_CONFIG_PTP */
 
+	/* remove tx napi */
+	for (i = 0; i < EQOS_TX_QUEUE_CNT; i++) {
+		struct eqos_tx_queue *tx_queue = GET_TX_QUEUE_PTR(i);
+		netif_napi_del(&tx_queue->napi);
+	}
 	/* remove rx napi */
 	for (i = 0; i < EQOS_RX_QUEUE_CNT; i++) {
 		struct eqos_rx_queue *rx_queue = GET_RX_QUEUE_PTR(i);
 		netif_napi_del(&rx_queue->napi);
 	}
+
 	if (1 == pdata->hw_feat.sma_sel)
 		eqos_mdio_unregister(ndev);
 
@@ -1237,6 +1250,11 @@ int eqos_remove(struct platform_device *pdev)
 	eqos_ptp_remove(pdata);
 #endif	/* end of EQOS_CONFIG_PTP */
 
+	/* remove tx napi */
+	for (i = 0; i < EQOS_TX_QUEUE_CNT; i++) {
+		struct eqos_tx_queue *tx_queue = GET_TX_QUEUE_PTR(i);
+		netif_napi_del(&tx_queue->napi);
+	}
 	/* remove rx napi */
 	for (i = 0; i < EQOS_RX_QUEUE_CNT; i++) {
 		struct eqos_rx_queue *rx_queue = GET_RX_QUEUE_PTR(i);

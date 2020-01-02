@@ -819,7 +819,7 @@ static void tcp_v4_reqsk_send_ack(struct sock *sk, struct sk_buff *skb,
 			tcp_time_stamp,
 			req->ts_recent,
 			0,
-			tcp_md5_do_lookup(sk, (union tcp_md5_addr *)&ip_hdr(skb)->daddr,
+			tcp_md5_do_lookup(sk, (union tcp_md5_addr *)&ip_hdr(skb)->saddr,
 					  AF_INET),
 			inet_rsk(req)->no_srccheck ? IP_REPLY_ARG_NOSRCCHECK : 0,
 			ip_hdr(skb)->tos);
@@ -2472,6 +2472,7 @@ static int __net_init tcp_sk_init(struct net *net)
 		*per_cpu_ptr(net->ipv4.tcp_sk, cpu) = sk;
 	}
 	net->ipv4.sysctl_tcp_ecn = 2;
+	net->ipv4.sysctl_tcp_min_snd_mss = TCP_MIN_SND_MSS;
 	return 0;
 
 fail:

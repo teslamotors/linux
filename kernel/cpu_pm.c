@@ -22,14 +22,13 @@
 #include <linux/spinlock.h>
 #include <linux/syscore_ops.h>
 
-static DEFINE_RAW_SPINLOCK(cpu_pm_notifier_lock);
-static RAW_NOTIFIER_HEAD(cpu_pm_notifier_chain);
+static ATOMIC_NOTIFIER_HEAD(cpu_pm_notifier_chain);
 
 static int cpu_pm_notify(enum cpu_pm_event event, int nr_to_call, int *nr_calls)
 {
 	int ret;
 
-	ret = __raw_notifier_call_chain(&cpu_pm_notifier_chain, event, NULL,
+	ret = __atomic_notifier_call_chain(&cpu_pm_notifier_chain, event, NULL,
 		nr_to_call, nr_calls);
 
 	return notifier_to_errno(ret);
@@ -47,14 +46,7 @@ static int cpu_pm_notify(enum cpu_pm_event event, int nr_to_call, int *nr_calls)
  */
 int cpu_pm_register_notifier(struct notifier_block *nb)
 {
-	unsigned long flags;
-	int ret;
-
-	raw_spin_lock_irqsave(&cpu_pm_notifier_lock, flags);
-	ret = raw_notifier_chain_register(&cpu_pm_notifier_chain, nb);
-	raw_spin_unlock_irqrestore(&cpu_pm_notifier_lock, flags);
-
-	return ret;
+	return atomic_notifier_chain_register(&cpu_pm_notifier_chain, nb);
 }
 EXPORT_SYMBOL_GPL(cpu_pm_register_notifier);
 
@@ -69,14 +61,7 @@ EXPORT_SYMBOL_GPL(cpu_pm_register_notifier);
  */
 int cpu_pm_unregister_notifier(struct notifier_block *nb)
 {
-	unsigned long flags;
-	int ret;
-
-	raw_spin_lock_irqsave(&cpu_pm_notifier_lock, flags);
-	ret = raw_notifier_chain_unregister(&cpu_pm_notifier_chain, nb);
-	raw_spin_unlock_irqrestore(&cpu_pm_notifier_lock, flags);
-
-	return ret;
+	return atomic_notifier_chain_unregister(&cpu_pm_notifier_chain, nb);
 }
 EXPORT_SYMBOL_GPL(cpu_pm_unregister_notifier);
 
@@ -99,9 +84,7 @@ int cpu_pm_enter(void)
 {
 	int nr_calls;
 	int ret = 0;
-	unsigned long flags;
 
-	raw_spin_lock_irqsave(&cpu_pm_notifier_lock, flags);
 	ret = cpu_pm_notify(CPU_PM_ENTER, -1, &nr_calls);
 	if (ret)
 		/*
@@ -109,7 +92,6 @@ int cpu_pm_enter(void)
 		 * PM entry who are notified earlier to prepare for it.
 		 */
 		cpu_pm_notify(CPU_PM_ENTER_FAILED, nr_calls - 1, NULL);
-	raw_spin_unlock_irqrestore(&cpu_pm_notifier_lock, flags);
 
 	return ret;
 }
@@ -129,14 +111,7 @@ EXPORT_SYMBOL_GPL(cpu_pm_enter);
  */
 int cpu_pm_exit(void)
 {
-	int ret;
-	unsigned long flags;
-
-	raw_spin_lock_irqsave(&cpu_pm_notifier_lock, flags);
-	ret = cpu_pm_notify(CPU_PM_EXIT, -1, NULL);
-	raw_spin_unlock_irqrestore(&cpu_pm_notifier_lock, flags);
-
-	return ret;
+	return cpu_pm_notify(CPU_PM_EXIT, -1, NULL);
 }
 EXPORT_SYMBOL_GPL(cpu_pm_exit);
 
@@ -160,9 +135,7 @@ int cpu_cluster_pm_enter(void)
 {
 	int nr_calls;
 	int ret = 0;
-	unsigned long flags;
 
-	raw_spin_lock_irqsave(&cpu_pm_notifier_lock, flags);
 	ret = cpu_pm_notify(CPU_CLUSTER_PM_ENTER, -1, &nr_calls);
 	if (ret)
 		/*
@@ -170,7 +143,6 @@ int cpu_cluster_pm_enter(void)
 		 * PM entry who are notified earlier to prepare for it.
 		 */
 		cpu_pm_notify(CPU_CLUSTER_PM_ENTER_FAILED, nr_calls - 1, NULL);
-	raw_spin_unlock_irqrestore(&cpu_pm_notifier_lock, flags);
 
 	return ret;
 }
@@ -193,14 +165,7 @@ EXPORT_SYMBOL_GPL(cpu_cluster_pm_enter);
  */
 int cpu_cluster_pm_exit(void)
 {
-	int ret;
-	unsigned long flags;
-
-	raw_spin_lock_irqsave(&cpu_pm_notifier_lock, flags);
-	ret = cpu_pm_notify(CPU_CLUSTER_PM_EXIT, -1, NULL);
-	raw_spin_unlock_irqrestore(&cpu_pm_notifier_lock, flags);
-
-	return ret;
+	return cpu_pm_notify(CPU_CLUSTER_PM_EXIT, -1, NULL);
 }
 EXPORT_SYMBOL_GPL(cpu_cluster_pm_exit);
 

@@ -608,6 +608,13 @@ static int pppol2tp_connect(struct socket *sock, struct sockaddr *uservaddr,
 	lock_sock(sk);
 
 	error = -EINVAL;
+
+	if (sockaddr_len != sizeof(struct sockaddr_pppol2tp) &&
+	    sockaddr_len != sizeof(struct sockaddr_pppol2tpv3) &&
+	    sockaddr_len != sizeof(struct sockaddr_pppol2tpin6) &&
+	    sockaddr_len != sizeof(struct sockaddr_pppol2tpv3in6))
+		goto end;
+
 	if (sp->sa_protocol != PX_PROTO_OL2TP)
 		goto end;
 
@@ -1017,6 +1024,9 @@ static int pppol2tp_session_ioctl(struct l2tp_session *session,
 		 session->name, cmd, arg);
 
 	sk = ps->sock;
+	if (!sk)
+		return -EBADR;
+
 	sock_hold(sk);
 
 	switch (cmd) {

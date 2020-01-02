@@ -434,6 +434,7 @@ static int cma_resolve_ib_dev(struct rdma_id_private *id_priv)
 	dgid = (union ib_gid *) &addr->sib_addr;
 	pkey = ntohs(addr->sib_pkey);
 
+	mutex_lock(&lock);
 	list_for_each_entry(cur_dev, &dev_list, list) {
 		if (rdma_node_get_transport(cur_dev->device->node_type) != RDMA_TRANSPORT_IB)
 			continue;
@@ -455,18 +456,19 @@ static int cma_resolve_ib_dev(struct rdma_id_private *id_priv)
 					cma_dev = cur_dev;
 					sgid = gid;
 					id_priv->id.port_num = p;
+					goto found;
 				}
 			}
 		}
 	}
-
-	if (!cma_dev)
-		return -ENODEV;
+	mutex_unlock(&lock);
+	return -ENODEV;
 
 found:
 	cma_attach_to_dev(id_priv, cma_dev);
-	addr = (struct sockaddr_ib *) cma_src_addr(id_priv);
-	memcpy(&addr->sib_addr, &sgid, sizeof sgid);
+	mutex_unlock(&lock);
+	addr = (struct sockaddr_ib *)cma_src_addr(id_priv);
+	memcpy(&addr->sib_addr, &sgid, sizeof(sgid));
 	cma_translate_ib(addr, &id_priv->id.route.addr.dev_addr);
 	return 0;
 }
@@ -3350,6 +3352,9 @@ int rdma_join_multicast(struct rdma_cm_id *id, struct sockaddr *addr,
 	struct cma_multicast *mc;
 	int ret;
 
+	if (!id->device)
+		return -EINVAL;
+
 	id_priv = container_of(id, struct rdma_id_private, id);
 	if (!cma_comp(id_priv, RDMA_CM_ADDR_BOUND) &&
 	    !cma_comp(id_priv, RDMA_CM_ADDR_RESOLVED))
@@ -3632,7 +3637,7 @@ static int cma_get_id_stats(struct sk_buff *skb, struct netlink_callback *cb)
 					  RDMA_NL_RDMA_CM_ATTR_SRC_ADDR))
 				goto out;
 			if (ibnl_put_attr(skb, nlh,
-					  rdma_addr_size(cma_src_addr(id_priv)),
+					  rdma_addr_size(cma_dst_addr(id_priv)),
 					  cma_dst_addr(id_priv),
 					  RDMA_NL_RDMA_CM_ATTR_DST_ADDR))
 				goto out;

@@ -65,14 +65,16 @@ EXPORT_SYMBOL_GPL(tty_buffer_lock_exclusive);
 void tty_buffer_unlock_exclusive(struct tty_port *port)
 {
 	struct tty_bufhead *buf = &port->buf;
+	struct workqueue_struct *wq;
 	int restart;
 
 	restart = buf->head->commit != buf->head->read;
+	wq = port->low_latency ?  system_unbound_rtpri_wq : system_unbound_wq;
 
 	atomic_dec(&buf->priority);
 	mutex_unlock(&buf->lock);
 	if (restart)
-		queue_work(system_unbound_wq, &buf->work);
+		queue_work(wq, &buf->work);
 }
 EXPORT_SYMBOL_GPL(tty_buffer_unlock_exclusive);
 
@@ -368,9 +370,12 @@ EXPORT_SYMBOL(tty_buffer_get_level);
 void tty_schedule_flip(struct tty_port *port)
 {
 	struct tty_bufhead *buf = &port->buf;
+	struct workqueue_struct *wq = system_wq;
 
 	buf->tail->commit = buf->tail->used;
-	schedule_work(&buf->work);
+	if (port->low_latency)
+		wq = system_unbound_rtpri_wq;
+	queue_work(wq, &buf->work);
 }
 EXPORT_SYMBOL(tty_schedule_flip);
 

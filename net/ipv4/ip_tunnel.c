@@ -302,13 +302,14 @@ static struct net_device *__ip_tunnel_create(struct net *net,
 	struct net_device *dev;
 	char name[IFNAMSIZ];
 
-	if (parms->name[0])
-		strlcpy(name, parms->name, IFNAMSIZ);
-	else {
-		if (strlen(ops->kind) > (IFNAMSIZ - 3)) {
-			err = -E2BIG;
+	err = -E2BIG;
+	if (parms->name[0]) {
+		if (!dev_valid_name(parms->name))
 			goto failed;
-		}
+		strlcpy(name, parms->name, IFNAMSIZ);
+	} else {
+		if (strlen(ops->kind) > (IFNAMSIZ - 3))
+			goto failed;
 		strlcpy(name, ops->kind, IFNAMSIZ);
 		strncat(name, "%d", 2);
 	}
@@ -395,8 +396,8 @@ static int ip_tunnel_bind_dev(struct net_device *dev)
 	dev->needed_headroom = t_hlen + hlen;
 	mtu -= (dev->hard_header_len + t_hlen);
 
-	if (mtu < 68)
-		mtu = 68;
+	if (mtu < IPV4_MIN_MTU)
+		mtu = IPV4_MIN_MTU;
 
 	return mtu;
 }

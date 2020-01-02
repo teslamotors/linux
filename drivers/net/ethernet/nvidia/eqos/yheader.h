@@ -479,6 +479,8 @@
 #define EQOS_MAX_DMA_RIWT  0xff
 /* Max no of pkts to be received before an RX interrupt */
 #define EQOS_RX_MAX_FRAMES 16
+/* Max no of descriptors to be transmitted before a TX interrupt */
+#define EQOS_TX_MAX_COAL_DESC 16
 
 #define DMA_SBUS_AXI_PBL_MASK 0xFE
 
@@ -820,8 +822,11 @@ struct hw_if_struct {
 	/* for handling multi-queue */
 	INT(*disable_rx_interrupt)(UINT, struct eqos_prv_data *);
 	INT(*enable_rx_interrupt)(UINT, struct eqos_prv_data *);
-	INT (*disable_chan_interrupts)(UINT, struct eqos_prv_data *);
-	INT (*enable_chan_interrupts)(UINT, struct eqos_prv_data *);
+	INT (*disable_tx_chan_interrupts)(UINT, struct eqos_prv_data *);
+	INT (*enable_tx_chan_interrupts)(UINT, struct eqos_prv_data *);
+
+	INT (*disable_rx_chan_interrupts)(UINT, struct eqos_prv_data *);
+	INT (*enable_rx_chan_interrupts)(UINT, struct eqos_prv_data *);
 
 	/* for handling MMC */
 	INT(*disable_mmc_interrupts)(VOID);
@@ -949,6 +954,13 @@ struct tx_ring {
 					queued for transmission */
 	unsigned int queue_stopped;
 
+	/* descriptor count for current transmit */
+	unsigned int cur_desc_count;
+
+	/* Max no of descriptors to be transmitted before a TX interrupt */
+	unsigned int tx_coal_max_desc;
+	unsigned int tx_coal_cur_desc;
+
 	UINT tx_threshold_val;	/* contain bit value for TX threshold */
 	UINT tsf_on;		/* set to 1 if TSF is enabled else set to 0 */
 	UINT osf_on;		/* set to 1 if OSF is enabled else set to 0 */
@@ -972,6 +984,9 @@ struct eqos_tx_queue {
 	/* Tx descriptors */
 	struct tx_ring ptx_ring;
 	int q_op_mode;
+	struct eqos_prv_data *pdata;
+	struct napi_struct napi;
+	uint	chan_num;
 };
 
 /* wrapper buffer structure to hold received pkt details */
@@ -1254,7 +1269,8 @@ struct eqos_extra_stats {
 	/* Tx/Rx IRQ Events */
 	unsigned long tx_normal_irq_n[8];
 	unsigned long rx_normal_irq_n[8];
-	unsigned long napi_poll_n;
+	unsigned long tx_napi_poll_n;
+	unsigned long rx_napi_poll_n;
 	unsigned long tx_clean_n[8];
 	/* EEE */
 	unsigned long tx_path_in_lpi_mode_irq_n;
@@ -1325,7 +1341,8 @@ struct eqos_cfg {
 struct chan_data {
 	uint	chan_num;
 	uint	cpu;
-	u32	int_mask;
+	u32	tx_int_mask;
+	u32	rx_int_mask;
 	spinlock_t chan_tx_lock;
 	spinlock_t chan_lock;
 	spinlock_t irq_lock;
@@ -1574,7 +1591,8 @@ void eqos_init_function_ptrs_dev(struct hw_if_struct *);
 void eqos_init_function_ptrs_desc(struct desc_if_struct *);
 struct net_device_ops *eqos_get_netdev_ops(void);
 struct ethtool_ops *eqos_get_ethtool_ops(void);
-int eqos_napi_mq(struct napi_struct *, int);
+int eqos_napi_rx_mq(struct napi_struct *napi, int budget);
+int eqos_napi_tx_mq(struct napi_struct *napi, int budget);
 
 void eqos_get_pdata(struct eqos_prv_data *pdata);
 
@@ -1601,6 +1619,7 @@ INT eqos_powerup(struct net_device *, UINT);
 INT eqos_powerdown(struct net_device *, UINT, UINT);
 u32 eqos_usec2riwt(u32 usec, struct eqos_prv_data *pdata);
 void eqos_init_rx_coalesce(struct eqos_prv_data *pdata);
+void eqos_init_tx_coalesce(struct eqos_prv_data *pdata);
 void eqos_enable_all_ch_rx_interrpt(struct eqos_prv_data *pdata);
 void eqos_disable_all_ch_rx_interrpt(struct eqos_prv_data *pdata);
 void eqos_update_rx_errors(struct net_device *, unsigned int);

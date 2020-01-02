@@ -83,7 +83,7 @@ enum {
 	WORKER_NOT_RUNNING	= WORKER_PREP | WORKER_CPU_INTENSIVE |
 				  WORKER_UNBOUND | WORKER_REBOUND,
 
-	NR_STD_WORKER_POOLS	= 2,		/* # standard pools per cpu */
+	NR_STD_WORKER_POOLS	= 3,		/* # standard pools per cpu */
 
 	UNBOUND_POOL_HASH_ORDER	= 6,		/* hashed by pool->attrs */
 	BUSY_WORKER_HASH_ORDER	= 6,		/* 64 pointers */
@@ -102,7 +102,8 @@ enum {
 	 * all cpus.  Give MIN_NICE.
 	 */
 	RESCUER_NICE_LEVEL	= MIN_NICE,
-	HIGHPRI_NICE_LEVEL	= MIN_NICE,
+	HIGHPRI_PRIO_LEVEL	= NICE_TO_PRIO(MIN_NICE),
+	RTPRI_PRIO_LEVEL	= (MAX_RT_PRIO * 3) / 4, /* at 3/4th range */
 
 	WQ_NAME_LEN		= 24,
 };
@@ -317,10 +318,14 @@ struct workqueue_struct *system_wq __read_mostly;
 EXPORT_SYMBOL(system_wq);
 struct workqueue_struct *system_highpri_wq __read_mostly;
 EXPORT_SYMBOL_GPL(system_highpri_wq);
+struct workqueue_struct *system_rtpri_wq __read_mostly;
+EXPORT_SYMBOL_GPL(system_rtpri_wq);
 struct workqueue_struct *system_long_wq __read_mostly;
 EXPORT_SYMBOL_GPL(system_long_wq);
 struct workqueue_struct *system_unbound_wq __read_mostly;
 EXPORT_SYMBOL_GPL(system_unbound_wq);
+struct workqueue_struct *system_unbound_rtpri_wq __read_mostly;
+EXPORT_SYMBOL_GPL(system_unbound_rtpri_wq);
 struct workqueue_struct *system_freezable_wq __read_mostly;
 EXPORT_SYMBOL_GPL(system_freezable_wq);
 struct workqueue_struct *system_power_efficient_wq __read_mostly;
@@ -1483,6 +1488,7 @@ static void __queue_delayed_work(int cpu, struct workqueue_struct *wq,
 	struct timer_list *timer = &dwork->timer;
 	struct work_struct *work = &dwork->work;
 
+	WARN_ON_ONCE(!wq);
 	WARN_ON_ONCE(timer->function != delayed_work_timer_fn ||
 		     timer->data != (unsigned long)dwork);
 	WARN_ON_ONCE(timer_pending(timer));
@@ -1752,16 +1758,25 @@ static struct worker *create_worker(struct worker_pool *pool)
 
 	if (pool->cpu >= 0)
 		snprintf(id_buf, sizeof(id_buf), "%d:%d%s", pool->cpu, id,
-			 pool->attrs->nice < 0  ? "H" : "");
+				 (pool->attrs->prio < MAX_USER_RT_PRIO) ? "R" :
+					(pool->attrs->prio < DEFAULT_PRIO) ? "H" : "");
 	else
-		snprintf(id_buf, sizeof(id_buf), "u%d:%d", pool->id, id);
+		snprintf(id_buf, sizeof(id_buf), "u%d:%d%s", pool->id, id,
+			 (pool->attrs->prio < MAX_USER_RT_PRIO) ? "R" : "");
 
 	worker->task = kthread_create_on_node(worker_thread, worker, pool->node,
 					      "kworker/%s", id_buf);
 	if (IS_ERR(worker->task))
 		goto fail;
 
-	set_user_nice(worker->task, pool->attrs->nice);
+	if (pool->attrs->prio >= MAX_USER_RT_PRIO)
+		set_user_nice(worker->task, PRIO_TO_NICE(pool->attrs->prio));
+	else {
+		struct sched_param param = {
+			.sched_priority = pool->attrs->prio,
+		};
+		sched_setscheduler_nocheck(worker->task, SCHED_FIFO, &param);
+	}
 
 	/* prevent userland from meddling with cpumask of workqueue workers */
 	worker->task->flags |= PF_NO_SETAFFINITY;
@@ -3131,9 +3146,12 @@ static ssize_t wq_nice_show(struct device *dev, struct device_attribute *attr,
 {
 	struct workqueue_struct *wq = dev_to_wq(dev);
 	int written;
+	int nice = 0;
 
 	mutex_lock(&wq->mutex);
-	written = scnprintf(buf, PAGE_SIZE, "%d\n", wq->unbound_attrs->nice);
+	if (wq->unbound_attrs->prio >= MAX_USER_RT_PRIO)
+		nice = PRIO_TO_NICE(wq->unbound_attrs->prio);
+	written = scnprintf(buf, PAGE_SIZE, "%d\n", nice);
 	mutex_unlock(&wq->mutex);
 
 	return written;
@@ -3159,16 +3177,18 @@ static ssize_t wq_nice_store(struct device *dev, struct device_attribute *attr,
 {
 	struct workqueue_struct *wq = dev_to_wq(dev);
 	struct workqueue_attrs *attrs;
+	int nice;
 	int ret;
 
 	attrs = wq_sysfs_prep_attrs(wq);
 	if (!attrs)
 		return -ENOMEM;
 
-	if (sscanf(buf, "%d", &attrs->nice) == 1 &&
-	    attrs->nice >= MIN_NICE && attrs->nice <= MAX_NICE)
+	if (sscanf(buf, "%d", &nice) == 1 &&
+	    nice >= MIN_NICE && nice <= MAX_NICE) {
+		attrs->prio = NICE_TO_PRIO(nice);
 		ret = apply_workqueue_attrs(wq, attrs);
-	else
+	} else
 		ret = -EINVAL;
 
 	free_workqueue_attrs(attrs);
@@ -3401,7 +3421,7 @@ fail:
 static void copy_workqueue_attrs(struct workqueue_attrs *to,
 				 const struct workqueue_attrs *from)
 {
-	to->nice = from->nice;
+	to->prio = from->prio;
 	cpumask_copy(to->cpumask, from->cpumask);
 	/*
 	 * Unlike hash and equality test, this function doesn't ignore
@@ -3416,7 +3436,7 @@ static u32 wqattrs_hash(const struct workqueue_attrs *attrs)
 {
 	u32 hash = 0;
 
-	hash = jhash_1word(attrs->nice, hash);
+	hash = jhash_1word(attrs->prio, hash);
 	hash = jhash(cpumask_bits(attrs->cpumask),
 		     BITS_TO_LONGS(nr_cpumask_bits) * sizeof(long), hash);
 	return hash;
@@ -3426,7 +3446,7 @@ static u32 wqattrs_hash(const struct workqueue_attrs *attrs)
 static bool wqattrs_equal(const struct workqueue_attrs *a,
 			  const struct workqueue_attrs *b)
 {
-	if (a->nice != b->nice)
+	if (a->prio != b->prio)
 		return false;
 	if (!cpumask_equal(a->cpumask, b->cpumask))
 		return false;
@@ -4063,7 +4083,8 @@ out_unlock:
 
 static int alloc_and_link_pwqs(struct workqueue_struct *wq)
 {
-	bool highpri = wq->flags & WQ_HIGHPRI;
+	int highpri = ((wq->flags & WQ_RTPRI) != 0) ? 2 :
+				   ((wq->flags & WQ_HIGHPRI) != 0) ? 1 : 0;
 	int cpu, ret;
 
 	if (!(wq->flags & WQ_UNBOUND)) {
@@ -4957,7 +4978,9 @@ static void __init wq_numa_init(void)
 
 static int __init init_workqueues(void)
 {
-	int std_nice[NR_STD_WORKER_POOLS] = { 0, HIGHPRI_NICE_LEVEL };
+	int std_prio[NR_STD_WORKER_POOLS] = { DEFAULT_PRIO,
+										  HIGHPRI_PRIO_LEVEL,
+										  RTPRI_PRIO_LEVEL };
 	int i, cpu;
 
 	WARN_ON(__alignof__(struct pool_workqueue) < __alignof__(long long));
@@ -4978,7 +5001,7 @@ static int __init init_workqueues(void)
 			BUG_ON(init_worker_pool(pool));
 			pool->cpu = cpu;
 			cpumask_copy(pool->attrs->cpumask, cpumask_of(cpu));
-			pool->attrs->nice = std_nice[i++];
+			pool->attrs->prio = std_prio[i++];
 			pool->node = cpu_to_node(cpu);
 
 			/* alloc pool ID */
@@ -5003,7 +5026,7 @@ static int __init init_workqueues(void)
 		struct workqueue_attrs *attrs;
 
 		BUG_ON(!(attrs = alloc_workqueue_attrs(GFP_KERNEL)));
-		attrs->nice = std_nice[i];
+		attrs->prio = std_prio[i];
 		unbound_std_wq_attrs[i] = attrs;
 
 		/*
@@ -5012,16 +5035,20 @@ static int __init init_workqueues(void)
 		 * Turn off NUMA so that dfl_pwq is used for all nodes.
 		 */
 		BUG_ON(!(attrs = alloc_workqueue_attrs(GFP_KERNEL)));
-		attrs->nice = std_nice[i];
+		attrs->prio = std_prio[i];
 		attrs->no_numa = true;
 		ordered_wq_attrs[i] = attrs;
 	}
 
 	system_wq = alloc_workqueue("events", 0, 0);
 	system_highpri_wq = alloc_workqueue("events_highpri", WQ_HIGHPRI, 0);
+	system_rtpri_wq = alloc_workqueue("events_rtpri", WQ_RTPRI, 0);
 	system_long_wq = alloc_workqueue("events_long", 0, 0);
 	system_unbound_wq = alloc_workqueue("events_unbound", WQ_UNBOUND,
 					    WQ_UNBOUND_MAX_ACTIVE);
+	system_unbound_rtpri_wq =
+				alloc_workqueue("events_unbound_rtpri", WQ_UNBOUND | WQ_RTPRI,
+								WQ_UNBOUND_MAX_ACTIVE);
 	system_freezable_wq = alloc_workqueue("events_freezable",
 					      WQ_FREEZABLE, 0);
 	system_power_efficient_wq = alloc_workqueue("events_power_efficient",
@@ -5030,7 +5057,8 @@ static int __init init_workqueues(void)
 					      WQ_FREEZABLE | WQ_POWER_EFFICIENT,
 					      0);
 	BUG_ON(!system_wq || !system_highpri_wq || !system_long_wq ||
-	       !system_unbound_wq || !system_freezable_wq ||
+	       !system_rtpri_wq || !system_unbound_wq ||
+	       !system_unbound_rtpri_wq || !system_freezable_wq ||
 	       !system_power_efficient_wq ||
 	       !system_freezable_power_efficient_wq);
 	return 0;

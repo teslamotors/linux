@@ -128,7 +128,7 @@ struct delayed_work {
  * participate in pool hash calculations or equality comparisons.
  */
 struct workqueue_attrs {
-	int			nice;		/* nice level */
+	int			prio;		/* nice level */
 	cpumask_var_t		cpumask;	/* allowed CPUs */
 	bool			no_numa;	/* disable NUMA affinity */
 };
@@ -312,10 +312,11 @@ enum {
 	 * http://thread.gmane.org/gmane.linux.kernel/1480396
 	 */
 	WQ_POWER_EFFICIENT	= 1 << 7,
+	WQ_RTPRI                = 1 << 13,
 
 	__WQ_DRAINING		= 1 << 16, /* internal: workqueue is draining */
 	__WQ_ORDERED		= 1 << 17, /* internal: workqueue is ordered */
-	__WQ_ORDERED_EXPLICIT	= 1 << 18, /* internal: alloc_ordered_workqueue() */
+	__WQ_ORDERED_EXPLICIT	= 1 << 19, /* internal: alloc_ordered_workqueue() */
 
 	WQ_MAX_ACTIVE		= 512,	  /* I like 512, better ideas? */
 	WQ_MAX_UNBOUND_PER_CPU	= 4,	  /* 4 * #cpus for unbound wq */
@@ -356,8 +357,10 @@ enum {
  */
 extern struct workqueue_struct *system_wq;
 extern struct workqueue_struct *system_highpri_wq;
+extern struct workqueue_struct *system_rtpri_wq;
 extern struct workqueue_struct *system_long_wq;
 extern struct workqueue_struct *system_unbound_wq;
+extern struct workqueue_struct *system_unbound_rtpri_wq;
 extern struct workqueue_struct *system_freezable_wq;
 extern struct workqueue_struct *system_power_efficient_wq;
 extern struct workqueue_struct *system_freezable_power_efficient_wq;

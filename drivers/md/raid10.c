@@ -1514,11 +1514,24 @@ retry_write:
 			mbio->bi_private = r10_bio;
 
 			atomic_inc(&r10_bio->remaining);
+
+			cb = blk_check_plugged(raid10_unplug, mddev,
+					       sizeof(*plug));
+			if (cb)
+				plug = container_of(cb, struct raid10_plug_cb,
+						    cb);
+			else
+				plug = NULL;
 			spin_lock_irqsave(&conf->device_lock, flags);
-			bio_list_add(&conf->pending_bio_list, mbio);
-			conf->pending_count++;
+			if (plug) {
+				bio_list_add(&plug->pending, mbio);
+				plug->pending_cnt++;
+			} else {
+				bio_list_add(&conf->pending_bio_list, mbio);
+				conf->pending_count++;
+			}
 			spin_unlock_irqrestore(&conf->device_lock, flags);
-			if (!mddev_check_plugged(mddev))
+			if (!plug)
 				md_wakeup_thread(mddev->thread);
 		}
 	}
@@ -2741,7 +2754,8 @@ static void handle_write_completed(struct r10conf *conf, struct r10bio *r10_bio)
 		for (m = 0; m < conf->copies; m++) {
 			int dev = r10_bio->devs[m].devnum;
 			rdev = conf->mirrors[dev].rdev;
-			if (r10_bio->devs[m].bio == NULL)
+			if (r10_bio->devs[m].bio == NULL ||
+				r10_bio->devs[m].bio->bi_end_io == NULL)
 				continue;
 			if (test_bit(BIO_UPTODATE,
 				     &r10_bio->devs[m].bio->bi_flags)) {
@@ -2757,7 +2771,8 @@ static void handle_write_completed(struct r10conf *conf, struct r10bio *r10_bio)
 					md_error(conf->mddev, rdev);
 			}
 			rdev = conf->mirrors[dev].replacement;
-			if (r10_bio->devs[m].repl_bio == NULL)
+			if (r10_bio->devs[m].repl_bio == NULL ||
+				r10_bio->devs[m].repl_bio->bi_end_io == NULL)
 				continue;
 			if (test_bit(BIO_UPTODATE,
 				     &r10_bio->devs[m].repl_bio->bi_flags)) {
@@ -3704,6 +3719,7 @@ static int run(struct mddev *mddev)
 
 		if (blk_queue_discard(bdev_get_queue(rdev->bdev)))
 			discard_supported = true;
+		first = 0;
 	}
 
 	if (mddev->queue) {
@@ -3754,6 +3770,13 @@ static int run(struct mddev *mddev)
 			    disk->rdev->saved_raid_disk < 0)
 				conf->fullsync = 1;
 		}
+
+		if (disk->replacement &&
+		    !test_bit(In_sync, &disk->replacement->flags) &&
+		    disk->replacement->saved_raid_disk < 0) {
+			conf->fullsync = 1;
+		}
+
 		disk->recovery_disabled = mddev->recovery_disabled - 1;
 	}
 
@@ -4119,6 +4142,7 @@ static int raid10_start_reshape(struct mddev *mddev)
 				diff = 0;
 			if (first || diff < min_offset_diff)
 				min_offset_diff = diff;
+			first = 0;
 		}
 	}
 

@@ -415,8 +415,8 @@ static int kvaser_usb_wait_msg(const struct kvaser_usb *dev, u8 id,
 			}
 
 			if (pos + tmp->len > actual_len) {
-				dev_err(dev->udev->dev.parent,
-					"Format error\n");
+				dev_err_ratelimited(dev->udev->dev.parent,
+						    "Format error\n");
 				break;
 			}
 
@@ -850,7 +850,7 @@ static void kvaser_usb_rx_can_msg(const struct kvaser_usb *dev,
 
 	skb = alloc_can_skb(priv->netdev, &cf);
 	if (!skb) {
-		stats->tx_dropped++;
+		stats->rx_dropped++;
 		return;
 	}
 
@@ -980,6 +980,8 @@ static void kvaser_usb_read_bulk_callback(struct urb *urb)
 	case 0:
 		break;
 	case -ENOENT:
+	case -EPIPE:
+	case -EPROTO:
 	case -ESHUTDOWN:
 		return;
 	default:
@@ -988,7 +990,7 @@ static void kvaser_usb_read_bulk_callback(struct urb *urb)
 		goto resubmit_urb;
 	}
 
-	while (pos <= urb->actual_length - MSG_HEADER_LEN) {
+	while (pos <= (int)(urb->actual_length - MSG_HEADER_LEN)) {
 		msg = urb->transfer_buffer + pos;
 
 		/* The Kvaser firmware can only read and write messages that
@@ -1006,7 +1008,8 @@ static void kvaser_usb_read_bulk_callback(struct urb *urb)
 		}
 
 		if (pos + msg->len > urb->actual_length) {
-			dev_err(dev->udev->dev.parent, "Format error\n");
+			dev_err_ratelimited(dev->udev->dev.parent,
+					    "Format error\n");
 			break;
 		}
 
@@ -1251,7 +1254,8 @@ static int kvaser_usb_close(struct net_device *netdev)
 	if (err)
 		netdev_warn(netdev, "Cannot flush queue, error %d\n", err);
 
-	if (kvaser_usb_send_simple_msg(dev, CMD_RESET_CHIP, priv->channel))
+	err = kvaser_usb_send_simple_msg(dev, CMD_RESET_CHIP, priv->channel);
+	if (err)
 		netdev_warn(netdev, "Cannot reset card, error %d\n", err);
 
 	err = kvaser_usb_stop_chip(priv);

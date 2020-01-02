@@ -137,6 +137,12 @@ static inline int phy_aneg_done(struct phy_device *phydev)
 	if (phydev->drv->aneg_done)
 		return phydev->drv->aneg_done(phydev);
 
+	/* Avoid genphy_aneg_done() if the Clause 45 PHY does not
+	 * implement Clause 22 registers
+	 */
+	if (phydev->is_c45 && !(phydev->c45_ids.devices_in_package & BIT(0)))
+		return -EINVAL;
+
 	return genphy_aneg_done(phydev);
 }
 
@@ -524,9 +530,6 @@ void phy_stop_machine(struct phy_device *phydev)
 	if (phydev->state > PHY_UP && phydev->state != PHY_HALTED)
 		phydev->state = PHY_UP;
 	mutex_unlock(&phydev->lock);
-
-	/* Now we can run the state machine synchronously */
-	phy_state_machine(&phydev->state_queue.work);
 }
 
 /**

@@ -435,11 +435,14 @@ static void eqos_wrapper_rx_descriptor_init_single_q(
 static void eqos_wrapper_tx_descriptor_init(struct eqos_prv_data
 						   *pdata)
 {
+	struct eqos_tx_queue *tx_queue = NULL;
 	UINT qinx;
 
 	DBGPR("-->eqos_wrapper_tx_descriptor_init\n");
 
 	for (qinx = 0; qinx < EQOS_TX_QUEUE_CNT; qinx++) {
+		tx_queue = GET_TX_QUEUE_PTR(qinx);
+		tx_queue->pdata = pdata;
 		eqos_wrapper_tx_descriptor_init_single_q(pdata, qinx);
 	}
 

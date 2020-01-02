@@ -551,7 +551,12 @@ static int add_recvbuf_small(struct receive_queue *rq, gfp_t gfp)
 	hdr = skb_vnet_hdr(skb);
 	sg_init_table(rq->sg, MAX_SKB_FRAGS + 2);
 	sg_set_buf(rq->sg, &hdr->hdr, sizeof hdr->hdr);
-	skb_to_sgvec(skb, rq->sg + 1, 0, skb->len);
+
+	err = skb_to_sgvec(skb, rq->sg + 1, 0, skb->len);
+	if (unlikely(err < 0)) {
+		dev_kfree_skb(skb);
+		return err;
+	}
 
 	err = virtqueue_add_inbuf(rq->vq, rq->sg, 2, skb, gfp);
 	if (err < 0)
@@ -854,7 +859,7 @@ static int xmit_skb(struct send_queue *sq, struct sk_buff *skb)
 	struct skb_vnet_hdr *hdr;
 	const unsigned char *dest = ((struct ethhdr *)skb->data)->h_dest;
 	struct virtnet_info *vi = sq->vq->vdev->priv;
-	unsigned num_sg;
+	int num_sg;
 	unsigned hdr_len;
 	bool can_push;
 
@@ -906,11 +911,16 @@ static int xmit_skb(struct send_queue *sq, struct sk_buff *skb)
 	if (can_push) {
 		__skb_push(skb, hdr_len);
 		num_sg = skb_to_sgvec(skb, sq->sg, 0, skb->len);
+		if (unlikely(num_sg < 0))
+			return num_sg;
 		/* Pull header back to avoid skew in tx bytes calculations. */
 		__skb_pull(skb, hdr_len);
 	} else {
 		sg_set_buf(sq->sg, hdr, hdr_len);
-		num_sg = skb_to_sgvec(skb, sq->sg + 1, 0, skb->len) + 1;
+		num_sg = skb_to_sgvec(skb, sq->sg + 1, 0, skb->len);
+		if (unlikely(num_sg < 0))
+			return num_sg;
+		num_sg++;
 	}
 	return virtqueue_add_outbuf(sq->vq, sq->sg, num_sg, skb, GFP_ATOMIC);
 }
@@ -1866,8 +1876,8 @@ static int virtnet_probe(struct virtio_device *vdev)
 
 	/* Assume link up if device can't report link status,
 	   otherwise get link status from config. */
+	netif_carrier_off(dev);
 	if (virtio_has_feature(vi->vdev, VIRTIO_NET_F_STATUS)) {
-		netif_carrier_off(dev);
 		schedule_work(&vi->config_work);
 	} else {
 		vi->status = VIRTIO_NET_S_LINK_UP;

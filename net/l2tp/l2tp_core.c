@@ -1141,7 +1141,7 @@ int l2tp_xmit_skb(struct l2tp_session *session, struct sk_buff *skb, int hdr_len
 
 	/* Get routing info from the tunnel socket */
 	skb_dst_drop(skb);
-	skb_dst_set(skb, dst_clone(__sk_dst_check(sk, 0)));
+	skb_dst_set(skb, sk_dst_check(sk, 0));
 
 	inet = inet_sk(sk);
 	fl = &inet->cork.fl;
@@ -1317,6 +1317,9 @@ static void l2tp_tunnel_del_work(struct work_struct *work)
 	struct sock *sk = NULL;
 
 	tunnel = container_of(work, struct l2tp_tunnel, del_work);
+
+	l2tp_tunnel_closeall(tunnel);
+
 	sk = l2tp_tunnel_sock_lookup(tunnel);
 	if (!sk)
 		goto out;
@@ -1514,9 +1517,14 @@ int l2tp_tunnel_create(struct net *net, int fd, int version, u32 tunnel_id, u32 
 		encap = cfg->encap;
 
 	/* Quick sanity checks */
+	err = -EPROTONOSUPPORT;
+	if (sk->sk_type != SOCK_DGRAM) {
+		pr_debug("tunl %hu: fd %d wrong socket type\n",
+			 tunnel_id, fd);
+		goto err;
+	}
 	switch (encap) {
 	case L2TP_ENCAPTYPE_UDP:
-		err = -EPROTONOSUPPORT;
 		if (sk->sk_protocol != IPPROTO_UDP) {
 			pr_err("tunl %hu: fd %d wrong protocol, got %d, expected %d\n",
 			       tunnel_id, fd, sk->sk_protocol, IPPROTO_UDP);
@@ -1524,7 +1532,6 @@ int l2tp_tunnel_create(struct net *net, int fd, int version, u32 tunnel_id, u32 
 		}
 		break;
 	case L2TP_ENCAPTYPE_IP:
-		err = -EPROTONOSUPPORT;
 		if (sk->sk_protocol != IPPROTO_L2TP) {
 			pr_err("tunl %hu: fd %d wrong protocol, got %d, expected %d\n",
 			       tunnel_id, fd, sk->sk_protocol, IPPROTO_L2TP);
@@ -1639,15 +1646,12 @@ EXPORT_SYMBOL_GPL(l2tp_tunnel_create);
 
 /* This function is used by the netlink TUNNEL_DELETE command.
  */
-int l2tp_tunnel_delete(struct l2tp_tunnel *tunnel)
+void l2tp_tunnel_delete(struct l2tp_tunnel *tunnel)
 {
-	l2tp_tunnel_inc_refcount(tunnel);
-	l2tp_tunnel_closeall(tunnel);
-	if (false == queue_work(l2tp_wq, &tunnel->del_work)) {
-		l2tp_tunnel_dec_refcount(tunnel);
-		return 1;
+	if (!test_and_set_bit(0, &tunnel->dead)) {
+		l2tp_tunnel_inc_refcount(tunnel);
+		queue_work(l2tp_wq, &tunnel->del_work);
 	}
-	return 0;
 }
 EXPORT_SYMBOL_GPL(l2tp_tunnel_delete);
 

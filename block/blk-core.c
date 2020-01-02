@@ -197,7 +197,7 @@ EXPORT_SYMBOL(blk_delay_queue);
  **/
 void blk_start_queue(struct request_queue *q)
 {
-	WARN_ON_NONRT(!irqs_disabled());
+	WARN_ON_NONRT(!in_interrupt() && !irqs_disabled());
 
 	queue_flag_clear(QUEUE_FLAG_STOPPED, q);
 	__blk_run_queue(q);

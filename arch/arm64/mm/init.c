@@ -121,11 +121,13 @@ static void __init zone_sizes_init(unsigned long min, unsigned long max)
 }
 
 #ifdef CONFIG_HAVE_ARCH_PFN_VALID
-#define PFN_MASK ((1UL << (64 - PAGE_SHIFT)) - 1)
-
 int pfn_valid(unsigned long pfn)
 {
-	return (pfn & PFN_MASK) == pfn && memblock_is_memory(pfn << PAGE_SHIFT);
+	phys_addr_t addr = pfn << PAGE_SHIFT;
+
+	if ((addr >> PAGE_SHIFT) != pfn)
+		return 0;
+	return memblock_is_memory(addr);
 }
 EXPORT_SYMBOL(pfn_valid);
 #endif
@@ -170,6 +172,8 @@ void __init arm64_memblock_init(void)
 	/* 4GB maximum for 32-bit only capable devices */
 	if (IS_ENABLED(CONFIG_ZONE_DMA))
 		dma_phys_limit = max_zone_dma_phys();
+
+	high_memory = __va(memblock_end_of_DRAM() - 1) + 1;
 	dma_contiguous_reserve(dma_phys_limit);
 
 	memblock_allow_resize();
@@ -192,7 +196,6 @@ void __init bootmem_init(void)
 	sparse_init();
 	zone_sizes_init(min, max);
 
-	high_memory = __va((max << PAGE_SHIFT) - 1) + 1;
 	max_pfn = max_low_pfn = max;
 }
 

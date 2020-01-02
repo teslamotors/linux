@@ -206,7 +206,8 @@ int ima_appraise_measurement(int func, struct integrity_iint_cache *iint,
 		if (opened & FILE_CREATED)
 			iint->flags |= IMA_NEW_FILE;
 		if ((iint->flags & IMA_NEW_FILE) &&
-		    !(iint->flags & IMA_DIGSIG_REQUIRED))
+		    (!(iint->flags & IMA_DIGSIG_REQUIRED) ||
+		     (inode->i_size == 0)))
 			status = INTEGRITY_PASS;
 		goto out;
 	}
@@ -295,6 +296,9 @@ void ima_update_xattr(struct integrity_iint_cache *iint, struct file *file)
 
 	/* do not collect and update hash for digital signatures */
 	if (iint->flags & IMA_DIGSIG)
+		return;
+
+	if (iint->ima_file_status != INTEGRITY_PASS)
 		return;
 
 	rc = ima_collect_measurement(iint, file, NULL, NULL);

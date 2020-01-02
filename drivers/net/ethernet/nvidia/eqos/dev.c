@@ -1521,12 +1521,23 @@ static INT enable_rx_interrupt(UINT qinx, struct eqos_prv_data *pdata)
 * \retval -1 Failure
 */
 
-static INT disable_chan_interrupts(UINT qinx, struct eqos_prv_data *pdata)
+static INT disable_tx_chan_interrupts(UINT qinx, struct eqos_prv_data *pdata)
 {
 	u32 reg;
 
 	VIRT_INTR_CH_CRTL_RD(qinx, reg);
-	reg &= ~pdata->chinfo[qinx].int_mask;
+	reg &= ~pdata->chinfo[qinx].tx_int_mask;
+	VIRT_INTR_CH_CRTL_WR(qinx, reg);
+
+	return Y_SUCCESS;
+}
+
+static INT disable_rx_chan_interrupts(UINT qinx, struct eqos_prv_data *pdata)
+{
+	u32 reg;
+
+	VIRT_INTR_CH_CRTL_RD(qinx, reg);
+	reg &= ~pdata->chinfo[qinx].rx_int_mask;
 	VIRT_INTR_CH_CRTL_WR(qinx, reg);
 
 	return Y_SUCCESS;
@@ -1540,12 +1551,23 @@ static INT disable_chan_interrupts(UINT qinx, struct eqos_prv_data *pdata)
 * \retval -1 Failure
 */
 
-static INT enable_chan_interrupts(UINT qinx, struct eqos_prv_data *pdata)
+static INT enable_tx_chan_interrupts(UINT qinx, struct eqos_prv_data *pdata)
 {
 	u32 reg;
 
 	VIRT_INTR_CH_CRTL_RD(qinx, reg);
-	reg |= pdata->chinfo[qinx].int_mask;
+	reg |= pdata->chinfo[qinx].tx_int_mask;
+	VIRT_INTR_CH_CRTL_WR(qinx, reg);
+
+	return Y_SUCCESS;
+}
+
+static INT enable_rx_chan_interrupts(UINT qinx, struct eqos_prv_data *pdata)
+{
+	u32 reg;
+
+	VIRT_INTR_CH_CRTL_RD(qinx, reg);
+	reg |= pdata->chinfo[qinx].rx_int_mask;
 	VIRT_INTR_CH_CRTL_WR(qinx, reg);
 
 	return Y_SUCCESS;
@@ -3091,8 +3113,12 @@ static void pre_transmit(struct eqos_prv_data *pdata, UINT qinx)
 	/* Mark it as LAST descriptor */
 	TX_NORMAL_DESC_TDES3_LD_WR(plast_desc->tdes3, 0x1);
 
-	/* set Interrupt on Completion for last descriptor */
-	TX_NORMAL_DESC_TDES2_IC_WR(plast_desc->tdes2, 0x1);
+	ptx_ring->tx_coal_cur_desc += ptx_ring->cur_desc_count;
+	if (ptx_ring->tx_coal_cur_desc >= ptx_ring->tx_coal_max_desc) {
+		/* Set interrupt on completion for last descriptor */
+		TX_NORMAL_DESC_TDES2_IC_WR(plast_desc->tdes2, 0x1);
+		ptx_ring->tx_coal_cur_desc = 0;
+	}
 
 	/* set OWN bit of FIRST descriptor at end to avoid race condition */
 	ptx_desc = GET_TX_DESC_PTR(qinx, start_index);
@@ -3888,7 +3914,9 @@ static INT eqos_yinit(struct eqos_prv_data *pdata)
 	for (j = 0; j < pdata->num_chans; j++) {
 
 		VIRT_INTR_CH_STAT_WR(j, i);
-		VIRT_INTR_CH_CRTL_WR(j, pdata->chinfo[j].int_mask);
+		VIRT_INTR_CH_CRTL_WR(j,
+							 pdata->chinfo[j].tx_int_mask |
+							 pdata->chinfo[j].rx_int_mask);
 	}
 	configure_mac(pdata);
 
@@ -4030,8 +4058,11 @@ void eqos_init_function_ptrs_dev(struct hw_if_struct *hw_if)
 
 	hw_if->disable_rx_interrupt = disable_rx_interrupt;
 	hw_if->enable_rx_interrupt = enable_rx_interrupt;
-	hw_if->disable_chan_interrupts = disable_chan_interrupts;
-	hw_if->enable_chan_interrupts = enable_chan_interrupts;
+	hw_if->disable_tx_chan_interrupts = disable_tx_chan_interrupts;
+	hw_if->enable_tx_chan_interrupts = enable_tx_chan_interrupts;
+
+	hw_if->disable_rx_chan_interrupts = disable_rx_chan_interrupts;
+	hw_if->enable_rx_chan_interrupts = enable_rx_chan_interrupts;
 
 	/* for handling MMC */
 	hw_if->disable_mmc_interrupts = disable_mmc_interrupts;

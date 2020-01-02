@@ -176,6 +176,7 @@ void pps_event(struct pps_device *pps, struct pps_event_time *ts, int event,
 	int captured = 0;
 	struct pps_ktime ts_real = { .sec = 0, .nsec = 0, .flags = 0 };
 	struct pps_ktime ts_raw = { .sec = 0, .nsec = 0, .flags = 0 };
+	struct pps_ktime ts_mono = { .sec = 0, .nsec = 0, .flags = 0 };
 
 	/* check event type */
 	BUG_ON((event & (PPS_CAPTUREASSERT | PPS_CAPTURECLEAR)) == 0);
@@ -185,6 +186,7 @@ void pps_event(struct pps_device *pps, struct pps_event_time *ts, int event,
 
 	timespec_to_pps_ktime(&ts_real, ts->ts_real);
 	timespec_to_pps_ktime(&ts_raw, ts->ts_raw);
+	timespec_to_pps_ktime(&ts_mono, ts->ts);
 
 	spin_lock_irqsave(&pps->lock, flags);
 
@@ -203,6 +205,7 @@ void pps_event(struct pps_device *pps, struct pps_event_time *ts, int event,
 		/* Save the time stamp */
 		pps->assert_tu = ts_real;
 		pps->assert_raw_tu = ts_raw;
+		pps->assert_mono_tu = ts_mono;
 		pps->assert_sequence++;
 		dev_dbg(pps->dev, "capture assert seq #%u\n",
 			pps->assert_sequence);
@@ -218,6 +221,7 @@ void pps_event(struct pps_device *pps, struct pps_event_time *ts, int event,
 		/* Save the time stamp */
 		pps->clear_tu = ts_real;
 		pps->clear_raw_tu = ts_raw;
+		pps->clear_mono_tu = ts_mono;
 		pps->clear_sequence++;
 		dev_dbg(pps->dev, "capture clear seq #%u\n",
 			pps->clear_sequence);

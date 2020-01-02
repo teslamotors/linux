@@ -23,6 +23,8 @@ struct aa_domain {
 	char **table;
 };
 
+struct aa_profile *x_table_lookup(struct aa_profile *profile, u32 xindex);
+
 int apparmor_bprm_set_creds(struct linux_binprm *bprm);
 int apparmor_bprm_secureexec(struct linux_binprm *bprm);
 void apparmor_bprm_committing_creds(struct linux_binprm *bprm);

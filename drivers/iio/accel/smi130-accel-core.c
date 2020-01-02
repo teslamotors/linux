@@ -63,6 +63,13 @@
 #define SMI130_ACCEL_INT_MAP_1_BIT_DATA			BIT(0)
 
 #define SMI130_ACCEL_AXIS_TO_REG(axis)		(SMI130_ACCEL_REG_XOUT_L + (axis * 2))
+#define SMI130_ACCEL_AXIS_CHANNEL_OFFSET	1
+
+#define SMI130_ACCEL_REG_PMU_SELF_TEST		0x32
+#define SMI130_ACCEL_BIT_SELF_TEST_SIGN		BIT(2)
+#define SMI130_ACCEL_EN_HIGH_DEFLECTION		0x10
+#define SMI130_ACCEL_EN_SELF_TEST_OFFSET	0x01
+#define SMI130_ACCEL_SELF_TEST_NUMBER_OF_SAMPLE		5
 
 enum smi130_accel_axis {
 	AXIS_X,
@@ -128,6 +135,10 @@ const struct regmap_config smi130_regmap_conf = {
 	.max_register = 0x3f,
 };
 EXPORT_SYMBOL_GPL(smi130_regmap_conf);
+
+/* SMI130 Datasheet p.33 minimum difference signal 800mg(X), 800mg(Y), 400mg(Z) */
+/* the following array is raw values at 8g range(this mode, 1g is 256 unit) */
+const int self_test_threshold_for_xyz[] = {205, 205, 103};
 
 static int smi130_accel_set_bw(struct smi130_accel_data *data, int val,
 			       int val2)
@@ -215,25 +226,30 @@ static int smi130_accel_get_temp(struct smi130_accel_data *data, int *val)
 
 static int smi130_accel_get_axis(struct smi130_accel_data *data,
 				 struct iio_chan_spec const *chan,
-				 int *val)
+				 int *val, int use_mutex)
 {
 	struct device *dev = regmap_get_device(data->regmap);
 	int ret;
 	int axis = chan->scan_index;
 	__le16 raw_val;
 
-	mutex_lock(&data->mutex);
+	if (use_mutex)
+		mutex_lock(&data->mutex);
 
 	ret = regmap_bulk_read(data->regmap, SMI130_ACCEL_AXIS_TO_REG(axis),
 			       &raw_val, sizeof(raw_val));
 	if (ret < 0) {
 		dev_err(dev, "Error reading axis %d\n", axis);
-		mutex_unlock(&data->mutex);
+		if (use_mutex)
+			mutex_unlock(&data->mutex);
+
 		return ret;
 	}
 	*val = sign_extend32(le16_to_cpu(raw_val) >> chan->scan_type.shift,
 			     chan->scan_type.realbits - 1);
-	mutex_unlock(&data->mutex);
+	if (use_mutex)
+		mutex_unlock(&data->mutex);
+
 	if (ret < 0)
 		return ret;
 
@@ -256,7 +272,8 @@ static int smi130_accel_read_raw(struct iio_dev *indio_dev,
 			if (iio_buffer_enabled(indio_dev))
 				return -EBUSY;
 			else
-				return smi130_accel_get_axis(data, chan, val);
+				/* Mutexed read */
+				return smi130_accel_get_axis(data, chan, val, 1);
 		default:
 			return -EINVAL;
 		}
@@ -334,10 +351,15 @@ static IIO_CONST_ATTR_SAMP_FREQ_AVAIL(
 
 static IIO_CONST_ATTR(scale_available, "0.000976 0.001953 0.003906 0.007812");
 
+static ssize_t smi130_accel_test_mode_show(struct device *dev,
+		       struct device_attribute *attr, char *buf);
+
+static DEVICE_ATTR(test_mode, 0444, smi130_accel_test_mode_show, NULL);
 
 static struct attribute *smi130_accel_attributes[] = {
 	&iio_const_attr_sampling_frequency_available.dev_attr.attr,
 	&iio_const_attr_scale_available.dev_attr.attr,
+	&dev_attr_test_mode.attr,
 	NULL,
 };
 
@@ -471,6 +493,111 @@ static int smi130_accel_chip_init(struct smi130_accel_data *data)
 	data->range = SMI130_ACCEL_DEF_RANGE_4G;
 
 	return 0;
+}
+
+static ssize_t smi130_accel_test_mode_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	int ret;
+	int val[2], passed, i;
+	uint8_t axis, sign;
+	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct smi130_accel_data *data = iio_priv(indio_dev);
+
+	/* Apply software reset before self test */
+	mutex_lock(&data->mutex);
+
+	ret = regmap_write(data->regmap, SMI130_ACCEL_REG_RESET,
+			SMI130_ACCEL_RESET_VAL);
+	if (ret < 0) {
+		dev_err(dev, "Error writing reg_reset\n");
+		goto test_failed;
+	}
+
+	usleep_range(1800, 20000);
+
+	/* Self test requires 8G range */
+	ret = regmap_write(data->regmap, SMI130_ACCEL_REG_PMU_RANGE,
+			SMI130_ACCEL_DEF_RANGE_8G);
+	if (ret < 0) {
+		dev_err(dev, "Error writing reg_pmu_range\n");
+		goto test_failed;
+	}
+	data->range = SMI130_ACCEL_DEF_RANGE_8G;
+
+	for (axis = 0; axis < 3; axis++) {
+		passed = 0;
+
+		for (i = 0; i < SMI130_ACCEL_SELF_TEST_NUMBER_OF_SAMPLE; i++) {
+			for (sign = 0; sign < 2; sign++) {
+
+				ret = regmap_write(data->regmap, SMI130_ACCEL_REG_PMU_SELF_TEST,
+					SMI130_ACCEL_EN_HIGH_DEFLECTION |
+					(SMI130_ACCEL_BIT_SELF_TEST_SIGN)*sign |
+					(axis + SMI130_ACCEL_EN_SELF_TEST_OFFSET));
+				if (ret < 0) {
+					dev_err(dev, "Error writing reg_pmu_self_test\n");
+					goto test_failed;
+				}
+
+				/* Once self test is enabled for each direction wait 50ms */
+				msleep(50);
+
+
+				/* Non-mutexed read*/
+				ret = smi130_accel_get_axis(data,
+					&smi130_accel_channels[axis + SMI130_ACCEL_AXIS_CHANNEL_OFFSET],
+					&val[sign], 0);
+				if (ret < 0) {
+					dev_err(dev, "Error reading axis values\n");
+					goto test_failed;
+				}
+			}
+
+			if ((val[1]-val[0]) > self_test_threshold_for_xyz[axis])
+				passed++;
+
+		}
+
+		if (passed != SMI130_ACCEL_SELF_TEST_NUMBER_OF_SAMPLE) {
+			dev_err(dev, "%c%c: %d/%d rate\n", sign ? '+' : '-', 'x' + axis, passed,
+					SMI130_ACCEL_SELF_TEST_NUMBER_OF_SAMPLE);
+			goto test_failed;
+		}
+	}
+
+	/* Initialize again after self test done */
+	ret = regmap_write(data->regmap, SMI130_ACCEL_REG_RESET,
+			SMI130_ACCEL_RESET_VAL);
+	if (ret < 0) {
+		dev_err(dev, "Error writing reg_reset\n");
+		goto test_failed;
+	}
+
+	usleep_range(1800, 20000);
+
+	/* Set Default Bandwidth */
+	ret = smi130_accel_set_bw(data, SMI130_ACCEL_DEF_BW, 0);
+	if (ret < 0) {
+		dev_err(dev, "Error writing reg_bw\n");
+		goto test_failed;
+	}
+
+	/* Set Default Range */
+	ret = regmap_write(data->regmap, SMI130_ACCEL_REG_PMU_RANGE,
+			   SMI130_ACCEL_DEF_RANGE_4G);
+	if (ret < 0) {
+		dev_err(dev, "Error writing reg_pmu_range\n");
+		goto test_failed;
+	}
+	data->range = SMI130_ACCEL_DEF_RANGE_4G;
+
+	mutex_unlock(&data->mutex);
+	return sprintf(buf, "OK\n");
+
+test_failed:
+	mutex_unlock(&data->mutex);
+	return sprintf(buf, "NOT OK\n");
 }
 
 int smi130_accel_core_probe(struct device *dev, struct regmap *regmap, const char *name)

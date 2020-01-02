@@ -45,7 +45,7 @@ static const char *handler[]= {
 	"Error"
 };
 
-int show_unhandled_signals = 1;
+int show_unhandled_signals = 0;
 
 #ifdef CONFIG_DEBUG_VERBOSE_OOPS
 /*
@@ -119,7 +119,7 @@ static void dump_instr(const char *lvl, struct pt_regs *regs)
 	for (i = -4; i < 1; i++) {
 		unsigned int val, bad;
 
-		bad = __get_user(val, &((u32 *)addr)[i]);
+		bad = get_user(val, &((u32 *)addr)[i]);
 
 		if (!bad)
 			p += sprintf(p, i == 0 ? "(%08x) " : "%08x ", val);

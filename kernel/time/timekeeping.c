@@ -648,19 +648,23 @@ void ktime_get_ts64(struct timespec64 *ts)
 EXPORT_SYMBOL_GPL(ktime_get_ts64);
 
 /**
- * getnstime_raw_and_real - get day and raw monotonic time in timespec format
+ * getnstime_raw_and_real - get monotonic, raw monotonic, day time in timespec
+ * format
+ * @ts:	pointer to the timespec to be set to monotonic time
  * @ts_raw:	pointer to the timespec to be set to raw monotonic time
  * @ts_real:	pointer to the timespec to be set to the time of day
  *
- * This function reads both the time of day and raw monotonic time at the
- * same time atomically and stores the resulting timestamps in timespec
+ * This function reads both the time of day, monotonic and raw monotonic time
+ * at the same time atomically and stores the resulting timestamps in timespec
  * format.
  */
-void getnstime_raw_and_real(struct timespec *ts_raw, struct timespec *ts_real)
+void getnstime_raw_and_real(struct timespec *ts, struct timespec *ts_raw,
+							struct timespec *ts_real)
 {
 	struct timekeeper *tk = &tk_core.timekeeper;
 	unsigned long seq;
 	s64 nsecs_raw, nsecs_real;
+	struct timespec64 tomono;
 
 	WARN_ON_ONCE(timekeeping_suspended);
 
@@ -671,6 +675,8 @@ void getnstime_raw_and_real(struct timespec *ts_raw, struct timespec *ts_real)
 		ts_real->tv_sec = tk->xtime_sec;
 		ts_real->tv_nsec = 0;
 
+		tomono = tk->wall_to_monotonic;
+
 		nsecs_raw = timekeeping_get_ns_raw(tk);
 		nsecs_real = timekeeping_get_ns(&tk->tkr);
 
@@ -678,6 +684,10 @@ void getnstime_raw_and_real(struct timespec *ts_raw, struct timespec *ts_real)
 
 	timespec_add_ns(ts_raw, nsecs_raw);
 	timespec_add_ns(ts_real, nsecs_real);
+
+	tomono.tv_sec += ts_real->tv_sec;
+	timespec64_add_ns(&tomono, ts_real->tv_nsec);
+	*ts = timespec64_to_timespec(tomono);
 }
 EXPORT_SYMBOL(getnstime_raw_and_real);
 
@@ -708,6 +718,7 @@ int do_settimeofday(const struct timespec *tv)
 	struct timekeeper *tk = &tk_core.timekeeper;
 	struct timespec64 ts_delta, xt, tmp;
 	unsigned long flags;
+	int ret = 0;
 
 	if (!timespec_valid_strict(tv))
 		return -EINVAL;
@@ -721,11 +732,16 @@ int do_settimeofday(const struct timespec *tv)
 	ts_delta.tv_sec = tv->tv_sec - xt.tv_sec;
 	ts_delta.tv_nsec = tv->tv_nsec - xt.tv_nsec;
 
+	if (timespec64_compare(&tk->wall_to_monotonic, &ts_delta) > 0) {
+		ret = -EINVAL;
+		goto out;
+	}
+
 	tk_set_wall_to_mono(tk, timespec64_sub(tk->wall_to_monotonic, ts_delta));
 
 	tmp = timespec_to_timespec64(*tv);
 	tk_set_xtime(tk, &tmp);
-
+out:
 	timekeeping_update(tk, TK_CLEAR_NTP | TK_MIRROR | TK_CLOCK_WAS_SET);
 
 	write_seqcount_end(&tk_core.seq);
@@ -734,7 +750,7 @@ int do_settimeofday(const struct timespec *tv)
 	/* signal hrtimers about time change */
 	clock_was_set();
 
-	return 0;
+	return ret;
 }
 EXPORT_SYMBOL(do_settimeofday);
 
@@ -763,7 +779,8 @@ int timekeeping_inject_offset(struct timespec *ts)
 
 	/* Make sure the proposed value is valid */
 	tmp = timespec64_add(tk_xtime(tk),  ts64);
-	if (!timespec64_valid_strict(&tmp)) {
+	if (timespec64_compare(&tk->wall_to_monotonic, &ts64) > 0 ||
+		!timespec64_valid_strict(&tmp)) {
 		ret = -EINVAL;
 		goto error;
 	}

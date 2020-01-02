@@ -10,6 +10,7 @@
 #include <linux/slab.h>
 #include <linux/percpu.h>
 #include <linux/buffer_head.h>
+#include <linux/locallock.h>
 
 #include "squashfs_fs.h"
 #include "squashfs_fs_sb.h"
@@ -22,9 +23,10 @@
  */
 
 struct squashfs_stream {
-	struct mutex  mutex;
 	void		*stream;
 };
+
+static DEFINE_LOCAL_IRQ_LOCK(stream_lock);
 
 void *squashfs_decompressor_create(struct squashfs_sb_info *msblk,
 						void *comp_opts)
@@ -39,7 +41,6 @@ void *squashfs_decompressor_create(struct squashfs_sb_info *msblk,
 
 	for_each_possible_cpu(cpu) {
 		stream = per_cpu_ptr(percpu, cpu);
-		mutex_init(&stream->mutex);
 		stream->stream = msblk->decompressor->init(msblk, comp_opts);
 		if (IS_ERR(stream->stream)) {
 			err = PTR_ERR(stream->stream);
@@ -81,18 +82,15 @@ int squashfs_decompress(struct squashfs_sb_info *msblk, struct buffer_head **bh,
 {
 	struct squashfs_stream __percpu *percpu =
 			(struct squashfs_stream __percpu *) msblk->stream;
-	struct squashfs_stream *stream = per_cpu_ptr(percpu, smp_processor_id());
+	struct squashfs_stream *stream;
 	int res;
 
-	/*
-	 * Even if we get migrated to a different cpu, mutex
-	 * will prevent two tasks running on two different cpu's
-	 * stepping on to the same buffer.
-	 */
-	mutex_lock(&stream->mutex);
+	stream = get_locked_ptr(stream_lock, percpu);
+
 	res = msblk->decompressor->decompress(msblk, stream->stream, bh, b,
-		offset, length, output);
-	mutex_unlock(&stream->mutex);
+			offset, length, output);
+
+	put_locked_ptr(stream_lock, stream);
 
 	if (res < 0)
 		ERROR("%s decompression failed, data probably corrupt\n",

@@ -63,6 +63,12 @@ struct seccomp_filter {
 /* Limit any path through the tree to 256KB worth of instructions. */
 #define MAX_INSNS_PER_PATH ((1 << 18) / sizeof(struct sock_filter))
 
+static void log_seccomp_violation(const char *action, int syscall) {
+	char name[sizeof(current->comm)];
+	get_task_comm(name, current);
+	pr_err_ratelimited("seccomp: %s: %s [%u] tried to call non-whitelisted syscall: %d\n", action, name, current->pid, syscall);
+}
+
 /*
  * Endianness is explicitly ignored and left for BPF program authors to manage
  * as per the specific architecture.
@@ -629,12 +635,14 @@ static u32 __seccomp_phase1_filter(int this_syscall, struct seccomp_data *sd)
 
 	switch (action) {
 	case SECCOMP_RET_ERRNO:
+		log_seccomp_violation("errno", this_syscall);
 		/* Set the low-order 16-bits as a errno. */
 		syscall_set_return_value(current, task_pt_regs(current),
 					 -data, 0);
 		goto skip;
 
 	case SECCOMP_RET_TRAP:
+		log_seccomp_violation("trap", this_syscall);
 		/* Show the handler the original registers. */
 		syscall_rollback(current, task_pt_regs(current));
 		/* Let the filter pass back 16 bits of data. */
@@ -642,13 +650,21 @@ static u32 __seccomp_phase1_filter(int this_syscall, struct seccomp_data *sd)
 		goto skip;
 
 	case SECCOMP_RET_TRACE:
+		log_seccomp_violation("trace", this_syscall);
 		return filter_ret;  /* Save the rest for phase 2. */
+
+	case SECCOMP_RET_LOG:
+		/* Log the non-whitelisted call, then fall through to allow. */
+		log_seccomp_violation("log", this_syscall);
+		audit_seccomp(this_syscall, 0, action);
+		/* Fall through. */
 
 	case SECCOMP_RET_ALLOW:
 		return SECCOMP_PHASE1_OK;
 
 	case SECCOMP_RET_KILL:
 	default:
+		log_seccomp_violation("kill", this_syscall);
 		audit_seccomp(this_syscall, SIGSYS, action);
 		do_exit(SIGSYS);
 	}
