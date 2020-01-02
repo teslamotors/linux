@@ -46,7 +46,7 @@ struct fuse_file *fuse_file_alloc(struct fuse_conn *fc)
 {
 	struct fuse_file *ff;
 
-	ff = kmalloc(sizeof(struct fuse_file), GFP_KERNEL);
+	ff = kzalloc(sizeof(struct fuse_file), GFP_KERNEL);
 	if (unlikely(!ff))
 		return NULL;
 
@@ -100,6 +100,7 @@ static void fuse_file_put(struct fuse_file *ff, bool sync)
 			iput(req->misc.release.inode);
 			fuse_put_request(ff->fc, req);
 		} else if (sync) {
+			__set_bit(FR_FORCE, &req->flags);
 			__clear_bit(FR_BACKGROUND, &req->flags);
 			fuse_request_send(ff->fc, req);
 			iput(req->misc.release.inode);
@@ -878,6 +879,7 @@ static int fuse_readpages_fill(void *_data, struct page *page)
 	}
 
 	if (WARN_ON(req->num_pages >= req->max_pages)) {
+		unlock_page(page);
 		fuse_put_request(fc, req);
 		return -EIO;
 	}

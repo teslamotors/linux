@@ -185,7 +185,8 @@ static struct blkcg_gq *blkg_create(struct blkcg *blkcg,
 	}
 
 	wb_congested = wb_congested_get_create(&q->backing_dev_info,
-					       blkcg->css.id, GFP_NOWAIT);
+					       blkcg->css.id,
+					       GFP_NOWAIT | __GFP_NOWARN);
 	if (!wb_congested) {
 		ret = -ENOMEM;
 		goto err_put_css;
@@ -193,7 +194,7 @@ static struct blkcg_gq *blkg_create(struct blkcg *blkcg,
 
 	/* allocate */
 	if (!new_blkg) {
-		new_blkg = blkg_alloc(blkcg, q, GFP_NOWAIT);
+		new_blkg = blkg_alloc(blkcg, q, GFP_NOWAIT | __GFP_NOWARN);
 		if (unlikely(!new_blkg)) {
 			ret = -ENOMEM;
 			goto err_put_congested;
@@ -788,6 +789,7 @@ int blkg_conf_prep(struct blkcg *blkcg, const struct blkcg_policy *pol,
 {
 	struct gendisk *disk;
 	struct blkcg_gq *blkg;
+	struct module *owner;
 	unsigned int major, minor;
 	int key_len, part, ret;
 	char *body;
@@ -804,7 +806,9 @@ int blkg_conf_prep(struct blkcg *blkcg, const struct blkcg_policy *pol,
 	if (!disk)
 		return -ENODEV;
 	if (part) {
+		owner = disk->fops->owner;
 		put_disk(disk);
+		module_put(owner);
 		return -ENODEV;
 	}
 
@@ -820,7 +824,9 @@ int blkg_conf_prep(struct blkcg *blkcg, const struct blkcg_policy *pol,
 		ret = PTR_ERR(blkg);
 		rcu_read_unlock();
 		spin_unlock_irq(disk->queue->queue_lock);
+		owner = disk->fops->owner;
 		put_disk(disk);
+		module_put(owner);
 		/*
 		 * If queue was bypassing, we should retry.  Do so after a
 		 * short msleep().  It isn't strictly necessary but queue
@@ -851,9 +857,13 @@ EXPORT_SYMBOL_GPL(blkg_conf_prep);
 void blkg_conf_finish(struct blkg_conf_ctx *ctx)
 	__releases(ctx->disk->queue->queue_lock) __releases(rcu)
 {
+	struct module *owner;
+
 	spin_unlock_irq(ctx->disk->queue->queue_lock);
 	rcu_read_unlock();
+	owner = ctx->disk->fops->owner;
 	put_disk(ctx->disk);
+	module_put(owner);
 }
 EXPORT_SYMBOL_GPL(blkg_conf_finish);
 
@@ -1013,7 +1023,7 @@ blkcg_css_alloc(struct cgroup_subsys_state *parent_css)
 	}
 
 	spin_lock_init(&blkcg->lock);
-	INIT_RADIX_TREE(&blkcg->blkg_tree, GFP_NOWAIT);
+	INIT_RADIX_TREE(&blkcg->blkg_tree, GFP_NOWAIT | __GFP_NOWARN);
 	INIT_HLIST_HEAD(&blkcg->blkg_list);
 #ifdef CONFIG_CGROUP_WRITEBACK
 	INIT_LIST_HEAD(&blkcg->cgwb_list);
@@ -1069,10 +1079,8 @@ int blkcg_init_queue(struct request_queue *q)
 	if (preloaded)
 		radix_tree_preload_end();
 
-	if (IS_ERR(blkg)) {
-		blkg_free(new_blkg);
+	if (IS_ERR(blkg))
 		return PTR_ERR(blkg);
-	}
 
 	q->root_blkg = blkg;
 	q->root_rl.blkg = blkg;
@@ -1231,7 +1239,7 @@ pd_prealloc:
 		if (blkg->pd[pol->plid])
 			continue;
 
-		pd = pol->pd_alloc_fn(GFP_NOWAIT, q->node);
+		pd = pol->pd_alloc_fn(GFP_NOWAIT | __GFP_NOWARN, q->node);
 		if (!pd)
 			swap(pd, pd_prealloc);
 		if (!pd) {

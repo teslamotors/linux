@@ -774,6 +774,13 @@ static int irda_bind(struct socket *sock, struct sockaddr *uaddr, int addr_len)
 		return -EINVAL;
 
 	lock_sock(sk);
+
+	/* Ensure that the socket is not already bound */
+	if (self->ias_obj) {
+		err = -EINVAL;
+		goto out;
+	}
+
 #ifdef CONFIG_IRDA_ULTRA
 	/* Special care for Ultra sockets */
 	if ((sk->sk_type == SOCK_DGRAM) &&
@@ -2020,7 +2027,11 @@ static int irda_setsockopt(struct socket *sock, int level, int optname,
 			err = -EINVAL;
 			goto out;
 		}
-		irias_insert_object(ias_obj);
+
+		/* Only insert newly allocated objects */
+		if (free_ias)
+			irias_insert_object(ias_obj);
+
 		kfree(ias_opt);
 		break;
 	case IRLMP_IAS_DEL:
@@ -2227,7 +2238,7 @@ static int irda_getsockopt(struct socket *sock, int level, int optname,
 {
 	struct sock *sk = sock->sk;
 	struct irda_sock *self = irda_sk(sk);
-	struct irda_device_list list;
+	struct irda_device_list list = { 0 };
 	struct irda_device_info *discoveries;
 	struct irda_ias_set *	ias_opt;	/* IAS get/query params */
 	struct ias_object *	ias_obj;	/* Object in IAS */

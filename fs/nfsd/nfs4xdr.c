@@ -129,7 +129,7 @@ static void next_decode_page(struct nfsd4_compoundargs *argp)
 	argp->p = page_address(argp->pagelist[0]);
 	argp->pagelist++;
 	if (argp->pagelen < PAGE_SIZE) {
-		argp->end = argp->p + (argp->pagelen>>2);
+		argp->end = argp->p + XDR_QUADLEN(argp->pagelen);
 		argp->pagelen = 0;
 	} else {
 		argp->end = argp->p + (PAGE_SIZE>>2);
@@ -1246,9 +1246,7 @@ nfsd4_decode_write(struct nfsd4_compoundargs *argp, struct nfsd4_write *write)
 		argp->pagelen -= pages * PAGE_SIZE;
 		len -= pages * PAGE_SIZE;
 
-		argp->p = (__be32 *)page_address(argp->pagelist[0]);
-		argp->pagelist++;
-		argp->end = argp->p + XDR_QUADLEN(PAGE_SIZE);
+		next_decode_page(argp);
 	}
 	argp->p += XDR_QUADLEN(len);
 
@@ -1540,6 +1538,8 @@ nfsd4_decode_getdeviceinfo(struct nfsd4_compoundargs *argp,
 	gdev->gd_maxcount = be32_to_cpup(p++);
 	num = be32_to_cpup(p++);
 	if (num) {
+		if (num > 1000)
+			goto xdr_error;
 		READ_BUF(4 * num);
 		gdev->gd_notify_types = be32_to_cpup(p++);
 		for (i = 1; i < num; i++) {
@@ -2753,9 +2753,16 @@ out_acl:
 	}
 #endif /* CONFIG_NFSD_PNFS */
 	if (bmval2 & FATTR4_WORD2_SUPPATTR_EXCLCREAT) {
-		status = nfsd4_encode_bitmap(xdr, NFSD_SUPPATTR_EXCLCREAT_WORD0,
-						  NFSD_SUPPATTR_EXCLCREAT_WORD1,
-						  NFSD_SUPPATTR_EXCLCREAT_WORD2);
+		u32 supp[3];
+
+		supp[0] = nfsd_suppattrs0(minorversion);
+		supp[1] = nfsd_suppattrs1(minorversion);
+		supp[2] = nfsd_suppattrs2(minorversion);
+		supp[0] &= NFSD_SUPPATTR_EXCLCREAT_WORD0;
+		supp[1] &= NFSD_SUPPATTR_EXCLCREAT_WORD1;
+		supp[2] &= NFSD_SUPPATTR_EXCLCREAT_WORD2;
+
+		status = nfsd4_encode_bitmap(xdr, supp[0], supp[1], supp[2]);
 		if (status)
 			goto out;
 	}
@@ -3590,7 +3597,8 @@ nfsd4_encode_readdir(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
 		nfserr = nfserr_resource;
 		goto err_no_verf;
 	}
-	maxcount = min_t(u32, readdir->rd_maxcount, INT_MAX);
+	maxcount = svc_max_payload(resp->rqstp);
+	maxcount = min_t(u32, readdir->rd_maxcount, maxcount);
 	/*
 	 * Note the rfc defines rd_maxcount as the size of the
 	 * READDIR4resok structure, which includes the verifier above
@@ -3604,7 +3612,7 @@ nfsd4_encode_readdir(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
 
 	/* RFC 3530 14.2.24 allows us to ignore dircount when it's 0: */
 	if (!readdir->rd_dircount)
-		readdir->rd_dircount = INT_MAX;
+		readdir->rd_dircount = svc_max_payload(resp->rqstp);
 
 	readdir->xdr = xdr;
 	readdir->rd_maxcount = maxcount;
@@ -4041,8 +4049,7 @@ nfsd4_encode_getdeviceinfo(struct nfsd4_compoundres *resp, __be32 nfserr,
 		struct nfsd4_getdeviceinfo *gdev)
 {
 	struct xdr_stream *xdr = &resp->xdr;
-	const struct nfsd4_layout_ops *ops =
-		nfsd4_layout_ops[gdev->gd_layout_type];
+	const struct nfsd4_layout_ops *ops;
 	u32 starting_len = xdr->buf->len, needed_len;
 	__be32 *p;
 
@@ -4059,6 +4066,7 @@ nfsd4_encode_getdeviceinfo(struct nfsd4_compoundres *resp, __be32 nfserr,
 
 	/* If maxcount is 0 then just update notifications */
 	if (gdev->gd_maxcount != 0) {
+		ops = nfsd4_layout_ops[gdev->gd_layout_type];
 		nfserr = ops->encode_getdeviceinfo(xdr, gdev);
 		if (nfserr) {
 			/*
@@ -4111,8 +4119,7 @@ nfsd4_encode_layoutget(struct nfsd4_compoundres *resp, __be32 nfserr,
 		struct nfsd4_layoutget *lgp)
 {
 	struct xdr_stream *xdr = &resp->xdr;
-	const struct nfsd4_layout_ops *ops =
-		nfsd4_layout_ops[lgp->lg_layout_type];
+	const struct nfsd4_layout_ops *ops;
 	__be32 *p;
 
 	dprintk("%s: err %d\n", __func__, nfserr);
@@ -4135,6 +4142,7 @@ nfsd4_encode_layoutget(struct nfsd4_compoundres *resp, __be32 nfserr,
 	*p++ = cpu_to_be32(lgp->lg_seg.iomode);
 	*p++ = cpu_to_be32(lgp->lg_layout_type);
 
+	ops = nfsd4_layout_ops[lgp->lg_layout_type];
 	nfserr = ops->encode_layoutget(xdr, lgp);
 out:
 	kfree(lgp->lg_content);

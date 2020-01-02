@@ -1773,12 +1773,12 @@ static int validate_params(uint cmd, struct dm_ioctl *param)
 	    cmd == DM_LIST_VERSIONS_CMD)
 		return 0;
 
-	if ((cmd == DM_DEV_CREATE_CMD)) {
+	if (cmd == DM_DEV_CREATE_CMD) {
 		if (!*param->name) {
 			DMWARN("name not supplied when creating device");
 			return -EINVAL;
 		}
-	} else if ((*param->uuid && *param->name)) {
+	} else if (*param->uuid && *param->name) {
 		DMWARN("only supply one of name or uuid, cmd(%u)", cmd);
 		return -EINVAL;
 	}
@@ -1843,7 +1843,7 @@ static int ctl_ioctl(uint command, struct dm_ioctl __user *user)
 	if (r)
 		goto out;
 
-	param->data_size = sizeof(*param);
+	param->data_size = offsetof(struct dm_ioctl, data);
 	r = fn(param, input_param_size);
 
 	if (unlikely(param->flags & DM_BUFFER_FULL_FLAG) &&

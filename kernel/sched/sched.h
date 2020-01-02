@@ -417,7 +417,7 @@ struct cfs_rq {
 
 	u64 throttled_clock, throttled_clock_task;
 	u64 throttled_clock_task_time;
-	int throttled, throttle_count;
+	int throttled, throttle_count, throttle_uptodate;
 	struct list_head throttled_list;
 #endif /* CONFIG_CFS_BANDWIDTH */
 #endif /* CONFIG_FAIR_GROUP_SCHED */
@@ -429,7 +429,7 @@ static inline int rt_bandwidth_enabled(void)
 }
 
 /* RT IPI pull logic requires IRQ_WORK */
-#ifdef CONFIG_IRQ_WORK
+#if defined(CONFIG_IRQ_WORK) && defined(CONFIG_SMP)
 # define HAVE_RT_PUSH_IPI
 #endif
 
@@ -450,12 +450,6 @@ struct rt_rq {
 	unsigned long rt_nr_total;
 	int overloaded;
 	struct plist_head pushable_tasks;
-#ifdef HAVE_RT_PUSH_IPI
-	int push_flags;
-	int push_cpu;
-	struct irq_work push_work;
-	raw_spinlock_t push_lock;
-#endif
 #endif /* CONFIG_SMP */
 	int rt_queued;
 
@@ -537,6 +531,19 @@ struct root_domain {
 	struct dl_bw dl_bw;
 	struct cpudl cpudl;
 
+#ifdef HAVE_RT_PUSH_IPI
+	/*
+	 * For IPI pull requests, loop across the rto_mask.
+	 */
+	struct irq_work rto_push_work;
+	raw_spinlock_t rto_lock;
+	/* These are only updated and read within rto_lock */
+	int rto_loop;
+	int rto_cpu;
+	/* These atomics are updated outside of a lock */
+	atomic_t rto_loop_next;
+	atomic_t rto_loop_start;
+#endif
 	/*
 	 * The "RT overload" flag: it gets set if a CPU has more than
 	 * one runnable RT task.
@@ -546,7 +553,12 @@ struct root_domain {
 };
 
 extern struct root_domain def_root_domain;
+extern void sched_get_rd(struct root_domain *rd);
+extern void sched_put_rd(struct root_domain *rd);
 
+#ifdef HAVE_RT_PUSH_IPI
+extern void rto_push_irq_work_func(struct irq_work *work);
+#endif
 #endif /* CONFIG_SMP */
 
 /*
@@ -1770,16 +1782,3 @@ static inline u64 irq_time_read(int cpu)
 }
 #endif /* CONFIG_64BIT */
 #endif /* CONFIG_IRQ_TIME_ACCOUNTING */
-
-static inline void account_reset_rq(struct rq *rq)
-{
-#ifdef CONFIG_IRQ_TIME_ACCOUNTING
-	rq->prev_irq_time = 0;
-#endif
-#ifdef CONFIG_PARAVIRT
-	rq->prev_steal_time = 0;
-#endif
-#ifdef CONFIG_PARAVIRT_TIME_ACCOUNTING
-	rq->prev_steal_time_rq = 0;
-#endif
-}

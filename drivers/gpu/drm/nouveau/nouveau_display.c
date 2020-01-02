@@ -104,7 +104,7 @@ nouveau_display_scanoutpos_head(struct drm_crtc *crtc, int *vpos, int *hpos,
 	};
 	struct nouveau_display *disp = nouveau_display(crtc->dev);
 	struct drm_vblank_crtc *vblank = &crtc->dev->vblank[drm_crtc_index(crtc)];
-	int ret, retry = 1;
+	int ret, retry = 20;
 
 	do {
 		ret = nvif_mthd(&disp->disp, 0, &args, sizeof(args));
@@ -370,7 +370,8 @@ nouveau_display_init(struct drm_device *dev)
 		return ret;
 
 	/* enable polling for external displays */
-	drm_kms_helper_poll_enable(dev);
+	if (!dev->mode_config.poll_enabled)
+		drm_kms_helper_poll_enable(dev);
 
 	/* enable hotplug interrupts */
 	list_for_each_entry(connector, &dev->mode_config.connector_list, head) {

@@ -3,7 +3,7 @@
  *
  * Debug traces for zfcp.
  *
- * Copyright IBM Corp. 2002, 2016
+ * Copyright IBM Corp. 2002, 2018
  */
 
 #define KMSG_COMPONENT "zfcp"
@@ -287,13 +287,35 @@ void zfcp_dbf_rec_trig(char *tag, struct zfcp_adapter *adapter,
 	spin_unlock_irqrestore(&dbf->rec_lock, flags);
 }
 
+/**
+ * zfcp_dbf_rec_trig_lock - trace event related to triggered recovery with lock
+ * @tag: identifier for event
+ * @adapter: adapter on which the erp_action should run
+ * @port: remote port involved in the erp_action
+ * @sdev: scsi device involved in the erp_action
+ * @want: wanted erp_action
+ * @need: required erp_action
+ *
+ * The adapter->erp_lock must not be held.
+ */
+void zfcp_dbf_rec_trig_lock(char *tag, struct zfcp_adapter *adapter,
+			    struct zfcp_port *port, struct scsi_device *sdev,
+			    u8 want, u8 need)
+{
+	unsigned long flags;
+
+	read_lock_irqsave(&adapter->erp_lock, flags);
+	zfcp_dbf_rec_trig(tag, adapter, port, sdev, want, need);
+	read_unlock_irqrestore(&adapter->erp_lock, flags);
+}
 
 /**
- * zfcp_dbf_rec_run - trace event related to running recovery
+ * zfcp_dbf_rec_run_lvl - trace event related to running recovery
+ * @level: trace level to be used for event
  * @tag: identifier for event
  * @erp: erp_action running
  */
-void zfcp_dbf_rec_run(char *tag, struct zfcp_erp_action *erp)
+void zfcp_dbf_rec_run_lvl(int level, char *tag, struct zfcp_erp_action *erp)
 {
 	struct zfcp_dbf *dbf = erp->adapter->dbf;
 	struct zfcp_dbf_rec *rec = &dbf->rec_buf;
@@ -319,8 +341,18 @@ void zfcp_dbf_rec_run(char *tag, struct zfcp_erp_action *erp)
 	else
 		rec->u.run.rec_count = atomic_read(&erp->adapter->erp_counter);
 
-	debug_event(dbf->rec, 1, rec, sizeof(*rec));
+	debug_event(dbf->rec, level, rec, sizeof(*rec));
 	spin_unlock_irqrestore(&dbf->rec_lock, flags);
+}
+
+/**
+ * zfcp_dbf_rec_run - trace event related to running recovery
+ * @tag: identifier for event
+ * @erp: erp_action running
+ */
+void zfcp_dbf_rec_run(char *tag, struct zfcp_erp_action *erp)
+{
+	zfcp_dbf_rec_run_lvl(1, tag, erp);
 }
 
 /**
@@ -436,6 +468,7 @@ static u16 zfcp_dbf_san_res_cap_len_if_gpn_ft(char *tag,
 	struct fc_ct_hdr *reqh = sg_virt(ct_els->req);
 	struct fc_ns_gid_ft *reqn = (struct fc_ns_gid_ft *)(reqh + 1);
 	struct scatterlist *resp_entry = ct_els->resp;
+	struct fc_ct_hdr *resph;
 	struct fc_gpn_ft_resp *acc;
 	int max_entries, x, last = 0;
 
@@ -462,6 +495,13 @@ static u16 zfcp_dbf_san_res_cap_len_if_gpn_ft(char *tag,
 		return len; /* not GPN_FT response so do not cap */
 
 	acc = sg_virt(resp_entry);
+
+	/* cap all but accept CT responses to at least the CT header */
+	resph = (struct fc_ct_hdr *)acc;
+	if ((ct_els->status) ||
+	    (resph->ct_cmd != cpu_to_be16(FC_FS_ACC)))
+		return max(FC_CT_HDR_LEN, ZFCP_DBF_SAN_MAX_PAYLOAD);
+
 	max_entries = (reqh->ct_mr_size * 4 / sizeof(struct fc_gpn_ft_resp))
 		+ 1 /* zfcp_fc_scan_ports: bytes correct, entries off-by-one
 		     * to account for header as 1st pseudo "entry" */;
@@ -544,8 +584,8 @@ void zfcp_dbf_scsi(char *tag, int level, struct scsi_cmnd *sc,
 	rec->scsi_retries = sc->retries;
 	rec->scsi_allowed = sc->allowed;
 	rec->scsi_id = sc->device->id;
-	/* struct zfcp_dbf_scsi needs to be updated to handle 64bit LUNs */
 	rec->scsi_lun = (u32)sc->device->lun;
+	rec->scsi_lun_64_hi = (u32)(sc->device->lun >> 32);
 	rec->host_scribble = (unsigned long)sc->host_scribble;
 
 	memcpy(rec->scsi_opcode, sc->cmnd,
@@ -553,20 +593,73 @@ void zfcp_dbf_scsi(char *tag, int level, struct scsi_cmnd *sc,
 
 	if (fsf) {
 		rec->fsf_req_id = fsf->req_id;
+		rec->pl_len = FCP_RESP_WITH_EXT;
 		fcp_rsp = (struct fcp_resp_with_ext *)
 				&(fsf->qtcb->bottom.io.fcp_rsp);
+		/* mandatory parts of FCP_RSP IU in this SCSI record */
 		memcpy(&rec->fcp_rsp, fcp_rsp, FCP_RESP_WITH_EXT);
 		if (fcp_rsp->resp.fr_flags & FCP_RSP_LEN_VAL) {
 			fcp_rsp_info = (struct fcp_resp_rsp_info *) &fcp_rsp[1];
 			rec->fcp_rsp_info = fcp_rsp_info->rsp_code;
+			rec->pl_len += be32_to_cpu(fcp_rsp->ext.fr_rsp_len);
 		}
 		if (fcp_rsp->resp.fr_flags & FCP_SNS_LEN_VAL) {
-			rec->pl_len = min((u16)SCSI_SENSE_BUFFERSIZE,
-					  (u16)ZFCP_DBF_PAY_MAX_REC);
-			zfcp_dbf_pl_write(dbf, sc->sense_buffer, rec->pl_len,
-					  "fcp_sns", fsf->req_id);
+			rec->pl_len += be32_to_cpu(fcp_rsp->ext.fr_sns_len);
 		}
+		/* complete FCP_RSP IU in associated PAYload record
+		 * but only if there are optional parts
+		 */
+		if (fcp_rsp->resp.fr_flags != 0)
+			zfcp_dbf_pl_write(
+				dbf, fcp_rsp,
+				/* at least one full PAY record
+				 * but not beyond hardware response field
+				 */
+				min_t(u16, max_t(u16, rec->pl_len,
+						 ZFCP_DBF_PAY_MAX_REC),
+				      FSF_FCP_RSP_SIZE),
+				"fcp_riu", fsf->req_id);
 	}
+
+	debug_event(dbf->scsi, level, rec, sizeof(*rec));
+	spin_unlock_irqrestore(&dbf->scsi_lock, flags);
+}
+
+/**
+ * zfcp_dbf_scsi_eh() - Trace event for special cases of scsi_eh callbacks.
+ * @tag: Identifier for event.
+ * @adapter: Pointer to zfcp adapter as context for this event.
+ * @scsi_id: SCSI ID/target to indicate scope of task management function (TMF).
+ * @ret: Return value of calling function.
+ *
+ * This SCSI trace variant does not depend on any of:
+ * scsi_cmnd, zfcp_fsf_req, scsi_device.
+ */
+void zfcp_dbf_scsi_eh(char *tag, struct zfcp_adapter *adapter,
+		      unsigned int scsi_id, int ret)
+{
+	struct zfcp_dbf *dbf = adapter->dbf;
+	struct zfcp_dbf_scsi *rec = &dbf->scsi_buf;
+	unsigned long flags;
+	static int const level = 1;
+
+	if (unlikely(!debug_level_enabled(adapter->dbf->scsi, level)))
+		return;
+
+	spin_lock_irqsave(&dbf->scsi_lock, flags);
+	memset(rec, 0, sizeof(*rec));
+
+	memcpy(rec->tag, tag, ZFCP_DBF_TAG_LEN);
+	rec->id = ZFCP_DBF_SCSI_CMND;
+	rec->scsi_result = ret; /* re-use field, int is 4 bytes and fits */
+	rec->scsi_retries = ~0;
+	rec->scsi_allowed = ~0;
+	rec->fcp_rsp_info = ~0;
+	rec->scsi_id = scsi_id;
+	rec->scsi_lun = (u32)ZFCP_DBF_INVALID_LUN;
+	rec->scsi_lun_64_hi = (u32)(ZFCP_DBF_INVALID_LUN >> 32);
+	rec->host_scribble = ~0;
+	memset(rec->scsi_opcode, 0xff, ZFCP_DBF_SCSI_OPCODE);
 
 	debug_event(dbf->scsi, level, rec, sizeof(*rec));
 	spin_unlock_irqrestore(&dbf->scsi_lock, flags);

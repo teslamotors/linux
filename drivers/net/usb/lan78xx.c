@@ -618,7 +618,8 @@ static int lan78xx_read_otp(struct lan78xx_net *dev, u32 offset,
 			offset += 0x100;
 		else
 			ret = -EINVAL;
-		ret = lan78xx_read_raw_otp(dev, offset, length, data);
+		if (!ret)
+			ret = lan78xx_read_raw_otp(dev, offset, length, data);
 	}
 
 	return ret;
@@ -901,6 +902,8 @@ static int lan78xx_link_reset(struct lan78xx_net *dev)
 
 		ret = lan78xx_update_flowcontrol(dev, ecmd.duplex, ladv, radv);
 		netif_carrier_on(dev->net);
+
+		tasklet_schedule(&dev->bh);
 	}
 
 	return ret;
@@ -1859,6 +1862,7 @@ static int lan78xx_reset(struct lan78xx_net *dev)
 		buf = DEFAULT_BURST_CAP_SIZE / FS_USB_PKT_SIZE;
 		dev->rx_urb_size = DEFAULT_BURST_CAP_SIZE;
 		dev->rx_qlen = 4;
+		dev->tx_qlen = 4;
 	}
 
 	ret = lan78xx_write_reg(dev, BURST_CAP, buf);
@@ -2050,14 +2054,9 @@ static struct sk_buff *lan78xx_tx_prep(struct lan78xx_net *dev,
 {
 	u32 tx_cmd_a, tx_cmd_b;
 
-	if (skb_headroom(skb) < TX_OVERHEAD) {
-		struct sk_buff *skb2;
-
-		skb2 = skb_copy_expand(skb, TX_OVERHEAD, 0, flags);
+	if (skb_cow_head(skb, TX_OVERHEAD)) {
 		dev_kfree_skb_any(skb);
-		skb = skb2;
-		if (!skb)
-			return NULL;
+		return NULL;
 	}
 
 	if (lan78xx_linearize(skb) < 0)

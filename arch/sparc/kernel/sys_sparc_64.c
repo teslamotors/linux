@@ -118,7 +118,7 @@ unsigned long arch_get_unmapped_area(struct file *filp, unsigned long addr, unsi
 
 		vma = find_vma(mm, addr);
 		if (task_size - len >= addr &&
-		    (!vma || addr + len <= vma->vm_start))
+		    (!vma || addr + len <= vm_start_gap(vma)))
 			return addr;
 	}
 
@@ -181,7 +181,7 @@ arch_get_unmapped_area_topdown(struct file *filp, const unsigned long addr0,
 
 		vma = find_vma(mm, addr);
 		if (task_size - len >= addr &&
-		    (!vma || addr + len <= vma->vm_start))
+		    (!vma || addr + len <= vm_start_gap(vma)))
 			return addr;
 	}
 
@@ -524,23 +524,27 @@ extern void check_pending(int signum);
 
 SYSCALL_DEFINE2(getdomainname, char __user *, name, int, len)
 {
-        int nlen, err;
+	int nlen, err;
+	char tmp[__NEW_UTS_LEN + 1];
 
 	if (len < 0)
 		return -EINVAL;
 
- 	down_read(&uts_sem);
- 	
+	down_read(&uts_sem);
+
 	nlen = strlen(utsname()->domainname) + 1;
 	err = -EINVAL;
 	if (nlen > len)
-		goto out;
+		goto out_unlock;
+	memcpy(tmp, utsname()->domainname, nlen);
 
-	err = -EFAULT;
-	if (!copy_to_user(name, utsname()->domainname, nlen))
-		err = 0;
+	up_read(&uts_sem);
 
-out:
+	if (copy_to_user(name, tmp, nlen))
+		return -EFAULT;
+	return 0;
+
+out_unlock:
 	up_read(&uts_sem);
 	return err;
 }

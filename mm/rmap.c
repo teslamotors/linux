@@ -587,19 +587,6 @@ vma_address(struct page *page, struct vm_area_struct *vma)
 }
 
 #ifdef CONFIG_ARCH_WANT_BATCHED_UNMAP_TLB_FLUSH
-static void percpu_flush_tlb_batch_pages(void *data)
-{
-	/*
-	 * All TLB entries are flushed on the assumption that it is
-	 * cheaper to flush all TLBs and let them be refilled than
-	 * flushing individual PFNs. Note that we do not track mm's
-	 * to flush as that might simply be multiple full TLB flushes
-	 * for no gain.
-	 */
-	count_vm_tlb_event(NR_TLB_REMOTE_FLUSH_RECEIVED);
-	flush_tlb_local();
-}
-
 /*
  * Flush TLB entries for recently unmapped pages from remote CPUs. It is
  * important if a PTE was dirty when it was unmapped that it's flushed
@@ -616,15 +603,14 @@ void try_to_unmap_flush(void)
 
 	cpu = get_cpu();
 
-	trace_tlb_flush(TLB_REMOTE_SHOOTDOWN, -1UL);
-
-	if (cpumask_test_cpu(cpu, &tlb_ubc->cpumask))
-		percpu_flush_tlb_batch_pages(&tlb_ubc->cpumask);
-
-	if (cpumask_any_but(&tlb_ubc->cpumask, cpu) < nr_cpu_ids) {
-		smp_call_function_many(&tlb_ubc->cpumask,
-			percpu_flush_tlb_batch_pages, (void *)tlb_ubc, true);
+	if (cpumask_test_cpu(cpu, &tlb_ubc->cpumask)) {
+		count_vm_tlb_event(NR_TLB_LOCAL_FLUSH_ALL);
+		local_flush_tlb();
+		trace_tlb_flush(TLB_LOCAL_SHOOTDOWN, TLB_FLUSH_ALL);
 	}
+
+	if (cpumask_any_but(&tlb_ubc->cpumask, cpu) < nr_cpu_ids)
+		flush_tlb_others(&tlb_ubc->cpumask, NULL, 0, TLB_FLUSH_ALL);
 	cpumask_clear(&tlb_ubc->cpumask);
 	tlb_ubc->flush_required = false;
 	tlb_ubc->writable = false;
@@ -647,6 +633,13 @@ static void set_tlb_ubc_flush_pending(struct mm_struct *mm,
 
 	cpumask_or(&tlb_ubc->cpumask, &tlb_ubc->cpumask, mm_cpumask(mm));
 	tlb_ubc->flush_required = true;
+
+	/*
+	 * Ensure compiler does not re-order the setting of tlb_flush_batched
+	 * before the PTE is cleared.
+	 */
+	barrier();
+	mm->tlb_flush_batched = true;
 
 	/*
 	 * If the PTE was dirty then it's best to assume it's writable. The
@@ -674,6 +667,35 @@ static bool should_defer_flush(struct mm_struct *mm, enum ttu_flags flags)
 	put_cpu();
 
 	return should_defer;
+}
+
+/*
+ * Reclaim unmaps pages under the PTL but do not flush the TLB prior to
+ * releasing the PTL if TLB flushes are batched. It's possible for a parallel
+ * operation such as mprotect or munmap to race between reclaim unmapping
+ * the page and flushing the page. If this race occurs, it potentially allows
+ * access to data via a stale TLB entry. Tracking all mm's that have TLB
+ * batching in flight would be expensive during reclaim so instead track
+ * whether TLB batching occurred in the past and if so then do a flush here
+ * if required. This will cost one additional flush per reclaim cycle paid
+ * by the first operation at risk such as mprotect and mumap.
+ *
+ * This must be called under the PTL so that an access to tlb_flush_batched
+ * that is potentially a "reclaim vs mprotect/munmap/etc" race will synchronise
+ * via the PTL.
+ */
+void flush_tlb_batched_pending(struct mm_struct *mm)
+{
+	if (mm->tlb_flush_batched) {
+		flush_tlb_mm(mm);
+
+		/*
+		 * Do not allow the compiler to re-order the clearing of
+		 * tlb_flush_batched before the tlb is flushed.
+		 */
+		barrier();
+		mm->tlb_flush_batched = false;
+	}
 }
 #else
 static void set_tlb_ubc_flush_pending(struct mm_struct *mm,

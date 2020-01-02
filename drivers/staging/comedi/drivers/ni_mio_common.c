@@ -1348,6 +1348,8 @@ static void ack_a_interrupt(struct comedi_device *dev, unsigned short a_status)
 		ack |= NISTC_INTA_ACK_AI_START;
 	if (a_status & NISTC_AI_STATUS1_STOP)
 		ack |= NISTC_INTA_ACK_AI_STOP;
+	if (a_status & NISTC_AI_STATUS1_OVER)
+		ack |= NISTC_INTA_ACK_AI_ERR;
 	if (ack)
 		ni_stc_writew(dev, ack, NISTC_INTA_ACK_REG);
 }
@@ -1929,7 +1931,7 @@ static int ni_ai_insn_read(struct comedi_device *dev,
 			   unsigned int *data)
 {
 	struct ni_private *devpriv = dev->private;
-	unsigned int mask = (s->maxdata + 1) >> 1;
+	unsigned int mask = s->maxdata;
 	int i, n;
 	unsigned signbits;
 	unsigned int d;
@@ -1972,7 +1974,7 @@ static int ni_ai_insn_read(struct comedi_device *dev,
 				return -ETIME;
 			}
 			d += signbits;
-			data[n] = d;
+			data[n] = d & 0xffff;
 		}
 	} else if (devpriv->is_6143) {
 		for (n = 0; n < insn->n; n++) {
@@ -2017,8 +2019,8 @@ static int ni_ai_insn_read(struct comedi_device *dev,
 				data[n] = dl;
 			} else {
 				d = ni_readw(dev, NI_E_AI_FIFO_DATA_REG);
-				d += signbits;	/* subtle: needs to be short addition */
-				data[n] = d;
+				d += signbits;
+				data[n] = d & 0xffff;
 			}
 		}
 	}
@@ -5273,11 +5275,11 @@ static int ni_E_init(struct comedi_device *dev,
 	/* Digital I/O (PFI) subdevice */
 	s = &dev->subdevices[NI_PFI_DIO_SUBDEV];
 	s->type		= COMEDI_SUBD_DIO;
-	s->subdev_flags	= SDF_READABLE | SDF_WRITABLE | SDF_INTERNAL;
 	s->maxdata	= 1;
 	if (devpriv->is_m_series) {
 		s->n_chan	= 16;
 		s->insn_bits	= ni_pfi_insn_bits;
+		s->subdev_flags	= SDF_READABLE | SDF_WRITABLE | SDF_INTERNAL;
 
 		ni_writew(dev, s->state, NI_M_PFI_DO_REG);
 		for (i = 0; i < NUM_PFI_OUTPUT_SELECT_REGS; ++i) {
@@ -5286,6 +5288,7 @@ static int ni_E_init(struct comedi_device *dev,
 		}
 	} else {
 		s->n_chan	= 10;
+		s->subdev_flags	= SDF_INTERNAL;
 	}
 	s->insn_config	= ni_pfi_insn_config;
 

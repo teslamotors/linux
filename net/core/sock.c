@@ -745,7 +745,7 @@ int sock_setsockopt(struct socket *sock, int level, int optname,
 		val = min_t(u32, val, sysctl_wmem_max);
 set_sndbuf:
 		sk->sk_userlocks |= SOCK_SNDBUF_LOCK;
-		sk->sk_sndbuf = max_t(u32, val * 2, SOCK_MIN_SNDBUF);
+		sk->sk_sndbuf = max_t(int, val * 2, SOCK_MIN_SNDBUF);
 		/* Wake up sending tasks if we upped the value. */
 		sk->sk_write_space(sk);
 		break;
@@ -781,7 +781,7 @@ set_rcvbuf:
 		 * returning the value we actually used in getsockopt
 		 * is the most desirable behavior.
 		 */
-		sk->sk_rcvbuf = max_t(u32, val * 2, SOCK_MIN_RCVBUF);
+		sk->sk_rcvbuf = max_t(int, val * 2, SOCK_MIN_RCVBUF);
 		break;
 
 	case SO_RCVBUFFORCE:
@@ -1459,6 +1459,11 @@ void sk_destruct(struct sock *sk)
 		pr_debug("%s: optmem leakage (%d bytes) detected\n",
 			 __func__, atomic_read(&sk->sk_omem_alloc));
 
+	if (sk->sk_frag.page) {
+		put_page(sk->sk_frag.page);
+		sk->sk_frag.page = NULL;
+	}
+
 	if (sk->sk_peer_cred)
 		put_cred(sk->sk_peer_cred);
 	put_pid(sk->sk_peer_pid);
@@ -1469,7 +1474,7 @@ void sk_destruct(struct sock *sk)
 
 static void __sk_free(struct sock *sk)
 {
-	if (unlikely(sock_diag_has_destroy_listeners(sk) && sk->sk_net_refcnt))
+	if (unlikely(sk->sk_net_refcnt && sock_diag_has_destroy_listeners(sk)))
 		sock_diag_broadcast_destroy(sk);
 	else
 		sk_destruct(sk);
@@ -1510,6 +1515,8 @@ struct sock *sk_clone_lock(const struct sock *sk, const gfp_t priority)
 		struct sk_filter *filter;
 
 		sock_copy(newsk, sk);
+
+		newsk->sk_prot_creator = sk->sk_prot;
 
 		/* SANITY */
 		if (likely(newsk->sk_net_refcnt))
@@ -1552,6 +1559,12 @@ struct sock *sk_clone_lock(const struct sock *sk, const gfp_t priority)
 			is_charged = sk_filter_charge(newsk, filter);
 
 		if (unlikely(!is_charged || xfrm_sk_clone_policy(newsk, sk))) {
+			/* We need to make sure that we don't uncharge the new
+			 * socket if we couldn't charge it in the first place
+			 * as otherwise we uncharge the parent's filter.
+			 */
+			if (!is_charged)
+				RCU_INIT_POINTER(newsk->sk_filter, NULL);
 			/* It is still raw copy of parent, so invalidate
 			 * destructor and make plain sk_free() */
 			newsk->sk_destruct = NULL;
@@ -1679,17 +1692,17 @@ EXPORT_SYMBOL(skb_set_owner_w);
 
 void skb_orphan_partial(struct sk_buff *skb)
 {
-	/* TCP stack sets skb->ooo_okay based on sk_wmem_alloc,
-	 * so we do not completely orphan skb, but transfert all
-	 * accounted bytes but one, to avoid unexpected reorders.
-	 */
 	if (skb->destructor == sock_wfree
 #ifdef CONFIG_INET
 	    || skb->destructor == tcp_wfree
 #endif
 		) {
-		atomic_sub(skb->truesize - 1, &skb->sk->sk_wmem_alloc);
-		skb->truesize = 1;
+		struct sock *sk = skb->sk;
+
+		if (atomic_inc_not_zero(&sk->sk_refcnt)) {
+			atomic_sub(skb->truesize, &sk->sk_wmem_alloc);
+			skb->destructor = sock_efree;
+		}
 	} else {
 		skb_orphan(skb);
 	}
@@ -2690,11 +2703,6 @@ void sk_common_release(struct sock *sk)
 	xfrm_sk_free_policy(sk);
 
 	sk_refcnt_debug_release(sk);
-
-	if (sk->sk_frag.page) {
-		put_page(sk->sk_frag.page);
-		sk->sk_frag.page = NULL;
-	}
 
 	sock_put(sk);
 }

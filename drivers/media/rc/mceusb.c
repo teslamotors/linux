@@ -1321,8 +1321,8 @@ static int mceusb_dev_probe(struct usb_interface *intf,
 			}
 		}
 	}
-	if (ep_in == NULL) {
-		dev_dbg(&intf->dev, "inbound and/or endpoint not found");
+	if (!ep_in || !ep_out) {
+		dev_dbg(&intf->dev, "required endpoints not found\n");
 		return -ENODEV;
 	}
 
@@ -1370,8 +1370,13 @@ static int mceusb_dev_probe(struct usb_interface *intf,
 		goto rc_dev_fail;
 
 	/* wire up inbound data handler */
-	usb_fill_int_urb(ir->urb_in, dev, pipe, ir->buf_in, maxp,
-				mceusb_dev_recv, ir, ep_in->bInterval);
+	if (usb_endpoint_xfer_int(ep_in))
+		usb_fill_int_urb(ir->urb_in, dev, pipe, ir->buf_in, maxp,
+				 mceusb_dev_recv, ir, ep_in->bInterval);
+	else
+		usb_fill_bulk_urb(ir->urb_in, dev, pipe, ir->buf_in, maxp,
+				  mceusb_dev_recv, ir);
+
 	ir->urb_in->transfer_dma = ir->dma_in;
 	ir->urb_in->transfer_flags |= URB_NO_TRANSFER_DMA_MAP;
 

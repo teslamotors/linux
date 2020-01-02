@@ -1461,6 +1461,13 @@ static int usbvision_probe(struct usb_interface *intf,
 	printk(KERN_INFO "%s: %s found\n", __func__,
 				usbvision_device_data[model].model_string);
 
+	/*
+	 * this is a security check.
+	 * an exploit using an incorrect bInterfaceNumber is known
+	 */
+	if (ifnum >= USB_MAXINTERFACES || !dev->actconfig->interface[ifnum])
+		return -ENODEV;
+
 	if (usbvision_device_data[model].interface >= 0)
 		interface = &dev->actconfig->interface[usbvision_device_data[model].interface]->altsetting[0];
 	else if (ifnum < dev->actconfig->desc.bNumInterfaces)
@@ -1523,7 +1530,14 @@ static int usbvision_probe(struct usb_interface *intf,
 	}
 
 	for (i = 0; i < usbvision->num_alt; i++) {
-		u16 tmp = le16_to_cpu(uif->altsetting[i].endpoint[1].desc.
+		u16 tmp;
+
+		if (uif->altsetting[i].desc.bNumEndpoints < 2) {
+			ret = -ENODEV;
+			goto err_pkt;
+		}
+
+		tmp = le16_to_cpu(uif->altsetting[i].endpoint[1].desc.
 				      wMaxPacketSize);
 		usbvision->alt_max_pkt_size[i] =
 			(tmp & 0x07ff) * (((tmp & 0x1800) >> 11) + 1);

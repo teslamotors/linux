@@ -77,6 +77,8 @@ static const u8 all_zeros_mac[ETH_ALEN];
 
 static int vxlan_sock_add(struct vxlan_dev *vxlan);
 
+static void vxlan_vs_del_dev(struct vxlan_dev *vxlan);
+
 /* per-network namespace private data for this module */
 struct vxlan_net {
 	struct list_head  vxlan_list;
@@ -960,7 +962,7 @@ static bool vxlan_snoop(struct net_device *dev,
 			return false;
 
 		/* Don't migrate static entries, drop packets */
-		if (f->state & NUD_NOARP)
+		if (f->state & (NUD_PERMANENT | NUD_NOARP))
 			return true;
 
 		if (net_ratelimit())
@@ -1052,6 +1054,8 @@ static void __vxlan_sock_release(struct vxlan_sock *vs)
 
 static void vxlan_sock_release(struct vxlan_dev *vxlan)
 {
+	vxlan_vs_del_dev(vxlan);
+
 	__vxlan_sock_release(vxlan->vn4_sock);
 #if IS_ENABLED(CONFIG_IPV6)
 	__vxlan_sock_release(vxlan->vn6_sock);
@@ -2236,7 +2240,7 @@ static void vxlan_cleanup(unsigned long arg)
 				= container_of(p, struct vxlan_fdb, hlist);
 			unsigned long timeout;
 
-			if (f->state & NUD_PERMANENT)
+			if (f->state & (NUD_PERMANENT | NUD_NOARP))
 				continue;
 
 			timeout = f->used + vxlan->cfg.age_interval * HZ;
@@ -2253,6 +2257,15 @@ static void vxlan_cleanup(unsigned long arg)
 	}
 
 	mod_timer(&vxlan->age_timer, next_timer);
+}
+
+static void vxlan_vs_del_dev(struct vxlan_dev *vxlan)
+{
+	struct vxlan_net *vn = net_generic(vxlan->net, vxlan_net_id);
+
+	spin_lock(&vn->sock_lock);
+	hlist_del_init_rcu(&vxlan->hlist);
+	spin_unlock(&vn->sock_lock);
 }
 
 static void vxlan_vs_add_dev(struct vxlan_sock *vs, struct vxlan_dev *vxlan)
@@ -2600,7 +2613,7 @@ static int vxlan_validate(struct nlattr *tb[], struct nlattr *data[])
 
 	if (data[IFLA_VXLAN_ID]) {
 		__u32 id = nla_get_u32(data[IFLA_VXLAN_ID]);
-		if (id >= VXLAN_VID_MASK)
+		if (id >= VXLAN_N_VID)
 			return -ERANGE;
 	}
 
@@ -2821,6 +2834,11 @@ static int vxlan_dev_configure(struct net *src_net, struct net_device *dev,
 		needed_headroom = lowerdev->hard_header_len;
 	}
 
+	if (lowerdev) {
+		dev->gso_max_size = lowerdev->gso_max_size;
+		dev->gso_max_segs = lowerdev->gso_max_segs;
+	}
+
 	if (conf->mtu) {
 		err = __vxlan_change_mtu(dev, lowerdev, dst, conf->mtu, false);
 		if (err)
@@ -3028,12 +3046,6 @@ static int vxlan_newlink(struct net *src_net, struct net_device *dev,
 static void vxlan_dellink(struct net_device *dev, struct list_head *head)
 {
 	struct vxlan_dev *vxlan = netdev_priv(dev);
-	struct vxlan_net *vn = net_generic(vxlan->net, vxlan_net_id);
-
-	spin_lock(&vn->sock_lock);
-	if (!hlist_unhashed(&vxlan->hlist))
-		hlist_del_rcu(&vxlan->hlist);
-	spin_unlock(&vn->sock_lock);
 
 	gro_cells_destroy(&vxlan->gro_cells);
 	list_del(&vxlan->next);

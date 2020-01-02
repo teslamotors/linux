@@ -223,8 +223,9 @@ ssize_t of_device_get_modalias(struct device *dev, char *str, ssize_t len)
 			str[i] = '_';
 	}
 
-	return tsize;
+	return repend;
 }
+EXPORT_SYMBOL_GPL(of_device_get_modalias);
 
 /**
  * of_device_uevent - Display OF related uevent information
@@ -287,3 +288,4 @@ int of_device_uevent_modalias(struct device *dev, struct kobj_uevent_env *env)
 
 	return 0;
 }
+EXPORT_SYMBOL_GPL(of_device_uevent_modalias);

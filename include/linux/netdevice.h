@@ -1399,6 +1399,7 @@ enum netdev_priv_flags {
  *	@mtu:		Interface MTU value
  *	@type:		Interface hardware type
  *	@hard_header_len: Maximum hardware header length.
+ *	@min_header_len:  Minimum hardware header length
  *
  *	@needed_headroom: Extra headroom the hardware may need, but not in all
  *			  cases can this be guaranteed
@@ -1619,6 +1620,7 @@ struct net_device {
 	unsigned int		mtu;
 	unsigned short		type;
 	unsigned short		hard_header_len;
+	unsigned short		min_header_len;
 
 	unsigned short		needed_headroom;
 	unsigned short		needed_tailroom;
@@ -2166,6 +2168,13 @@ struct netdev_notifier_info {
 	struct net_device *dev;
 };
 
+struct netdev_notifier_info_ext {
+	struct netdev_notifier_info info; /* must be first */
+	union {
+		u32 mtu;
+	} ext;
+};
+
 struct netdev_notifier_change_info {
 	struct netdev_notifier_info info; /* must be first */
 	unsigned int flags_changed;
@@ -2325,14 +2334,19 @@ static inline int skb_gro_header_hard(struct sk_buff *skb, unsigned int hlen)
 	return NAPI_GRO_CB(skb)->frag0_len < hlen;
 }
 
+static inline void skb_gro_frag0_invalidate(struct sk_buff *skb)
+{
+	NAPI_GRO_CB(skb)->frag0 = NULL;
+	NAPI_GRO_CB(skb)->frag0_len = 0;
+}
+
 static inline void *skb_gro_header_slow(struct sk_buff *skb, unsigned int hlen,
 					unsigned int offset)
 {
 	if (!pskb_may_pull(skb, hlen))
 		return NULL;
 
-	NAPI_GRO_CB(skb)->frag0 = NULL;
-	NAPI_GRO_CB(skb)->frag0_len = 0;
+	skb_gro_frag0_invalidate(skb);
 	return skb->data + offset;
 }
 
@@ -2536,6 +2550,8 @@ static inline bool dev_validate_header(const struct net_device *dev,
 {
 	if (likely(len >= dev->hard_header_len))
 		return true;
+	if (len < dev->min_header_len)
+		return false;
 
 	if (capable(CAP_SYS_RAWIO)) {
 		memset(ll_header + len, 0, dev->hard_header_len - len);
@@ -3460,6 +3476,9 @@ struct net_device *alloc_netdev_mqs(int sizeof_priv, const char *name,
 				    unsigned char name_assign_type,
 				    void (*setup)(struct net_device *),
 				    unsigned int txqs, unsigned int rxqs);
+int dev_get_valid_name(struct net *net, struct net_device *dev,
+		       const char *name);
+
 #define alloc_netdev(sizeof_priv, name, name_assign_type, setup) \
 	alloc_netdev_mqs(sizeof_priv, name, name_assign_type, setup, 1, 1)
 

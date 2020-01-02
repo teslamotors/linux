@@ -1136,12 +1136,14 @@ bool snd_usb_get_sample_rate_quirk(struct snd_usb_audio *chip)
 	case USB_ID(0x045E, 0x076F): /* MS Lifecam HD-6000 */
 	case USB_ID(0x045E, 0x0772): /* MS Lifecam Studio */
 	case USB_ID(0x045E, 0x0779): /* MS Lifecam HD-3000 */
+	case USB_ID(0x047F, 0x02F7): /* Plantronics BT-600 */
 	case USB_ID(0x047F, 0x0415): /* Plantronics BT-300 */
 	case USB_ID(0x047F, 0xAA05): /* Plantronics DA45 */
 	case USB_ID(0x04D8, 0xFEEA): /* Benchmark DAC1 Pre */
 	case USB_ID(0x0556, 0x0014): /* Phoenix Audio TMX320VC */
 	case USB_ID(0x05A3, 0x9420): /* ELP HD USB Camera */
 	case USB_ID(0x074D, 0x3553): /* Outlaw RR2150 (Micronas UAC3553B) */
+	case USB_ID(0x1395, 0x740a): /* Sennheiser DECT */
 	case USB_ID(0x1901, 0x0191): /* GE B850V3 CP2114 audio interface */
 	case USB_ID(0x1de7, 0x0013): /* Phoenix Audio MT202exe */
 	case USB_ID(0x1de7, 0x0014): /* Phoenix Audio TMX320 */
@@ -1303,6 +1305,7 @@ u64 snd_usb_interface_dsd_format_quirks(struct snd_usb_audio *chip,
 	case USB_ID(0x20b1, 0x2008): /* Matrix Audio X-Sabre */
 	case USB_ID(0x20b1, 0x300a): /* Matrix Audio Mini-i Pro */
 	case USB_ID(0x22d9, 0x0416): /* OPPO HA-1 */
+	case USB_ID(0x2772, 0x0230): /* Pro-Ject Pre Box S2 Digital */
 		if (fp->altsetting == 2)
 			return SNDRV_PCM_FMTBIT_DSD_U32_BE;
 		break;

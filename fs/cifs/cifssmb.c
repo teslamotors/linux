@@ -150,8 +150,14 @@ cifs_reconnect_tcon(struct cifs_tcon *tcon, int smb_command)
 	 * greater than cifs socket timeout which is 7 seconds
 	 */
 	while (server->tcpStatus == CifsNeedReconnect) {
-		wait_event_interruptible_timeout(server->response_q,
-			(server->tcpStatus != CifsNeedReconnect), 10 * HZ);
+		rc = wait_event_interruptible_timeout(server->response_q,
+						      (server->tcpStatus != CifsNeedReconnect),
+						      10 * HZ);
+		if (rc < 0) {
+			cifs_dbg(FYI, "%s: aborting reconnect due to a received"
+				 " signal by the process\n", __func__);
+			return -ERESTARTSYS;
+		}
 
 		/* are we still trying to reconnect? */
 		if (server->tcpStatus != CifsNeedReconnect)
@@ -571,10 +577,15 @@ CIFSSMBNegotiate(const unsigned int xid, struct cifs_ses *ses)
 	}
 
 	count = 0;
+	/*
+	 * We know that all the name entries in the protocols array
+	 * are short (< 16 bytes anyway) and are NUL terminated.
+	 */
 	for (i = 0; i < CIFS_NUM_PROT; i++) {
-		strncpy(pSMB->DialectsArray+count, protocols[i].name, 16);
-		count += strlen(protocols[i].name) + 1;
-		/* null at end of source and target buffers anyway */
+		size_t len = strlen(protocols[i].name) + 1;
+
+		memcpy(pSMB->DialectsArray+count, protocols[i].name, len);
+		count += len;
 	}
 	inc_rfc1001_len(pSMB, count);
 	pSMB->ByteCount = cpu_to_le16(count);
@@ -716,6 +727,9 @@ CIFSSMBEcho(struct TCP_Server_Info *server)
 	rc = small_smb_init(SMB_COM_ECHO, 0, NULL, (void **)&smb);
 	if (rc)
 		return rc;
+
+	if (server->capabilities & CAP_UNICODE)
+		smb->hdr.Flags2 |= SMBFLG2_UNICODE;
 
 	/* set up echo request */
 	smb->hdr.Tid = 0xffff;
@@ -1424,6 +1438,8 @@ cifs_readv_discard(struct TCP_Server_Info *server, struct mid_q_entry *mid)
 
 	length = discard_remaining_data(server);
 	dequeue_mid(mid, rdata->result);
+	mid->resp_buf = server->smallbuf;
+	server->smallbuf = NULL;
 	return length;
 }
 
@@ -1454,6 +1470,13 @@ cifs_readv_receive(struct TCP_Server_Info *server, struct mid_q_entry *mid)
 	if (length < 0)
 		return length;
 	server->total_read += length;
+
+	if (server->ops->is_session_expired &&
+	    server->ops->is_session_expired(buf)) {
+		cifs_reconnect(server);
+		wake_up(&server->response_q);
+		return -1;
+	}
 
 	if (server->ops->is_status_pending &&
 	    server->ops->is_status_pending(buf, server, 0)) {
@@ -1538,6 +1561,8 @@ cifs_readv_receive(struct TCP_Server_Info *server, struct mid_q_entry *mid)
 		return cifs_readv_discard(server, mid);
 
 	dequeue_mid(mid, false);
+	mid->resp_buf = server->smallbuf;
+	server->smallbuf = NULL;
 	return length;
 }
 
@@ -6407,9 +6432,7 @@ SetEARetry:
 	pSMB->InformationLevel =
 		cpu_to_le16(SMB_SET_FILE_EA);
 
-	parm_data =
-		(struct fealist *) (((char *) &pSMB->hdr.Protocol) +
-				       offset);
+	parm_data = (void *)pSMB + offsetof(struct smb_hdr, Protocol) + offset;
 	pSMB->ParameterOffset = cpu_to_le16(param_offset);
 	pSMB->DataOffset = cpu_to_le16(offset);
 	pSMB->SetupCount = 1;

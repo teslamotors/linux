@@ -311,6 +311,12 @@ static void acm_ctrl_irq(struct urb *urb)
 		break;
 
 	case USB_CDC_NOTIFY_SERIAL_STATE:
+		if (le16_to_cpu(dr->wLength) != 2) {
+			dev_dbg(&acm->control->dev,
+				"%s - malformed serial state\n", __func__);
+			break;
+		}
+
 		newctrl = get_unaligned_le16(data);
 
 		if (!acm->clocal && (acm->ctrlin & ~newctrl & ACM_CTRL_DCD)) {
@@ -347,11 +353,10 @@ static void acm_ctrl_irq(struct urb *urb)
 
 	default:
 		dev_dbg(&acm->control->dev,
-			"%s - unknown notification %d received: index %d "
-			"len %d data0 %d data1 %d\n",
+			"%s - unknown notification %d received: index %d len %d\n",
 			__func__,
-			dr->bNotificationType, dr->wIndex,
-			dr->wLength, data[0], data[1]);
+			dr->bNotificationType, dr->wIndex, dr->wLength);
+
 		break;
 	}
 exit:
@@ -372,7 +377,7 @@ static int acm_submit_read_urb(struct acm *acm, int index, gfp_t mem_flags)
 
 	res = usb_submit_urb(acm->read_urbs[index], mem_flags);
 	if (res) {
-		if (res != -EPERM) {
+		if (res != -EPERM && res != -ENODEV) {
 			dev_err(&acm->data->dev,
 					"%s - usb_submit_urb failed: %d\n",
 					__func__, res);
@@ -1693,6 +1698,12 @@ static const struct usb_device_id acm_ids[] = {
 	{ USB_DEVICE(0x0ace, 0x1611), /* ZyDAS 56K USB MODEM - new version */
 	.driver_info = SINGLE_RX_URB, /* firmware bug */
 	},
+	{ USB_DEVICE(0x11ca, 0x0201), /* VeriFone Mx870 Gadget Serial */
+	.driver_info = SINGLE_RX_URB,
+	},
+	{ USB_DEVICE(0x1965, 0x0018), /* Uniden UBC125XLT */
+	.driver_info = NO_UNION_NORMAL, /* has no union descriptor */
+	},
 	{ USB_DEVICE(0x22b8, 0x7000), /* Motorola Q Phone */
 	.driver_info = NO_UNION_NORMAL, /* has no union descriptor */
 	},
@@ -1711,6 +1722,7 @@ static const struct usb_device_id acm_ids[] = {
 	{ USB_DEVICE(0x20df, 0x0001), /* Simtec Electronics Entropy Key */
 	.driver_info = QUIRK_CONTROL_LINE_STATE, },
 	{ USB_DEVICE(0x2184, 0x001c) },	/* GW Instek AFG-2225 */
+	{ USB_DEVICE(0x2184, 0x0036) },	/* GW Instek AFG-125 */
 	{ USB_DEVICE(0x22b8, 0x6425), /* Motorola MOTOMAGX phones */
 	},
 	/* Motorola H24 HSPA module: */
@@ -1754,6 +1766,15 @@ static const struct usb_device_id acm_ids[] = {
 	.driver_info = NO_UNION_NORMAL, /* reports zero length descriptor */
 	},
 	{ USB_DEVICE(0x1576, 0x03b1), /* Maretron USB100 */
+	.driver_info = NO_UNION_NORMAL, /* reports zero length descriptor */
+	},
+	{ USB_DEVICE(0xfff0, 0x0100), /* DATECS FP-2000 */
+	.driver_info = NO_UNION_NORMAL, /* reports zero length descriptor */
+	},
+	{ USB_DEVICE(0x09d8, 0x0320), /* Elatec GmbH TWN3 */
+	.driver_info = NO_UNION_NORMAL, /* has misplaced union descriptor */
+	},
+	{ USB_DEVICE(0x0ca6, 0xa050), /* Castles VEGA3000 */
 	.driver_info = NO_UNION_NORMAL, /* reports zero length descriptor */
 	},
 

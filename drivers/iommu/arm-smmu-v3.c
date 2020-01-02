@@ -1033,13 +1033,8 @@ static void arm_smmu_write_strtab_ent(struct arm_smmu_device *smmu, u32 sid,
 		}
 	}
 
-	/* Nuke the existing Config, as we're going to rewrite it */
-	val &= ~(STRTAB_STE_0_CFG_MASK << STRTAB_STE_0_CFG_SHIFT);
-
-	if (ste->valid)
-		val |= STRTAB_STE_0_V;
-	else
-		val &= ~STRTAB_STE_0_V;
+	/* Nuke the existing STE_0 value, as we're going to rewrite it */
+	val = ste->valid ? STRTAB_STE_0_V : 0;
 
 	if (ste->bypass) {
 		val |= disable_bypass ? STRTAB_STE_0_CFG_ABORT
@@ -1068,7 +1063,6 @@ static void arm_smmu_write_strtab_ent(struct arm_smmu_device *smmu, u32 sid,
 		val |= (ste->s1_cfg->cdptr_dma & STRTAB_STE_0_S1CTXPTR_MASK
 		        << STRTAB_STE_0_S1CTXPTR_SHIFT) |
 			STRTAB_STE_0_CFG_S1_TRANS;
-
 	}
 
 	if (ste->s2_cfg) {
@@ -1225,6 +1219,7 @@ static irqreturn_t arm_smmu_priq_thread(int irq, void *dev)
 
 	/* Sync our overflow flag, as we believe we're up to speed */
 	q->cons = Q_OVF(q, q->prod) | Q_WRP(q, q->cons) | Q_IDX(q, q->cons);
+	writel(q->cons, q->cons_reg);
 	return IRQ_HANDLED;
 }
 
@@ -1547,13 +1542,15 @@ static int arm_smmu_domain_finalise(struct iommu_domain *domain)
 		return -ENOMEM;
 
 	arm_smmu_ops.pgsize_bitmap = pgtbl_cfg.pgsize_bitmap;
-	smmu_domain->pgtbl_ops = pgtbl_ops;
 
 	ret = finalise_stage_fn(smmu_domain, &pgtbl_cfg);
-	if (IS_ERR_VALUE(ret))
+	if (IS_ERR_VALUE(ret)) {
 		free_io_pgtable_ops(pgtbl_ops);
+		return ret;
+	}
 
-	return ret;
+	smmu_domain->pgtbl_ops = pgtbl_ops;
+	return 0;
 }
 
 static struct arm_smmu_group *arm_smmu_group_get(struct device *dev)

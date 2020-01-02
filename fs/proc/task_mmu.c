@@ -253,24 +253,15 @@ static int do_maps_open(struct inode *inode, struct file *file,
  * /proc/PID/maps that is the stack of the main task.
  */
 static int is_stack(struct proc_maps_private *priv,
-		    struct vm_area_struct *vma, int is_pid)
+		    struct vm_area_struct *vma)
 {
-	int stack = 0;
-
-	if (is_pid) {
-		stack = vma->vm_start <= vma->vm_mm->start_stack &&
-			vma->vm_end >= vma->vm_mm->start_stack;
-	} else {
-		struct inode *inode = priv->inode;
-		struct task_struct *task;
-
-		rcu_read_lock();
-		task = pid_task(proc_pid(inode), PIDTYPE_PID);
-		if (task)
-			stack = vma_is_stack_for_task(vma, task);
-		rcu_read_unlock();
-	}
-	return stack;
+	/*
+	 * We make no effort to guess what a given thread considers to be
+	 * its "stack".  It's not even well-defined for programs written
+	 * languages like Go.
+	 */
+	return vma->vm_start <= vma->vm_mm->start_stack &&
+		vma->vm_end >= vma->vm_mm->start_stack;
 }
 
 static void
@@ -295,11 +286,7 @@ show_map_vma(struct seq_file *m, struct vm_area_struct *vma, int is_pid)
 
 	/* We don't show the stack guard page in /proc/maps */
 	start = vma->vm_start;
-	if (stack_guard_page_start(vma, start))
-		start += PAGE_SIZE;
 	end = vma->vm_end;
-	if (stack_guard_page_end(vma, end))
-		end -= PAGE_SIZE;
 
 	seq_setwidth(m, 25 + sizeof(void *) * 6 - 1);
 	seq_printf(m, "%08lx-%08lx %c%c%c%c %08llx %02x:%02x %lu ",
@@ -341,7 +328,7 @@ show_map_vma(struct seq_file *m, struct vm_area_struct *vma, int is_pid)
 			goto done;
 		}
 
-		if (is_stack(priv, vma, is_pid))
+		if (is_stack(priv, vma))
 			name = "[stack]";
 	}
 
@@ -803,7 +790,14 @@ static inline void clear_soft_dirty(struct vm_area_struct *vma,
 static inline void clear_soft_dirty_pmd(struct vm_area_struct *vma,
 		unsigned long addr, pmd_t *pmdp)
 {
-	pmd_t pmd = pmdp_huge_get_and_clear(vma->vm_mm, addr, pmdp);
+	pmd_t pmd = *pmdp;
+
+	/* See comment in change_huge_pmd() */
+	pmdp_invalidate(vma, addr, pmdp);
+	if (pmd_dirty(*pmdp))
+		pmd = pmd_mkdirty(pmd);
+	if (pmd_young(*pmdp))
+		pmd = pmd_mkyoung(pmd);
 
 	pmd = pmd_wrprotect(pmd);
 	pmd = pmd_clear_soft_dirty(pmd);
@@ -1557,7 +1551,7 @@ static int show_numa_map(struct seq_file *m, void *v, int is_pid)
 		seq_file_path(m, file, "\n\t= ");
 	} else if (vma->vm_start <= mm->brk && vma->vm_end >= mm->start_brk) {
 		seq_puts(m, " heap");
-	} else if (is_stack(proc_priv, vma, is_pid)) {
+	} else if (is_stack(proc_priv, vma)) {
 		seq_puts(m, " stack");
 	}
 

@@ -282,6 +282,7 @@ initiate_cifs_search(const unsigned int xid, struct file *file)
 			rc = -ENOMEM;
 			goto error_exit;
 		}
+		spin_lock_init(&cifsFile->file_info_lock);
 		file->private_data = cifsFile;
 		cifsFile->tlink = cifs_get_tlink(tlink);
 		tcon = tlink_tcon(tlink);
@@ -372,8 +373,15 @@ static char *nxt_dir_entry(char *old_entry, char *end_of_smb, int level)
 
 		new_entry = old_entry + sizeof(FIND_FILE_STANDARD_INFO) +
 				pfData->FileNameLength;
-	} else
-		new_entry = old_entry + le32_to_cpu(pDirInfo->NextEntryOffset);
+	} else {
+		u32 next_offset = le32_to_cpu(pDirInfo->NextEntryOffset);
+
+		if (old_entry + next_offset < old_entry) {
+			cifs_dbg(VFS, "invalid offset %u\n", next_offset);
+			return NULL;
+		}
+		new_entry = old_entry + next_offset;
+	}
 	cifs_dbg(FYI, "new entry %p old entry %p\n", new_entry, old_entry);
 	/* validate that new_entry is not past end of SMB */
 	if (new_entry >= end_of_smb) {

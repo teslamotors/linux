@@ -56,10 +56,16 @@ static const struct scsi_dh_blist scsi_dh_blist[] = {
 	{"IBM", "1815",			"rdac", },
 	{"IBM", "1818",			"rdac", },
 	{"IBM", "3526",			"rdac", },
-	{"SGI", "TP9",			"rdac", },
+	{"IBM", "3542",			"rdac", },
+	{"IBM", "3552",			"rdac", },
+	{"SGI", "TP9300",		"rdac", },
+	{"SGI", "TP9400",		"rdac", },
+	{"SGI", "TP9500",		"rdac", },
+	{"SGI", "TP9700",		"rdac", },
 	{"SGI", "IS",			"rdac", },
-	{"STK", "OPENstorage D280",	"rdac", },
+	{"STK", "OPENstorage",		"rdac", },
 	{"STK", "FLEXLINE 380",		"rdac", },
+	{"STK", "BladeCtlr",		"rdac", },
 	{"SUN", "CSM",			"rdac", },
 	{"SUN", "LCSM100",		"rdac", },
 	{"SUN", "STK6580_6780",		"rdac", },
@@ -289,20 +295,6 @@ int scsi_unregister_device_handler(struct scsi_device_handler *scsi_dh)
 }
 EXPORT_SYMBOL_GPL(scsi_unregister_device_handler);
 
-static struct scsi_device *get_sdev_from_queue(struct request_queue *q)
-{
-	struct scsi_device *sdev;
-	unsigned long flags;
-
-	spin_lock_irqsave(q->queue_lock, flags);
-	sdev = q->queuedata;
-	if (!sdev || !get_device(&sdev->sdev_gendev))
-		sdev = NULL;
-	spin_unlock_irqrestore(q->queue_lock, flags);
-
-	return sdev;
-}
-
 /*
  * scsi_dh_activate - activate the path associated with the scsi_device
  *      corresponding to the given request queue.
@@ -321,7 +313,7 @@ int scsi_dh_activate(struct request_queue *q, activate_complete fn, void *data)
 	struct scsi_device *sdev;
 	int err = SCSI_DH_NOSYS;
 
-	sdev = get_sdev_from_queue(q);
+	sdev = scsi_device_from_queue(q);
 	if (!sdev) {
 		if (fn)
 			fn(data, err);
@@ -368,7 +360,7 @@ int scsi_dh_set_params(struct request_queue *q, const char *params)
 	struct scsi_device *sdev;
 	int err = -SCSI_DH_NOSYS;
 
-	sdev = get_sdev_from_queue(q);
+	sdev = scsi_device_from_queue(q);
 	if (!sdev)
 		return err;
 
@@ -391,7 +383,7 @@ int scsi_dh_attach(struct request_queue *q, const char *name)
 	struct scsi_device_handler *scsi_dh;
 	int err = 0;
 
-	sdev = get_sdev_from_queue(q);
+	sdev = scsi_device_from_queue(q);
 	if (!sdev)
 		return -ENODEV;
 
@@ -429,7 +421,7 @@ const char *scsi_dh_attached_handler_name(struct request_queue *q, gfp_t gfp)
 	struct scsi_device *sdev;
 	const char *handler_name = NULL;
 
-	sdev = get_sdev_from_queue(q);
+	sdev = scsi_device_from_queue(q);
 	if (!sdev)
 		return NULL;
 

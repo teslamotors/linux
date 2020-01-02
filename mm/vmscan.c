@@ -254,10 +254,13 @@ EXPORT_SYMBOL(register_shrinker);
  */
 void unregister_shrinker(struct shrinker *shrinker)
 {
+	if (!shrinker->nr_deferred)
+		return;
 	down_write(&shrinker_rwsem);
 	list_del(&shrinker->list);
 	up_write(&shrinker_rwsem);
 	kfree(shrinker->nr_deferred);
+	shrinker->nr_deferred = NULL;
 }
 EXPORT_SYMBOL(unregister_shrinker);
 
@@ -277,6 +280,7 @@ static unsigned long do_shrink_slab(struct shrink_control *shrinkctl,
 	int nid = shrinkctl->nid;
 	long batch_size = shrinker->batch ? shrinker->batch
 					  : SHRINK_BATCH;
+	long scanned = 0, next_deferred;
 
 	freeable = shrinker->count_objects(shrinker, shrinkctl);
 	if (freeable == 0)
@@ -298,7 +302,9 @@ static unsigned long do_shrink_slab(struct shrink_control *shrinkctl,
 		pr_err("shrink_slab: %pF negative objects to delete nr=%ld\n",
 		       shrinker->scan_objects, total_scan);
 		total_scan = freeable;
-	}
+		next_deferred = nr;
+	} else
+		next_deferred = total_scan;
 
 	/*
 	 * We need to avoid excessive windup on filesystem shrinkers
@@ -355,17 +361,22 @@ static unsigned long do_shrink_slab(struct shrink_control *shrinkctl,
 
 		count_vm_events(SLABS_SCANNED, nr_to_scan);
 		total_scan -= nr_to_scan;
+		scanned += nr_to_scan;
 
 		cond_resched();
 	}
 
+	if (next_deferred >= scanned)
+		next_deferred -= scanned;
+	else
+		next_deferred = 0;
 	/*
 	 * move the unused scan count back into the shrinker in a
 	 * manner that handles concurrent updates. If we exhausted the
 	 * scan, there is no need to do an update.
 	 */
-	if (total_scan > 0)
-		new_nr = atomic_long_add_return(total_scan,
+	if (next_deferred > 0)
+		new_nr = atomic_long_add_return(next_deferred,
 						&shrinker->nr_deferred[nid]);
 	else
 		new_nr = atomic_long_read(&shrinker->nr_deferred[nid]);
@@ -1301,6 +1312,7 @@ int __isolate_lru_page(struct page *page, isolate_mode_t mode)
 
 		if (PageDirty(page)) {
 			struct address_space *mapping;
+			bool migrate_dirty;
 
 			/* ISOLATE_CLEAN means only clean pages */
 			if (mode & ISOLATE_CLEAN)
@@ -1309,10 +1321,19 @@ int __isolate_lru_page(struct page *page, isolate_mode_t mode)
 			/*
 			 * Only pages without mappings or that have a
 			 * ->migratepage callback are possible to migrate
-			 * without blocking
+			 * without blocking. However, we can be racing with
+			 * truncation so it's necessary to lock the page
+			 * to stabilise the mapping as truncation holds
+			 * the page lock until after the page is removed
+			 * from the page cache.
 			 */
+			if (!trylock_page(page))
+				return ret;
+
 			mapping = page_mapping(page);
-			if (mapping && !mapping->a_ops->migratepage)
+			migrate_dirty = !mapping || mapping->a_ops->migratepage;
+			unlock_page(page);
+			if (!migrate_dirty)
 				return ret;
 		}
 	}
@@ -2046,10 +2067,16 @@ static void get_scan_count(struct lruvec *lruvec, int swappiness,
 	}
 
 	/*
-	 * There is enough inactive page cache, do not reclaim
-	 * anything from the anonymous working set right now.
+	 * If there is enough inactive page cache, i.e. if the size of the
+	 * inactive list is greater than that of the active list *and* the
+	 * inactive list actually has some pages to scan on this priority, we
+	 * do not reclaim anything from the anonymous working set right now.
+	 * Without the second condition we could end up never scanning an
+	 * lruvec even if it has plenty of old anonymous pages unless the
+	 * system is under heavy pressure.
 	 */
-	if (!inactive_file_is_low(lruvec)) {
+	if (!inactive_file_is_low(lruvec) &&
+	    get_lru_size(lruvec, LRU_INACTIVE_FILE) >> sc->priority) {
 		scan_balance = SCAN_FILE;
 		goto out;
 	}
@@ -2521,7 +2548,7 @@ static bool shrink_zones(struct zonelist *zonelist, struct scan_control *sc)
 		if (!populated_zone(zone))
 			continue;
 
-		classzone_idx = requested_highidx;
+		classzone_idx = gfp_zone(sc->gfp_mask);
 		while (!populated_zone(zone->zone_pgdat->node_zones +
 							classzone_idx))
 			classzone_idx--;
@@ -3814,7 +3841,13 @@ int zone_reclaim(struct zone *zone, gfp_t gfp_mask, unsigned int order)
  */
 int page_evictable(struct page *page)
 {
-	return !mapping_unevictable(page_mapping(page)) && !PageMlocked(page);
+	int ret;
+
+	/* Prevent address_space of inode and swap cache from being freed */
+	rcu_read_lock();
+	ret = !mapping_unevictable(page_mapping(page)) && !PageMlocked(page);
+	rcu_read_unlock();
+	return ret;
 }
 
 #ifdef CONFIG_SHMEM

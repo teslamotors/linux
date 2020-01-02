@@ -574,13 +574,13 @@ static int zram_decompress_page(struct zram *zram, char *mem, u32 index)
 
 	if (!handle || zram_test_flag(meta, index, ZRAM_ZERO)) {
 		bit_spin_unlock(ZRAM_ACCESS, &meta->table[index].value);
-		clear_page(mem);
+		memset(mem, 0, PAGE_SIZE);
 		return 0;
 	}
 
 	cmem = zs_map_object(meta->mem_pool, handle, ZS_MM_RO);
 	if (size == PAGE_SIZE)
-		copy_page(mem, cmem);
+		memcpy(mem, cmem, PAGE_SIZE);
 	else
 		ret = zcomp_decompress(zram->comp, cmem, size, mem);
 	zs_unmap_object(meta->mem_pool, handle);
@@ -738,7 +738,7 @@ static int zram_bvec_write(struct zram *zram, struct bio_vec *bvec, u32 index,
 
 	if ((clen == PAGE_SIZE) && !is_partial_io(bvec)) {
 		src = kmap_atomic(page);
-		copy_page(cmem, src);
+		memcpy(cmem, src, PAGE_SIZE);
 		kunmap_atomic(src);
 	} else {
 		memcpy(cmem, src, clen);
@@ -1247,6 +1247,8 @@ static int zram_add(void)
 	blk_queue_io_min(zram->disk->queue, PAGE_SIZE);
 	blk_queue_io_opt(zram->disk->queue, PAGE_SIZE);
 	zram->disk->queue->limits.discard_granularity = PAGE_SIZE;
+	zram->disk->queue->limits.max_sectors = SECTORS_PER_PAGE;
+	zram->disk->queue->limits.chunk_sectors = 0;
 	blk_queue_max_discard_sectors(zram->disk->queue, UINT_MAX);
 	/*
 	 * zram_bio_discard() will clear all logical blocks if logical block
@@ -1368,7 +1370,8 @@ static ssize_t hot_remove_store(struct class *class,
 	zram = idr_find(&zram_index_idr, dev_id);
 	if (zram) {
 		ret = zram_remove(zram);
-		idr_remove(&zram_index_idr, dev_id);
+		if (!ret)
+			idr_remove(&zram_index_idr, dev_id);
 	} else {
 		ret = -ENODEV;
 	}
@@ -1377,8 +1380,14 @@ static ssize_t hot_remove_store(struct class *class,
 	return ret ? ret : count;
 }
 
+/*
+ * NOTE: hot_add attribute is not the usual read-only sysfs attribute. In a
+ * sense that reading from this file does alter the state of your system -- it
+ * creates a new un-initialized zram device and returns back this device's
+ * device_id (or an error code if it fails to create a new device).
+ */
 static struct class_attribute zram_control_class_attrs[] = {
-	__ATTR_RO(hot_add),
+	__ATTR(hot_add, 0400, hot_add_show, NULL),
 	__ATTR_WO(hot_remove),
 	__ATTR_NULL,
 };

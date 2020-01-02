@@ -31,6 +31,7 @@
 #include <linux/clockchips.h>
 #include <asm/hyperv.h>
 #include <asm/mshyperv.h>
+#include <asm/nospec-branch.h>
 #include "hyperv_vmbus.h"
 
 /* The one and only */
@@ -103,9 +104,10 @@ static u64 do_hypercall(u64 control, void *input, void *output)
 		return (u64)ULLONG_MAX;
 
 	__asm__ __volatile__("mov %0, %%r8" : : "r" (output_address) : "r8");
-	__asm__ __volatile__("call *%3" : "=a" (hv_status) :
+	__asm__ __volatile__(CALL_NOSPEC :
+			     "=a" (hv_status) :
 			     "c" (control), "d" (input_address),
-			     "m" (hypercall_page));
+			     THUNK_TARGET(hypercall_page));
 
 	return hv_status;
 
@@ -123,11 +125,12 @@ static u64 do_hypercall(u64 control, void *input, void *output)
 	if (!hypercall_page)
 		return (u64)ULLONG_MAX;
 
-	__asm__ __volatile__ ("call *%8" : "=d"(hv_status_hi),
+	__asm__ __volatile__ (CALL_NOSPEC : "=d"(hv_status_hi),
 			      "=a"(hv_status_lo) : "d" (control_hi),
 			      "a" (control_lo), "b" (input_address_hi),
 			      "c" (input_address_lo), "D"(output_address_hi),
-			      "S"(output_address_lo), "m" (hypercall_page));
+			      "S"(output_address_lo),
+			      THUNK_TARGET(hypercall_page));
 
 	return hv_status_lo | ((u64)hv_status_hi << 32);
 #endif /* !x86_64 */
@@ -192,9 +195,7 @@ int hv_init(void)
 {
 	int max_leaf;
 	union hv_x64_msr_hypercall_contents hypercall_msr;
-	union hv_x64_msr_hypercall_contents tsc_msr;
 	void *virtaddr = NULL;
-	void *va_tsc = NULL;
 
 	memset(hv_context.synic_event_page, 0, sizeof(void *) * NR_CPUS);
 	memset(hv_context.synic_message_page, 0,
@@ -219,7 +220,7 @@ int hv_init(void)
 	/* See if the hypercall page is already set */
 	rdmsrl(HV_X64_MSR_HYPERCALL, hypercall_msr.as_uint64);
 
-	virtaddr = __vmalloc(PAGE_SIZE, GFP_KERNEL, PAGE_KERNEL_EXEC);
+	virtaddr = __vmalloc(PAGE_SIZE, GFP_KERNEL, PAGE_KERNEL_RX);
 
 	if (!virtaddr)
 		goto cleanup;
@@ -240,6 +241,9 @@ int hv_init(void)
 
 #ifdef CONFIG_X86_64
 	if (ms_hyperv.features & HV_X64_MSR_REFERENCE_TSC_AVAILABLE) {
+		union hv_x64_msr_hypercall_contents tsc_msr;
+		void *va_tsc;
+
 		va_tsc = __vmalloc(PAGE_SIZE, GFP_KERNEL, PAGE_KERNEL);
 		if (!va_tsc)
 			goto cleanup;
@@ -274,7 +278,7 @@ cleanup:
  *
  * This routine is called normally during driver unloading or exiting.
  */
-void hv_cleanup(void)
+void hv_cleanup(bool crash)
 {
 	union hv_x64_msr_hypercall_contents hypercall_msr;
 
@@ -284,7 +288,8 @@ void hv_cleanup(void)
 	if (hv_context.hypercall_page) {
 		hypercall_msr.as_uint64 = 0;
 		wrmsrl(HV_X64_MSR_HYPERCALL, hypercall_msr.as_uint64);
-		vfree(hv_context.hypercall_page);
+		if (!crash)
+			vfree(hv_context.hypercall_page);
 		hv_context.hypercall_page = NULL;
 	}
 
@@ -304,8 +309,10 @@ void hv_cleanup(void)
 
 		hypercall_msr.as_uint64 = 0;
 		wrmsrl(HV_X64_MSR_REFERENCE_TSC, hypercall_msr.as_uint64);
-		vfree(hv_context.tsc_page);
-		hv_context.tsc_page = NULL;
+		if (!crash) {
+			vfree(hv_context.tsc_page);
+			hv_context.tsc_page = NULL;
+		}
 	}
 #endif
 }
@@ -422,7 +429,7 @@ int hv_synic_alloc(void)
 		goto err;
 	}
 
-	for_each_online_cpu(cpu) {
+	for_each_present_cpu(cpu) {
 		hv_context.event_dpc[cpu] = kmalloc(size, GFP_ATOMIC);
 		if (hv_context.event_dpc[cpu] == NULL) {
 			pr_err("Unable to allocate event dpc\n");
@@ -461,6 +468,8 @@ int hv_synic_alloc(void)
 			pr_err("Unable to allocate post msg page\n");
 			goto err;
 		}
+
+		INIT_LIST_HEAD(&hv_context.percpu_list[cpu]);
 	}
 
 	return 0;
@@ -485,7 +494,7 @@ void hv_synic_free(void)
 	int cpu;
 
 	kfree(hv_context.hv_numa_map);
-	for_each_online_cpu(cpu)
+	for_each_present_cpu(cpu)
 		hv_synic_free_cpu(cpu);
 }
 
@@ -554,8 +563,6 @@ void hv_synic_init(void *arg)
 	 */
 	rdmsrl(HV_X64_MSR_VP_INDEX, vp_index);
 	hv_context.vp_index[cpu] = (u32)vp_index;
-
-	INIT_LIST_HEAD(&hv_context.percpu_list[cpu]);
 
 	/*
 	 * Register the per-cpu clockevent source.

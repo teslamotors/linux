@@ -2752,11 +2752,12 @@ static ssize_t __cgroup_procs_write(struct kernfs_open_file *of, char *buf,
 		tsk = tsk->group_leader;
 
 	/*
-	 * Workqueue threads may acquire PF_NO_SETAFFINITY and become
-	 * trapped in a cpuset, or RT worker may be born in a cgroup
-	 * with no rt_runtime allocated.  Just say no.
+	 * kthreads may acquire PF_NO_SETAFFINITY during initialization.
+	 * If userland migrates such a kthread to a non-root cgroup, it can
+	 * become trapped in a cpuset, or RT kthread may be born in a
+	 * cgroup with no rt_runtime allocated.  Just say no.
 	 */
-	if (tsk == kthreadd_task || (tsk->flags & PF_NO_SETAFFINITY)) {
+	if (tsk->no_cgroup_migration || (tsk->flags & PF_NO_SETAFFINITY)) {
 		ret = -EINVAL;
 		goto out_unlock_rcu;
 	}
@@ -4082,7 +4083,11 @@ int cgroup_transfer_tasks(struct cgroup *to, struct cgroup *from)
 	 */
 	do {
 		css_task_iter_start(&from->self, &it);
-		task = css_task_iter_next(&it);
+
+		do {
+			task = css_task_iter_next(&it);
+		} while (task && (task->flags & PF_EXITING));
+
 		if (task)
 			get_task_struct(task);
 		css_task_iter_end(&it);

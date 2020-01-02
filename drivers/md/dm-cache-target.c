@@ -251,7 +251,7 @@ struct cache {
 	/*
 	 * Fields for converting from sectors to blocks.
 	 */
-	uint32_t sectors_per_block;
+	sector_t sectors_per_block;
 	int sectors_per_block_shift;
 
 	spinlock_t lock;
@@ -3391,8 +3391,13 @@ static dm_cblock_t get_cache_dev_size(struct cache *cache)
 
 static bool can_resize(struct cache *cache, dm_cblock_t new_size)
 {
-	if (from_cblock(new_size) > from_cblock(cache->cache_size))
-		return true;
+	if (from_cblock(new_size) > from_cblock(cache->cache_size)) {
+		if (cache->sized) {
+			DMERR("%s: unable to extend cache due to missing cache table reload",
+			      cache_device_name(cache));
+			return false;
+		}
+	}
 
 	/*
 	 * We can't drop a dirty block when shrinking the cache.
@@ -3547,11 +3552,11 @@ static void cache_status(struct dm_target *ti, status_type_t type,
 
 		residency = policy_residency(cache->policy);
 
-		DMEMIT("%u %llu/%llu %u %llu/%llu %u %u %u %u %u %u %lu ",
+		DMEMIT("%u %llu/%llu %llu %llu/%llu %u %u %u %u %u %u %lu ",
 		       (unsigned)DM_CACHE_METADATA_BLOCK_SIZE,
 		       (unsigned long long)(nr_blocks_metadata - nr_free_blocks_metadata),
 		       (unsigned long long)nr_blocks_metadata,
-		       cache->sectors_per_block,
+		       (unsigned long long)cache->sectors_per_block,
 		       (unsigned long long) from_cblock(residency),
 		       (unsigned long long) from_cblock(cache->cache_size),
 		       (unsigned) atomic_read(&cache->stats.read_hit),

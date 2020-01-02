@@ -125,7 +125,7 @@ static void *alloc_insn_page(void)
 	return module_alloc(PAGE_SIZE);
 }
 
-static void free_insn_page(void *page)
+void __weak free_insn_page(void *page)
 {
 	module_memfree(page);
 }
@@ -563,7 +563,7 @@ static void kprobe_optimizer(struct work_struct *work)
 }
 
 /* Wait for completing optimization and unoptimization */
-static void wait_for_kprobe_optimizer(void)
+void wait_for_kprobe_optimizer(void)
 {
 	mutex_lock(&kprobe_mutex);
 
@@ -2441,7 +2441,7 @@ static int __init debugfs_kprobe_init(void)
 	if (!dir)
 		return -ENOMEM;
 
-	file = debugfs_create_file("list", 0444, dir, NULL,
+	file = debugfs_create_file("list", 0400, dir, NULL,
 				&debugfs_kprobes_operations);
 	if (!file)
 		goto error;
@@ -2451,7 +2451,7 @@ static int __init debugfs_kprobe_init(void)
 	if (!file)
 		goto error;
 
-	file = debugfs_create_file("blacklist", 0444, dir, NULL,
+	file = debugfs_create_file("blacklist", 0400, dir, NULL,
 				&debugfs_kprobe_blacklist_ops);
 	if (!file)
 		goto error;

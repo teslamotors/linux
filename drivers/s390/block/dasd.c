@@ -1635,8 +1635,11 @@ void dasd_int_handler(struct ccw_device *cdev, unsigned long intparm,
 	/* check for for attention message */
 	if (scsw_dstat(&irb->scsw) & DEV_STAT_ATTENTION) {
 		device = dasd_device_from_cdev_locked(cdev);
-		device->discipline->check_attention(device, irb->esw.esw1.lpum);
-		dasd_put_device(device);
+		if (!IS_ERR(device)) {
+			device->discipline->check_attention(device,
+							    irb->esw.esw1.lpum);
+			dasd_put_device(device);
+		}
 	}
 
 	if (!cqr)
@@ -1878,8 +1881,12 @@ static int __dasd_device_is_unusable(struct dasd_device *device,
 {
 	int mask = ~(DASD_STOPPED_DC_WAIT | DASD_UNRESUMED_PM);
 
-	if (test_bit(DASD_FLAG_OFFLINE, &device->flags)) {
-		/* dasd is being set offline. */
+	if (test_bit(DASD_FLAG_OFFLINE, &device->flags) &&
+	    !test_bit(DASD_FLAG_SAFE_OFFLINE_RUNNING, &device->flags)) {
+		/*
+		 * dasd is being set offline
+		 * but it is no safe offline where we have to allow I/O
+		 */
 		return 1;
 	}
 	if (device->stopped) {

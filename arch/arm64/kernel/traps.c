@@ -49,7 +49,7 @@ static const char *handler[]= {
 	"Error"
 };
 
-int show_unhandled_signals = 1;
+int show_unhandled_signals = 0;
 
 /*
  * Dump out the contents of some memory nicely...
@@ -64,8 +64,7 @@ static void dump_mem(const char *lvl, const char *str, unsigned long bottom,
 
 	/*
 	 * We need to switch to kernel mode so that we can use __get_user
-	 * to safely read from kernel space.  Note that we now dump the
-	 * code first, just in case the backtrace kills us.
+	 * to safely read from kernel space.
 	 */
 	fs = get_fs();
 	set_fs(KERNEL_DS);
@@ -111,25 +110,16 @@ static void dump_backtrace_entry(unsigned long where)
 	print_ip_sym(where);
 }
 
-static void dump_instr(const char *lvl, struct pt_regs *regs)
+static void __dump_instr(const char *lvl, struct pt_regs *regs)
 {
 	unsigned long addr = instruction_pointer(regs);
-	mm_segment_t fs;
 	char str[sizeof("00000000 ") * 5 + 2 + 1], *p = str;
 	int i;
-
-	/*
-	 * We need to switch to kernel mode so that we can use __get_user
-	 * to safely read from kernel space.  Note that we now dump the
-	 * code first, just in case the backtrace kills us.
-	 */
-	fs = get_fs();
-	set_fs(KERNEL_DS);
 
 	for (i = -4; i < 1; i++) {
 		unsigned int val, bad;
 
-		bad = __get_user(val, &((u32 *)addr)[i]);
+		bad = get_user(val, &((u32 *)addr)[i]);
 
 		if (!bad)
 			p += sprintf(p, i == 0 ? "(%08x) " : "%08x ", val);
@@ -139,8 +129,18 @@ static void dump_instr(const char *lvl, struct pt_regs *regs)
 		}
 	}
 	printk("%sCode: %s\n", lvl, str);
+}
 
-	set_fs(fs);
+static void dump_instr(const char *lvl, struct pt_regs *regs)
+{
+	if (!user_mode(regs)) {
+		mm_segment_t fs = get_fs();
+		set_fs(KERNEL_DS);
+		__dump_instr(lvl, regs);
+		set_fs(fs);
+	} else {
+		__dump_instr(lvl, regs);
+	}
 }
 
 static void dump_backtrace(struct pt_regs *regs, struct task_struct *tsk)
@@ -434,16 +434,33 @@ const char *esr_get_class_string(u32 esr)
 }
 
 /*
- * bad_mode handles the impossible case in the exception vector.
+ * bad_mode handles the impossible case in the exception vector. This is always
+ * fatal.
  */
 asmlinkage void bad_mode(struct pt_regs *regs, int reason, unsigned int esr)
+{
+	console_verbose();
+
+	pr_crit("Bad mode in %s handler detected, code 0x%08x -- %s\n",
+		handler[reason], esr, esr_get_class_string(esr));
+
+	die("Oops - bad mode", regs, 0);
+	local_irq_disable();
+	panic("bad mode");
+}
+
+/*
+ * bad_el0_sync handles unexpected, but potentially recoverable synchronous
+ * exceptions taken from EL0. Unlike bad_mode, this returns.
+ */
+asmlinkage void bad_el0_sync(struct pt_regs *regs, int reason, unsigned int esr)
 {
 	siginfo_t info;
 	void __user *pc = (void __user *)instruction_pointer(regs);
 	console_verbose();
 
-	pr_crit("Bad mode in %s handler detected, code 0x%08x -- %s\n",
-		handler[reason], esr, esr_get_class_string(esr));
+	pr_crit("Bad EL0 synchronous exception detected on CPU%d, code 0x%08x -- %s\n",
+		smp_processor_id(), esr, esr_get_class_string(esr));
 	__show_regs(regs);
 
 	info.si_signo = SIGILL;
@@ -451,7 +468,10 @@ asmlinkage void bad_mode(struct pt_regs *regs, int reason, unsigned int esr)
 	info.si_code  = ILL_ILLOPC;
 	info.si_addr  = pc;
 
-	arm64_notify_die("Oops - bad mode", regs, &info, 0);
+	current->thread.fault_address = 0;
+	current->thread.fault_code = 0;
+
+	force_sig_info(info.si_signo, &info, current);
 }
 
 void __pte_error(const char *file, int line, unsigned long val)

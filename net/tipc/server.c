@@ -311,6 +311,7 @@ static int tipc_accept_from_sock(struct tipc_conn *con)
 	newcon->usr_data = s->tipc_conn_new(newcon->conid);
 	if (!newcon->usr_data) {
 		sock_release(newsock);
+		conn_put(newcon);
 		return -ENOMEM;
 	}
 
@@ -452,6 +453,11 @@ int tipc_conn_sendmsg(struct tipc_server *s, int conid,
 	if (!con)
 		return -EINVAL;
 
+	if (!test_bit(CF_CONNECTED, &con->flags)) {
+		conn_put(con);
+		return 0;
+	}
+
 	e = tipc_alloc_entry(data, len);
 	if (!e) {
 		conn_put(con);
@@ -465,12 +471,8 @@ int tipc_conn_sendmsg(struct tipc_server *s, int conid,
 	list_add_tail(&e->list, &con->outqueue);
 	spin_unlock_bh(&con->outqueue_lock);
 
-	if (test_bit(CF_CONNECTED, &con->flags)) {
-		if (!queue_work(s->send_wq, &con->swork))
-			conn_put(con);
-	} else {
+	if (!queue_work(s->send_wq, &con->swork))
 		conn_put(con);
-	}
 	return 0;
 }
 
@@ -494,7 +496,7 @@ static void tipc_send_to_sock(struct tipc_conn *con)
 	int ret;
 
 	spin_lock_bh(&con->outqueue_lock);
-	while (1) {
+	while (test_bit(CF_CONNECTED, &con->flags)) {
 		e = list_entry(con->outqueue.next, struct outqueue_entry,
 			       list);
 		if ((struct list_head *) e == &con->outqueue)
@@ -617,14 +619,12 @@ int tipc_server_start(struct tipc_server *s)
 void tipc_server_stop(struct tipc_server *s)
 {
 	struct tipc_conn *con;
-	int total = 0;
 	int id;
 
 	spin_lock_bh(&s->idr_lock);
-	for (id = 0; total < s->idr_in_use; id++) {
+	for (id = 0; s->idr_in_use; id++) {
 		con = idr_find(&s->conn_idr, id);
 		if (con) {
-			total++;
 			spin_unlock_bh(&s->idr_lock);
 			tipc_close_conn(con);
 			spin_lock_bh(&s->idr_lock);

@@ -36,14 +36,14 @@
 #undef pr_fmt
 #define pr_fmt(fmt) "" fmt
 
-static bool boot_cpu_done;
-
-static int __read_mostly __pat_enabled = IS_ENABLED(CONFIG_X86_PAT);
-static void init_cache_modes(void);
+static bool __read_mostly boot_cpu_done;
+static bool __read_mostly pat_disabled = !IS_ENABLED(CONFIG_X86_PAT);
+static bool __read_mostly pat_initialized;
+static bool __read_mostly init_cm_done;
 
 void pat_disable(const char *reason)
 {
-	if (!__pat_enabled)
+	if (pat_disabled)
 		return;
 
 	if (boot_cpu_done) {
@@ -51,10 +51,8 @@ void pat_disable(const char *reason)
 		return;
 	}
 
-	__pat_enabled = 0;
+	pat_disabled = true;
 	pr_info("x86/PAT: %s\n", reason);
-
-	init_cache_modes();
 }
 
 static int __init nopat(char *str)
@@ -66,7 +64,7 @@ early_param("nopat", nopat);
 
 bool pat_enabled(void)
 {
-	return !!__pat_enabled;
+	return pat_initialized;
 }
 EXPORT_SYMBOL_GPL(pat_enabled);
 
@@ -204,6 +202,8 @@ static void __init_cache_modes(u64 pat)
 		update_cache_mode_entry(i, cache);
 	}
 	pr_info("x86/PAT: Configuration [0-7]: %s\n", pat_msg);
+
+	init_cm_done = true;
 }
 
 #define PAT(x, y)	((u64)PAT_ ## y << ((x)*8))
@@ -224,6 +224,7 @@ static void pat_bsp_init(u64 pat)
 	}
 
 	wrmsrl(MSR_IA32_CR_PAT, pat);
+	pat_initialized = true;
 
 	__init_cache_modes(pat);
 }
@@ -241,10 +242,9 @@ static void pat_ap_init(u64 pat)
 	wrmsrl(MSR_IA32_CR_PAT, pat);
 }
 
-static void init_cache_modes(void)
+void init_cache_modes(void)
 {
 	u64 pat = 0;
-	static int init_cm_done;
 
 	if (init_cm_done)
 		return;
@@ -286,8 +286,6 @@ static void init_cache_modes(void)
 	}
 
 	__init_cache_modes(pat);
-
-	init_cm_done = 1;
 }
 
 /**
@@ -305,10 +303,8 @@ void pat_init(void)
 	u64 pat;
 	struct cpuinfo_x86 *c = &boot_cpu_data;
 
-	if (!pat_enabled()) {
-		init_cache_modes();
+	if (pat_disabled)
 		return;
-	}
 
 	if ((c->x86_vendor == X86_VENDOR_INTEL) &&
 	    (((c->x86 == 0x6) && (c->x86_model <= 0xd)) ||
@@ -730,6 +726,20 @@ void io_free_memtype(resource_size_t start, resource_size_t end)
 	free_memtype(start, end);
 }
 
+int arch_io_reserve_memtype_wc(resource_size_t start, resource_size_t size)
+{
+	enum page_cache_mode type = _PAGE_CACHE_MODE_WC;
+
+	return io_reserve_memtype(start, start + size, &type);
+}
+EXPORT_SYMBOL(arch_io_reserve_memtype_wc);
+
+void arch_io_free_memtype_wc(resource_size_t start, resource_size_t size)
+{
+	io_free_memtype(start, start + size);
+}
+EXPORT_SYMBOL(arch_io_free_memtype_wc);
+
 pgprot_t phys_mem_access_prot(struct file *file, unsigned long pfn,
 				unsigned long size, pgprot_t vma_prot)
 {
@@ -754,11 +764,8 @@ static inline int range_is_allowed(unsigned long pfn, unsigned long size)
 		return 1;
 
 	while (cursor < to) {
-		if (!devmem_is_allowed(pfn)) {
-			pr_info("x86/PAT: Program %s tried to access /dev/mem between [mem %#010Lx-%#010Lx], PAT prevents it\n",
-				current->comm, from, to - 1);
+		if (!devmem_is_allowed(pfn))
 			return 0;
-		}
 		cursor += PAGE_SIZE;
 		pfn++;
 	}

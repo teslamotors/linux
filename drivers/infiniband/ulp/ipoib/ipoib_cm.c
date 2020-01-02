@@ -63,6 +63,8 @@ MODULE_PARM_DESC(cm_data_debug_level,
 #define IPOIB_CM_RX_DELAY       (3 * 256 * HZ)
 #define IPOIB_CM_RX_UPDATE_MASK (0x3)
 
+#define IPOIB_CM_RX_RESERVE     (ALIGN(IPOIB_HARD_LEN, 16) - IPOIB_ENCAP_LEN)
+
 static struct ib_qp_attr ipoib_cm_err_attr = {
 	.qp_state = IB_QPS_ERR
 };
@@ -147,15 +149,15 @@ static struct sk_buff *ipoib_cm_alloc_rx_skb(struct net_device *dev,
 	struct sk_buff *skb;
 	int i;
 
-	skb = dev_alloc_skb(IPOIB_CM_HEAD_SIZE + 12);
+	skb = dev_alloc_skb(ALIGN(IPOIB_CM_HEAD_SIZE + IPOIB_PSEUDO_LEN, 16));
 	if (unlikely(!skb))
 		return NULL;
 
 	/*
-	 * IPoIB adds a 4 byte header. So we need 12 more bytes to align the
+	 * IPoIB adds a IPOIB_ENCAP_LEN byte header, this will align the
 	 * IP header to a multiple of 16.
 	 */
-	skb_reserve(skb, 12);
+	skb_reserve(skb, IPOIB_CM_RX_RESERVE);
 
 	mapping[0] = ib_dma_map_single(priv->ca, skb->data, IPOIB_CM_HEAD_SIZE,
 				       DMA_FROM_DEVICE);
@@ -624,9 +626,9 @@ void ipoib_cm_handle_rx_wc(struct net_device *dev, struct ib_wc *wc)
 	if (wc->byte_len < IPOIB_CM_COPYBREAK) {
 		int dlen = wc->byte_len;
 
-		small_skb = dev_alloc_skb(dlen + 12);
+		small_skb = dev_alloc_skb(dlen + IPOIB_CM_RX_RESERVE);
 		if (small_skb) {
-			skb_reserve(small_skb, 12);
+			skb_reserve(small_skb, IPOIB_CM_RX_RESERVE);
 			ib_dma_sync_single_for_cpu(priv->ca, rx_ring[wr_id].mapping[0],
 						   dlen, DMA_FROM_DEVICE);
 			skb_copy_from_linear_data(skb, small_skb->data, dlen);
@@ -663,8 +665,7 @@ void ipoib_cm_handle_rx_wc(struct net_device *dev, struct ib_wc *wc)
 
 copied:
 	skb->protocol = ((struct ipoib_header *) skb->data)->proto;
-	skb_reset_mac_header(skb);
-	skb_pull(skb, IPOIB_ENCAP_LEN);
+	skb_add_pseudo_hdr(skb);
 
 	++dev->stats.rx_packets;
 	dev->stats.rx_bytes += skb->len;
@@ -991,12 +992,14 @@ static int ipoib_cm_rep_handler(struct ib_cm_id *cm_id, struct ib_cm_event *even
 
 	skb_queue_head_init(&skqueue);
 
+	netif_tx_lock_bh(p->dev);
 	spin_lock_irq(&priv->lock);
 	set_bit(IPOIB_FLAG_OPER_UP, &p->flags);
 	if (p->neigh)
 		while ((skb = __skb_dequeue(&p->neigh->queue)))
 			__skb_queue_tail(&skqueue, skb);
 	spin_unlock_irq(&priv->lock);
+	netif_tx_unlock_bh(p->dev);
 
 	while ((skb = __skb_dequeue(&skqueue))) {
 		skb->dev = p->dev;
@@ -1035,8 +1038,6 @@ static struct ib_qp *ipoib_cm_create_tx_qp(struct net_device *dev, struct ipoib_
 
 	tx_qp = ib_create_qp(priv->pd, &attr);
 	if (PTR_ERR(tx_qp) == -EINVAL) {
-		ipoib_warn(priv, "can't use GFP_NOIO for QPs on device %s, using GFP_KERNEL\n",
-			   priv->ca->name);
 		attr.create_flags &= ~IB_QP_CREATE_USE_GFP_NOIO;
 		tx_qp = ib_create_qp(priv->pd, &attr);
 	}
@@ -1374,7 +1375,7 @@ static void ipoib_cm_tx_reap(struct work_struct *work)
 
 	while (!list_empty(&priv->cm.reap_list)) {
 		p = list_entry(priv->cm.reap_list.next, typeof(*p), list);
-		list_del(&p->list);
+		list_del_init(&p->list);
 		spin_unlock_irqrestore(&priv->lock, flags);
 		netif_tx_unlock_bh(dev);
 		ipoib_cm_tx_destroy(p);
@@ -1489,12 +1490,14 @@ static ssize_t set_mode(struct device *d, struct device_attribute *attr,
 
 	ret = ipoib_set_mode(dev, buf);
 
-	rtnl_unlock();
+	/* The assumption is that the function ipoib_set_mode returned
+	 * with the rtnl held by it, if not the value -EBUSY returned,
+	 * then no need to rtnl_unlock
+	 */
+	if (ret != -EBUSY)
+		rtnl_unlock();
 
-	if (!ret)
-		return count;
-
-	return ret;
+	return (!ret || ret == -EBUSY) ? count : ret;
 }
 
 static DEVICE_ATTR(mode, S_IWUSR | S_IRUGO, show_mode, set_mode);

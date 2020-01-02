@@ -761,7 +761,8 @@ static int nvmap_open(struct inode *inode, struct file *filp)
 
 	/* root and node owner are privileged */
 	if (uid_eq(current_real_cred()->uid, GLOBAL_ROOT_UID) ||
-	   (uid_eq(current_real_cred()->uid, inode->i_uid))) {
+	   (uid_eq(current_real_cred()->uid, inode->i_uid)) ||
+	   (in_group_p(inode->i_gid))) {
 		priv->privileged = true;
 	}
 

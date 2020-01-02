@@ -670,11 +670,18 @@ static void srp_path_rec_completion(int status,
 static int srp_lookup_path(struct srp_rdma_ch *ch)
 {
 	struct srp_target_port *target = ch->target;
-	int ret;
+	int ret = -ENODEV;
 
 	ch->path.numb_path = 1;
 
 	init_completion(&ch->done);
+
+	/*
+	 * Avoid that the SCSI host can be removed by srp_remove_target()
+	 * before srp_path_rec_completion() is called.
+	 */
+	if (!scsi_host_get(target->scsi_host))
+		goto out;
 
 	ch->path_query_id = ib_sa_path_rec_get(&srp_sa_client,
 					       target->srp_host->srp_dev->dev,
@@ -689,18 +696,24 @@ static int srp_lookup_path(struct srp_rdma_ch *ch)
 					       GFP_KERNEL,
 					       srp_path_rec_completion,
 					       ch, &ch->path_query);
-	if (ch->path_query_id < 0)
-		return ch->path_query_id;
+	ret = ch->path_query_id;
+	if (ret < 0)
+		goto put;
 
 	ret = wait_for_completion_interruptible(&ch->done);
 	if (ret < 0)
-		return ret;
+		goto put;
 
-	if (ch->status < 0)
+	ret = ch->status;
+	if (ret < 0)
 		shost_printk(KERN_WARNING, target->scsi_host,
 			     PFX "Path record query failed\n");
 
-	return ch->status;
+put:
+	scsi_host_put(target->scsi_host);
+
+out:
+	return ret;
 }
 
 static int srp_send_req(struct srp_rdma_ch *ch, bool multich)
@@ -1787,17 +1800,24 @@ static void srp_process_rsp(struct srp_rdma_ch *ch, struct srp_rsp *rsp)
 	if (unlikely(rsp->tag & SRP_TAG_TSK_MGMT)) {
 		spin_lock_irqsave(&ch->lock, flags);
 		ch->req_lim += be32_to_cpu(rsp->req_lim_delta);
+		if (rsp->tag == ch->tsk_mgmt_tag) {
+			ch->tsk_mgmt_status = -1;
+			if (be32_to_cpu(rsp->resp_data_len) >= 4)
+				ch->tsk_mgmt_status = rsp->data[3];
+			complete(&ch->tsk_mgmt_done);
+		} else {
+			shost_printk(KERN_ERR, target->scsi_host,
+				     "Received tsk mgmt response too late for tag %#llx\n",
+				     rsp->tag);
+		}
 		spin_unlock_irqrestore(&ch->lock, flags);
-
-		ch->tsk_mgmt_status = -1;
-		if (be32_to_cpu(rsp->resp_data_len) >= 4)
-			ch->tsk_mgmt_status = rsp->data[3];
-		complete(&ch->tsk_mgmt_done);
 	} else {
 		scmnd = scsi_host_find_tag(target->scsi_host, rsp->tag);
-		if (scmnd) {
+		if (scmnd && scmnd->host_scribble) {
 			req = (void *)scmnd->host_scribble;
 			scmnd = srp_claim_req(ch, req, NULL, scmnd);
+		} else {
+			scmnd = NULL;
 		}
 		if (!scmnd) {
 			shost_printk(KERN_ERR, target->scsi_host,
@@ -2469,18 +2489,17 @@ srp_change_queue_depth(struct scsi_device *sdev, int qdepth)
 }
 
 static int srp_send_tsk_mgmt(struct srp_rdma_ch *ch, u64 req_tag, u64 lun,
-			     u8 func)
+			     u8 func, u8 *status)
 {
 	struct srp_target_port *target = ch->target;
 	struct srp_rport *rport = target->rport;
 	struct ib_device *dev = target->srp_host->srp_dev->dev;
 	struct srp_iu *iu;
 	struct srp_tsk_mgmt *tsk_mgmt;
+	int res;
 
 	if (!ch->connected || target->qp_in_error)
 		return -1;
-
-	init_completion(&ch->tsk_mgmt_done);
 
 	/*
 	 * Lock the rport mutex to avoid that srp_create_ch_ib() is
@@ -2504,9 +2523,15 @@ static int srp_send_tsk_mgmt(struct srp_rdma_ch *ch, u64 req_tag, u64 lun,
 
 	tsk_mgmt->opcode 	= SRP_TSK_MGMT;
 	int_to_scsilun(lun, &tsk_mgmt->lun);
-	tsk_mgmt->tag		= req_tag | SRP_TAG_TSK_MGMT;
 	tsk_mgmt->tsk_mgmt_func = func;
 	tsk_mgmt->task_tag	= req_tag;
+
+	spin_lock_irq(&ch->lock);
+	ch->tsk_mgmt_tag = (ch->tsk_mgmt_tag + 1) | SRP_TAG_TSK_MGMT;
+	tsk_mgmt->tag = ch->tsk_mgmt_tag;
+	spin_unlock_irq(&ch->lock);
+
+	init_completion(&ch->tsk_mgmt_done);
 
 	ib_dma_sync_single_for_device(dev, iu->dma, sizeof *tsk_mgmt,
 				      DMA_TO_DEVICE);
@@ -2516,13 +2541,15 @@ static int srp_send_tsk_mgmt(struct srp_rdma_ch *ch, u64 req_tag, u64 lun,
 
 		return -1;
 	}
+	res = wait_for_completion_timeout(&ch->tsk_mgmt_done,
+					msecs_to_jiffies(SRP_ABORT_TIMEOUT_MS));
+	if (res > 0 && status)
+		*status = ch->tsk_mgmt_status;
 	mutex_unlock(&rport->mutex);
 
-	if (!wait_for_completion_timeout(&ch->tsk_mgmt_done,
-					 msecs_to_jiffies(SRP_ABORT_TIMEOUT_MS)))
-		return -1;
+	WARN_ON_ONCE(res < 0);
 
-	return 0;
+	return res > 0 ? 0 : -1;
 }
 
 static int srp_abort(struct scsi_cmnd *scmnd)
@@ -2548,15 +2575,17 @@ static int srp_abort(struct scsi_cmnd *scmnd)
 	shost_printk(KERN_ERR, target->scsi_host,
 		     "Sending SRP abort for tag %#x\n", tag);
 	if (srp_send_tsk_mgmt(ch, tag, scmnd->device->lun,
-			      SRP_TSK_ABORT_TASK) == 0)
+			      SRP_TSK_ABORT_TASK, NULL) == 0)
 		ret = SUCCESS;
 	else if (target->rport->state == SRP_RPORT_LOST)
 		ret = FAST_IO_FAIL;
 	else
 		ret = FAILED;
-	srp_free_req(ch, req, scmnd, 0);
-	scmnd->result = DID_ABORT << 16;
-	scmnd->scsi_done(scmnd);
+	if (ret == SUCCESS) {
+		srp_free_req(ch, req, scmnd, 0);
+		scmnd->result = DID_ABORT << 16;
+		scmnd->scsi_done(scmnd);
+	}
 
 	return ret;
 }
@@ -2565,21 +2594,22 @@ static int srp_reset_device(struct scsi_cmnd *scmnd)
 {
 	struct srp_target_port *target = host_to_target(scmnd->device->host);
 	struct srp_rdma_ch *ch;
-	int i;
+	int i, j;
+	u8 status;
 
 	shost_printk(KERN_ERR, target->scsi_host, "SRP reset_device called\n");
 
 	ch = &target->ch[0];
 	if (srp_send_tsk_mgmt(ch, SRP_TAG_NO_REQ, scmnd->device->lun,
-			      SRP_TSK_LUN_RESET))
+			      SRP_TSK_LUN_RESET, &status))
 		return FAILED;
-	if (ch->tsk_mgmt_status)
+	if (status)
 		return FAILED;
 
 	for (i = 0; i < target->ch_count; i++) {
 		ch = &target->ch[i];
-		for (i = 0; i < target->req_ring_size; ++i) {
-			struct srp_request *req = &ch->req_ring[i];
+		for (j = 0; j < target->req_ring_size; ++j) {
+			struct srp_request *req = &ch->req_ring[j];
 
 			srp_finish_req(ch, req, scmnd->device, DID_RESET << 16);
 		}
@@ -3281,12 +3311,10 @@ static ssize_t srp_create_target(struct device *dev,
 				      num_online_nodes());
 		const int ch_end = ((node_idx + 1) * target->ch_count /
 				    num_online_nodes());
-		const int cv_start = (node_idx * ibdev->num_comp_vectors /
-				      num_online_nodes() + target->comp_vector)
-				     % ibdev->num_comp_vectors;
-		const int cv_end = ((node_idx + 1) * ibdev->num_comp_vectors /
-				    num_online_nodes() + target->comp_vector)
-				   % ibdev->num_comp_vectors;
+		const int cv_start = node_idx * ibdev->num_comp_vectors /
+				     num_online_nodes();
+		const int cv_end = (node_idx + 1) * ibdev->num_comp_vectors /
+				   num_online_nodes();
 		int cpu_idx = 0;
 
 		for_each_online_cpu(cpu) {

@@ -818,6 +818,7 @@ static void mvneta_port_up(struct mvneta_port *pp)
 	}
 	mvreg_write(pp, MVNETA_TXQ_CMD, q_map);
 
+	q_map = 0;
 	/* Enable all initialized RXQs. */
 	mvreg_write(pp, MVNETA_RXQ_CMD, BIT(rxq_def));
 }
@@ -913,6 +914,10 @@ static void mvneta_port_disable(struct mvneta_port *pp)
 	val = mvreg_read(pp, MVNETA_GMAC_CTRL_0);
 	val &= ~MVNETA_GMAC0_PORT_ENABLE;
 	mvreg_write(pp, MVNETA_GMAC_CTRL_0, val);
+
+	pp->link = 0;
+	pp->duplex = -1;
+	pp->speed = 0;
 
 	udelay(200);
 }
@@ -2446,7 +2451,7 @@ static void mvneta_start_dev(struct mvneta_port *pp)
 	mvneta_port_enable(pp);
 
 	/* Enable polling on the port */
-	for_each_present_cpu(cpu) {
+	for_each_online_cpu(cpu) {
 		struct mvneta_pcpu_port *port = per_cpu_ptr(pp->ports, cpu);
 
 		napi_enable(&port->napi);
@@ -2472,7 +2477,7 @@ static void mvneta_stop_dev(struct mvneta_port *pp)
 
 	phy_stop(pp->phy_dev);
 
-	for_each_present_cpu(cpu) {
+	for_each_online_cpu(cpu) {
 		struct mvneta_pcpu_port *port = per_cpu_ptr(pp->ports, cpu);
 
 		napi_disable(&port->napi);
@@ -2564,7 +2569,6 @@ static int mvneta_change_mtu(struct net_device *dev, int mtu)
 	}
 
 	mvneta_start_dev(pp);
-	mvneta_port_up(pp);
 
 	netdev_update_features(dev);
 
@@ -2902,13 +2906,11 @@ err_cleanup_rxqs:
 static int mvneta_stop(struct net_device *dev)
 {
 	struct mvneta_port *pp = netdev_priv(dev);
-	int cpu;
 
 	mvneta_stop_dev(pp);
 	mvneta_mdio_remove(pp);
 	unregister_cpu_notifier(&pp->cpu_notifier);
-	for_each_present_cpu(cpu)
-		smp_call_function_single(cpu, mvneta_percpu_disable, pp, true);
+	on_each_cpu(mvneta_percpu_disable, pp, true);
 	free_percpu_irq(dev->irq, pp->ports);
 	mvneta_cleanup_rxqs(pp);
 	mvneta_cleanup_txqs(pp);

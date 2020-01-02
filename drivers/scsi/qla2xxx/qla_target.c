@@ -2865,7 +2865,7 @@ static int __qlt_send_term_imm_notif(struct scsi_qla_host *vha,
 
 	pkt->entry_type = NOTIFY_ACK_TYPE;
 	pkt->entry_count = 1;
-	pkt->handle = QLA_TGT_SKIP_HANDLE | CTIO_COMPLETION_HANDLE_MARK;
+	pkt->handle = QLA_TGT_SKIP_HANDLE;
 
 	nack = (struct nack_to_isp *)pkt;
 	nack->ox_id = ntfy->ox_id;
@@ -5502,7 +5502,7 @@ static fc_port_t *qlt_get_port_database(struct scsi_qla_host *vha,
 	fc_port_t *fcport;
 	int rc;
 
-	fcport = kzalloc(sizeof(*fcport), GFP_KERNEL);
+	fcport = qla2x00_alloc_fcport(vha, GFP_KERNEL);
 	if (!fcport) {
 		ql_dbg(ql_dbg_tgt_mgt, vha, 0xf06f,
 		    "qla_target(%d): Allocation of tmp FC port failed",

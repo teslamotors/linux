@@ -330,6 +330,7 @@ struct usb_host_bos {
 	struct usb_ss_cap_descriptor	*ss_cap;
 	struct usb_ssp_cap_descriptor	*ssp_cap;
 	struct usb_ss_container_id_descriptor	*ss_id;
+	struct usb_ptm_cap_descriptor	*ptm_cap;
 };
 
 int __usb_get_extra_descriptor(char *buffer, unsigned size,
@@ -371,13 +372,12 @@ struct usb_bus {
 
 	int devnum_next;		/* Next open device number in
 					 * round-robin allocation */
+	struct mutex devnum_next_mutex; /* devnum_next mutex */
 
 	struct usb_devmap devmap;	/* device address allocation map */
 	struct usb_device *root_hub;	/* Root hub */
 	struct usb_bus *hs_companion;	/* Companion EHCI bus, if any */
 	struct list_head bus_list;	/* list of busses */
-
-	struct mutex usb_address0_mutex; /* unaddressed device mutex */
 
 	int bandwidth_allocated;	/* on this bus: how much of the time
 					 * reserved for periodic (intr/iso)

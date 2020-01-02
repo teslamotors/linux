@@ -492,8 +492,8 @@ ip_proto_again:
 out_good:
 	ret = true;
 
-	key_control->thoff = (u16)nhoff;
 out:
+	key_control->thoff = min_t(u16, nhoff, skb ? skb->len : hlen);
 	key_basic->n_proto = proto;
 	key_basic->ip_proto = ip_proto;
 
@@ -501,7 +501,6 @@ out:
 
 out_bad:
 	ret = false;
-	key_control->thoff = min_t(u16, nhoff, skb ? skb->len : hlen);
 	goto out;
 }
 EXPORT_SYMBOL(__skb_flow_dissect);
@@ -949,4 +948,4 @@ static int __init init_default_flow_dissectors(void)
 	return 0;
 }
 
-late_initcall_sync(init_default_flow_dissectors);
+core_initcall(init_default_flow_dissectors);

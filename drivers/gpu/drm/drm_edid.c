@@ -75,6 +75,8 @@
 #define EDID_QUIRK_FORCE_12BPC			(1 << 9)
 /* Force 6bpc */
 #define EDID_QUIRK_FORCE_6BPC			(1 << 10)
+/* Force 10bpc */
+#define EDID_QUIRK_FORCE_10BPC			(1 << 11)
 
 struct detailed_mode_closure {
 	struct drm_connector *connector;
@@ -104,6 +106,9 @@ static struct edid_quirk {
 	/* AEO model 0 reports 8 bpc, but is a 6 bpc panel */
 	{ "AEO", 0, EDID_QUIRK_FORCE_6BPC },
 
+	/* CPT panel of Asus UX303LA reports 8 bpc, but is a 6 bpc panel */
+	{ "CPT", 0x17df, EDID_QUIRK_FORCE_6BPC },
+
 	/* Belinea 10 15 55 */
 	{ "MAX", 1516, EDID_QUIRK_PREFER_LARGE_60 },
 	{ "MAX", 0x77e, EDID_QUIRK_PREFER_LARGE_60 },
@@ -116,6 +121,9 @@ static struct edid_quirk {
 	/* Funai Electronics PM36B */
 	{ "FCM", 13600, EDID_QUIRK_PREFER_LARGE_75 |
 	  EDID_QUIRK_DETAILED_IN_CM },
+
+	/* LGD panel of HP zBook 17 G2, eDP 10 bpc, but reports unknown bpc */
+	{ "LGD", 764, EDID_QUIRK_FORCE_10BPC },
 
 	/* LG Philips LCD LP154W01-A5 */
 	{ "LPL", 0, EDID_QUIRK_DETAILED_USE_MAXIMUM_SIZE },
@@ -144,6 +152,9 @@ static struct edid_quirk {
 
 	/* Panel in Samsung NP700G7A-S01PL notebook reports 6bpc */
 	{ "SEC", 0xd033, EDID_QUIRK_FORCE_8BPC },
+
+	/* Rotel RSX-1058 forwards sink's EDID but only does HDMI 1.1*/
+	{ "ETR", 13896, EDID_QUIRK_FORCE_8BPC },
 };
 
 /*
@@ -3208,8 +3219,7 @@ monitor_name(struct detailed_timing *t, void *data)
  * @edid: EDID to parse
  *
  * Fill the ELD (EDID-Like Data) buffer for passing to the audio driver. The
- * Conn_Type, HDCP and Port_ID ELD fields are left for the graphics driver to
- * fill in.
+ * HDCP and Port_ID ELD fields are left for the graphics driver to fill in.
  */
 void drm_edid_to_eld(struct drm_connector *connector, struct edid *edid)
 {
@@ -3281,6 +3291,12 @@ void drm_edid_to_eld(struct drm_connector *connector, struct edid *edid)
 		}
 	}
 	eld[5] |= sad_count << 4;
+
+	if (connector->connector_type == DRM_MODE_CONNECTOR_DisplayPort ||
+	    connector->connector_type == DRM_MODE_CONNECTOR_eDP)
+		eld[DRM_ELD_SAD_COUNT_CONN_TYPE] |= DRM_ELD_CONN_TYPE_DP;
+	else
+		eld[DRM_ELD_SAD_COUNT_CONN_TYPE] |= DRM_ELD_CONN_TYPE_HDMI;
 
 	eld[DRM_ELD_BASELINE_ELD_LEN] =
 		DIV_ROUND_UP(drm_eld_calc_baseline_block_size(eld), 4);
@@ -3830,6 +3846,9 @@ int drm_add_edid_modes(struct drm_connector *connector, struct edid *edid)
 
 	if (quirks & EDID_QUIRK_FORCE_8BPC)
 		connector->display_info.bpc = 8;
+
+	if (quirks & EDID_QUIRK_FORCE_10BPC)
+		connector->display_info.bpc = 10;
 
 	if (quirks & EDID_QUIRK_FORCE_12BPC)
 		connector->display_info.bpc = 12;

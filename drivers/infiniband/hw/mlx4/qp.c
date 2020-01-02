@@ -1207,7 +1207,8 @@ int mlx4_ib_destroy_qp(struct ib_qp *qp)
 	if (is_qp0(dev, mqp))
 		mlx4_CLOSE_PORT(dev->dev, mqp->port);
 
-	if (dev->qp1_proxy[mqp->port - 1] == mqp) {
+	if (mqp->mlx4_ib_qp_type == MLX4_IB_QPT_PROXY_GSI &&
+	    dev->qp1_proxy[mqp->port - 1] == mqp) {
 		mutex_lock(&dev->qp1_proxy_lock[mqp->port - 1]);
 		dev->qp1_proxy[mqp->port - 1] = NULL;
 		mutex_unlock(&dev->qp1_proxy_lock[mqp->port - 1]);
@@ -1563,7 +1564,7 @@ static int __mlx4_ib_modify_qp(struct ib_qp *ibqp,
 			context->mtu_msgmax = (IB_MTU_4096 << 5) |
 					      ilog2(dev->dev->caps.max_gso_sz);
 		else
-			context->mtu_msgmax = (IB_MTU_4096 << 5) | 12;
+			context->mtu_msgmax = (IB_MTU_4096 << 5) | 13;
 	} else if (attr_mask & IB_QP_PATH_MTU) {
 		if (attr->path_mtu < IB_MTU_256 || attr->path_mtu > IB_MTU_4096) {
 			pr_err("path MTU (%u) is invalid\n",

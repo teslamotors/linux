@@ -698,7 +698,7 @@ void mei_host_client_init(struct work_struct *work)
 
 	pm_runtime_mark_last_busy(dev->dev);
 	dev_dbg(dev->dev, "rpm: autosuspend\n");
-	pm_runtime_autosuspend(dev->dev);
+	pm_request_autosuspend(dev->dev);
 }
 
 /**
@@ -1299,6 +1299,9 @@ int mei_cl_notify_request(struct mei_cl *cl, struct file *file, u8 request)
 		cl_dbg(dev, cl, "notifications not supported\n");
 		return -EOPNOTSUPP;
 	}
+
+	if (!mei_cl_is_connected(cl))
+		return -ENODEV;
 
 	rets = pm_runtime_get(dev->dev);
 	if (rets < 0 && rets != -EINPROGRESS) {

@@ -289,7 +289,8 @@ static void dccp_v4_err(struct sk_buff *skb, u32 info)
 
 	switch (type) {
 	case ICMP_REDIRECT:
-		dccp_do_redirect(skb, sk);
+		if (!sock_owned_by_user(sk))
+			dccp_do_redirect(skb, sk);
 		goto out;
 	case ICMP_SOURCE_QUENCH:
 		/* Just silently ignore these. */
@@ -413,8 +414,7 @@ struct sock *dccp_v4_request_recv_sock(const struct sock *sk,
 	sk_daddr_set(newsk, ireq->ir_rmt_addr);
 	sk_rcv_saddr_set(newsk, ireq->ir_loc_addr);
 	newinet->inet_saddr	= ireq->ir_loc_addr;
-	newinet->inet_opt	= ireq->opt;
-	ireq->opt	   = NULL;
+	RCU_INIT_POINTER(newinet->inet_opt, rcu_dereference(ireq->ireq_opt));
 	newinet->mc_index  = inet_iif(skb);
 	newinet->mc_ttl	   = ip_hdr(skb)->ttl;
 	newinet->inet_id   = jiffies;
@@ -429,7 +429,10 @@ struct sock *dccp_v4_request_recv_sock(const struct sock *sk,
 	if (__inet_inherit_port(sk, newsk) < 0)
 		goto put_and_exit;
 	*own_req = inet_ehash_nolisten(newsk, req_to_sk(req_unhash));
-
+	if (*own_req)
+		ireq->ireq_opt = NULL;
+	else
+		newinet->inet_opt = NULL;
 	return newsk;
 
 exit_overflow:
@@ -440,6 +443,7 @@ exit:
 	NET_INC_STATS_BH(sock_net(sk), LINUX_MIB_LISTENDROPS);
 	return NULL;
 put_and_exit:
+	newinet->inet_opt = NULL;
 	inet_csk_prepare_forced_close(newsk);
 	dccp_done(newsk);
 	goto exit;
@@ -491,7 +495,7 @@ static int dccp_v4_send_response(const struct sock *sk, struct request_sock *req
 							      ireq->ir_rmt_addr);
 		err = ip_build_and_send_pkt(skb, sk, ireq->ir_loc_addr,
 					    ireq->ir_rmt_addr,
-					    ireq->opt);
+					    ireq_opt_deref(ireq));
 		err = net_xmit_eval(err);
 	}
 
@@ -545,7 +549,7 @@ out:
 static void dccp_v4_reqsk_destructor(struct request_sock *req)
 {
 	dccp_feat_list_purge(&dccp_rsk(req)->dreq_featneg);
-	kfree(inet_rsk(req)->opt);
+	kfree(rcu_dereference_protected(inet_rsk(req)->ireq_opt, 1));
 }
 
 void dccp_syn_ack_timeout(const struct request_sock *req)
@@ -614,6 +618,7 @@ int dccp_v4_conn_request(struct sock *sk, struct sk_buff *skb)
 	ireq = inet_rsk(req);
 	sk_rcv_saddr_set(req_to_sk(req), ip_hdr(skb)->daddr);
 	sk_daddr_set(req_to_sk(req), ip_hdr(skb)->saddr);
+	ireq->ir_mark = inet_request_mark(sk, skb);
 	ireq->ireq_family = AF_INET;
 	ireq->ir_iif = sk->sk_bound_dev_if;
 
@@ -634,6 +639,7 @@ int dccp_v4_conn_request(struct sock *sk, struct sk_buff *skb)
 		goto drop_and_free;
 
 	inet_csk_reqsk_queue_hash_add(sk, req, DCCP_TIMEOUT_INIT);
+	reqsk_put(req);
 	return 0;
 
 drop_and_free:
@@ -698,6 +704,7 @@ int dccp_invalid_packet(struct sk_buff *skb)
 {
 	const struct dccp_hdr *dh;
 	unsigned int cscov;
+	u8 dccph_doff;
 
 	if (skb->pkt_type != PACKET_HOST)
 		return 1;
@@ -719,18 +726,19 @@ int dccp_invalid_packet(struct sk_buff *skb)
 	/*
 	 * If P.Data Offset is too small for packet type, drop packet and return
 	 */
-	if (dh->dccph_doff < dccp_hdr_len(skb) / sizeof(u32)) {
-		DCCP_WARN("P.Data Offset(%u) too small\n", dh->dccph_doff);
+	dccph_doff = dh->dccph_doff;
+	if (dccph_doff < dccp_hdr_len(skb) / sizeof(u32)) {
+		DCCP_WARN("P.Data Offset(%u) too small\n", dccph_doff);
 		return 1;
 	}
 	/*
 	 * If P.Data Offset is too too large for packet, drop packet and return
 	 */
-	if (!pskb_may_pull(skb, dh->dccph_doff * sizeof(u32))) {
-		DCCP_WARN("P.Data Offset(%u) too large\n", dh->dccph_doff);
+	if (!pskb_may_pull(skb, dccph_doff * sizeof(u32))) {
+		DCCP_WARN("P.Data Offset(%u) too large\n", dccph_doff);
 		return 1;
 	}
-
+	dh = dccp_hdr(skb);
 	/*
 	 * If P.type is not Data, Ack, or DataAck and P.X == 0 (the packet
 	 * has short sequence numbers), drop packet and return

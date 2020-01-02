@@ -36,6 +36,13 @@
 #define NAPPING_CEDE	1
 #define NAPPING_NOVCPU	2
 
+/* Stack frame offsets for kvmppc_hv_entry */
+#define SFS			112
+#define STACK_SLOT_TRAP		(SFS-4)
+#define STACK_SLOT_CIABR	(SFS-16)
+#define STACK_SLOT_DAWR		(SFS-24)
+#define STACK_SLOT_DAWRX	(SFS-32)
+
 /*
  * Call kvmppc_hv_entry in real mode.
  * Must be called with interrupts hard-disabled.
@@ -57,7 +64,7 @@ _GLOBAL_TOC(kvmppc_hv_entry_trampoline)
 	mtmsrd	r0,1		/* clear RI in MSR */
 	mtsrr0	r5
 	mtsrr1	r6
-	RFI
+	RFI_TO_KERNEL
 
 kvmppc_call_hv_entry:
 	ld	r4, HSTATE_KVM_VCPU(r13)
@@ -163,7 +170,7 @@ END_FTR_SECTION_IFSET(CPU_FTR_ARCH_207S)
 	mtsrr0	r8
 	mtsrr1	r7
 	beq	cr1, 13f		/* machine check */
-	RFI
+	RFI_TO_KERNEL
 
 	/* On POWER7, we have external interrupts set to use HSRR0/1 */
 11:	mtspr	SPRN_HSRR0, r8
@@ -274,10 +281,10 @@ kvm_novcpu_exit:
 	bl	kvmhv_accumulate_time
 #endif
 13:	mr	r3, r12
-	stw	r12, 112-4(r1)
+	stw	r12, STACK_SLOT_TRAP(r1)
 	bl	kvmhv_commence_exit
 	nop
-	lwz	r12, 112-4(r1)
+	lwz	r12, STACK_SLOT_TRAP(r1)
 	b	kvmhv_switch_to_host
 
 /*
@@ -489,7 +496,7 @@ kvmppc_hv_entry:
 	 */
 	mflr	r0
 	std	r0, PPC_LR_STKOFF(r1)
-	stdu	r1, -112(r1)
+	stdu	r1, -SFS(r1)
 
 	/* Save R1 in the PACA */
 	std	r1, HSTATE_HOST_R1(r13)
@@ -642,6 +649,16 @@ kvmppc_got_guest:
 	ld	r8,VCPU_SPURR(r4)
 	mtspr	SPRN_PURR,r7
 	mtspr	SPRN_SPURR,r8
+
+	/* Save host values of some registers */
+BEGIN_FTR_SECTION
+	mfspr	r5, SPRN_CIABR
+	mfspr	r6, SPRN_DAWR
+	mfspr	r7, SPRN_DAWRX
+	std	r5, STACK_SLOT_CIABR(r1)
+	std	r6, STACK_SLOT_DAWR(r1)
+	std	r7, STACK_SLOT_DAWRX(r1)
+END_FTR_SECTION_IFSET(CPU_FTR_ARCH_207S)
 
 BEGIN_FTR_SECTION
 	/* Set partition DABR */
@@ -948,8 +965,7 @@ BEGIN_FTR_SECTION
 END_FTR_SECTION_IFSET(CPU_FTR_HAS_PPR)
 	ld	r0, VCPU_GPR(R0)(r4)
 	ld	r4, VCPU_GPR(R4)(r4)
-
-	hrfid
+	HRFI_TO_GUEST
 	b	.
 
 secondary_too_late:
@@ -1266,8 +1282,7 @@ END_FTR_SECTION_IFCLR(CPU_FTR_ARCH_207S)
 	 */
 	li	r0, 0
 	mtspr	SPRN_IAMR, r0
-	mtspr	SPRN_CIABR, r0
-	mtspr	SPRN_DAWRX, r0
+	mtspr	SPRN_PSPB, r0
 	mtspr	SPRN_TCSCR, r0
 	mtspr	SPRN_WORT, r0
 	/* Set MMCRS to 1<<31 to freeze and disable the SPMC counters */
@@ -1283,6 +1298,7 @@ END_FTR_SECTION_IFCLR(CPU_FTR_ARCH_207S)
 	std	r6,VCPU_UAMOR(r9)
 	li	r6,0
 	mtspr	SPRN_AMR,r6
+	mtspr	SPRN_UAMOR, r6
 
 	/* Switch DSCR back to host value */
 	mfspr	r8, SPRN_DSCR
@@ -1424,6 +1440,16 @@ END_FTR_SECTION_IFSET(CPU_FTR_ARCH_207S)
 	slbia
 	ptesync
 
+	/* Restore host values of some registers */
+BEGIN_FTR_SECTION
+	ld	r5, STACK_SLOT_CIABR(r1)
+	ld	r6, STACK_SLOT_DAWR(r1)
+	ld	r7, STACK_SLOT_DAWRX(r1)
+	mtspr	SPRN_CIABR, r5
+	mtspr	SPRN_DAWR, r6
+	mtspr	SPRN_DAWRX, r7
+END_FTR_SECTION_IFSET(CPU_FTR_ARCH_207S)
+
 	/*
 	 * POWER7/POWER8 guest -> host partition switch code.
 	 * We don't have to lock against tlbies but we do
@@ -1533,8 +1559,8 @@ END_FTR_SECTION_IFSET(CPU_FTR_ARCH_207S)
 	li	r0, KVM_GUEST_MODE_NONE
 	stb	r0, HSTATE_IN_GUEST(r13)
 
-	ld	r0, 112+PPC_LR_STKOFF(r1)
-	addi	r1, r1, 112
+	ld	r0, SFS+PPC_LR_STKOFF(r1)
+	addi	r1, r1, SFS
 	mtlr	r0
 	blr
 
@@ -2514,11 +2540,13 @@ kvmppc_save_tm:
 	mfctr	r7
 	mfspr	r8, SPRN_AMR
 	mfspr	r10, SPRN_TAR
+	mfxer	r11
 	std	r5, VCPU_LR_TM(r9)
 	stw	r6, VCPU_CR_TM(r9)
 	std	r7, VCPU_CTR_TM(r9)
 	std	r8, VCPU_AMR_TM(r9)
 	std	r10, VCPU_TAR_TM(r9)
+	std	r11, VCPU_XER_TM(r9)
 
 	/* Restore r12 as trap number. */
 	lwz	r12, VCPU_TRAP(r9)
@@ -2611,11 +2639,13 @@ kvmppc_restore_tm:
 	ld	r7, VCPU_CTR_TM(r4)
 	ld	r8, VCPU_AMR_TM(r4)
 	ld	r9, VCPU_TAR_TM(r4)
+	ld	r10, VCPU_XER_TM(r4)
 	mtlr	r5
 	mtcr	r6
 	mtctr	r7
 	mtspr	SPRN_AMR, r8
 	mtspr	SPRN_TAR, r9
+	mtxer	r10
 
 	/*
 	 * Load up PPR and DSCR values but don't put them in the actual SPRs

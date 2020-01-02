@@ -88,12 +88,11 @@ void invalidate_bdev(struct block_device *bdev)
 {
 	struct address_space *mapping = bdev->bd_inode->i_mapping;
 
-	if (mapping->nrpages == 0)
-		return;
-
-	invalidate_bh_lrus();
-	lru_add_drain_all();	/* make sure all lru add caches are flushed */
-	invalidate_mapping_pages(mapping, 0, -1);
+	if (mapping->nrpages) {
+		invalidate_bh_lrus();
+		lru_add_drain_all();	/* make sure all lru add caches are flushed */
+		invalidate_mapping_pages(mapping, 0, -1);
+	}
 	/* 99% of the time, we don't need to flush the cleancache on the bdev.
 	 * But, for the strange corners, lets be cautious
 	 */
@@ -759,7 +758,7 @@ static bool bd_may_claim(struct block_device *bdev, struct block_device *whole,
 		return true;	 /* already a holder */
 	else if (bdev->bd_holder != NULL)
 		return false; 	 /* held by someone else */
-	else if (bdev->bd_contains == bdev)
+	else if (whole == bdev)
 		return true;  	 /* is a whole device which isn't held */
 
 	else if (whole->bd_holder == bd_may_claim)
@@ -1098,7 +1097,6 @@ int revalidate_disk(struct gendisk *disk)
 
 	if (disk->fops->revalidate_disk)
 		ret = disk->fops->revalidate_disk(disk);
-	blk_integrity_revalidate(disk);
 	bdev = bdget_disk(disk, 0);
 	if (!bdev)
 		return ret;
@@ -1806,6 +1804,7 @@ void iterate_bdevs(void (*func)(struct block_device *, void *), void *arg)
 	spin_lock(&blockdev_superblock->s_inode_list_lock);
 	list_for_each_entry(inode, &blockdev_superblock->s_inodes, i_sb_list) {
 		struct address_space *mapping = inode->i_mapping;
+		struct block_device *bdev;
 
 		spin_lock(&inode->i_lock);
 		if (inode->i_state & (I_FREEING|I_WILL_FREE|I_NEW) ||
@@ -1826,8 +1825,12 @@ void iterate_bdevs(void (*func)(struct block_device *, void *), void *arg)
 		 */
 		iput(old_inode);
 		old_inode = inode;
+		bdev = I_BDEV(inode);
 
-		func(I_BDEV(inode), arg);
+		mutex_lock(&bdev->bd_mutex);
+		if (bdev->bd_openers)
+			func(bdev, arg);
+		mutex_unlock(&bdev->bd_mutex);
 
 		spin_lock(&blockdev_superblock->s_inode_list_lock);
 	}

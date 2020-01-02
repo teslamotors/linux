@@ -603,6 +603,8 @@ static ssize_t store_##file_name					\
 	struct cpufreq_policy new_policy;				\
 									\
 	memcpy(&new_policy, policy, sizeof(*policy));			\
+	new_policy.min = policy->user_policy.min;			\
+	new_policy.max = policy->user_policy.max;			\
 									\
 	ret = sscanf(buf, "%u", &new_policy.object);			\
 	if (ret != 1)							\
@@ -626,9 +628,11 @@ static ssize_t show_cpuinfo_cur_freq(struct cpufreq_policy *policy,
 					char *buf)
 {
 	unsigned int cur_freq = __cpufreq_get(policy);
-	if (!cur_freq)
-		return sprintf(buf, "<unknown>");
-	return sprintf(buf, "%u\n", cur_freq);
+
+	if (cur_freq)
+		return sprintf(buf, "%u\n", cur_freq);
+
+	return sprintf(buf, "<unknown>\n");
 }
 
 /**
@@ -1184,6 +1188,9 @@ static int cpufreq_online(unsigned int cpu)
 		for_each_cpu(j, policy->related_cpus)
 			per_cpu(cpufreq_cpu_data, j) = policy;
 		write_unlock_irqrestore(&cpufreq_driver_lock, flags);
+	} else {
+		policy->min = policy->user_policy.min;
+		policy->max = policy->user_policy.max;
 	}
 
 	if (cpufreq_driver->get && !cpufreq_driver->setpolicy) {
@@ -2446,6 +2453,7 @@ int cpufreq_register_driver(struct cpufreq_driver *driver_data)
 	if (!(cpufreq_driver->flags & CPUFREQ_STICKY) &&
 	    list_empty(&cpufreq_policy_list)) {
 		/* if all ->init() calls failed, unregister */
+		ret = -ENODEV;
 		pr_debug("%s: No CPU initialized for driver %s\n", __func__,
 			 driver_data->name);
 		goto err_if_unreg;

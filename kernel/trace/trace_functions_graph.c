@@ -768,6 +768,7 @@ print_graph_entry_leaf(struct trace_iterator *iter,
 	struct ftrace_graph_ret *graph_ret;
 	struct ftrace_graph_ent *call;
 	unsigned long long duration;
+	int cpu = iter->cpu;
 	int i;
 
 	graph_ret = &ret_entry->ret;
@@ -776,9 +777,12 @@ print_graph_entry_leaf(struct trace_iterator *iter,
 
 	if (data) {
 		struct fgraph_cpu_data *cpu_data;
-		int cpu = iter->cpu;
 
 		cpu_data = per_cpu_ptr(data->cpu_data, cpu);
+
+		/* If a graph tracer ignored set_graph_notrace */
+		if (call->depth < -1)
+			call->depth += FTRACE_NOTRACE_DEPTH;
 
 		/*
 		 * Comments display at + 1 to depth. Since
@@ -788,7 +792,8 @@ print_graph_entry_leaf(struct trace_iterator *iter,
 		cpu_data->depth = call->depth - 1;
 
 		/* No need to keep this function around for this depth */
-		if (call->depth < FTRACE_RETFUNC_DEPTH)
+		if (call->depth < FTRACE_RETFUNC_DEPTH &&
+		    !WARN_ON_ONCE(call->depth < 0))
 			cpu_data->enter_funcs[call->depth] = 0;
 	}
 
@@ -800,6 +805,9 @@ print_graph_entry_leaf(struct trace_iterator *iter,
 		trace_seq_putc(s, ' ');
 
 	trace_seq_printf(s, "%ps();\n", (void *)call->func);
+
+	print_graph_irq(iter, graph_ret->func, TRACE_GRAPH_RET,
+			cpu, iter->ent->pid, flags);
 
 	return trace_handle_return(s);
 }
@@ -818,11 +826,16 @@ print_graph_entry_nested(struct trace_iterator *iter,
 		struct fgraph_cpu_data *cpu_data;
 		int cpu = iter->cpu;
 
+		/* If a graph tracer ignored set_graph_notrace */
+		if (call->depth < -1)
+			call->depth += FTRACE_NOTRACE_DEPTH;
+
 		cpu_data = per_cpu_ptr(data->cpu_data, cpu);
 		cpu_data->depth = call->depth;
 
 		/* Save this function pointer to see if the exit matches */
-		if (call->depth < FTRACE_RETFUNC_DEPTH)
+		if (call->depth < FTRACE_RETFUNC_DEPTH &&
+		    !WARN_ON_ONCE(call->depth < 0))
 			cpu_data->enter_funcs[call->depth] = call->func;
 	}
 
@@ -1052,7 +1065,8 @@ print_graph_return(struct ftrace_graph_ret *trace, struct trace_seq *s,
 		 */
 		cpu_data->depth = trace->depth - 1;
 
-		if (trace->depth < FTRACE_RETFUNC_DEPTH) {
+		if (trace->depth < FTRACE_RETFUNC_DEPTH &&
+		    !WARN_ON_ONCE(trace->depth < 0)) {
 			if (cpu_data->enter_funcs[trace->depth] != trace->func)
 				func_match = 0;
 			cpu_data->enter_funcs[trace->depth] = 0;

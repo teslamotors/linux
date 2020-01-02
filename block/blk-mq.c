@@ -842,7 +842,7 @@ static int blk_mq_hctx_next_cpu(struct blk_mq_hw_ctx *hctx)
 		return WORK_CPU_UNBOUND;
 
 	if (--hctx->next_cpu_batch <= 0) {
-		int cpu = hctx->next_cpu, next_cpu;
+		int next_cpu;
 
 		next_cpu = cpumask_next(hctx->next_cpu, hctx->cpumask);
 		if (next_cpu >= nr_cpu_ids)
@@ -850,8 +850,6 @@ static int blk_mq_hctx_next_cpu(struct blk_mq_hw_ctx *hctx)
 
 		hctx->next_cpu = next_cpu;
 		hctx->next_cpu_batch = BLK_MQ_CPU_WORK_BATCH;
-
-		return cpu;
 	}
 
 	return hctx->next_cpu;
@@ -1254,19 +1252,16 @@ static blk_qc_t blk_mq_make_request(struct request_queue *q, struct bio *bio)
 
 	blk_queue_bounce(q, &bio);
 
+	blk_queue_split(q, &bio, q->bio_split);
+
 	if (bio_integrity_enabled(bio) && bio_integrity_prep(bio)) {
 		bio_io_error(bio);
 		return BLK_QC_T_NONE;
 	}
 
-	blk_queue_split(q, &bio, q->bio_split);
-
-	if (!is_flush_fua && !blk_queue_nomerges(q)) {
-		if (blk_attempt_plug_merge(q, bio, &request_count,
-					   &same_queue_rq))
-			return BLK_QC_T_NONE;
-	} else
-		request_count = blk_plug_queued_count(q);
+	if (!is_flush_fua && !blk_queue_nomerges(q) &&
+	    blk_attempt_plug_merge(q, bio, &request_count, &same_queue_rq))
+		return BLK_QC_T_NONE;
 
 	rq = blk_mq_map_request(q, bio, &data);
 	if (unlikely(!rq))
@@ -1313,9 +1308,9 @@ static blk_qc_t blk_mq_make_request(struct request_queue *q, struct bio *bio)
 		blk_mq_put_ctx(data.ctx);
 		if (!old_rq)
 			goto done;
-		if (!blk_mq_direct_issue_request(old_rq, &cookie))
-			goto done;
-		blk_mq_insert_request(old_rq, false, true, true);
+		if (test_bit(BLK_MQ_S_STOPPED, &data.hctx->state) ||
+		    blk_mq_direct_issue_request(old_rq, &cookie) != 0)
+			blk_mq_insert_request(old_rq, false, true, true);
 		goto done;
 	}
 
@@ -1357,9 +1352,11 @@ static blk_qc_t blk_sq_make_request(struct request_queue *q, struct bio *bio)
 
 	blk_queue_split(q, &bio, q->bio_split);
 
-	if (!is_flush_fua && !blk_queue_nomerges(q) &&
-	    blk_attempt_plug_merge(q, bio, &request_count, NULL))
-		return BLK_QC_T_NONE;
+	if (!is_flush_fua && !blk_queue_nomerges(q)) {
+		if (blk_attempt_plug_merge(q, bio, &request_count, NULL))
+			return BLK_QC_T_NONE;
+	} else
+		request_count = blk_plug_queued_count(q);
 
 	rq = blk_mq_map_request(q, bio, &data);
 	if (unlikely(!rq))
@@ -1473,7 +1470,7 @@ static struct blk_mq_tags *blk_mq_init_rq_map(struct blk_mq_tag_set *set,
 	INIT_LIST_HEAD(&tags->page_list);
 
 	tags->rqs = kzalloc_node(set->queue_depth * sizeof(struct request *),
-				 GFP_KERNEL | __GFP_NOWARN | __GFP_NORETRY,
+				 GFP_NOIO | __GFP_NOWARN | __GFP_NORETRY,
 				 set->numa_node);
 	if (!tags->rqs) {
 		blk_mq_free_tags(tags);
@@ -1499,7 +1496,7 @@ static struct blk_mq_tags *blk_mq_init_rq_map(struct blk_mq_tag_set *set,
 
 		do {
 			page = alloc_pages_node(set->numa_node,
-				GFP_KERNEL | __GFP_NOWARN | __GFP_NORETRY | __GFP_ZERO,
+				GFP_NOIO | __GFP_NOWARN | __GFP_NORETRY | __GFP_ZERO,
 				this_order);
 			if (page)
 				break;
@@ -1520,7 +1517,7 @@ static struct blk_mq_tags *blk_mq_init_rq_map(struct blk_mq_tag_set *set,
 		 * Allow kmemleak to scan these pages as they contain pointers
 		 * to additional allocations like via ops->init_request().
 		 */
-		kmemleak_alloc(p, order_to_size(this_order), 1, GFP_KERNEL);
+		kmemleak_alloc(p, order_to_size(this_order), 1, GFP_NOIO);
 		entries_per_page = order_to_size(this_order) / rq_size;
 		to_do = min(entries_per_page, set->queue_depth - i);
 		left -= to_do * rq_size;
@@ -1637,7 +1634,8 @@ static void blk_mq_exit_hctx(struct request_queue *q,
 {
 	unsigned flush_start_tag = set->queue_depth;
 
-	blk_mq_tag_idle(hctx);
+	if (blk_mq_hw_queue_mapped(hctx))
+		blk_mq_tag_idle(hctx);
 
 	if (set->ops->exit_request)
 		set->ops->exit_request(set->driver_data,

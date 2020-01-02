@@ -721,7 +721,7 @@ static int __get_data_block(struct inode *inode, sector_t iblock,
 	if (!ret) {
 		map_bh(bh, inode->i_sb, map.m_pblk);
 		bh->b_state = (bh->b_state & ~F2FS_MAP_FLAGS) | map.m_flags;
-		bh->b_size = map.m_len << inode->i_blkbits;
+		bh->b_size = (u64)map.m_len << inode->i_blkbits;
 	}
 	return ret;
 }
@@ -1416,7 +1416,12 @@ static int f2fs_write_begin(struct file *file, struct address_space *mapping,
 			goto fail;
 	}
 repeat:
-	page = grab_cache_page_write_begin(mapping, index, flags);
+	/*
+	 * Do not use grab_cache_page_write_begin() to avoid deadlock due to
+	 * wait_for_stable_page. Will wait that below with our IO control.
+	 */
+	page = pagecache_get_page(mapping, index,
+				FGP_LOCK | FGP_WRITE | FGP_CREAT, GFP_NOFS);
 	if (!page) {
 		err = -ENOMEM;
 		goto fail;

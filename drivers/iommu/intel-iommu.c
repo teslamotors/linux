@@ -419,6 +419,7 @@ struct device_domain_info {
 	struct list_head global; /* link to global list */
 	u8 bus;			/* PCI bus number */
 	u8 devfn;		/* PCI devfn number */
+	u16 pfsid;		/* SRIOV physical function source ID */
 	u8 pasid_supported:3;
 	u8 pasid_enabled:1;
 	u8 pri_supported:1;
@@ -885,7 +886,13 @@ static struct intel_iommu *device_to_iommu(struct device *dev, u8 *bus, u8 *devf
 		return NULL;
 
 	if (dev_is_pci(dev)) {
+		struct pci_dev *pf_pdev;
+
 		pdev = to_pci_dev(dev);
+		/* VFs aren't listed in scope tables; we need to look up
+		 * the PF instead to find the IOMMU. */
+		pf_pdev = pci_physfn(pdev);
+		dev = &pf_pdev->dev;
 		segment = pci_domain_nr(pdev->bus);
 	} else if (has_acpi_companion(dev))
 		dev = &ACPI_COMPANION(dev)->dev;
@@ -898,6 +905,13 @@ static struct intel_iommu *device_to_iommu(struct device *dev, u8 *bus, u8 *devf
 		for_each_active_dev_scope(drhd->devices,
 					  drhd->devices_cnt, i, tmp) {
 			if (tmp == dev) {
+				/* For a VF use its original BDF# not that of the PF
+				 * which we used for the IOMMU lookup. Strictly speaking
+				 * we could do this for all PCI devices; we only need to
+				 * get the BDF# from the scope table for ACPI matches. */
+				if (pdev && pdev->is_virtfn)
+					goto got_pdev;
+
 				*bus = drhd->devices[i].bus;
 				*devfn = drhd->devices[i].devfn;
 				goto out;
@@ -1124,7 +1138,7 @@ static void dma_pte_free_level(struct dmar_domain *domain, int level,
 		if (!dma_pte_present(pte) || dma_pte_superpage(pte))
 			goto next;
 
-		level_pfn = pfn & level_mask(level - 1);
+		level_pfn = pfn & level_mask(level);
 		level_pte = phys_to_virt(dma_pte_addr(pte));
 
 		if (level > 2)
@@ -1466,6 +1480,20 @@ static void iommu_enable_dev_iotlb(struct device_domain_info *info)
 		return;
 
 	pdev = to_pci_dev(info->dev);
+	/* For IOMMU that supports device IOTLB throttling (DIT), we assign
+	 * PFSID to the invalidation desc of a VF such that IOMMU HW can gauge
+	 * queue depth at PF level. If DIT is not set, PFSID will be treated as
+	 * reserved, which should be set to 0.
+	 */
+	if (!ecap_dit(info->iommu->ecap))
+		info->pfsid = 0;
+	else {
+		struct pci_dev *pf_pdev;
+
+		/* pdev will be returned if device is not a vf */
+		pf_pdev = pci_physfn(pdev);
+		info->pfsid = PCI_DEVID(pf_pdev->bus->number, pf_pdev->devfn);
+	}
 
 #ifdef CONFIG_INTEL_IOMMU_SVM
 	/* The PCIe spec, in its wisdom, declares that the behaviour of
@@ -1524,7 +1552,8 @@ static void iommu_flush_dev_iotlb(struct dmar_domain *domain,
 
 		sid = info->bus << 8 | info->devfn;
 		qdep = info->ats_qdep;
-		qi_flush_dev_iotlb(info->iommu, sid, qdep, addr, mask);
+		qi_flush_dev_iotlb(info->iommu, sid, info->pfsid,
+				qdep, addr, mask);
 	}
 	spin_unlock_irqrestore(&device_domain_lock, flags);
 }
@@ -1980,6 +2009,28 @@ static int domain_context_mapping_one(struct dmar_domain *domain,
 	if (context_present(context))
 		goto out_unlock;
 
+	/*
+	 * For kdump cases, old valid entries may be cached due to the
+	 * in-flight DMA and copied pgtable, but there is no unmapping
+	 * behaviour for them, thus we need an explicit cache flush for
+	 * the newly-mapped device. For kdump, at this point, the device
+	 * is supposed to finish reset at its driver probe stage, so no
+	 * in-flight DMA will exist, and we don't need to worry anymore
+	 * hereafter.
+	 */
+	if (context_copied(context)) {
+		u16 did_old = context_domain_id(context);
+
+		if (did_old >= 0 && did_old < cap_ndoms(iommu->cap)) {
+			iommu->flush.flush_context(iommu, did_old,
+						   (((u16)bus) << 8) | devfn,
+						   DMA_CCMD_MASK_NOBIT,
+						   DMA_CCMD_DEVICE_INVL);
+			iommu->flush.flush_iotlb(iommu, did_old, 0, 0,
+						 DMA_TLB_DSI_FLUSH);
+		}
+	}
+
 	pgd = domain->pgd;
 
 	context_clear_entry(context);
@@ -2166,10 +2217,12 @@ static int __domain_mapping(struct dmar_domain *domain, unsigned long iov_pfn,
 		uint64_t tmp;
 
 		if (!sg_res) {
+			unsigned int pgoff = sg->offset & ~PAGE_MASK;
+
 			sg_res = aligned_nrpages(sg->offset, sg->length);
-			sg->dma_address = ((dma_addr_t)iov_pfn << VTD_PAGE_SHIFT) + sg->offset;
+			sg->dma_address = ((dma_addr_t)iov_pfn << VTD_PAGE_SHIFT) + pgoff;
 			sg->dma_length = sg->length;
-			pteval = page_to_phys(sg_page(sg)) | prot;
+			pteval = (sg_phys(sg) - pgoff) | prot;
 			phys_pfn = pteval >> VTD_PAGE_SHIFT;
 		}
 
@@ -3206,13 +3259,14 @@ static int __init init_dmars(void)
 	iommu_identity_mapping |= IDENTMAP_GFX;
 #endif
 
+	check_tylersburg_isoch();
+
 	if (iommu_identity_mapping) {
 		ret = si_domain_init(hw_pass_through);
 		if (ret)
 			goto free_iommu;
 	}
 
-	check_tylersburg_isoch();
 
 	/*
 	 * If we copied translations from a previous kernel in the kdump
@@ -3721,7 +3775,7 @@ static int intel_nontranslate_map_sg(struct device *hddev,
 
 	for_each_sg(sglist, sg, nelems, i) {
 		BUG_ON(!sg_page(sg));
-		sg->dma_address = page_to_phys(sg_page(sg)) + sg->offset;
+		sg->dma_address = sg_phys(sg);
 		sg->dma_length = sg->length;
 	}
 	return nelems;
@@ -5007,6 +5061,25 @@ static void intel_iommu_remove_device(struct device *dev)
 }
 
 #ifdef CONFIG_INTEL_IOMMU_SVM
+#define MAX_NR_PASID_BITS (20)
+static inline unsigned long intel_iommu_get_pts(struct intel_iommu *iommu)
+{
+	/*
+	 * Convert ecap_pss to extend context entry pts encoding, also
+	 * respect the soft pasid_max value set by the iommu.
+	 * - number of PASID bits = ecap_pss + 1
+	 * - number of PASID table entries = 2^(pts + 5)
+	 * Therefore, pts = ecap_pss - 4
+	 * e.g. KBL ecap_pss = 0x13, PASID has 20 bits, pts = 15
+	 */
+	if (ecap_pss(iommu->ecap) < 5)
+		return 0;
+
+	/* pasid_max is encoded as actual number of entries not the bits */
+	return find_first_bit((unsigned long *)&iommu->pasid_max,
+			MAX_NR_PASID_BITS) - 5;
+}
+
 int intel_iommu_enable_pasid(struct intel_iommu *iommu, struct intel_svm_dev *sdev)
 {
 	struct device_domain_info *info;
@@ -5039,7 +5112,9 @@ int intel_iommu_enable_pasid(struct intel_iommu *iommu, struct intel_svm_dev *sd
 
 	if (!(ctx_lo & CONTEXT_PASIDE)) {
 		context[1].hi = (u64)virt_to_phys(iommu->pasid_state_table);
-		context[1].lo = (u64)virt_to_phys(iommu->pasid_table) | ecap_pss(iommu->ecap);
+		context[1].lo = (u64)virt_to_phys(iommu->pasid_table) |
+			intel_iommu_get_pts(iommu);
+
 		wmb();
 		/* CONTEXT_TT_MULTI_LEVEL and CONTEXT_TT_DEV_IOTLB are both
 		 * extended to permit requests-with-PASID if the PASIDE bit

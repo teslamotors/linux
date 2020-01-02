@@ -233,7 +233,7 @@ EXPORT_SYMBOL(blk_start_queue_async);
  **/
 void blk_start_queue(struct request_queue *q)
 {
-	WARN_ON(!irqs_disabled());
+	WARN_ON(!in_interrupt() && !irqs_disabled());
 
 	queue_flag_clear(QUEUE_FLAG_STOPPED, q);
 	__blk_run_queue(q);
@@ -526,8 +526,8 @@ void blk_set_queue_dying(struct request_queue *q)
 
 		blk_queue_for_each_rl(rl, q) {
 			if (rl->rq_pool) {
-				wake_up(&rl->wait[BLK_RW_SYNC]);
-				wake_up(&rl->wait[BLK_RW_ASYNC]);
+				wake_up_all(&rl->wait[BLK_RW_SYNC]);
+				wake_up_all(&rl->wait[BLK_RW_ASYNC]);
 			}
 		}
 	}
@@ -651,21 +651,17 @@ EXPORT_SYMBOL(blk_alloc_queue);
 int blk_queue_enter(struct request_queue *q, gfp_t gfp)
 {
 	while (true) {
-		int ret;
-
 		if (percpu_ref_tryget_live(&q->q_usage_counter))
 			return 0;
 
 		if (!gfpflags_allow_blocking(gfp))
 			return -EBUSY;
 
-		ret = wait_event_interruptible(q->mq_freeze_wq,
-				!atomic_read(&q->mq_freeze_depth) ||
-				blk_queue_dying(q));
+		wait_event(q->mq_freeze_wq,
+			   !atomic_read(&q->mq_freeze_depth) ||
+			   blk_queue_dying(q));
 		if (blk_queue_dying(q))
 			return -ENODEV;
-		if (ret)
-			return ret;
 	}
 }
 
@@ -2021,7 +2017,14 @@ end_io:
  */
 blk_qc_t generic_make_request(struct bio *bio)
 {
-	struct bio_list bio_list_on_stack;
+	/*
+	 * bio_list_on_stack[0] contains bios submitted by the current
+	 * make_request_fn.
+	 * bio_list_on_stack[1] contains bios that were submitted before
+	 * the current make_request_fn, but that haven't been processed
+	 * yet.
+	 */
+	struct bio_list bio_list_on_stack[2];
 	blk_qc_t ret = BLK_QC_T_NONE;
 
 	if (!generic_make_request_checks(bio))
@@ -2038,7 +2041,7 @@ blk_qc_t generic_make_request(struct bio *bio)
 	 * should be added at the tail
 	 */
 	if (current->bio_list) {
-		bio_list_add(current->bio_list, bio);
+		bio_list_add(&current->bio_list[0], bio);
 		goto out;
 	}
 
@@ -2057,24 +2060,39 @@ blk_qc_t generic_make_request(struct bio *bio)
 	 * bio_list, and call into ->make_request() again.
 	 */
 	BUG_ON(bio->bi_next);
-	bio_list_init(&bio_list_on_stack);
-	current->bio_list = &bio_list_on_stack;
+	bio_list_init(&bio_list_on_stack[0]);
+	current->bio_list = bio_list_on_stack;
 	do {
 		struct request_queue *q = bdev_get_queue(bio->bi_bdev);
 
 		if (likely(blk_queue_enter(q, __GFP_DIRECT_RECLAIM) == 0)) {
+			struct bio_list lower, same;
+
+			/* Create a fresh bio_list for all subordinate requests */
+			bio_list_on_stack[1] = bio_list_on_stack[0];
+			bio_list_init(&bio_list_on_stack[0]);
 
 			ret = q->make_request_fn(q, bio);
 
 			blk_queue_exit(q);
-
-			bio = bio_list_pop(current->bio_list);
+			/* sort new bios into those for a lower level
+			 * and those for the same level
+			 */
+			bio_list_init(&lower);
+			bio_list_init(&same);
+			while ((bio = bio_list_pop(&bio_list_on_stack[0])) != NULL)
+				if (q == bdev_get_queue(bio->bi_bdev))
+					bio_list_add(&same, bio);
+				else
+					bio_list_add(&lower, bio);
+			/* now assemble so we handle the lowest level first */
+			bio_list_merge(&bio_list_on_stack[0], &lower);
+			bio_list_merge(&bio_list_on_stack[0], &same);
+			bio_list_merge(&bio_list_on_stack[0], &bio_list_on_stack[1]);
 		} else {
-			struct bio *bio_next = bio_list_pop(current->bio_list);
-
 			bio_io_error(bio);
-			bio = bio_next;
 		}
+		bio = bio_list_pop(&bio_list_on_stack[0]);
 	} while (bio);
 	current->bio_list = NULL; /* deactivate */
 

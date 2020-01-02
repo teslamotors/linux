@@ -269,6 +269,34 @@ static inline int dname_external(const struct dentry *dentry)
 	return dentry->d_name.name != dentry->d_iname;
 }
 
+void take_dentry_name_snapshot(struct name_snapshot *name, struct dentry *dentry)
+{
+	spin_lock(&dentry->d_lock);
+	if (unlikely(dname_external(dentry))) {
+		struct external_name *p = external_name(dentry);
+		atomic_inc(&p->u.count);
+		spin_unlock(&dentry->d_lock);
+		name->name = p->name;
+	} else {
+		memcpy(name->inline_name, dentry->d_iname,
+		       dentry->d_name.len + 1);
+		spin_unlock(&dentry->d_lock);
+		name->name = name->inline_name;
+	}
+}
+EXPORT_SYMBOL(take_dentry_name_snapshot);
+
+void release_dentry_name_snapshot(struct name_snapshot *name)
+{
+	if (unlikely(name->name != name->inline_name)) {
+		struct external_name *p;
+		p = container_of(name->name, struct external_name, name[0]);
+		if (unlikely(atomic_dec_and_test(&p->u.count)))
+			kfree_rcu(p, u.head);
+	}
+}
+EXPORT_SYMBOL(release_dentry_name_snapshot);
+
 static inline void __d_set_inode_and_type(struct dentry *dentry,
 					  struct inode *inode,
 					  unsigned type_flags)
@@ -607,11 +635,16 @@ again:
 		spin_unlock(&parent->d_lock);
 		goto again;
 	}
-	rcu_read_unlock();
-	if (parent != dentry)
+	if (parent != dentry) {
 		spin_lock_nested(&dentry->d_lock, DENTRY_D_LOCK_NESTED);
-	else
+		if (unlikely(dentry->d_lockref.count < 0)) {
+			spin_unlock(&parent->d_lock);
+			parent = NULL;
+		}
+	} else {
 		parent = NULL;
+	}
+	rcu_read_unlock();
 	return parent;
 }
 
@@ -1128,11 +1161,12 @@ void shrink_dcache_sb(struct super_block *sb)
 		LIST_HEAD(dispose);
 
 		freed = list_lru_walk(&sb->s_dentry_lru,
-			dentry_lru_isolate_shrink, &dispose, UINT_MAX);
+			dentry_lru_isolate_shrink, &dispose, 1024);
 
 		this_cpu_sub(nr_dentry_unused, freed);
 		shrink_dentry_list(&dispose);
-	} while (freed > 0);
+		cond_resched();
+	} while (list_lru_count(&sb->s_dentry_lru) > 0);
 }
 EXPORT_SYMBOL(shrink_dcache_sb);
 
@@ -1322,8 +1356,11 @@ int d_set_mounted(struct dentry *dentry)
 	}
 	spin_lock(&dentry->d_lock);
 	if (!d_unlinked(dentry)) {
-		dentry->d_flags |= DCACHE_MOUNTED;
-		ret = 0;
+		ret = -EBUSY;
+		if (!d_mountpoint(dentry)) {
+			dentry->d_flags |= DCACHE_MOUNTED;
+			ret = 0;
+		}
 	}
  	spin_unlock(&dentry->d_lock);
 out:
@@ -1861,6 +1898,28 @@ struct dentry *d_instantiate_unique(struct dentry *entry, struct inode *inode)
 
 EXPORT_SYMBOL(d_instantiate_unique);
 
+/*
+ * This should be equivalent to d_instantiate() + unlock_new_inode(),
+ * with lockdep-related part of unlock_new_inode() done before
+ * anything else.  Use that instead of open-coding d_instantiate()/
+ * unlock_new_inode() combinations.
+ */
+void d_instantiate_new(struct dentry *entry, struct inode *inode)
+{
+	BUG_ON(!hlist_unhashed(&entry->d_u.d_alias));
+	BUG_ON(!inode);
+	lockdep_annotate_inode_mutex_key(inode);
+	security_d_instantiate(entry, inode);
+	spin_lock(&inode->i_lock);
+	__d_instantiate(entry, inode);
+	WARN_ON(!(inode->i_state & I_NEW));
+	inode->i_state &= ~I_NEW;
+	smp_mb();
+	wake_up_bit(&inode->i_state, __I_NEW);
+	spin_unlock(&inode->i_lock);
+}
+EXPORT_SYMBOL(d_instantiate_new);
+
 /**
  * d_instantiate_no_diralias - instantiate a non-aliased dentry
  * @entry: dentry to complete
@@ -1896,10 +1955,12 @@ struct dentry *d_make_root(struct inode *root_inode)
 		static const struct qstr name = QSTR_INIT("/", 1);
 
 		res = __d_alloc(root_inode->i_sb, &name);
-		if (res)
+		if (res) {
+			res->d_flags |= DCACHE_RCUACCESS;
 			d_instantiate(res, root_inode);
-		else
+		} else {
 			iput(root_inode);
+		}
 	}
 	return res;
 }

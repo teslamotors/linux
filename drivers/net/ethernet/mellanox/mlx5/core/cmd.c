@@ -630,6 +630,10 @@ static void dump_command(struct mlx5_core_dev *dev,
 		pr_debug("\n");
 }
 
+static void free_msg(struct mlx5_core_dev *dev, struct mlx5_cmd_msg *msg);
+static void mlx5_free_cmd_msg(struct mlx5_core_dev *dev,
+			      struct mlx5_cmd_msg *msg);
+
 static void cmd_work_handler(struct work_struct *work)
 {
 	struct mlx5_cmd_work_ent *ent = container_of(work, struct mlx5_cmd_work_ent, work);
@@ -638,16 +642,28 @@ static void cmd_work_handler(struct work_struct *work)
 	struct mlx5_cmd_layout *lay;
 	struct semaphore *sem;
 	unsigned long flags;
+	int alloc_ret;
+	int cmd_mode;
 
 	sem = ent->page_queue ? &cmd->pages_sem : &cmd->sem;
 	down(sem);
 	if (!ent->page_queue) {
-		ent->idx = alloc_ent(cmd);
-		if (ent->idx < 0) {
+		alloc_ret = alloc_ent(cmd);
+		if (alloc_ret < 0) {
+			if (ent->callback) {
+				ent->callback(-EAGAIN, ent->context);
+				mlx5_free_cmd_msg(dev, ent->out);
+				free_msg(dev, ent->in);
+				free_cmd(ent);
+			} else {
+				ent->ret = -EAGAIN;
+				complete(&ent->done);
+			}
 			mlx5_core_err(dev, "failed to allocate command entry\n");
 			up(sem);
 			return;
 		}
+		ent->idx = alloc_ret;
 	} else {
 		ent->idx = cmd->max_reg_cmds;
 		spin_lock_irqsave(&cmd->alloc_lock, flags);
@@ -673,6 +689,7 @@ static void cmd_work_handler(struct work_struct *work)
 	set_signature(ent, !cmd->checksum_disabled);
 	dump_command(dev, ent, 1);
 	ent->ts1 = ktime_get_ns();
+	cmd_mode = cmd->mode;
 
 	/* ring doorbell after the descriptor is valid */
 	mlx5_core_dbg(dev, "writing 0x%x to command doorbell\n", 1 << ent->idx);
@@ -680,7 +697,7 @@ static void cmd_work_handler(struct work_struct *work)
 	iowrite32be(1 << ent->idx, &dev->iseg->cmd_dbell);
 	mmiowb();
 	/* if not in polling don't use ent after this point */
-	if (cmd->mode == CMD_MODE_POLLING) {
+	if (cmd_mode == CMD_MODE_POLLING) {
 		poll_timeout(ent);
 		/* make sure we read the descriptor after ownership is SW */
 		rmb();
@@ -1111,7 +1128,7 @@ static ssize_t outlen_write(struct file *filp, const char __user *buf,
 {
 	struct mlx5_core_dev *dev = filp->private_data;
 	struct mlx5_cmd_debug *dbg = &dev->cmd.dbg;
-	char outlen_str[8];
+	char outlen_str[8] = {0};
 	int outlen;
 	void *ptr;
 	int err;
@@ -1125,8 +1142,6 @@ static ssize_t outlen_write(struct file *filp, const char __user *buf,
 
 	if (copy_from_user(outlen_str, buf, count))
 		return -EFAULT;
-
-	outlen_str[7] = 0;
 
 	err = sscanf(outlen_str, "%d", &outlen);
 	if (err < 0)
@@ -1608,7 +1623,7 @@ int mlx5_cmd_init(struct mlx5_core_dev *dev)
 
 	cmd->checksum_disabled = 1;
 	cmd->max_reg_cmds = (1 << cmd->log_sz) - 1;
-	cmd->bitmask = (1 << cmd->max_reg_cmds) - 1;
+	cmd->bitmask = (1UL << cmd->max_reg_cmds) - 1;
 
 	cmd->cmdif_rev = ioread32be(&dev->iseg->cmdif_rev_fw_sub) >> 16;
 	if (cmd->cmdif_rev > CMD_IF_REV) {

@@ -314,8 +314,11 @@ retry:
 	 * signal first. We do not need to release the mmap_sem because
 	 * it would already be released in __lock_page_or_retry in
 	 * mm/filemap.c. */
-	if ((fault & VM_FAULT_RETRY) && fatal_signal_pending(current))
+	if ((fault & VM_FAULT_RETRY) && fatal_signal_pending(current)) {
+		if (!user_mode(regs))
+			goto no_context;
 		return 0;
+	}
 
 	/*
 	 * Major/minor page fault accounting is only done on the
@@ -610,9 +613,9 @@ static int __init early_abort_handler(unsigned long addr, unsigned int fsr,
 
 void __init early_abt_enable(void)
 {
-	fsr_info[22].fn = early_abort_handler;
+	fsr_info[FSR_FS_AEA].fn = early_abort_handler;
 	local_abt_enable();
-	fsr_info[22].fn = do_bad;
+	fsr_info[FSR_FS_AEA].fn = do_bad;
 }
 
 #ifndef CONFIG_ARM_LPAE

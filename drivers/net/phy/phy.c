@@ -148,6 +148,12 @@ static inline int phy_aneg_done(struct phy_device *phydev)
 	if (phydev->drv->aneg_done)
 		return phydev->drv->aneg_done(phydev);
 
+	/* Avoid genphy_aneg_done() if the Clause 45 PHY does not
+	 * implement Clause 22 registers
+	 */
+	if (phydev->is_c45 && !(phydev->c45_ids.devices_in_package & BIT(0)))
+		return -EINVAL;
+
 	return genphy_aneg_done(phydev);
 }
 
@@ -538,7 +544,7 @@ void phy_stop_machine(struct phy_device *phydev)
 	cancel_delayed_work_sync(&phydev->state_queue);
 
 	mutex_lock(&phydev->lock);
-	if (phydev->state > PHY_UP)
+	if (phydev->state > PHY_UP && phydev->state != PHY_HALTED)
 		phydev->state = PHY_UP;
 	mutex_unlock(&phydev->lock);
 }
@@ -917,6 +923,15 @@ void phy_state_machine(struct work_struct *work)
 
 			if (old_link != phydev->link)
 				phydev->state = PHY_CHANGELINK;
+		}
+		/*
+		 * Failsafe: check that nobody set phydev->link=0 between two
+		 * poll cycles, otherwise we won't leave RUNNING state as long
+		 * as link remains down.
+		 */
+		if (!phydev->link && phydev->state == PHY_RUNNING) {
+			phydev->state = PHY_CHANGELINK;
+			dev_err(&phydev->dev, "no link in PHY_RUNNING\n");
 		}
 		break;
 	case PHY_CHANGELINK:

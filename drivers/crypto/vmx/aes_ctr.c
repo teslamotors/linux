@@ -53,8 +53,6 @@ static int p8_aes_ctr_init(struct crypto_tfm *tfm)
 		       alg, PTR_ERR(fallback));
 		return PTR_ERR(fallback);
 	}
-	printk(KERN_INFO "Using '%s' as fallback implementation.\n",
-	       crypto_tfm_alg_driver_name((struct crypto_tfm *) fallback));
 
 	crypto_blkcipher_set_flags(
 		fallback,
@@ -80,11 +78,13 @@ static int p8_aes_ctr_setkey(struct crypto_tfm *tfm, const u8 *key,
 	int ret;
 	struct p8_aes_ctr_ctx *ctx = crypto_tfm_ctx(tfm);
 
+	preempt_disable();
 	pagefault_disable();
 	enable_kernel_altivec();
 	enable_kernel_vsx();
 	ret = aes_p8_set_encrypt_key(key, keylen * 8, &ctx->enc_key);
 	pagefault_enable();
+	preempt_enable();
 
 	ret += crypto_blkcipher_setkey(ctx->fallback, key, keylen);
 	return ret;
@@ -99,11 +99,13 @@ static void p8_aes_ctr_final(struct p8_aes_ctr_ctx *ctx,
 	u8 *dst = walk->dst.virt.addr;
 	unsigned int nbytes = walk->nbytes;
 
+	preempt_disable();
 	pagefault_disable();
 	enable_kernel_altivec();
 	enable_kernel_vsx();
 	aes_p8_encrypt(ctrblk, keystream, &ctx->enc_key);
 	pagefault_enable();
+	preempt_enable();
 
 	crypto_xor(keystream, src, nbytes);
 	memcpy(dst, keystream, nbytes);
@@ -132,6 +134,7 @@ static int p8_aes_ctr_crypt(struct blkcipher_desc *desc,
 		blkcipher_walk_init(&walk, dst, src, nbytes);
 		ret = blkcipher_walk_virt_block(desc, &walk, AES_BLOCK_SIZE);
 		while ((nbytes = walk.nbytes) >= AES_BLOCK_SIZE) {
+			preempt_disable();
 			pagefault_disable();
 			enable_kernel_altivec();
 			enable_kernel_vsx();
@@ -143,6 +146,7 @@ static int p8_aes_ctr_crypt(struct blkcipher_desc *desc,
 						    &ctx->enc_key,
 						    walk.iv);
 			pagefault_enable();
+			preempt_enable();
 
 			/* We need to update IV mostly for last bytes/round */
 			inc = (nbytes & AES_BLOCK_MASK) / AES_BLOCK_SIZE;

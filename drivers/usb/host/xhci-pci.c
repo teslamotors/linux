@@ -51,6 +51,8 @@
 #define PCI_DEVICE_ID_INTEL_SUNRISEPOINT_LP_XHCI	0x9d2f
 #define PCI_DEVICE_ID_INTEL_BROXTON_M_XHCI		0x0aa8
 #define PCI_DEVICE_ID_INTEL_BROXTON_B_XHCI		0x1aa8
+#define PCI_DEVICE_ID_INTEL_APL_XHCI			0x5aa8
+#define PCI_DEVICE_ID_INTEL_DNV_XHCI			0x19d0
 
 static const char hcd_name[] = "xhci_hcd";
 
@@ -165,15 +167,28 @@ static void xhci_pci_quirks(struct device *dev, struct xhci_hcd *xhci)
 		 pdev->device == PCI_DEVICE_ID_INTEL_SUNRISEPOINT_H_XHCI ||
 		 pdev->device == PCI_DEVICE_ID_INTEL_CHERRYVIEW_XHCI ||
 		 pdev->device == PCI_DEVICE_ID_INTEL_BROXTON_M_XHCI ||
-		 pdev->device == PCI_DEVICE_ID_INTEL_BROXTON_B_XHCI)) {
+		 pdev->device == PCI_DEVICE_ID_INTEL_BROXTON_B_XHCI ||
+		 pdev->device == PCI_DEVICE_ID_INTEL_APL_XHCI ||
+		 pdev->device == PCI_DEVICE_ID_INTEL_DNV_XHCI)) {
 		xhci->quirks |= XHCI_PME_STUCK_QUIRK;
 	}
+	if (pdev->vendor == PCI_VENDOR_ID_INTEL &&
+	    (pdev->device == PCI_DEVICE_ID_INTEL_CHERRYVIEW_XHCI ||
+	     pdev->device == PCI_DEVICE_ID_INTEL_SUNRISEPOINT_LP_XHCI ||
+	     pdev->device == PCI_DEVICE_ID_INTEL_SUNRISEPOINT_H_XHCI ||
+	     pdev->device == PCI_DEVICE_ID_INTEL_APL_XHCI ||
+	     pdev->device == PCI_DEVICE_ID_INTEL_DNV_XHCI))
+		xhci->quirks |= XHCI_MISSING_CAS;
+
 	if (pdev->vendor == PCI_VENDOR_ID_ETRON &&
 			pdev->device == PCI_DEVICE_ID_EJ168) {
 		xhci->quirks |= XHCI_RESET_ON_RESUME;
 		xhci->quirks |= XHCI_TRUST_TX_LENGTH;
 		xhci->quirks |= XHCI_BROKEN_STREAMS;
 	}
+	if (pdev->vendor == PCI_VENDOR_ID_RENESAS &&
+			pdev->device == 0x0014)
+		xhci->quirks |= XHCI_TRUST_TX_LENGTH;
 	if (pdev->vendor == PCI_VENDOR_ID_RENESAS &&
 			pdev->device == 0x0015)
 		xhci->quirks |= XHCI_RESET_ON_RESUME;
@@ -188,6 +203,9 @@ static void xhci_pci_quirks(struct device *dev, struct xhci_hcd *xhci)
 	if (pdev->vendor == PCI_VENDOR_ID_ASMEDIA &&
 			pdev->device == 0x1042)
 		xhci->quirks |= XHCI_BROKEN_STREAMS;
+	if (pdev->vendor == PCI_VENDOR_ID_ASMEDIA &&
+			pdev->device == 0x1142)
+		xhci->quirks |= XHCI_TRUST_TX_LENGTH;
 
 	if (xhci->quirks & XHCI_RESET_ON_RESUME)
 		xhci_dbg_trace(xhci, trace_xhci_dbg_quirks,

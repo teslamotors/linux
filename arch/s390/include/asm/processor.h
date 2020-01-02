@@ -69,12 +69,14 @@ extern void s390_adjust_jiffies(void);
 extern const struct seq_operations cpuinfo_op;
 extern int sysctl_ieee_emulation_warnings;
 extern void execve_tail(void);
+extern void __bpon(void);
 
 /*
  * User space process size: 2GB for 31 bit, 4TB or 8PT for 64 bit.
  */
 
-#define TASK_SIZE_OF(tsk)	((tsk)->mm->context.asce_limit)
+#define TASK_SIZE_OF(tsk)	((tsk)->mm ? \
+				 (tsk)->mm->context.asce_limit : TASK_MAX_SIZE)
 #define TASK_UNMAPPED_BASE	(test_thread_flag(TIF_31BIT) ? \
 					(1UL << 30) : (1UL << 41))
 #define TASK_SIZE		TASK_SIZE_OF(current)
@@ -313,6 +315,9 @@ extern void memcpy_absolute(void *, void *, size_t);
 	BUILD_BUG_ON(sizeof(__tmp) != sizeof(val));		\
 	memcpy_absolute(&(dest), &__tmp, sizeof(__tmp));	\
 }
+
+extern int s390_isolate_bp(void);
+extern int s390_isolate_bp_guest(void);
 
 #endif /* __ASSEMBLY__ */
 

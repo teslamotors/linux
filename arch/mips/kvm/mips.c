@@ -40,7 +40,7 @@ struct kvm_stats_debugfs_item debugfs_entries[] = {
 	{ "cache",	  VCPU_STAT(cache_exits),	 KVM_STAT_VCPU },
 	{ "signal",	  VCPU_STAT(signal_exits),	 KVM_STAT_VCPU },
 	{ "interrupt",	  VCPU_STAT(int_exits),		 KVM_STAT_VCPU },
-	{ "cop_unsuable", VCPU_STAT(cop_unusable_exits), KVM_STAT_VCPU },
+	{ "cop_unusable", VCPU_STAT(cop_unusable_exits), KVM_STAT_VCPU },
 	{ "tlbmod",	  VCPU_STAT(tlbmod_exits),	 KVM_STAT_VCPU },
 	{ "tlbmiss_ld",	  VCPU_STAT(tlbmiss_ld_exits),	 KVM_STAT_VCPU },
 	{ "tlbmiss_st",	  VCPU_STAT(tlbmiss_st_exits),	 KVM_STAT_VCPU },
@@ -324,8 +324,8 @@ struct kvm_vcpu *kvm_arch_vcpu_create(struct kvm *kvm, unsigned int id)
 #endif
 
 	/* Invalidate the icache for these ranges */
-	local_flush_icache_range((unsigned long)gebase,
-				(unsigned long)gebase + ALIGN(size, PAGE_SIZE));
+	flush_icache_range((unsigned long)gebase,
+			   (unsigned long)gebase + ALIGN(size, PAGE_SIZE));
 
 	/*
 	 * Allocate comm page for guest kernel, a TLB will be reserved for

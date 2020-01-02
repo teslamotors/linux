@@ -373,8 +373,14 @@ static int powernv_cpufreq_target_index(struct cpufreq_policy *policy,
 	if (unlikely(rebooting) && new_index != get_nominal_index())
 		return 0;
 
-	if (!throttled)
+	if (!throttled) {
+		/* we don't want to be preempted while
+		 * checking if the CPU frequency has been throttled
+		 */
+		preempt_disable();
 		powernv_cpufreq_throttle_check(NULL);
+		preempt_enable();
+	}
 
 	freq_data.pstate_id = powernv_freqs[new_index].driver_data;
 
@@ -586,7 +592,7 @@ static int __init powernv_cpufreq_init(void)
 	int rc = 0;
 
 	/* Don't probe on pseries (guest) platforms */
-	if (!firmware_has_feature(FW_FEATURE_OPALv3))
+	if (!firmware_has_feature(FW_FEATURE_OPAL))
 		return -ENODEV;
 
 	/* Discover pstates from device tree and init */

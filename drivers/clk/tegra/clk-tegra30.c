@@ -333,11 +333,11 @@ static struct pdiv_map pllu_p[] = {
 };
 
 static struct tegra_clk_pll_freq_table pll_u_freq_table[] = {
-	{ 12000000, 480000000, 960, 12, 0, 12},
-	{ 13000000, 480000000, 960, 13, 0, 12},
-	{ 16800000, 480000000, 400, 7,  0, 5},
-	{ 19200000, 480000000, 200, 4,  0, 3},
-	{ 26000000, 480000000, 960, 26, 0, 12},
+	{ 12000000, 480000000, 960, 12, 2, 12 },
+	{ 13000000, 480000000, 960, 13, 2, 12 },
+	{ 16800000, 480000000, 400,  7, 2,  5 },
+	{ 19200000, 480000000, 200,  4, 2,  3 },
+	{ 26000000, 480000000, 960, 26, 2, 12 },
 	{ 0, 0, 0, 0, 0, 0 },
 };
 
@@ -1071,7 +1071,7 @@ static void __init tegra30_super_clk_init(void)
 	 * U71 divider of cclk_lp.
 	 */
 	clk = tegra_clk_register_divider("pll_p_out3_cclklp", "pll_p_out3",
-				clk_base + SUPER_CCLKG_DIVIDER, 0,
+				clk_base + SUPER_CCLKLP_DIVIDER, 0,
 				TEGRA_DIVIDER_INT, 16, 8, 1, NULL);
 	clk_register_clkdev(clk, "pll_p_out3_cclklp", NULL);
 
@@ -1415,6 +1415,7 @@ static struct tegra_clk_init_table init_table[] __initdata = {
 	{TEGRA30_CLK_VI, TEGRA30_CLK_PLL_P, 470000000, 0 },  /* as per 2.6 */
 	{TEGRA30_CLK_VI_SENSOR, TEGRA30_CLK_PLL_P, 150000000, 0 },  /* as per 2.6 */
 	{TEGRA30_CLK_PWM, TEGRA30_CLK_CLK_32K, 32768, 0 }, /* as per 2.6 */
+	{ TEGRA30_CLK_PLL_U, TEGRA30_CLK_CLK_MAX, 480000000, 0 },
 	{TEGRA30_CLK_CLK_MAX, TEGRA30_CLK_CLK_MAX, 0, 0}, /* This MUST be the last entry. */
 };
 

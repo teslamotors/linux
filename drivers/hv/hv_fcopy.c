@@ -61,6 +61,7 @@ static DECLARE_WORK(fcopy_send_work, fcopy_send_data);
 static const char fcopy_devname[] = "vmbus/hv_fcopy";
 static u8 *recv_buffer;
 static struct hvutil_transport *hvt;
+static struct completion release_event;
 /*
  * This state maintains the version number registered by the daemon.
  */
@@ -154,6 +155,10 @@ static void fcopy_send_data(struct work_struct *dummy)
 		out_src = smsg_out;
 		break;
 
+	case WRITE_TO_FILE:
+		out_src = fcopy_transaction.fcopy_msg;
+		out_len = sizeof(struct hv_do_fcopy);
+		break;
 	default:
 		out_src = fcopy_transaction.fcopy_msg;
 		out_len = fcopy_transaction.recv_len;
@@ -251,7 +256,6 @@ void hv_fcopy_onchannelcallback(void *context)
 		 */
 
 		fcopy_transaction.recv_len = recvlen;
-		fcopy_transaction.recv_channel = channel;
 		fcopy_transaction.recv_req_id = requestid;
 		fcopy_transaction.fcopy_msg = fcopy_msg;
 
@@ -312,12 +316,15 @@ static void fcopy_on_reset(void)
 
 	if (cancel_delayed_work_sync(&fcopy_timeout_work))
 		fcopy_respond_to_host(HV_E_FAIL);
+	complete(&release_event);
 }
 
 int hv_fcopy_init(struct hv_util_service *srv)
 {
 	recv_buffer = srv->recv_buffer;
+	fcopy_transaction.recv_channel = srv->channel;
 
+	init_completion(&release_event);
 	/*
 	 * When this driver loads, the user level daemon that
 	 * processes the host requests may not yet be running.
@@ -339,4 +346,5 @@ void hv_fcopy_deinit(void)
 	fcopy_transaction.state = HVUTIL_DEVICE_DYING;
 	cancel_delayed_work_sync(&fcopy_timeout_work);
 	hvutil_transport_destroy(hvt);
+	wait_for_completion(&release_event);
 }

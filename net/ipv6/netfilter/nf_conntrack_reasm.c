@@ -118,7 +118,7 @@ static int nf_ct_frag6_sysctl_register(struct net *net)
 	if (hdr == NULL)
 		goto err_reg;
 
-	net->nf_frag.sysctl.frags_hdr = hdr;
+	net->nf_frag_frags_hdr = hdr;
 	return 0;
 
 err_reg:
@@ -132,8 +132,8 @@ static void __net_exit nf_ct_frags6_sysctl_unregister(struct net *net)
 {
 	struct ctl_table *table;
 
-	table = net->nf_frag.sysctl.frags_hdr->ctl_table_arg;
-	unregister_net_sysctl_table(net->nf_frag.sysctl.frags_hdr);
+	table = net->nf_frag_frags_hdr->ctl_table_arg;
+	unregister_net_sysctl_table(net->nf_frag_frags_hdr);
 	if (!net_eq(net, &init_net))
 		kfree(table);
 }
@@ -649,18 +649,12 @@ EXPORT_SYMBOL_GPL(nf_ct_frag6_consume_orig);
 
 static int nf_ct_net_init(struct net *net)
 {
-	int res;
-
 	net->nf_frag.frags.high_thresh = IPV6_FRAG_HIGH_THRESH;
 	net->nf_frag.frags.low_thresh = IPV6_FRAG_LOW_THRESH;
 	net->nf_frag.frags.timeout = IPV6_FRAG_TIMEOUT;
-	res = inet_frags_init_net(&net->nf_frag.frags);
-	if (res)
-		return res;
-	res = nf_ct_frag6_sysctl_register(net);
-	if (res)
-		inet_frags_uninit_net(&net->nf_frag.frags);
-	return res;
+	inet_frags_init_net(&net->nf_frag.frags);
+
+	return nf_ct_frag6_sysctl_register(net);
 }
 
 static void nf_ct_net_exit(struct net *net)

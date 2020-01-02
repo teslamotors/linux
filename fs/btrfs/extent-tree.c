@@ -2520,11 +2520,11 @@ static noinline int __btrfs_run_delayed_refs(struct btrfs_trans_handle *trans,
 		if (ref && ref->seq &&
 		    btrfs_check_delayed_seq(fs_info, delayed_refs, ref->seq)) {
 			spin_unlock(&locked_ref->lock);
-			btrfs_delayed_ref_unlock(locked_ref);
 			spin_lock(&delayed_refs->lock);
 			locked_ref->processing = 0;
 			delayed_refs->num_heads_ready++;
 			spin_unlock(&delayed_refs->lock);
+			btrfs_delayed_ref_unlock(locked_ref);
 			locked_ref = NULL;
 			cond_resched();
 			count++;
@@ -2570,7 +2570,10 @@ static noinline int __btrfs_run_delayed_refs(struct btrfs_trans_handle *trans,
 					 */
 					if (must_insert_reserved)
 						locked_ref->must_insert_reserved = 1;
+					spin_lock(&delayed_refs->lock);
 					locked_ref->processing = 0;
+					delayed_refs->num_heads_ready++;
+					spin_unlock(&delayed_refs->lock);
 					btrfs_debug(fs_info, "run_delayed_extent_op returned %d", ret);
 					btrfs_delayed_ref_unlock(locked_ref);
 					return ret;
@@ -3358,13 +3361,6 @@ again:
 		goto again;
 	}
 
-	/* We've already setup this transaction, go ahead and exit */
-	if (block_group->cache_generation == trans->transid &&
-	    i_size_read(inode)) {
-		dcs = BTRFS_DC_SETUP;
-		goto out_put;
-	}
-
 	/*
 	 * We want to set the generation to 0, that way if anything goes wrong
 	 * from here on out we know not to trust this cache when we load up next
@@ -3387,6 +3383,13 @@ again:
 		goto out_put;
 	}
 	WARN_ON(ret);
+
+	/* We've already setup this transaction, go ahead and exit */
+	if (block_group->cache_generation == trans->transid &&
+	    i_size_read(inode)) {
+		dcs = BTRFS_DC_SETUP;
+		goto out_put;
+	}
 
 	if (i_size_read(inode) > 0) {
 		ret = btrfs_check_trunc_cache_free_space(root,
@@ -3851,6 +3854,7 @@ static int update_space_info(struct btrfs_fs_info *info, u64 flags,
 				    info->space_info_kobj, "%s",
 				    alloc_name(found->flags));
 	if (ret) {
+		percpu_counter_destroy(&found->total_bytes_pinned);
 		kfree(found);
 		return ret;
 	}
@@ -4124,7 +4128,7 @@ commit_trans:
 				      data_sinfo->flags, bytes, 1);
 	spin_unlock(&data_sinfo->lock);
 
-	return ret;
+	return 0;
 }
 
 /*
@@ -4388,6 +4392,7 @@ again:
 	if (wait_for_alloc) {
 		mutex_unlock(&fs_info->chunk_mutex);
 		wait_for_alloc = 0;
+		cond_resched();
 		goto again;
 	}
 
@@ -8486,14 +8491,13 @@ static noinline int do_walk_down(struct btrfs_trans_handle *trans,
 	ret = btrfs_lookup_extent_info(trans, root, bytenr, level - 1, 1,
 				       &wc->refs[level - 1],
 				       &wc->flags[level - 1]);
-	if (ret < 0) {
-		btrfs_tree_unlock(next);
-		return ret;
-	}
+	if (ret < 0)
+		goto out_unlock;
 
 	if (unlikely(wc->refs[level - 1] == 0)) {
 		btrfs_err(root->fs_info, "Missing references.");
-		BUG();
+		ret = -EIO;
+		goto out_unlock;
 	}
 	*lookup_info = 0;
 
@@ -8545,7 +8549,12 @@ static noinline int do_walk_down(struct btrfs_trans_handle *trans,
 	}
 
 	level--;
-	BUG_ON(level != btrfs_header_level(next));
+	ASSERT(level == btrfs_header_level(next));
+	if (level != btrfs_header_level(next)) {
+		btrfs_err(root->fs_info, "mismatched level");
+		ret = -EIO;
+		goto out_unlock;
+	}
 	path->nodes[level] = next;
 	path->slots[level] = 0;
 	path->locks[level] = BTRFS_WRITE_LOCK_BLOCKING;
@@ -8560,8 +8569,15 @@ skip:
 		if (wc->flags[level] & BTRFS_BLOCK_FLAG_FULL_BACKREF) {
 			parent = path->nodes[level]->start;
 		} else {
-			BUG_ON(root->root_key.objectid !=
+			ASSERT(root->root_key.objectid ==
 			       btrfs_header_owner(path->nodes[level]));
+			if (root->root_key.objectid !=
+			    btrfs_header_owner(path->nodes[level])) {
+				btrfs_err(root->fs_info,
+						"mismatched block owner");
+				ret = -EIO;
+				goto out_unlock;
+			}
 			parent = 0;
 		}
 
@@ -8578,12 +8594,18 @@ skip:
 		}
 		ret = btrfs_free_extent(trans, root, bytenr, blocksize, parent,
 				root->root_key.objectid, level - 1, 0);
-		BUG_ON(ret); /* -ENOMEM */
+		if (ret)
+			goto out_unlock;
 	}
+
+	*lookup_info = 1;
+	ret = 1;
+
+out_unlock:
 	btrfs_tree_unlock(next);
 	free_extent_buffer(next);
-	*lookup_info = 1;
-	return 1;
+
+	return ret;
 }
 
 /*
@@ -9686,6 +9708,11 @@ int btrfs_read_block_groups(struct btrfs_root *root)
 	struct extent_buffer *leaf;
 	int need_clear = 0;
 	u64 cache_gen;
+	u64 feature;
+	int mixed;
+
+	feature = btrfs_super_incompat_flags(info->super_copy);
+	mixed = !!(feature & BTRFS_FEATURE_INCOMPAT_MIXED_GROUPS);
 
 	root = info->extent_root;
 	key.objectid = 0;
@@ -9739,6 +9766,15 @@ int btrfs_read_block_groups(struct btrfs_root *root)
 				   btrfs_item_ptr_offset(leaf, path->slots[0]),
 				   sizeof(cache->item));
 		cache->flags = btrfs_block_group_flags(&cache->item);
+		if (!mixed &&
+		    ((cache->flags & BTRFS_BLOCK_GROUP_METADATA) &&
+		    (cache->flags & BTRFS_BLOCK_GROUP_DATA))) {
+			btrfs_err(info,
+"bg %llu is a mixed block group but filesystem hasn't enabled mixed block groups",
+				  cache->key.objectid);
+			ret = -EINVAL;
+			goto error;
+		}
 
 		key.objectid = found_key.objectid + found_key.offset;
 		btrfs_release_path(path);
@@ -10374,7 +10410,7 @@ void btrfs_delete_unused_bgs(struct btrfs_fs_info *fs_info)
 		/* Don't want to race with allocators so take the groups_sem */
 		down_write(&space_info->groups_sem);
 		spin_lock(&block_group->lock);
-		if (block_group->reserved ||
+		if (block_group->reserved || block_group->pinned ||
 		    btrfs_block_group_used(&block_group->item) ||
 		    block_group->ro ||
 		    list_is_singular(&block_group->list)) {

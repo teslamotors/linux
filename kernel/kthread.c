@@ -18,6 +18,7 @@
 #include <linux/freezer.h>
 #include <linux/ptrace.h>
 #include <linux/uaccess.h>
+#include <linux/cgroup.h>
 #include <trace/events/sched.h>
 
 static DEFINE_SPINLOCK(kthread_create_lock);
@@ -205,6 +206,7 @@ static int kthread(void *_create)
 	ret = -EINTR;
 
 	if (!test_bit(KTHREAD_SHOULD_STOP, &self.flags)) {
+		cgroup_kthread_ready();
 		__kthread_parkme(&self);
 		ret = threadfn(data);
 	}
@@ -311,10 +313,16 @@ struct task_struct *kthread_create_on_node(int (*threadfn)(void *data),
 	task = create->result;
 	if (!IS_ERR(task)) {
 		static const struct sched_param param = { .sched_priority = 0 };
+		char name[TASK_COMM_LEN];
 		va_list args;
 
 		va_start(args, namefmt);
-		vsnprintf(task->comm, sizeof(task->comm), namefmt, args);
+		/*
+		 * task is already visible to other tasks, so updating
+		 * COMM must be protected.
+		 */
+		vsnprintf(name, sizeof(name), namefmt, args);
+		set_task_comm(task, name);
 		va_end(args);
 		/*
 		 * root may have changed our (kthreadd's) priority or CPU mask.
@@ -510,6 +518,7 @@ int kthreadd(void *unused)
 	set_mems_allowed(node_states[N_MEMORY]);
 
 	current->flags |= PF_NOFREEZE;
+	cgroup_init_kthreadd();
 
 	for (;;) {
 		set_current_state(TASK_INTERRUPTIBLE);

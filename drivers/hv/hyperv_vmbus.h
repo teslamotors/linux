@@ -36,6 +36,11 @@
 #define HV_UTIL_TIMEOUT 30
 
 /*
+ * Timeout for guest-host handshake for services.
+ */
+#define HV_UTIL_NEGO_TIMEOUT 60
+
+/*
  * The below CPUID leaves are present if VersionAndFeatures.HypervisorPresent
  * is set by CPUID(HVCPUID_VERSION_FEATURES).
  */
@@ -581,7 +586,7 @@ struct hv_ring_buffer_debug_info {
 
 extern int hv_init(void);
 
-extern void hv_cleanup(void);
+extern void hv_cleanup(bool crash);
 
 extern int hv_post_message(union hv_connection_id connection_id,
 			 enum hv_message_type message_type,

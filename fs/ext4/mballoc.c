@@ -26,6 +26,7 @@
 #include <linux/log2.h>
 #include <linux/module.h>
 #include <linux/slab.h>
+#include <linux/nospec.h>
 #include <linux/backing-dev.h>
 #include <trace/events/ext4.h>
 
@@ -669,7 +670,7 @@ static void ext4_mb_mark_free_simple(struct super_block *sb,
 	ext4_grpblk_t min;
 	ext4_grpblk_t max;
 	ext4_grpblk_t chunk;
-	unsigned short border;
+	unsigned int border;
 
 	BUG_ON(len > EXT4_CLUSTERS_PER_GROUP(sb));
 
@@ -2136,13 +2137,16 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
 	 * We search using buddy data only if the order of the request
 	 * is greater than equal to the sbi_s_mb_order2_reqs
 	 * You can tune it via /sys/fs/ext4/<partition>/mb_order2_req
+	 * We also support searching for power-of-two requests only for
+	 * requests upto maximum buddy size we have constructed.
 	 */
-	if (i >= sbi->s_mb_order2_reqs) {
+	if (i >= sbi->s_mb_order2_reqs && i <= sb->s_blocksize_bits + 2) {
 		/*
 		 * This should tell if fe_len is exactly power of 2
 		 */
 		if ((ac->ac_g_ex.fe_len & (~(1 << (i - 1)))) == 0)
-			ac->ac_2order = i - 1;
+			ac->ac_2order = array_index_nospec(i - 1,
+							   sb->s_blocksize_bits + 2);
 	}
 
 	/* if stream allocation is enabled, use global goal */
@@ -2207,7 +2211,7 @@ repeat:
 			}
 
 			ac->ac_groups_scanned++;
-			if (cr == 0 && ac->ac_2order < sb->s_blocksize_bits+2)
+			if (cr == 0)
 				ext4_mb_simple_scan_group(ac, &e4b);
 			else if (cr == 1 && sbi->s_stripe &&
 					!(ac->ac_g_ex.fe_len % sbi->s_stripe))
@@ -2287,7 +2291,7 @@ static int ext4_mb_seq_groups_show(struct seq_file *seq, void *v)
 	struct ext4_group_info *grinfo;
 	struct sg {
 		struct ext4_group_info info;
-		ext4_grpblk_t counters[16];
+		ext4_grpblk_t counters[EXT4_MAX_BLOCK_LOG_SIZE + 2];
 	} sg;
 
 	group--;
@@ -2443,7 +2447,8 @@ int ext4_mb_add_groupinfo(struct super_block *sb, ext4_group_t group,
 	 * initialize bb_free to be able to skip
 	 * empty groups without initialization
 	 */
-	if (desc->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
+	if (ext4_has_group_desc_csum(sb) &&
+	    (desc->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT))) {
 		meta_group_info[i]->bb_free =
 			ext4_free_clusters_after_init(sb, group, desc);
 	} else {
@@ -2964,7 +2969,8 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
 #endif
 	ext4_set_bits(bitmap_bh->b_data, ac->ac_b_ex.fe_start,
 		      ac->ac_b_ex.fe_len);
-	if (gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
+	if (ext4_has_group_desc_csum(sb) &&
+	    (gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT))) {
 		gdp->bg_flags &= cpu_to_le16(~EXT4_BG_BLOCK_UNINIT);
 		ext4_free_group_clusters_set(sb, gdp,
 					     ext4_free_clusters_after_init(sb,
@@ -3119,6 +3125,13 @@ ext4_mb_normalize_request(struct ext4_allocation_context *ac,
 	}
 	if (ar->pright && start + size - 1 >= ar->lright)
 		size -= start + size - ar->lright;
+
+	/*
+	 * Trim allocation request for filesystems with artificially small
+	 * groups.
+	 */
+	if (size > EXT4_BLOCKS_PER_GROUP(ac->ac_sb))
+		size = EXT4_BLOCKS_PER_GROUP(ac->ac_sb);
 
 	end = start + size;
 
@@ -3865,7 +3878,8 @@ ext4_mb_discard_group_preallocations(struct super_block *sb,
 
 	err = ext4_mb_load_buddy(sb, group, &e4b);
 	if (err) {
-		ext4_error(sb, "Error loading buddy information for %u", group);
+		ext4_warning(sb, "Error %d loading buddy information for %u",
+			     err, group);
 		put_bh(bitmap_bh);
 		return 0;
 	}
@@ -4022,10 +4036,11 @@ repeat:
 		BUG_ON(pa->pa_type != MB_INODE_PA);
 		group = ext4_get_group_number(sb, pa->pa_pstart);
 
-		err = ext4_mb_load_buddy(sb, group, &e4b);
+		err = ext4_mb_load_buddy_gfp(sb, group, &e4b,
+					     GFP_NOFS|__GFP_NOFAIL);
 		if (err) {
-			ext4_error(sb, "Error loading buddy information for %u",
-					group);
+			ext4_error(sb, "Error %d loading buddy information for %u",
+				   err, group);
 			continue;
 		}
 
@@ -4281,11 +4296,14 @@ ext4_mb_discard_lg_preallocations(struct super_block *sb,
 	spin_unlock(&lg->lg_prealloc_lock);
 
 	list_for_each_entry_safe(pa, tmp, &discard_list, u.pa_tmp_list) {
+		int err;
 
 		group = ext4_get_group_number(sb, pa->pa_pstart);
-		if (ext4_mb_load_buddy(sb, group, &e4b)) {
-			ext4_error(sb, "Error loading buddy information for %u",
-					group);
+		err = ext4_mb_load_buddy_gfp(sb, group, &e4b,
+					     GFP_NOFS|__GFP_NOFAIL);
+		if (err) {
+			ext4_error(sb, "Error %d loading buddy information for %u",
+				   err, group);
 			continue;
 		}
 		ext4_lock_group(sb, group);
@@ -5107,8 +5125,8 @@ ext4_trim_all_free(struct super_block *sb, ext4_group_t group,
 
 	ret = ext4_mb_load_buddy(sb, group, &e4b);
 	if (ret) {
-		ext4_error(sb, "Error in loading buddy "
-				"information for %u", group);
+		ext4_warning(sb, "Error %d loading buddy information for %u",
+			     ret, group);
 		return ret;
 	}
 	bitmap = e4b.bd_bitmap;

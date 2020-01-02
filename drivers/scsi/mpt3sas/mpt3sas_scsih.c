@@ -51,6 +51,7 @@
 #include <linux/workqueue.h>
 #include <linux/delay.h>
 #include <linux/pci.h>
+#include <linux/pci-aspm.h>
 #include <linux/interrupt.h>
 #include <linux/aer.h>
 #include <linux/raid_class.h>
@@ -3706,6 +3707,20 @@ _scsih_temp_threshold_events(struct MPT3SAS_ADAPTER *ioc,
 	}
 }
 
+static int _scsih_set_satl_pending(struct scsi_cmnd *scmd, bool pending)
+{
+	struct MPT3SAS_DEVICE *priv = scmd->device->hostdata;
+
+	if (scmd->cmnd[0] != ATA_12 && scmd->cmnd[0] != ATA_16)
+		return 0;
+
+	if (pending)
+		return test_and_set_bit(0, &priv->ata_command_pending);
+
+	clear_bit(0, &priv->ata_command_pending);
+	return 0;
+}
+
 /**
  * _scsih_flush_running_cmds - completing outstanding commands.
  * @ioc: per adapter object
@@ -3727,6 +3742,7 @@ _scsih_flush_running_cmds(struct MPT3SAS_ADAPTER *ioc)
 		if (!scmd)
 			continue;
 		count++;
+		_scsih_set_satl_pending(scmd, false);
 		mpt3sas_base_free_smid(ioc, smid);
 		scsi_dma_unmap(scmd);
 		if (ioc->pci_error_recovery)
@@ -3831,8 +3847,6 @@ _scsih_eedp_error_handling(struct scsi_cmnd *scmd, u16 ioc_status)
 	    SAM_STAT_CHECK_CONDITION;
 }
 
-
-
 /**
  * scsih_qcmd - main scsi request entry point
  * @scmd: pointer to scsi command object
@@ -3897,6 +3911,19 @@ scsih_qcmd(struct Scsi_Host *shost, struct scsi_cmnd *scmd)
 	    sas_device_priv_data->block)
 		return SCSI_MLQUEUE_DEVICE_BUSY;
 
+	/*
+	 * Bug work around for firmware SATL handling.  The loop
+	 * is based on atomic operations and ensures consistency
+	 * since we're lockless at this point
+	 */
+	do {
+		if (test_bit(0, &sas_device_priv_data->ata_command_pending)) {
+			scmd->result = SAM_STAT_BUSY;
+			scmd->scsi_done(scmd);
+			return 0;
+		}
+	} while (_scsih_set_satl_pending(scmd, true));
+
 	if (scmd->sc_data_direction == DMA_FROM_DEVICE)
 		mpi_control = MPI2_SCSIIO_CONTROL_READ;
 	else if (scmd->sc_data_direction == DMA_TO_DEVICE)
@@ -3918,6 +3945,7 @@ scsih_qcmd(struct Scsi_Host *shost, struct scsi_cmnd *scmd)
 	if (!smid) {
 		pr_err(MPT3SAS_FMT "%s: failed obtaining a smid\n",
 		    ioc->name, __func__);
+		_scsih_set_satl_pending(scmd, false);
 		goto out;
 	}
 	mpi_request = mpt3sas_base_get_msg_frame(ioc, smid);
@@ -3948,6 +3976,7 @@ scsih_qcmd(struct Scsi_Host *shost, struct scsi_cmnd *scmd)
 	if (mpi_request->DataLength) {
 		if (ioc->build_sg_scmd(ioc, scmd, smid)) {
 			mpt3sas_base_free_smid(ioc, smid);
+			_scsih_set_satl_pending(scmd, false);
 			goto out;
 		}
 	} else
@@ -4425,11 +4454,14 @@ _scsih_io_done(struct MPT3SAS_ADAPTER *ioc, u16 smid, u8 msix_index, u32 reply)
 	struct MPT3SAS_DEVICE *sas_device_priv_data;
 	u32 response_code = 0;
 	unsigned long flags;
+	unsigned int sector_sz;
 
 	mpi_reply = mpt3sas_base_get_reply_virt_addr(ioc, reply);
 	scmd = _scsih_scsi_lookup_get_clear(ioc, smid);
 	if (scmd == NULL)
 		return 1;
+
+	_scsih_set_satl_pending(scmd, false);
 
 	mpi_request = mpt3sas_base_get_msg_frame(ioc, smid);
 
@@ -4481,6 +4513,20 @@ _scsih_io_done(struct MPT3SAS_ADAPTER *ioc, u16 smid, u8 msix_index, u32 reply)
 	}
 
 	xfer_cnt = le32_to_cpu(mpi_reply->TransferCount);
+
+	/* In case of bogus fw or device, we could end up having
+	 * unaligned partial completion. We can force alignment here,
+	 * then scsi-ml does not need to handle this misbehavior.
+	 */
+	sector_sz = scmd->device->sector_size;
+	if (unlikely(scmd->request->cmd_type == REQ_TYPE_FS && sector_sz &&
+		     xfer_cnt % sector_sz)) {
+		sdev_printk(KERN_INFO, scmd->device,
+		    "unaligned partial completion avoided (xfer_cnt=%u, sector_sz=%u)\n",
+			    xfer_cnt, sector_sz);
+		xfer_cnt = round_down(xfer_cnt, sector_sz);
+	}
+
 	scsi_set_resid(scmd, scsi_bufflen(scmd) - xfer_cnt);
 	if (ioc_status & MPI2_IOCSTATUS_FLAG_LOG_INFO_AVAILABLE)
 		log_info =  le32_to_cpu(mpi_reply->IOCLogInfo);
@@ -4542,6 +4588,11 @@ _scsih_io_done(struct MPT3SAS_ADAPTER *ioc, u16 smid, u8 msix_index, u32 reply)
 			}
 			break;
 		} else if (log_info == VIRTUAL_IO_FAILED_RETRY) {
+			scmd->result = DID_RESET << 16;
+			break;
+		} else if ((scmd->device->channel == RAID_CHANNEL) &&
+		   (scsi_state == (MPI2_SCSI_STATE_TERMINATED |
+		   MPI2_SCSI_STATE_NO_SCSI_STATUS))) {
 			scmd->result = DID_RESET << 16;
 			break;
 		}
@@ -8467,6 +8518,8 @@ _scsih_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	switch (hba_mpi_version) {
 	case MPI2_VERSION:
+		pci_disable_link_state(pdev, PCIE_LINK_STATE_L0S |
+			PCIE_LINK_STATE_L1 | PCIE_LINK_STATE_CLKPM);
 		/* Use mpt2sas driver host template for SAS 2.0 HBA's */
 		shost = scsi_host_alloc(&mpt2sas_driver_template,
 		  sizeof(struct MPT3SAS_ADAPTER));
@@ -8584,7 +8637,7 @@ _scsih_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	snprintf(ioc->firmware_event_name, sizeof(ioc->firmware_event_name),
 	    "fw_event_%s%d", ioc->driver_name, ioc->id);
 	ioc->firmware_event_thread = alloc_ordered_workqueue(
-	    ioc->firmware_event_name, WQ_MEM_RECLAIM);
+	    ioc->firmware_event_name, 0);
 	if (!ioc->firmware_event_thread) {
 		pr_err(MPT3SAS_FMT "failure at %s:%d/%s()!\n",
 		    ioc->name, __FILE__, __LINE__, __func__);

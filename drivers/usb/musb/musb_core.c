@@ -877,7 +877,7 @@ b_host:
 	 */
 	if (int_usb & MUSB_INTR_RESET) {
 		handled = IRQ_HANDLED;
-		if (devctl & MUSB_DEVCTL_HM) {
+		if (is_host_active(musb)) {
 			/*
 			 * When BABBLE happens what we can depends on which
 			 * platform MUSB is running, because some platforms
@@ -887,9 +887,7 @@ b_host:
 			 * drop the session.
 			 */
 			dev_err(musb->controller, "Babble\n");
-
-			if (is_host_active(musb))
-				musb_recover_from_babble(musb);
+			musb_recover_from_babble(musb);
 		} else {
 			dev_dbg(musb->controller, "BUS RESET as %s\n",
 				usb_otg_state_string(musb->xceiv->otg->state));
@@ -1777,6 +1775,7 @@ musb_vbus_show(struct device *dev, struct device_attribute *attr, char *buf)
 	int		vbus;
 	u8		devctl;
 
+	pm_runtime_get_sync(dev);
 	spin_lock_irqsave(&musb->lock, flags);
 	val = musb->a_wait_bcon;
 	vbus = musb_platform_get_vbus_status(musb);
@@ -1790,6 +1789,7 @@ musb_vbus_show(struct device *dev, struct device_attribute *attr, char *buf)
 			vbus = 0;
 	}
 	spin_unlock_irqrestore(&musb->lock, flags);
+	pm_runtime_put_sync(dev);
 
 	return sprintf(buf, "Vbus %s, timeout %lu msec\n",
 			vbus ? "on" : "off", val);
@@ -2524,7 +2524,8 @@ static int musb_resume(struct device *dev)
 	pm_runtime_set_active(dev);
 	pm_runtime_enable(dev);
 
-	musb_start(musb);
+	musb_enable_interrupts(musb);
+	musb_platform_enable(musb);
 
 	return 0;
 }

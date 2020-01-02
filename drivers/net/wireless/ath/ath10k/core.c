@@ -67,6 +67,7 @@ static const struct ath10k_hw_params ath10k_hw_params_list[] = {
 			.board_size = QCA988X_BOARD_DATA_SZ,
 			.board_ext_size = QCA988X_BOARD_EXT_DATA_SZ,
 		},
+		.decap_align_bytes = 4,
 	},
 	{
 		.id = QCA6174_HW_2_1_VERSION,
@@ -85,6 +86,7 @@ static const struct ath10k_hw_params ath10k_hw_params_list[] = {
 			.board_size = QCA6174_BOARD_DATA_SZ,
 			.board_ext_size = QCA6174_BOARD_EXT_DATA_SZ,
 		},
+		.decap_align_bytes = 4,
 	},
 	{
 		.id = QCA6174_HW_2_1_VERSION,
@@ -103,6 +105,7 @@ static const struct ath10k_hw_params ath10k_hw_params_list[] = {
 			.board_size = QCA6174_BOARD_DATA_SZ,
 			.board_ext_size = QCA6174_BOARD_EXT_DATA_SZ,
 		},
+		.decap_align_bytes = 4,
 	},
 	{
 		.id = QCA6174_HW_3_0_VERSION,
@@ -121,6 +124,7 @@ static const struct ath10k_hw_params ath10k_hw_params_list[] = {
 			.board_size = QCA6174_BOARD_DATA_SZ,
 			.board_ext_size = QCA6174_BOARD_EXT_DATA_SZ,
 		},
+		.decap_align_bytes = 4,
 	},
 	{
 		.id = QCA6174_HW_3_2_VERSION,
@@ -140,6 +144,7 @@ static const struct ath10k_hw_params ath10k_hw_params_list[] = {
 			.board_size = QCA6174_BOARD_DATA_SZ,
 			.board_ext_size = QCA6174_BOARD_EXT_DATA_SZ,
 		},
+		.decap_align_bytes = 4,
 	},
 	{
 		.id = QCA99X0_HW_2_0_DEV_VERSION,
@@ -159,6 +164,7 @@ static const struct ath10k_hw_params ath10k_hw_params_list[] = {
 			.board_size = QCA99X0_BOARD_DATA_SZ,
 			.board_ext_size = QCA99X0_BOARD_EXT_DATA_SZ,
 		},
+		.decap_align_bytes = 1,
 	},
 	{
 		.id = QCA9377_HW_1_0_DEV_VERSION,
@@ -177,6 +183,7 @@ static const struct ath10k_hw_params ath10k_hw_params_list[] = {
 			.board_size = QCA9377_BOARD_DATA_SZ,
 			.board_ext_size = QCA9377_BOARD_EXT_DATA_SZ,
 		},
+		.decap_align_bytes = 4,
 	},
 	{
 		.id = QCA9377_HW_1_1_DEV_VERSION,
@@ -195,6 +202,7 @@ static const struct ath10k_hw_params ath10k_hw_params_list[] = {
 			.board_size = QCA9377_BOARD_DATA_SZ,
 			.board_ext_size = QCA9377_BOARD_EXT_DATA_SZ,
 		},
+		.decap_align_bytes = 4,
 	},
 };
 
@@ -548,8 +556,11 @@ static int ath10k_core_get_board_id_from_otp(struct ath10k *ar)
 		   "boot get otp board id result 0x%08x board_id %d chip_id %d\n",
 		   result, board_id, chip_id);
 
-	if ((result & ATH10K_BMI_BOARD_ID_STATUS_MASK) != 0)
+	if ((result & ATH10K_BMI_BOARD_ID_STATUS_MASK) != 0 ||
+	    (board_id == 0)) {
+		ath10k_warn(ar, "board id is not exist in otp, ignore it\n");
 		return -EOPNOTSUPP;
+	}
 
 	ar->id.bmi_ids_valid = true;
 	ar->id.bmi_board_id = board_id;
@@ -1607,6 +1618,12 @@ int ath10k_core_start(struct ath10k *ar, enum ath10k_firmware_mode mode)
 		goto err_wmi_detach;
 	}
 
+	/* If firmware indicates Full Rx Reorder support it must be used in a
+	 * slightly different manner. Let HTT code know.
+	 */
+	ar->htt.rx_ring.in_ord_rx = !!(test_bit(WMI_SERVICE_RX_FULL_REORDER,
+						ar->wmi.svc_map));
+
 	status = ath10k_htt_rx_alloc(&ar->htt);
 	if (status) {
 		ath10k_err(ar, "failed to alloc htt rx: %d\n", status);
@@ -1668,12 +1685,6 @@ int ath10k_core_start(struct ath10k *ar, enum ath10k_firmware_mode mode)
 		ath10k_err(ar, "wmi unified ready event not received\n");
 		goto err_hif_stop;
 	}
-
-	/* If firmware indicates Full Rx Reorder support it must be used in a
-	 * slightly different manner. Let HTT code know.
-	 */
-	ar->htt.rx_ring.in_ord_rx = !!(test_bit(WMI_SERVICE_RX_FULL_REORDER,
-						ar->wmi.svc_map));
 
 	status = ath10k_htt_rx_ring_refill(ar);
 	if (status) {

@@ -415,6 +415,7 @@ static struct thermal_device_info *initialize_sensor(int index)
 	return td_info;
 }
 
+#ifdef CONFIG_PM_SLEEP
 /**
  * mid_thermal_resume - resume routine
  * @dev: device structure
@@ -442,6 +443,7 @@ static int mid_thermal_suspend(struct device *dev)
 	 */
 	return configure_adc(0);
 }
+#endif
 
 static SIMPLE_DEV_PM_OPS(mid_thermal_pm,
 			 mid_thermal_suspend, mid_thermal_resume);
@@ -550,6 +552,7 @@ static const struct platform_device_id therm_id_table[] = {
 	{ "msic_thermal", 1 },
 	{ }
 };
+MODULE_DEVICE_TABLE(platform, therm_id_table);
 
 static struct platform_driver mid_thermal_driver = {
 	.driver = {

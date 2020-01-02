@@ -1098,4 +1098,6 @@ const struct tegra_mc_soc tegra30_mc_soc = {
 	.atom_size_fdc = 32,
 	.client_id_mask = 0x7f,
 	.smmu = &tegra30_smmu_soc,
+	.intmask = MC_INT_INVALID_SMMU_PAGE | MC_INT_SECURITY_VIOLATION |
+		   MC_INT_DECERR_EMEM,
 };

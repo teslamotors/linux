@@ -301,7 +301,9 @@ static netdev_tx_t vrf_process_v4_outbound(struct sk_buff *skb,
 		.flowi4_tos = RT_TOS(ip4h->tos),
 		.flowi4_flags = FLOWI_FLAG_ANYSRC | FLOWI_FLAG_L3MDEV_SRC |
 				FLOWI_FLAG_SKIP_NH_OIF,
+		.flowi4_proto = ip4h->protocol,
 		.daddr = ip4h->daddr,
+		.saddr = ip4h->saddr,
 	};
 
 	if (vrf_send_v4_prep(skb, &fl4, vrf_dev))
@@ -343,6 +345,7 @@ static netdev_tx_t is_ip_tx_frame(struct sk_buff *skb, struct net_device *dev)
 
 static netdev_tx_t vrf_xmit(struct sk_buff *skb, struct net_device *dev)
 {
+	int len = skb->len;
 	netdev_tx_t ret = is_ip_tx_frame(skb, dev);
 
 	if (likely(ret == NET_XMIT_SUCCESS || ret == NET_XMIT_CN)) {
@@ -350,7 +353,7 @@ static netdev_tx_t vrf_xmit(struct sk_buff *skb, struct net_device *dev)
 
 		u64_stats_update_begin(&dstats->syncp);
 		dstats->tx_pkts++;
-		dstats->tx_bytes += skb->len;
+		dstats->tx_bytes += len;
 		u64_stats_update_end(&dstats->syncp);
 	} else {
 		this_cpu_inc(dev->dstats->tx_drps);
@@ -409,6 +412,8 @@ static int vrf_finish_output6(struct net *net, struct sock *sk,
 	struct neighbour *neigh;
 	struct in6_addr *nexthop;
 	int ret;
+
+	nf_reset(skb);
 
 	skb->protocol = htons(ETH_P_IPV6);
 	skb->dev = dev;
@@ -521,6 +526,8 @@ static int vrf_finish_output(struct net *net, struct sock *sk, struct sk_buff *s
 	u32 nexthop;
 	int ret = -EINVAL;
 
+	nf_reset(skb);
+
 	/* Be paranoid, rather than too clever. */
 	if (unlikely(skb_headroom(skb) < hh_len && dev->header_ops)) {
 		struct sk_buff *skb2;
@@ -543,13 +550,15 @@ static int vrf_finish_output(struct net *net, struct sock *sk, struct sk_buff *s
 	neigh = __ipv4_neigh_lookup_noref(dev, nexthop);
 	if (unlikely(!neigh))
 		neigh = __neigh_create(&arp_tbl, &nexthop, dev, false);
-	if (!IS_ERR(neigh))
+	if (!IS_ERR(neigh)) {
 		ret = dst_neigh_output(dst, neigh, skb);
+		rcu_read_unlock_bh();
+		return ret;
+	}
 
 	rcu_read_unlock_bh();
 err:
-	if (unlikely(ret < 0))
-		vrf_tx_error(skb->dev, skb);
+	vrf_tx_error(skb->dev, skb);
 	return ret;
 }
 
@@ -726,15 +735,15 @@ static int vrf_del_slave(struct net_device *dev, struct net_device *port_dev)
 static void vrf_dev_uninit(struct net_device *dev)
 {
 	struct net_vrf *vrf = netdev_priv(dev);
-	struct slave_queue *queue = &vrf->queue;
-	struct list_head *head = &queue->all_slaves;
-	struct slave *slave, *next;
+//	struct slave_queue *queue = &vrf->queue;
+//	struct list_head *head = &queue->all_slaves;
+//	struct slave *slave, *next;
 
 	vrf_rtable_destroy(vrf);
 	vrf_rt6_destroy(vrf);
 
-	list_for_each_entry_safe(slave, next, head, list)
-		vrf_del_slave(dev, slave->dev);
+//	list_for_each_entry_safe(slave, next, head, list)
+//		vrf_del_slave(dev, slave->dev);
 
 	free_percpu(dev->dstats);
 	dev->dstats = NULL;
@@ -907,6 +916,14 @@ static int vrf_validate(struct nlattr *tb[], struct nlattr *data[])
 
 static void vrf_dellink(struct net_device *dev, struct list_head *head)
 {
+	struct net_vrf *vrf = netdev_priv(dev);
+	struct slave_queue *queue = &vrf->queue;
+	struct list_head *all_slaves = &queue->all_slaves;
+	struct slave *slave, *next;
+
+	list_for_each_entry_safe(slave, next, all_slaves, list)
+		vrf_del_slave(dev, slave->dev);
+
 	unregister_netdevice_queue(dev, head);
 }
 
@@ -919,6 +936,8 @@ static int vrf_newlink(struct net *src_net, struct net_device *dev,
 		return -EINVAL;
 
 	vrf->tb_id = nla_get_u32(data[IFLA_VRF_TABLE]);
+	if (vrf->tb_id == RT_TABLE_UNSPEC)
+		return -EINVAL;
 
 	dev->priv_flags |= IFF_L3MDEV_MASTER;
 

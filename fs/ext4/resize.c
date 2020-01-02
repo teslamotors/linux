@@ -18,6 +18,7 @@
 
 int ext4_resize_begin(struct super_block *sb)
 {
+	struct ext4_sb_info *sbi = EXT4_SB(sb);
 	int ret = 0;
 
 	if (!capable(CAP_SYS_RESOURCE))
@@ -28,7 +29,7 @@ int ext4_resize_begin(struct super_block *sb)
          * because the user tools have no way of handling this.  Probably a
          * bad time to do it anyways.
          */
-	if (EXT4_SB(sb)->s_sbh->b_blocknr !=
+	if (EXT4_B2C(sbi, sbi->s_sbh->b_blocknr) !=
 	    le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block)) {
 		ext4_warning(sb, "won't resize using backup superblock at %llu",
 			(unsigned long long)EXT4_SB(sb)->s_sbh->b_blocknr);
@@ -1903,7 +1904,7 @@ retry:
 		return 0;
 
 	n_group = ext4_get_group_number(sb, n_blocks_count - 1);
-	if (n_group > (0xFFFFFFFFUL / EXT4_INODES_PER_GROUP(sb))) {
+	if (n_group >= (0xFFFFFFFFUL / EXT4_INODES_PER_GROUP(sb))) {
 		ext4_warning(sb, "resize would cause inodes_count overflow");
 		return -EINVAL;
 	}
@@ -1926,7 +1927,8 @@ retry:
 			n_desc_blocks = o_desc_blocks +
 				le16_to_cpu(es->s_reserved_gdt_blocks);
 			n_group = n_desc_blocks * EXT4_DESC_PER_BLOCK(sb);
-			n_blocks_count = n_group * EXT4_BLOCKS_PER_GROUP(sb);
+			n_blocks_count = (ext4_fsblk_t)n_group *
+				EXT4_BLOCKS_PER_GROUP(sb);
 			n_group--; /* set to last group number */
 		}
 
@@ -1951,6 +1953,26 @@ retry:
 			n_blocks_count_retry = 0;
 			goto retry;
 		}
+	}
+
+	/*
+	 * Make sure the last group has enough space so that it's
+	 * guaranteed to have enough space for all metadata blocks
+	 * that it might need to hold.  (We might not need to store
+	 * the inode table blocks in the last block group, but there
+	 * will be cases where this might be needed.)
+	 */
+	if ((ext4_group_first_block_no(sb, n_group) +
+	     ext4_group_overhead_blocks(sb, n_group) + 2 +
+	     sbi->s_itb_per_group + sbi->s_cluster_ratio) >= n_blocks_count) {
+		n_blocks_count = ext4_group_first_block_no(sb, n_group);
+		n_group--;
+		n_blocks_count_retry = 0;
+		if (resize_inode) {
+			iput(resize_inode);
+			resize_inode = NULL;
+		}
+		goto retry;
 	}
 
 	/* extend the last group */

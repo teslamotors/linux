@@ -409,6 +409,7 @@ static void start_event_fetch(struct ssif_info *ssif_info, unsigned long *flags)
 	msg = ipmi_alloc_smi_msg();
 	if (!msg) {
 		ssif_info->ssif_state = SSIF_NORMAL;
+		ipmi_ssif_unlock_cond(ssif_info, flags);
 		return;
 	}
 
@@ -431,6 +432,7 @@ static void start_recv_msg_fetch(struct ssif_info *ssif_info,
 	msg = ipmi_alloc_smi_msg();
 	if (!msg) {
 		ssif_info->ssif_state = SSIF_NORMAL;
+		ipmi_ssif_unlock_cond(ssif_info, flags);
 		return;
 	}
 
@@ -755,9 +757,14 @@ static void msg_done_handler(struct ssif_info *ssif_info, int result,
 			ssif_info->ssif_state = SSIF_NORMAL;
 			ipmi_ssif_unlock_cond(ssif_info, flags);
 			pr_warn(PFX "Error getting flags: %d %d, %x\n",
-			       result, len, data[2]);
+			       result, len, (len >= 3) ? data[2] : 0);
 		} else if (data[0] != (IPMI_NETFN_APP_REQUEST | 1) << 2
 			   || data[1] != IPMI_GET_MSG_FLAGS_CMD) {
+			/*
+			 * Don't abort here, maybe it was a queued
+			 * response to a previous command.
+			 */
+			ipmi_ssif_unlock_cond(ssif_info, flags);
 			pr_warn(PFX "Invalid response getting flags: %x %x\n",
 				data[0], data[1]);
 		} else {
@@ -772,7 +779,7 @@ static void msg_done_handler(struct ssif_info *ssif_info, int result,
 		if ((result < 0) || (len < 3) || (data[2] != 0)) {
 			/* Error clearing flags */
 			pr_warn(PFX "Error clearing flags: %d %d, %x\n",
-			       result, len, data[2]);
+			       result, len, (len >= 3) ? data[2] : 0);
 		} else if (data[0] != (IPMI_NETFN_APP_REQUEST | 1) << 2
 			   || data[1] != IPMI_CLEAR_MSG_FLAGS_CMD) {
 			pr_warn(PFX "Invalid response clearing flags: %x %x\n",
@@ -888,6 +895,7 @@ static void msg_written_handler(struct ssif_info *ssif_info, int result,
 		 * for details on the intricacies of this.
 		 */
 		int left;
+		unsigned char *data_to_send;
 
 		ssif_inc_stat(ssif_info, sent_messages_parts);
 
@@ -896,6 +904,7 @@ static void msg_written_handler(struct ssif_info *ssif_info, int result,
 			left = 32;
 		/* Length byte. */
 		ssif_info->multi_data[ssif_info->multi_pos] = left;
+		data_to_send = ssif_info->multi_data + ssif_info->multi_pos;
 		ssif_info->multi_pos += left;
 		if (left < 32)
 			/*
@@ -909,7 +918,7 @@ static void msg_written_handler(struct ssif_info *ssif_info, int result,
 		rv = ssif_i2c_send(ssif_info, msg_written_handler,
 				  I2C_SMBUS_WRITE,
 				  SSIF_IPMI_MULTI_PART_REQUEST_MIDDLE,
-				  ssif_info->multi_data + ssif_info->multi_pos,
+				  data_to_send,
 				  I2C_SMBUS_BLOCK_DATA);
 		if (rv < 0) {
 			/* request failed, just return the error. */

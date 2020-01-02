@@ -198,6 +198,12 @@ static int __shm_open(struct vm_area_struct *vma)
 	if (IS_ERR(shp))
 		return PTR_ERR(shp);
 
+	if (shp->shm_file != sfd->file) {
+		/* ID was reused */
+		shm_unlock(shp);
+		return -EINVAL;
+	}
+
 	shp->shm_atim = get_seconds();
 	shp->shm_lprid = task_tgid_vnr(current);
 	shp->shm_nattch++;
@@ -414,8 +420,9 @@ static int shm_mmap(struct file *file, struct vm_area_struct *vma)
 	int ret;
 
 	/*
-	 * In case of remap_file_pages() emulation, the file can represent
-	 * removed IPC ID: propogate shm_lock() error to caller.
+	 * In case of remap_file_pages() emulation, the file can represent an
+	 * IPC ID that was removed, and possibly even reused by another shm
+	 * segment already.  Propagate this case as an error to caller.
 	 */
 	ret =__shm_open(vma);
 	if (ret)
@@ -439,6 +446,7 @@ static int shm_release(struct inode *ino, struct file *file)
 	struct shm_file_data *sfd = shm_file_data(file);
 
 	put_ipc_ns(sfd->ns);
+	fput(sfd->file);
 	shm_file_data(file) = NULL;
 	kfree(sfd);
 	return 0;
@@ -1083,8 +1091,8 @@ out_unlock1:
  * "raddr" thing points to kernel space, and there has to be a wrapper around
  * this.
  */
-long do_shmat(int shmid, char __user *shmaddr, int shmflg, ulong *raddr,
-	      unsigned long shmlba)
+long do_shmat(int shmid, char __user *shmaddr, int shmflg,
+	      ulong *raddr, unsigned long shmlba)
 {
 	struct shmid_kernel *shp;
 	unsigned long addr;
@@ -1105,9 +1113,17 @@ long do_shmat(int shmid, char __user *shmaddr, int shmflg, ulong *raddr,
 		goto out;
 	else if ((addr = (ulong)shmaddr)) {
 		if (addr & (shmlba - 1)) {
-			if (shmflg & SHM_RND)
-				addr &= ~(shmlba - 1);	   /* round down */
-			else
+			if (shmflg & SHM_RND) {
+				addr &= ~(shmlba - 1);  /* round down */
+
+				/*
+				 * Ensure that the round-down is non-nil
+				 * when remapping. This can happen for
+				 * cases when addr < shmlba.
+				 */
+				if (!addr && (shmflg & SHM_REMAP))
+					goto out;
+			} else
 #ifndef __ARCH_FORCE_SHMLBA
 				if (addr & ~PAGE_MASK)
 #endif
@@ -1193,7 +1209,16 @@ long do_shmat(int shmid, char __user *shmaddr, int shmflg, ulong *raddr,
 	file->f_mapping = shp->shm_file->f_mapping;
 	sfd->id = shp->shm_perm.id;
 	sfd->ns = get_ipc_ns(ns);
-	sfd->file = shp->shm_file;
+	/*
+	 * We need to take a reference to the real shm file to prevent the
+	 * pointer from becoming stale in cases where the lifetime of the outer
+	 * file extends beyond that of the shm segment.  It's not usually
+	 * possible, but it can happen during remap_file_pages() emulation as
+	 * that unmaps the memory, then does ->mmap() via file reference only.
+	 * We'll deny the ->mmap() if the shm segment was since removed, but to
+	 * detect shm ID reuse we need to compare the file pointers.
+	 */
+	sfd->file = get_file(shp->shm_file);
 	sfd->vm_ops = NULL;
 
 	err = security_mmap_file(file, prot, flags);

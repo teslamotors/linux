@@ -485,7 +485,7 @@ static void *eeh_pe_detach_dev(void *data, void *userdata)
 static void *__eeh_clear_pe_frozen_state(void *data, void *flag)
 {
 	struct eeh_pe *pe = (struct eeh_pe *)data;
-	bool *clear_sw_state = flag;
+	bool clear_sw_state = *(bool *)flag;
 	int i, rc = 1;
 
 	for (i = 0; rc && i < 3; i++)
@@ -612,8 +612,10 @@ static int eeh_reset_device(struct eeh_pe *pe, struct pci_bus *bus)
 
 	/* Clear frozen state */
 	rc = eeh_clear_pe_frozen_state(pe, false);
-	if (rc)
+	if (rc) {
+		pci_unlock_rescan_remove();
 		return rc;
+	}
 
 	/* Give the system 5 seconds to finish running the user-space
 	 * hotplug shutdown scripts, e.g. ifdown for ethernet.  Yes,
@@ -653,7 +655,7 @@ static int eeh_reset_device(struct eeh_pe *pe, struct pci_bus *bus)
  */
 #define MAX_WAIT_FOR_RECOVERY 300
 
-static void eeh_handle_normal_event(struct eeh_pe *pe)
+static bool eeh_handle_normal_event(struct eeh_pe *pe)
 {
 	struct pci_bus *frozen_bus;
 	int rc = 0;
@@ -663,7 +665,7 @@ static void eeh_handle_normal_event(struct eeh_pe *pe)
 	if (!frozen_bus) {
 		pr_err("%s: Cannot find PCI bus for PHB#%d-PE#%x\n",
 			__func__, pe->phb->global_number, pe->addr);
-		return;
+		return false;
 	}
 
 	eeh_pe_update_time_stamp(pe);
@@ -788,7 +790,7 @@ static void eeh_handle_normal_event(struct eeh_pe *pe)
 	pr_info("EEH: Notify device driver to resume\n");
 	eeh_pe_dev_traverse(pe, eeh_report_resume, NULL);
 
-	return;
+	return false;
 
 excess_failures:
 	/*
@@ -829,7 +831,11 @@ perm_error:
 		pci_lock_rescan_remove();
 		pcibios_remove_pci_devices(frozen_bus);
 		pci_unlock_rescan_remove();
+
+		/* The passed PE should no longer be used */
+		return true;
 	}
+	return false;
 }
 
 static void eeh_handle_special_event(void)
@@ -895,7 +901,14 @@ static void eeh_handle_special_event(void)
 		 */
 		if (rc == EEH_NEXT_ERR_FROZEN_PE ||
 		    rc == EEH_NEXT_ERR_FENCED_PHB) {
-			eeh_handle_normal_event(pe);
+			/*
+			 * eeh_handle_normal_event() can make the PE stale if it
+			 * determines that the PE cannot possibly be recovered.
+			 * Don't modify the PE state if that's the case.
+			 */
+			if (eeh_handle_normal_event(pe))
+				continue;
+
 			eeh_pe_state_clear(pe, EEH_PE_RECOVERING);
 		} else {
 			pci_lock_rescan_remove();

@@ -106,16 +106,19 @@ static void pty_unthrottle(struct tty_struct *tty)
 static int pty_write(struct tty_struct *tty, const unsigned char *buf, int c)
 {
 	struct tty_struct *to = tty->link;
+	unsigned long flags;
 
 	if (tty->stopped)
 		return 0;
 
 	if (c > 0) {
+		spin_lock_irqsave(&to->port->lock, flags);
 		/* Stuff the data into the input queue of the other end */
 		c = tty_insert_flip_string(to->port, buf, c);
 		/* And shovel */
 		if (c)
 			tty_flip_buffer_push(to->port);
+		spin_unlock_irqrestore(&to->port->lock, flags);
 	}
 	return c;
 }
@@ -216,16 +219,11 @@ static int pty_signal(struct tty_struct *tty, int sig)
 static void pty_flush_buffer(struct tty_struct *tty)
 {
 	struct tty_struct *to = tty->link;
-	struct tty_ldisc *ld;
 
 	if (!to)
 		return;
 
-	ld = tty_ldisc_ref(to);
-	tty_buffer_flush(to, ld);
-	if (ld)
-		tty_ldisc_deref(ld);
-
+	tty_buffer_flush(to, NULL);
 	if (to->packet) {
 		spin_lock_irq(&tty->ctrl_lock);
 		tty->ctrl_status |= TIOCPKT_FLUSHWRITE;

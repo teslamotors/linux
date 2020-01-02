@@ -276,12 +276,11 @@ static int fd_do_rw(struct se_cmd *cmd, struct file *fd,
 	else
 		ret = vfs_iter_read(fd, &iter, &pos);
 
-	kfree(bvec);
-
 	if (is_write) {
 		if (ret < 0 || ret != data_length) {
 			pr_err("%s() write returned %d\n", __func__, ret);
-			return (ret < 0 ? ret : -EINVAL);
+			if (ret >= 0)
+				ret = -EINVAL;
 		}
 	} else {
 		/*
@@ -294,17 +293,29 @@ static int fd_do_rw(struct se_cmd *cmd, struct file *fd,
 				pr_err("%s() returned %d, expecting %u for "
 						"S_ISBLK\n", __func__, ret,
 						data_length);
-				return (ret < 0 ? ret : -EINVAL);
+				if (ret >= 0)
+					ret = -EINVAL;
 			}
 		} else {
 			if (ret < 0) {
 				pr_err("%s() returned %d for non S_ISBLK\n",
 						__func__, ret);
-				return ret;
+			} else if (ret != data_length) {
+				/*
+				 * Short read case:
+				 * Probably some one truncate file under us.
+				 * We must explicitly zero sg-pages to prevent
+				 * expose uninizialized pages to userspace.
+				 */
+				if (ret < data_length)
+					ret += iov_iter_zero(data_length - ret, &iter);
+				else
+					ret = -EINVAL;
 			}
 		}
 	}
-	return 1;
+	kfree(bvec);
+	return ret;
 }
 
 static sense_reason_t
@@ -466,6 +477,10 @@ fd_execute_unmap(struct se_cmd *cmd, sector_t lba, sector_t nolb)
 	struct inode *inode = file->f_mapping->host;
 	int ret;
 
+	if (!nolb) {
+		return 0;
+	}
+
 	if (cmd->se_dev->dev_attrib.pi_prot_type) {
 		ret = fd_do_prot_unmap(cmd, lba, nolb);
 		if (ret)
@@ -594,8 +609,7 @@ fd_execute_rw(struct se_cmd *cmd, struct scatterlist *sgl, u32 sgl_nents,
 	if (ret < 0)
 		return TCM_LOGICAL_UNIT_COMMUNICATION_FAILURE;
 
-	if (ret)
-		target_complete_cmd(cmd, SAM_STAT_GOOD);
+	target_complete_cmd(cmd, SAM_STAT_GOOD);
 	return 0;
 }
 

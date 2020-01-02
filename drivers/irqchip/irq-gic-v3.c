@@ -589,7 +589,7 @@ static void gic_send_sgi(u64 cluster_id, u16 tlist, unsigned int irq)
 	       MPIDR_TO_SGI_AFFINITY(cluster_id, 1)	|
 	       tlist << ICC_SGI1R_TARGET_LIST_SHIFT);
 
-	pr_debug("CPU%d: ICC_SGI1R_EL1 %llx\n", smp_processor_id(), val);
+	pr_devel("CPU%d: ICC_SGI1R_EL1 %llx\n", smp_processor_id(), val);
 	gic_write_sgi1r(val);
 }
 
@@ -604,7 +604,7 @@ static void gic_raise_softirq(const struct cpumask *mask, unsigned int irq)
 	 * Ensure that stores to Normal memory are visible to the
 	 * other CPUs before issuing the IPI.
 	 */
-	smp_wmb();
+	wmb();
 
 	for_each_cpu(cpu, mask) {
 		unsigned long cluster_id = cpu_logical_map(cpu) & ~0xffUL;
@@ -631,6 +631,9 @@ static int gic_set_affinity(struct irq_data *d, const struct cpumask *mask_val,
 	void __iomem *reg;
 	int enabled;
 	u64 val;
+
+	if (cpu >= nr_cpu_ids)
+		return -EINVAL;
 
 	if (gic_irq_in_rdist(d))
 		return -EINVAL;

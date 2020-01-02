@@ -83,6 +83,9 @@ convert_sfm_char(const __u16 src_char, char *target)
 	case SFM_COLON:
 		*target = ':';
 		break;
+	case SFM_DOUBLEQUOTE:
+		*target = '"';
+		break;
 	case SFM_ASTERISK:
 		*target = '*';
 		break;
@@ -97,9 +100,6 @@ convert_sfm_char(const __u16 src_char, char *target)
 		break;
 	case SFM_LESSTHAN:
 		*target = '<';
-		break;
-	case SFM_SLASH:
-		*target = '\\';
 		break;
 	case SFM_SPACE:
 		*target = ' ';
@@ -417,6 +417,9 @@ static __le16 convert_to_sfm_char(char src_char, bool end_of_string)
 	switch (src_char) {
 	case ':':
 		dest_char = cpu_to_le16(SFM_COLON);
+		break;
+	case '"':
+		dest_char = cpu_to_le16(SFM_DOUBLEQUOTE);
 		break;
 	case '*':
 		dest_char = cpu_to_le16(SFM_ASTERISK);

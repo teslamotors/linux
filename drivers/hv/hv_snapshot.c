@@ -66,6 +66,7 @@ static int dm_reg_value;
 static const char vss_devname[] = "vmbus/hv_vss";
 static __u8 *recv_buffer;
 static struct hvutil_transport *hvt;
+static struct completion release_event;
 
 static void vss_send_op(struct work_struct *dummy);
 static void vss_timeout_func(struct work_struct *dummy);
@@ -113,7 +114,7 @@ static int vss_handle_handshake(struct hv_vss_msg *vss_msg)
 	default:
 		return -EINVAL;
 	}
-	vss_transaction.state = HVUTIL_READY;
+	hv_poll_channel(vss_transaction.recv_channel, vss_poll_wrapper);
 	pr_debug("VSS: userspace daemon ver. %d registered\n", dm_reg_value);
 	return 0;
 }
@@ -263,7 +264,6 @@ void hv_vss_onchannelcallback(void *context)
 			 */
 
 			vss_transaction.recv_len = recvlen;
-			vss_transaction.recv_channel = channel;
 			vss_transaction.recv_req_id = requestid;
 			vss_transaction.msg = (struct hv_vss_msg *)vss_msg;
 
@@ -326,17 +326,20 @@ static void vss_on_reset(void)
 	if (cancel_delayed_work_sync(&vss_timeout_work))
 		vss_respond_to_host(HV_E_FAIL);
 	vss_transaction.state = HVUTIL_DEVICE_INIT;
+	complete(&release_event);
 }
 
 int
 hv_vss_init(struct hv_util_service *srv)
 {
+	init_completion(&release_event);
 	if (vmbus_proto_version < VERSION_WIN8_1) {
 		pr_warn("Integration service 'Backup (volume snapshot)'"
 			" not supported on this host version.\n");
 		return -ENOTSUPP;
 	}
 	recv_buffer = srv->recv_buffer;
+	vss_transaction.recv_channel = srv->channel;
 
 	/*
 	 * When this driver loads, the user level daemon that
@@ -360,4 +363,5 @@ void hv_vss_deinit(void)
 	cancel_delayed_work_sync(&vss_timeout_work);
 	cancel_work_sync(&vss_send_op_work);
 	hvutil_transport_destroy(hvt);
+	wait_for_completion(&release_event);
 }

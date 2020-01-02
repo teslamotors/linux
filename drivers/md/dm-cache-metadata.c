@@ -337,7 +337,7 @@ static int __write_initial_superblock(struct dm_cache_metadata *cmd)
 	disk_super->version = cpu_to_le32(MAX_CACHE_VERSION);
 	memset(disk_super->policy_name, 0, sizeof(disk_super->policy_name));
 	memset(disk_super->policy_version, 0, sizeof(disk_super->policy_version));
-	disk_super->policy_hint_size = 0;
+	disk_super->policy_hint_size = cpu_to_le32(0);
 
 	__copy_sm_root(cmd, disk_super);
 
@@ -652,6 +652,7 @@ static int __commit_transaction(struct dm_cache_metadata *cmd,
 	disk_super->policy_version[0] = cpu_to_le32(cmd->policy_version[0]);
 	disk_super->policy_version[1] = cpu_to_le32(cmd->policy_version[1]);
 	disk_super->policy_version[2] = cpu_to_le32(cmd->policy_version[2]);
+	disk_super->policy_hint_size = cpu_to_le32(cmd->policy_hint_size);
 
 	disk_super->read_hits = cpu_to_le32(cmd->stats.read_hits);
 	disk_super->read_misses = cpu_to_le32(cmd->stats.read_misses);
@@ -1326,17 +1327,19 @@ void dm_cache_metadata_set_stats(struct dm_cache_metadata *cmd,
 
 int dm_cache_commit(struct dm_cache_metadata *cmd, bool clean_shutdown)
 {
-	int r;
+	int r = -EINVAL;
 	flags_mutator mutator = (clean_shutdown ? set_clean_shutdown :
 				 clear_clean_shutdown);
 
 	WRITE_LOCK(cmd);
+	if (cmd->fail_io)
+		goto out;
+
 	r = __commit_transaction(cmd, mutator);
 	if (r)
 		goto out;
 
 	r = __begin_transaction(cmd);
-
 out:
 	WRITE_UNLOCK(cmd);
 	return r;
@@ -1348,7 +1351,8 @@ int dm_cache_get_free_metadata_block_count(struct dm_cache_metadata *cmd,
 	int r = -EINVAL;
 
 	READ_LOCK(cmd);
-	r = dm_sm_get_nr_free(cmd->metadata_sm, result);
+	if (!cmd->fail_io)
+		r = dm_sm_get_nr_free(cmd->metadata_sm, result);
 	READ_UNLOCK(cmd);
 
 	return r;
@@ -1360,7 +1364,8 @@ int dm_cache_get_metadata_dev_size(struct dm_cache_metadata *cmd,
 	int r = -EINVAL;
 
 	READ_LOCK(cmd);
-	r = dm_sm_get_nr_blocks(cmd->metadata_sm, result);
+	if (!cmd->fail_io)
+		r = dm_sm_get_nr_blocks(cmd->metadata_sm, result);
 	READ_UNLOCK(cmd);
 
 	return r;
