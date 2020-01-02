@@ -80,6 +80,22 @@ void snd_hdac_bus_init_cmd_io(struct hdac_bus *bus)
 }
 EXPORT_SYMBOL_GPL(snd_hdac_bus_init_cmd_io);
 
+/* wait for cmd dmas till they are stopped */
+static void hdac_wait_for_cmd_dmas(struct hdac_bus *bus)
+{
+	unsigned long timeout;
+
+	timeout = jiffies + msecs_to_jiffies(100);
+	while ((snd_hdac_chip_readb(bus, RIRBCTL) & AZX_RBCTL_DMA_EN)
+		&& time_before(jiffies, timeout))
+		udelay(10);
+
+	timeout = jiffies + msecs_to_jiffies(100);
+	while ((snd_hdac_chip_readb(bus, CORBCTL) & AZX_CORBCTL_RUN)
+		&& time_before(jiffies, timeout))
+		udelay(10);
+}
+
 /**
  * snd_hdac_bus_stop_cmd_io - clean up CORB/RIRB buffers
  * @bus: HD-audio core bus
@@ -90,6 +106,7 @@ void snd_hdac_bus_stop_cmd_io(struct hdac_bus *bus)
 	/* disable ringbuffer DMAs */
 	snd_hdac_chip_writeb(bus, RIRBCTL, 0);
 	snd_hdac_chip_writeb(bus, CORBCTL, 0);
+	hdac_wait_for_cmd_dmas(bus);
 	/* disable unsolicited responses */
 	snd_hdac_chip_updatel(bus, GCTL, AZX_GCTL_UNSOL, 0);
 	spin_unlock_irq(&bus->reg_lock);
@@ -426,25 +443,31 @@ EXPORT_SYMBOL_GPL(snd_hdac_bus_stop_chip);
  * @bus: HD-audio core bus
  * @status: INTSTS register value
  * @ask: callback to be called for woken streams
+ *
+ * Returns the bits of handled streams, or zero if no stream is handled.
  */
-void snd_hdac_bus_handle_stream_irq(struct hdac_bus *bus, unsigned int status,
+int snd_hdac_bus_handle_stream_irq(struct hdac_bus *bus, unsigned int status,
 				    void (*ack)(struct hdac_bus *,
 						struct hdac_stream *))
 {
 	struct hdac_stream *azx_dev;
 	u8 sd_status;
+	int handled = 0;
 
 	list_for_each_entry(azx_dev, &bus->stream_list, list) {
 		if (status & azx_dev->sd_int_sta_mask) {
 			sd_status = snd_hdac_stream_readb(azx_dev, SD_STS);
 			snd_hdac_stream_writeb(azx_dev, SD_STS, SD_INT_MASK);
-			if (!azx_dev->substream || !azx_dev->running ||
-			    !(sd_status & SD_INT_COMPLETE))
+			handled |= 1 << azx_dev->index;
+			if ((!azx_dev->substream && !azx_dev->stream) ||
+				!azx_dev->running ||
+				!(sd_status & SD_INT_COMPLETE))
 				continue;
 			if (ack)
 				ack(bus, azx_dev);
 		}
 	}
+	return handled;
 }
 EXPORT_SYMBOL_GPL(snd_hdac_bus_handle_stream_irq);
 

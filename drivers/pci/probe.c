@@ -1887,16 +1887,66 @@ void pcie_bus_configure_settings(struct pci_bus *bus)
 }
 EXPORT_SYMBOL_GPL(pcie_bus_configure_settings);
 
+extern int pcie_blacklist_enable;
 unsigned int pci_scan_child_bus(struct pci_bus *bus)
 {
 	unsigned int devfn, pass, max = bus->busn_res.start;
 	struct pci_dev *dev;
 
+	unsigned int j;
+#ifdef CONFIG_FASTBOOT_PCI_PROBE
+	unsigned int i;
+
+	/* order of devices to probe on bus #0 */
+	static const unsigned char bus0_devs[32] = {
+		 0,  1,  2,  3,  4,  5,  6,  7,
+		 8,  9, 10, 11, 12, 13, 14, 15,
+		16, 17, 18, 19, 20, 21, 22, 23,
+		/* probe eMMC (#28) before SD Card (#27) */
+		24, 25, 26, 28, 27, 29, 30, 31
+	};
+#endif
 	dev_dbg(&bus->dev, "scanning bus\n");
 
 	/* Go find them, Rover! */
+#ifndef CONFIG_FASTBOOT_PCI_PROBE
 	for (devfn = 0; devfn < 0x100; devfn += 8)
 		pci_scan_slot(bus, devfn);
+#else
+	for (i = 0 ; i < 32 ; i += 1) {
+		unsigned int skip_pci_device = 0;
+
+		devfn = 8 * ((bus->number == 0) ? bus0_devs[i] : i);
+
+		if (pcie_blacklist_enable && bus->number == 0) {
+			/* SW-194798 :
+			   The Apollo Lake SOC has an internal P2SB device on the PCI bus that is
+			   normally supposed to be hidden; however if the device is enumerated while running
+			   in the kernel, all GPIO register access returns 0XFFFFFFFF, which renders
+			   the GPIO subsytem(including I2C/UART/SPI etc) and any driver that is dependent
+			   on GPIO broken.
+			   As a mitigation, we create a blacklist for this device which will skip this device
+			   (and any other internal PCI device in the future that may cause adverse effects),
+			   during the scan process.
+			*/
+			static const unsigned char bus0_blacklist[1] = {
+				0x0d /* P2SB Device */,
+			};
+
+			for (j = 0; j < sizeof(bus0_blacklist); j++) {
+				if (bus0_blacklist[j] == bus0_devs[i]) {
+					dev_info(&bus->dev, "Device %d detected on blacklist, skipping\n", bus0_devs[i]);
+					skip_pci_device = 1;
+				}
+			}
+		}
+
+		if (skip_pci_device) {
+			continue;
+		}
+		pci_scan_slot(bus, devfn);
+	}
+#endif
 
 	/* Reserve buses for SR-IOV capability. */
 	max += pci_iov_bus_range(bus);

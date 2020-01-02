@@ -26,7 +26,6 @@
 #include <linux/sched.h>
 #include <linux/delay.h>
 #include <linux/platform_device.h>
-#include <linux/kthread.h>
 #include <sound/asound.h>
 
 #include "sst-dsp.h"
@@ -34,9 +33,9 @@
 #include "sst-ipc.h"
 
 /* IPC message timeout (msecs) */
-#define IPC_TIMEOUT_MSECS	300
+#define IPC_TIMEOUT_MSECS	3000
 
-#define IPC_EMPTY_LIST_SIZE	8
+#define IPC_EMPTY_LIST_SIZE	16
 
 /* locks held by caller */
 static struct ipc_message *msg_get_empty(struct sst_generic_ipc *ipc)
@@ -53,21 +52,20 @@ static struct ipc_message *msg_get_empty(struct sst_generic_ipc *ipc)
 }
 
 static int tx_wait_done(struct sst_generic_ipc *ipc,
-	struct ipc_message *msg, void *rx_data)
+	struct ipc_message *msg, void *rx_data, int timeout)
 {
 	unsigned long flags;
 	int ret;
 
 	/* wait for DSP completion (in all cases atm inc pending) */
 	ret = wait_event_timeout(msg->waitq, msg->complete,
-		msecs_to_jiffies(IPC_TIMEOUT_MSECS));
+		msecs_to_jiffies(timeout));
 
 	spin_lock_irqsave(&ipc->dsp->spinlock, flags);
 	if (ret == 0) {
 		if (ipc->ops.shim_dbg != NULL)
 			ipc->ops.shim_dbg(ipc, "message timeout");
 
-		list_del(&msg->list);
 		ret = -ETIMEDOUT;
 	} else {
 
@@ -75,16 +73,16 @@ static int tx_wait_done(struct sst_generic_ipc *ipc,
 		if (msg->rx_size)
 			memcpy(rx_data, msg->rx_data, msg->rx_size);
 		ret = msg->errno;
+		list_add_tail(&msg->list, &ipc->empty_list);
 	}
 
-	list_add_tail(&msg->list, &ipc->empty_list);
 	spin_unlock_irqrestore(&ipc->dsp->spinlock, flags);
 	return ret;
 }
 
 static int ipc_tx_message(struct sst_generic_ipc *ipc, u64 header,
 	void *tx_data, size_t tx_bytes, void *rx_data,
-	size_t rx_bytes, int wait)
+	size_t rx_bytes, int wait, int timeout)
 {
 	struct ipc_message *msg;
 	unsigned long flags;
@@ -109,12 +107,17 @@ static int ipc_tx_message(struct sst_generic_ipc *ipc, u64 header,
 		ipc->ops.tx_data_copy(msg, tx_data, tx_bytes);
 
 	list_add_tail(&msg->list, &ipc->tx_list);
-	spin_unlock_irqrestore(&ipc->dsp->spinlock, flags);
-
-	queue_kthread_work(&ipc->kworker, &ipc->kwork);
+        if ((ipc->ops.is_dsp_busy && ipc->ops.is_dsp_busy(ipc->dsp)) ||
+			(ipc->ops.direct_tx_msg == NULL)) {
+		schedule_work(&ipc->kwork);
+		spin_unlock_irqrestore(&ipc->dsp->spinlock, flags);
+	} else {
+		spin_unlock_irqrestore(&ipc->dsp->spinlock, flags);
+		ipc->ops.direct_tx_msg(ipc);
+	}
 
 	if (wait)
-		return tx_wait_done(ipc, msg, rx_data);
+		return tx_wait_done(ipc, msg, rx_data, timeout);
 	else
 		return 0;
 }
@@ -129,58 +132,93 @@ static int msg_empty_list_init(struct sst_generic_ipc *ipc)
 		return -ENOMEM;
 
 	for (i = 0; i < IPC_EMPTY_LIST_SIZE; i++) {
+		ipc->msg[i].tx_data = kzalloc(ipc->tx_data_max_size, GFP_KERNEL);
+		if (ipc->msg[i].tx_data == NULL)
+			goto free_mem;
+
+		ipc->msg[i].rx_data = kzalloc(ipc->rx_data_max_size, GFP_KERNEL);
+		if (ipc->msg[i].rx_data == NULL) {
+			kfree(ipc->msg[i].tx_data);
+			goto free_mem;
+		}
+
 		init_waitqueue_head(&ipc->msg[i].waitq);
 		list_add(&ipc->msg[i].list, &ipc->empty_list);
 	}
 
 	return 0;
+
+free_mem:
+	while (i > 0) {
+		kfree(ipc->msg[i-1].tx_data);
+		kfree(ipc->msg[i-1].rx_data);
+		--i;
+	}
+	kfree(ipc->msg);
+
+	return -ENOMEM;
 }
 
-static void ipc_tx_msgs(struct kthread_work *work)
+static void ipc_tx_msgs(struct work_struct *work)
 {
 	struct sst_generic_ipc *ipc =
 		container_of(work, struct sst_generic_ipc, kwork);
 	struct ipc_message *msg;
-	unsigned long flags;
-	u64 ipcx;
 
-	spin_lock_irqsave(&ipc->dsp->spinlock, flags);
+	spin_lock_irq(&ipc->dsp->spinlock);
 
-	if (list_empty(&ipc->tx_list) || ipc->pending) {
-		spin_unlock_irqrestore(&ipc->dsp->spinlock, flags);
-		return;
+	while (!list_empty(&ipc->tx_list) && !ipc->pending) {
+		/* if the DSP is busy, we will TX messages after IRQ.
+		 * also postpone if we are in the middle of processing
+		 * completion irq
+		 */
+		if (ipc->ops.is_dsp_busy && ipc->ops.is_dsp_busy(ipc->dsp)) {
+			dev_dbg(ipc->dev, "ipc_tx_msgs dsp busy\n");
+			break;
+		}
+
+
+		msg = list_first_entry(&ipc->tx_list, struct ipc_message, list);
+		list_move(&msg->list, &ipc->rx_list);
+
+		dev_dbg(ipc->dev, "sending message, header - %#.16lx\n",
+				(unsigned long)msg->header);
+		print_hex_dump_debug("Params:", DUMP_PREFIX_OFFSET, 8, 4,
+				msg->tx_data, msg->tx_size, false);
+		if (ipc->ops.tx_msg != NULL)
+			ipc->ops.tx_msg(ipc, msg);
 	}
 
-	/* if the DSP is busy, we will TX messages after IRQ.
-	 * also postpone if we are in the middle of procesing completion irq*/
-	ipcx = sst_dsp_shim_read_unlocked(ipc->dsp, SST_IPCX);
-	if (ipcx & (SST_IPCX_BUSY | SST_IPCX_DONE)) {
-		spin_unlock_irqrestore(&ipc->dsp->spinlock, flags);
-		return;
-	}
-
-	msg = list_first_entry(&ipc->tx_list, struct ipc_message, list);
-	list_move(&msg->list, &ipc->rx_list);
-
-	if (ipc->ops.tx_msg != NULL)
-		ipc->ops.tx_msg(ipc, msg);
-
-	spin_unlock_irqrestore(&ipc->dsp->spinlock, flags);
+	spin_unlock_irq(&ipc->dsp->spinlock);
 }
 
+/*
+ * Tx message with wait, with default timeout specified by
+ * IPC_TIMEOUT_MSECS
+ */
 int sst_ipc_tx_message_wait(struct sst_generic_ipc *ipc, u64 header,
 	void *tx_data, size_t tx_bytes, void *rx_data, size_t rx_bytes)
 {
 	return ipc_tx_message(ipc, header, tx_data, tx_bytes,
-		rx_data, rx_bytes, 1);
+		rx_data, rx_bytes, 1, IPC_TIMEOUT_MSECS);
 }
 EXPORT_SYMBOL_GPL(sst_ipc_tx_message_wait);
+
+ /* Tx message with wait, with timeout specified by the caller */
+int sst_ipc_tx_message_wait_timeout(struct sst_generic_ipc *ipc, u64 header,
+	void *tx_data, size_t tx_bytes, void *rx_data, size_t rx_bytes,
+	int timeout)
+{
+	return ipc_tx_message(ipc, header, tx_data, tx_bytes,
+		rx_data, rx_bytes, 1, timeout);
+}
+EXPORT_SYMBOL_GPL(sst_ipc_tx_message_wait_timeout);
 
 int sst_ipc_tx_message_nowait(struct sst_generic_ipc *ipc, u64 header,
 	void *tx_data, size_t tx_bytes)
 {
 	return ipc_tx_message(ipc, header, tx_data, tx_bytes,
-		NULL, 0, 0);
+		NULL, 0, 0, 0);
 }
 EXPORT_SYMBOL_GPL(sst_ipc_tx_message_nowait);
 
@@ -188,7 +226,7 @@ struct ipc_message *sst_ipc_reply_find_msg(struct sst_generic_ipc *ipc,
 	u64 header)
 {
 	struct ipc_message *msg;
-	u64 mask;
+	u64 mask = 0x0;
 
 	if (ipc->ops.reply_msg_match != NULL)
 		header = ipc->ops.reply_msg_match(header, &mask);
@@ -261,30 +299,24 @@ int sst_ipc_init(struct sst_generic_ipc *ipc)
 	if (ret < 0)
 		return -ENOMEM;
 
-	/* start the IPC message thread */
-	init_kthread_worker(&ipc->kworker);
-	ipc->tx_thread = kthread_run(kthread_worker_fn,
-					&ipc->kworker, "%s",
-					dev_name(ipc->dev));
-	if (IS_ERR(ipc->tx_thread)) {
-		dev_err(ipc->dev, "error: failed to create message TX task\n");
-		ret = PTR_ERR(ipc->tx_thread);
-		kfree(ipc->msg);
-		return ret;
-	}
-
-	init_kthread_work(&ipc->kwork, ipc_tx_msgs);
+	INIT_WORK(&ipc->kwork, ipc_tx_msgs);
 	return 0;
 }
 EXPORT_SYMBOL_GPL(sst_ipc_init);
 
 void sst_ipc_fini(struct sst_generic_ipc *ipc)
 {
-	if (ipc->tx_thread)
-		kthread_stop(ipc->tx_thread);
+	int i;
 
-	if (ipc->msg)
+	cancel_work_sync(&ipc->kwork);
+
+	if (ipc->msg) {
+		for (i = 0; i < IPC_EMPTY_LIST_SIZE; i++) {
+			kfree(ipc->msg[i].tx_data);
+			kfree(ipc->msg[i].rx_data);
+		}
 		kfree(ipc->msg);
+	}
 }
 EXPORT_SYMBOL_GPL(sst_ipc_fini);
 

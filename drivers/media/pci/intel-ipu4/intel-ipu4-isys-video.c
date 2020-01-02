@@ -107,6 +107,7 @@ const struct intel_ipu4_isys_pixelformat intel_ipu5_isys_pfmts[] = {
 };
 
 const struct intel_ipu4_isys_pixelformat intel_ipu4_isys_pfmts_be_soc[] = {
+	{ V4L2_PIX_FMT_Y10, 10, 10, 0, MEDIA_BUS_FMT_Y10_1X10, IPU_FW_ISYS_FRAME_FORMAT_RAW16 },
 	{ V4L2_PIX_FMT_UYVY, 16, 16, 0, MEDIA_BUS_FMT_UYVY8_1X16, IPU_FW_ISYS_FRAME_FORMAT_UYVY },
 	{ V4L2_PIX_FMT_YUYV, 16, 16, 0, MEDIA_BUS_FMT_YUYV8_1X16, IPU_FW_ISYS_FRAME_FORMAT_YUYV },
 	{ V4L2_PIX_FMT_NV16, 16, 16, 8, MEDIA_BUS_FMT_YUYV8_1X16, IPU_FW_ISYS_FRAME_FORMAT_NV16 },
@@ -133,6 +134,7 @@ const struct intel_ipu4_isys_pixelformat intel_ipu4_isys_pfmts_be_soc[] = {
 };
 
 const struct intel_ipu4_isys_pixelformat intel_ipu4_isys_pfmts_packed[] = {
+	{ V4L2_PIX_FMT_Y10, 10, 10, 0, MEDIA_BUS_FMT_Y10_1X10, IPU_FW_ISYS_FRAME_FORMAT_RAW10 },
 	{ V4L2_PIX_FMT_UYVY, 16, 16, 0, MEDIA_BUS_FMT_UYVY8_1X16, IPU_FW_ISYS_FRAME_FORMAT_UYVY },
 	{ V4L2_PIX_FMT_YUYV, 16, 16, 0, MEDIA_BUS_FMT_YUYV8_1X16, IPU_FW_ISYS_FRAME_FORMAT_YUYV },
 	{ V4L2_PIX_FMT_RGB565, 16, 16, 0, MEDIA_BUS_FMT_RGB565_1X16, IPU_FW_ISYS_FRAME_FORMAT_RGB565 },
@@ -314,6 +316,7 @@ static int video_release(struct file *file)
 {
 	struct intel_ipu4_isys_video *av = video_drvdata(file);
 	int ret = 0;
+	int end = 0;
 
 	vb2_fop_release(file);
 
@@ -339,6 +342,17 @@ static int video_release(struct file *file)
 #endif
 
 	pm_runtime_put(&av->isys->adev->dev);
+
+	/* Make sure that power cycle will be done when needed */
+	if (!av->isys->video_opened && av->isys->reset_needed) {
+		do {
+			msleep(1);
+			mutex_lock(&av->isys->mutex);
+			if (av->isys->reset_needed == false)
+				end = 1;
+			mutex_unlock(&av->isys->mutex);
+		} while (!end);
+	}
 
 	return ret;
 }
@@ -1226,7 +1240,7 @@ out_stream_close:
 		dev_dbg(dev, "can't close stream (%d)\n", rvalout);
 	} else {
 		tout = wait_for_completion_timeout(&ip->stream_close_completion,
-				INTEL_IPU4_LIB_CALL_TIMEOUT_JIFFIES);
+				av->isys->csi2_in_error_state ? 0 : INTEL_IPU4_LIB_CALL_TIMEOUT_JIFFIES);
 		if (!tout)
 			dev_err(dev, "stream close time out\n");
 		else if (ip->error)
@@ -1267,7 +1281,7 @@ static void stop_streaming_firmware(struct intel_ipu4_isys_video *av)
 		dev_err(dev, "can't stop stream (%d)\n", rval);
 	} else {
 		tout = wait_for_completion_timeout(&ip->stream_stop_completion,
-				INTEL_IPU4_LIB_CALL_TIMEOUT_JIFFIES);
+				av->isys->csi2_in_error_state ? 0 : INTEL_IPU4_LIB_CALL_TIMEOUT_JIFFIES);
 		if (!tout)
 			dev_err(dev, "stream stop time out\n");
 		else if (ip->error)
@@ -1295,7 +1309,7 @@ static void close_streaming_firmware(struct intel_ipu4_isys_video *av)
 		dev_err(dev, "can't close stream (%d)\n", rval);
 	} else {
 		tout = wait_for_completion_timeout(&ip->stream_close_completion,
-				INTEL_IPU4_LIB_CALL_TIMEOUT_JIFFIES);
+				av->isys->csi2_in_error_state ? 0 : INTEL_IPU4_LIB_CALL_TIMEOUT_JIFFIES);
 		if (!tout)
 			dev_err(dev, "stream close time out\n");
 		else if (ip->error)
@@ -1461,6 +1475,76 @@ turn_off_skew_cal:
 	return rval;
 }
 
+static void power_cycle(struct intel_ipu4_isys *isys)
+{
+	struct device *dev = &isys->adev->dev;
+	const struct intel_ipu4_isys_fw_ctrl *ops;
+	int end = 0;
+
+	dev_dbg(dev, "Power cycling\n");
+
+	mutex_lock(&isys->mutex);
+
+	dev_dbg(&isys->adev->dev, "Closing firmware");
+	isys->fwctrl->fw_close(isys);
+	isys->reset_needed = true;
+
+	mutex_unlock(&isys->mutex);
+
+	pm_runtime_put(&isys->adev->dev);
+	/* Make sure that power cycle will be done when needed */
+	if (isys->reset_needed) {
+		do {
+			dev_dbg(&isys->adev->dev, "Waiting for power cycle to finish");
+			msleep(1);
+			mutex_lock(&isys->mutex);
+			if (isys->reset_needed == false)
+				end = 1;
+			mutex_unlock(&isys->mutex);
+		} while (!end);
+	}
+
+	pm_runtime_get_sync(&isys->adev->dev);
+
+	mutex_lock(&isys->mutex);
+
+	dev_dbg(&isys->adev->dev, "Configuring spc");
+	intel_ipu4_configure_spc(isys->adev->isp,
+                                 &isys->pdata->ipdata->hw_variant,
+                                 INTEL_IPU4_CPD_PKG_DIR_ISYS_SERVER_IDX,
+                                 isys->pdata->base, isys->pkg_dir,
+                                 isys->pkg_dir_dma_addr);
+
+	ops = intel_ipu4_isys_get_api_ops();
+        if (ops) {
+                dev_dbg(&isys->adev->dev, "using external host library");
+                isys->fwctrl = ops;
+        } else {
+                dev_dbg(&isys->adev->dev, "using native abi control");
+                intel_ipu4_abi_init(isys);
+        }
+
+	dev_dbg(&isys->adev->dev, "Cleaning old fw msg bufs");
+	intel_ipu4_cleanup_fw_msg_bufs(isys);
+
+	if (isys->fwcom) {
+		/*
+		 * Something went wrong in previous shutdown. As we are now
+		 * restarting isys we can safely delete old context.
+		 */
+		dev_dbg(&isys->adev->dev, "Clearing old context\n");
+		isys->fwctrl->fw_force_clean(isys);
+	}
+
+	if (isys->pdata->type == INTEL_IPU4_ISYS_TYPE_INTEL_IPU4_FPGA ||
+	    isys->pdata->type == INTEL_IPU4_ISYS_TYPE_INTEL_IPU4) {
+		dev_dbg(&isys->adev->dev, "initializing firmware");
+		isys->fwctrl->fw_init(isys, num_stream_support);
+	}
+	mutex_unlock(&isys->mutex);
+	dev_dbg(dev, "Power cycling finished\n");
+}
+
 int intel_ipu4_isys_video_set_streaming(struct intel_ipu4_isys_video *av,
 				     unsigned int state,
 				     struct intel_ipu4_isys_buffer_list *bl)
@@ -1500,7 +1584,7 @@ int intel_ipu4_isys_video_set_streaming(struct intel_ipu4_isys_video *av,
 		stop_streaming_firmware(av);
 
 		/* stop external sub-device now. */
-		dev_err(dev, "s_stream %s (ext)\n", ip->external->entity->name);
+		dev_dbg(dev, "s_stream %s (ext)\n", ip->external->entity->name);
 
 		if (ip->csi2) {
 			if (ip->csi2->stream_count == 1) {
@@ -1587,6 +1671,7 @@ int intel_ipu4_isys_video_set_streaming(struct intel_ipu4_isys_video *av,
 					video, s_stream, state);
 		if (rval)
 			goto out_media_entity_stop_streaming_firmware;
+
         if(ip->csi2){
 		    ip->csi2->current_owner = current;
 		    ip->csi2->error_signal_send = false;
@@ -1599,6 +1684,13 @@ int intel_ipu4_isys_video_set_streaming(struct intel_ipu4_isys_video *av,
 		close_streaming_firmware(av);
 		av->ip.stream_id = 0;
 		av->ip.vc = 0;
+
+#ifdef CONFIG_VIDEO_INTEL_IPU4_POWER_CYCLE_AT_STREAMOFF
+		if (!av->isys->csi2_in_error_state &&
+		    av->isys->video_opened == 1) {
+			power_cycle(av->isys);
+		}
+#endif
 	}
 
 	if (state)

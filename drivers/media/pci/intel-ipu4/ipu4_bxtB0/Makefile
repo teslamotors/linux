@@ -26,5 +26,6 @@ include $(srcpath)/$(src)/../Makefile.lib2600psys
 endif
 ccflags-y += -I$(srcpath)/$(src)/../../../../../include/
 ccflags-y += -I$(srcpath)/$(src)/../
+ccflags-y += -I$(srcpath)/$(src)/
 
 ccflags-y += -DPARAMETER_INTERFACE_V2

@@ -130,6 +130,25 @@ For 32-bit we have the following conventions - kernel is built with
 	SAVE_C_REGS_HELPER 0, 0, 0, 1, 0
 	.endm
 
+	/*
+	 * Sanitize registers of values that a speculation attack
+	 * might otherwise want to exploit. The lower registers are
+	 * likely clobbered well before they could be put to use in
+	 * a speculative execution gadget:
+	 */
+	.macro CLEAR_REGS_NOSPEC
+	xorl %ebp, %ebp
+	xorl %ebx, %ebx
+	xorq %r8, %r8
+	xorq %r9, %r9
+	xorq %r10, %r10
+	xorq %r11, %r11
+	xorq %r12, %r12
+	xorq %r13, %r13
+	xorq %r14, %r14
+	xorq %r15, %r15
+	.endm
+
 	.macro SAVE_EXTRA_REGS offset=0
 	movq_cfi r15, 0*8+\offset
 	movq_cfi r14, 1*8+\offset
@@ -137,9 +156,6 @@ For 32-bit we have the following conventions - kernel is built with
 	movq_cfi r12, 3*8+\offset
 	movq_cfi rbp, 4*8+\offset
 	movq_cfi rbx, 5*8+\offset
-	.endm
-	.macro SAVE_EXTRA_REGS_RBP offset=0
-	movq_cfi rbp, 4*8+\offset
 	.endm
 
 	.macro RESTORE_EXTRA_REGS offset=0

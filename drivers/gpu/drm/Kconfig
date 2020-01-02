@@ -6,7 +6,7 @@
 #
 menuconfig DRM
 	tristate "Direct Rendering Manager (XFree86 4.1.0 and higher DRI support)"
-	depends on (AGP || AGP=n) && !EMULATED_CMPXCHG && MMU && HAS_DMA
+	depends on (AGP || AGP=n) && !EMULATED_CMPXCHG && HAS_DMA
 	select HDMI
 	select FB_CMDLINE
 	select I2C
@@ -25,6 +25,27 @@ config DRM_MIPI_DSI
 	bool
 	depends on DRM
 
+config DRM_DP_AUX_CHARDEV
+	bool "DRM DP AUX Interface"
+	depends on DRM
+	help
+	  Choose this option to enable a /dev/drm_dp_auxN node that allows to
+	  read and write values to arbitrary DPCD registers on the DP aux
+	  channel.
+
+config DRM_DEBUG_MM
+	bool "Insert extra checks and debug info into the DRM range managers"
+	default n
+	depends on DRM
+	select STACKDEPOT
+	help
+	  Enable allocation tracking of memory manager and leak detection on
+	  shutdown.
+
+	  Recommended for driver developers only.
+
+	  If in doubt, say "N".
+
 config DRM_KMS_HELPER
 	tristate
 	depends on DRM
@@ -37,12 +58,33 @@ config DRM_KMS_FB_HELPER
 	select FB
 	select FRAMEBUFFER_CONSOLE if !EXPERT
 	select FRAMEBUFFER_CONSOLE_DETECT_PRIMARY if FRAMEBUFFER_CONSOLE
+	select FB_SYS_FOPS
+	select FB_SYS_FILLRECT
+	select FB_SYS_COPYAREA
+	select FB_SYS_IMAGEBLIT
+	select FB_CFB_FILLRECT
+	select FB_CFB_COPYAREA
+	select FB_CFB_IMAGEBLIT
+	select FB_DEFERRED_IO
 	help
 	  FBDEV helpers for KMS drivers.
 
+config DRM_FBDEV_EMULATION
+	bool "Enable legacy fbdev support for your modesetting driver"
+	depends on DRM
+	select DRM_KMS_HELPER
+	select DRM_KMS_FB_HELPER
+	default y
+	help
+	  Choose this option if you have a need for the legacy fbdev
+	  support. Note that this support also provides the linux console
+	  support on top of your modesetting driver.
+
+	  If in doubt, say "Y".
+
 config DRM_LOAD_EDID_FIRMWARE
 	bool "Allow to specify an EDID data set instead of probing for it"
-	depends on DRM_KMS_HELPER
+	depends on DRM
 	help
 	  Say Y here, if you want to use EDID data to be loaded from the
 	  /lib/firmware directory or one of the provided built-in
@@ -54,7 +96,7 @@ config DRM_LOAD_EDID_FIRMWARE
 
 config DRM_TTM
 	tristate
-	depends on DRM
+	depends on DRM && MMU
 	help
 	  GPU memory management subsystem for devices with multiple
 	  GPU memory types. Will be enabled automatically if a device driver
@@ -77,9 +119,11 @@ config DRM_KMS_CMA_HELPER
 	help
 	  Choose this if you need the KMS CMA helper functions
 
-source "drivers/gpu/drm/i2c/Kconfig"
+config DRM_VM
+	bool
+	depends on DRM
 
-source "drivers/gpu/drm/bridge/Kconfig"
+source "drivers/gpu/drm/i2c/Kconfig"
 
 config DRM_TDFX
 	tristate "3dfx Banshee/Voodoo3+"
@@ -206,11 +250,15 @@ source "drivers/gpu/drm/qxl/Kconfig"
 
 source "drivers/gpu/drm/bochs/Kconfig"
 
+source "drivers/gpu/drm/virtio/Kconfig"
+
 source "drivers/gpu/drm/msm/Kconfig"
 
 source "drivers/gpu/drm/tegra/Kconfig"
 
 source "drivers/gpu/drm/panel/Kconfig"
+
+source "drivers/gpu/drm/bridge/Kconfig"
 
 source "drivers/gpu/drm/sti/Kconfig"
 

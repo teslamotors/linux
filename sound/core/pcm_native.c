@@ -555,6 +555,8 @@ static int snd_pcm_hw_params(struct snd_pcm_substream *substream,
 	runtime->no_period_wakeup =
 			(params->info & SNDRV_PCM_INFO_NO_PERIOD_WAKEUP) &&
 			(params->flags & SNDRV_PCM_HW_PARAMS_NO_PERIOD_WAKEUP);
+	runtime->no_rewinds =
+			(params->flags & SNDRV_PCM_HW_PARAMS_NO_REWINDS) ? 1 : 0;
 
 	bits = snd_pcm_format_physical_width(runtime->format);
 	runtime->sample_bits = bits;
@@ -2440,6 +2442,9 @@ static snd_pcm_sframes_t snd_pcm_playback_rewind(struct snd_pcm_substream *subst
 	if (frames == 0)
 		return 0;
 
+	if (runtime->no_rewinds)
+		return 0;
+
 	snd_pcm_stream_lock_irq(substream);
 	switch (runtime->status->state) {
 	case SNDRV_PCM_STATE_PREPARED:
@@ -2472,6 +2477,10 @@ static snd_pcm_sframes_t snd_pcm_playback_rewind(struct snd_pcm_substream *subst
 		appl_ptr += runtime->boundary;
 	runtime->control->appl_ptr = appl_ptr;
 	ret = frames;
+
+	if (substream->ops->appl_ptr_update)
+		substream->ops->appl_ptr_update(substream);
+
  __end:
 	snd_pcm_stream_unlock_irq(substream);
 	return ret;
@@ -2486,6 +2495,9 @@ static snd_pcm_sframes_t snd_pcm_capture_rewind(struct snd_pcm_substream *substr
 	snd_pcm_sframes_t hw_avail;
 
 	if (frames == 0)
+		return 0;
+
+	if (runtime->no_rewinds)
 		return 0;
 
 	snd_pcm_stream_lock_irq(substream);
@@ -2520,6 +2532,10 @@ static snd_pcm_sframes_t snd_pcm_capture_rewind(struct snd_pcm_substream *substr
 		appl_ptr += runtime->boundary;
 	runtime->control->appl_ptr = appl_ptr;
 	ret = frames;
+
+	if (substream->ops->appl_ptr_update)
+		substream->ops->appl_ptr_update(substream);
+
  __end:
 	snd_pcm_stream_unlock_irq(substream);
 	return ret;
@@ -2569,6 +2585,10 @@ static snd_pcm_sframes_t snd_pcm_playback_forward(struct snd_pcm_substream *subs
 		appl_ptr -= runtime->boundary;
 	runtime->control->appl_ptr = appl_ptr;
 	ret = frames;
+
+	if (substream->ops->appl_ptr_update)
+		substream->ops->appl_ptr_update(substream);
+
  __end:
 	snd_pcm_stream_unlock_irq(substream);
 	return ret;
@@ -2618,6 +2638,10 @@ static snd_pcm_sframes_t snd_pcm_capture_forward(struct snd_pcm_substream *subst
 		appl_ptr -= runtime->boundary;
 	runtime->control->appl_ptr = appl_ptr;
 	ret = frames;
+
+	if (substream->ops->appl_ptr_update)
+		substream->ops->appl_ptr_update(substream);
+
  __end:
 	snd_pcm_stream_unlock_irq(substream);
 	return ret;
@@ -2717,8 +2741,14 @@ static int snd_pcm_sync_ptr(struct snd_pcm_substream *substream,
 			return err;
 	}
 	snd_pcm_stream_lock_irq(substream);
-	if (!(sync_ptr.flags & SNDRV_PCM_SYNC_PTR_APPL))
+	if (!(sync_ptr.flags & SNDRV_PCM_SYNC_PTR_APPL)) {
+		/* boundary wrap-around is assumed to be handled in userspace */
 		control->appl_ptr = sync_ptr.c.control.appl_ptr;
+
+		/* let low-level driver know about appl_ptr change */
+		if (substream->ops->appl_ptr_update)
+			substream->ops->appl_ptr_update(substream);
+	}
 	else
 		sync_ptr.c.control.appl_ptr = control->appl_ptr;
 	if (!(sync_ptr.flags & SNDRV_PCM_SYNC_PTR_AVAIL_MIN))
@@ -3507,9 +3537,21 @@ static int snd_pcm_mmap(struct file *file, struct vm_area_struct *area)
 	case SNDRV_PCM_MMAP_OFFSET_STATUS:
 		if (pcm_file->no_compat_mmap)
 			return -ENXIO;
+		/*
+		 * we want to force sync pointer,
+		 * if driver implements appl_ptr_update
+		 */
+		if (substream->ops->appl_ptr_update)
+			return -ENXIO;
 		return snd_pcm_mmap_status(substream, file, area);
 	case SNDRV_PCM_MMAP_OFFSET_CONTROL:
 		if (pcm_file->no_compat_mmap)
+			return -ENXIO;
+		/*
+		 * we want to force sync pointer,
+		 * if driver implements appl_ptr_update
+		 */
+		if (substream->ops->appl_ptr_update)
 			return -ENXIO;
 		return snd_pcm_mmap_control(substream, file, area);
 	default:

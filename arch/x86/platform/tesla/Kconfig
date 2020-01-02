@@ -1,0 +1,8 @@
+
+config TESLA_INFO2
+	tristate "Tesla Info-2"
+	---help---
+	  This adds the core support for the Tesla Info2 platform.
+
+	  Say Y or M if you intend to use this on a Tesla Info2.
+	  If built as a module, it will be called tesla_info2

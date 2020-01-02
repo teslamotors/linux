@@ -2589,3 +2589,84 @@ int xen_unmap_domain_mfn_range(struct vm_area_struct *vma,
 #endif
 }
 EXPORT_SYMBOL_GPL(xen_unmap_domain_mfn_range);
+
+/* Note: here 'mfn' is actually gfn!!! */
+struct vm_struct * xen_remap_domain_mfn_range_in_kernel(unsigned long mfn,
+		int nr, unsigned domid)
+{
+	struct vm_struct *area;
+	struct remap_data rmd;
+	struct mmu_update mmu_update[REMAP_BATCH_SIZE];
+	int batch;
+	unsigned long range, addr;
+	pgprot_t prot;
+	int err;
+
+	WARN_ON(in_interrupt() || irqs_disabled());
+
+	area = alloc_vm_area(nr << PAGE_SHIFT, NULL);
+	if (!area)
+		return NULL;
+
+	addr = (unsigned long)area->addr;
+
+	prot = __pgprot(pgprot_val(PAGE_KERNEL));
+	rmd.mfn = &mfn;
+	rmd.prot = prot;
+	rmd.contiguous = true;
+
+	while (nr) {
+		batch = min(REMAP_BATCH_SIZE, nr);
+		range = (unsigned long)batch << PAGE_SHIFT;
+
+		rmd.mmu_update = mmu_update;
+		err = apply_to_page_range(&init_mm, addr, range,
+					  remap_area_mfn_pte_fn, &rmd);
+		if (err || HYPERVISOR_mmu_update(mmu_update, batch, NULL, domid) < 0)
+			goto err;
+
+		nr -= batch;
+		addr += range;
+	}
+
+	xen_flush_tlb_all();
+	return area;
+err:
+	free_vm_area(area);
+	xen_flush_tlb_all();
+	return NULL;
+}
+EXPORT_SYMBOL_GPL(xen_remap_domain_mfn_range_in_kernel);
+
+void xen_unmap_domain_mfn_range_in_kernel(struct vm_struct *area, int nr,
+		unsigned domid)
+{
+	struct remap_data rmd;
+	struct mmu_update mmu_update;
+	unsigned long range, addr = (unsigned long)area->addr;
+#define INVALID_MFN (~0UL)
+	unsigned long invalid_mfn = INVALID_MFN;
+	int err;
+
+	WARN_ON(in_interrupt() || irqs_disabled());
+
+	rmd.prot = PAGE_NONE;
+
+	while (nr) {
+		range = (unsigned long)(1 << PAGE_SHIFT);
+
+		rmd.mfn = &invalid_mfn;
+		rmd.mmu_update = &mmu_update;
+		err = apply_to_page_range(&init_mm, addr, range,
+					  remap_area_mfn_pte_fn, &rmd);
+		BUG_ON(err);
+		BUG_ON(HYPERVISOR_mmu_update(&mmu_update, 1, NULL, domid) < 0);
+
+		nr--;
+		addr += range;
+	}
+
+	free_vm_area(area);
+	xen_flush_tlb_all();
+}
+EXPORT_SYMBOL_GPL(xen_unmap_domain_mfn_range_in_kernel);

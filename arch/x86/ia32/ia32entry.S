@@ -300,6 +300,7 @@ sysenter_tracesys:
 #endif
 	SAVE_EXTRA_REGS
 	CLEAR_RREGS
+	CLEAR_REGS_NOSPEC
 	movq	$-ENOSYS,RAX(%rsp)/* ptrace can change this for a bad syscall */
 	movq	%rsp,%rdi        /* &pt_regs -> arg1 */
 	call	syscall_trace_enter
@@ -457,6 +458,7 @@ cstar_tracesys:
 	xchgl %r9d,%ebp
 	SAVE_EXTRA_REGS
 	CLEAR_RREGS r9
+	CLEAR_REGS_NOSPEC
 	movq $-ENOSYS,RAX(%rsp)	/* ptrace can change this for a bad syscall */
 	movq %rsp,%rdi        /* &pt_regs -> arg1 */
 	call syscall_trace_enter
@@ -551,6 +553,7 @@ ia32_ret_from_sys_call:
 ia32_tracesys:
 	SAVE_EXTRA_REGS
 	CLEAR_RREGS
+	CLEAR_REGS_NOSPEC
 	movq $-ENOSYS,RAX(%rsp)	/* ptrace can change this for a bad syscall */
 	movq %rsp,%rdi        /* &pt_regs -> arg1 */
 	call syscall_trace_enter

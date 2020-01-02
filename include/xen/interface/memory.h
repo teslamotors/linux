@@ -112,6 +112,11 @@ DEFINE_GUEST_HANDLE_STRUCT(xen_memory_exchange);
 #define XENMEM_maximum_reservation  4
 
 /*
+ * Returns the maximum GPFN in use by the guest, or -ve errcode on failure.
+ */
+#define XENMEM_maximum_gpfn         14
+
+/*
  * Returns a list of MFN bases of 2MB extents comprising the machine_to_phys
  * mapping table. Architectures which do not have a m2p table do not implement
  * this command.
@@ -241,6 +246,27 @@ DEFINE_GUEST_HANDLE_STRUCT(xen_memory_map);
  */
 #define XENMEM_machine_memory_map   10
 
+/*
+ * Translate the given guest PFNs to MFNs
+ */
+#define XENMEM_get_mfn_from_pfn    25
+struct xen_get_mfn_from_pfn {
+    /*
+     * Pointer to buffer to fill with list of pfn.
+     * for IN, it contains the guest PFN that need to translated
+     * for OUT, it contains the translated MFN. or INVALID_MFN if no valid translation
+     */
+    GUEST_HANDLE(ulong) pfn_list;
+
+    /*
+     * IN: Size of the pfn_array.
+     */
+    unsigned int nr_pfns;
+
+    /* IN: which domain */
+    domid_t domid;
+};
+DEFINE_GUEST_HANDLE_STRUCT(xen_get_mfn_from_pfn);
 
 /*
  * Prevent the balloon driver from changing the memory reservation

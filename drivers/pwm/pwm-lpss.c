@@ -15,6 +15,7 @@
 
 #include <linux/delay.h>
 #include <linux/io.h>
+#include <linux/iopoll.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/pm_runtime.h>
@@ -81,11 +82,36 @@ static inline void pwm_lpss_write(const struct pwm_device *pwm, u32 value)
 	writel(value, lpwm->regs + pwm->hwpwm * PWM_SIZE + PWM);
 }
 
-static void pwm_lpss_update(struct pwm_device *pwm)
+static int pwm_lpss_wait_for_update(struct pwm_device *pwm)
+{
+	struct pwm_lpss_chip *lpwm = to_lpwm(pwm->chip);
+	const void __iomem *addr = lpwm->regs + pwm->hwpwm * PWM_SIZE + PWM;
+	const unsigned int ms = 500 * USEC_PER_MSEC;
+	u32 val;
+	int err;
+
+	err = readl_poll_timeout(addr, val, !(val & PWM_SW_UPDATE), 40, ms);
+	if (err)
+		dev_err(pwm->chip->dev, "PWM_SW_UPDATE was not cleared\n");
+
+	return err;
+}
+
+static int pwm_lpss_update(struct pwm_device *pwm)
 {
 	pwm_lpss_write(pwm, pwm_lpss_read(pwm) | PWM_SW_UPDATE);
-	/* Give it some time to propagate */
-	usleep_range(10, 50);
+
+	/* PWM Configuration register has SW_UPDATE bit that is set when a new
+	 * configuration is written to the register. The bit is automatically
+	 * cleared at the start of the next output cycle by the IP block.
+	 *
+	 * If one writes a new configuration to the register while it still has
+	 * the bit enabled, PWM may freeze. That is, while one can still write
+	 * to the register, it won't have an effect. Thus, we try to sleep long
+	 * enough that the bit gets cleared and make sure the bit is not
+	 * enabled while we update the configuration.
+	 */
+	return pwm_lpss_wait_for_update(pwm);
 }
 
 static int pwm_lpss_config(struct pwm_chip *chip, struct pwm_device *pwm,
@@ -96,6 +122,13 @@ static int pwm_lpss_config(struct pwm_chip *chip, struct pwm_device *pwm,
 	unsigned long c, base_unit_range;
 	unsigned long long base_unit, freq = NSEC_PER_SEC;
 	u32 ctrl;
+	int ret;
+
+	if (pwm_is_enabled(pwm)) {
+		ret = pwm_lpss_wait_for_update(pwm);
+		if (ret)
+			return ret;
+	}
 
 	do_div(freq, period_ns);
 
@@ -132,11 +165,11 @@ static int pwm_lpss_config(struct pwm_chip *chip, struct pwm_device *pwm,
 	 * about the change by setting PWM_SW_UPDATE.
 	 */
 	if (pwm_is_enabled(pwm))
-		pwm_lpss_update(pwm);
+		ret = pwm_lpss_update(pwm);
 
 	pm_runtime_put(chip->dev);
 
-	return 0;
+	return ret;
 }
 
 static int pwm_lpss_enable(struct pwm_chip *chip, struct pwm_device *pwm)

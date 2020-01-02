@@ -54,8 +54,8 @@ static const u8 tuning_blk_pattern_8bit[] = {
 	0xff, 0x77, 0x77, 0xff, 0x77, 0xbb, 0xdd, 0xee,
 };
 
-static inline int __mmc_send_status(struct mmc_card *card, u32 *status,
-				    bool ignore_crc)
+static int __mmc_send_status(struct mmc_card *card, u32 *status,
+			     bool ignore_crc, int retries)
 {
 	int err;
 	struct mmc_command cmd = {0};
@@ -70,7 +70,7 @@ static inline int __mmc_send_status(struct mmc_card *card, u32 *status,
 	if (ignore_crc)
 		cmd.flags &= ~MMC_RSP_CRC;
 
-	err = mmc_wait_for_cmd(card->host, &cmd, MMC_CMD_RETRIES);
+	err = mmc_wait_for_cmd(card->host, &cmd, retries);
 	if (err)
 		return err;
 
@@ -85,7 +85,12 @@ static inline int __mmc_send_status(struct mmc_card *card, u32 *status,
 
 int mmc_send_status(struct mmc_card *card, u32 *status)
 {
-	return __mmc_send_status(card, status, false);
+	return __mmc_send_status(card, status, false, MMC_CMD_RETRIES);
+}
+
+int mmc_send_status_no_retries(struct mmc_card *card, u32 *status)
+{
+	return __mmc_send_status(card, status, false, 0);
 }
 
 static int _mmc_select_card(struct mmc_host *host, struct mmc_card *card)
@@ -545,7 +550,8 @@ int __mmc_switch(struct mmc_card *card, u8 set, u8 index, u8 value,
 	timeout = jiffies + msecs_to_jiffies(timeout_ms);
 	do {
 		if (send_status) {
-			err = __mmc_send_status(card, &status, ignore_crc);
+			err = __mmc_send_status(card, &status, ignore_crc,
+						MMC_CMD_RETRIES);
 			if (err)
 				goto out;
 		}

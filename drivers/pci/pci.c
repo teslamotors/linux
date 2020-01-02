@@ -757,7 +757,6 @@ static void __pci_start_power_transition(struct pci_dev *dev, pci_power_t state)
 		 * because have already delayed for the bridge.
 		 */
 		if (dev->runtime_d3cold) {
-			msleep(dev->d3cold_delay);
 			/*
 			 * When powering on a bridge from D3cold, the
 			 * whole hierarchy may be powered on into
@@ -4782,6 +4781,10 @@ void __weak pci_fixup_cardbus(struct pci_bus *bus)
 }
 EXPORT_SYMBOL(pci_fixup_cardbus);
 
+
+int pcie_blacklist_enable = 0;
+EXPORT_SYMBOL(pcie_blacklist_enable);
+
 static int __init pci_setup(char *str)
 {
 	while (str) {
@@ -4824,6 +4827,9 @@ static int __init pci_setup(char *str)
 				pcie_bus_config = PCIE_BUS_PEER2PEER;
 			} else if (!strncmp(str, "pcie_scan_all", 13)) {
 				pci_add_flags(PCI_SCAN_ALL_PCIE_DEVS);
+			} else if (!strncmp(str, "blacklist", 9)) {
+				printk(KERN_WARNING "PCI: Blacklist Enabled");
+				pcie_blacklist_enable = 1;
 			} else {
 				printk(KERN_ERR "PCI: Unknown option `%s'\n",
 						str);

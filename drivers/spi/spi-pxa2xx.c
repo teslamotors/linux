@@ -70,6 +70,8 @@ MODULE_ALIAS("platform:pxa2xx-spi");
 #define LPSS_CAPS_CS_EN_SHIFT			9
 #define LPSS_CAPS_CS_EN_MASK			(0xf << LPSS_CAPS_CS_EN_SHIFT)
 
+static int port_id = 1;
+
 struct lpss_config {
 	/* LPSS offset from drv_data->ioaddr */
 	unsigned offset;
@@ -1235,6 +1237,8 @@ static int setup(struct spi_device *spi)
 		chip->dma_threshold = 0;
 		if (chip_info->enable_loopback)
 			chip->cr1 = SSCR1_LBM;
+		if (chip_info->pio_dma_threshold)
+			chip->pio_dma_threshold = chip_info->pio_dma_threshold;
 	} else if (ACPI_HANDLE(&spi->dev)) {
 		/*
 		 * Slave devices enumerated from ACPI namespace don't
@@ -1436,7 +1440,11 @@ pxa2xx_spi_init_pdata(struct platform_device *pdev)
 	ssp->irq = platform_get_irq(pdev, 0);
 	ssp->type = type;
 	ssp->pdev = pdev;
+#if 1
+	ssp->port_id = port_id++;
+#else
 	ssp->port_id = pxa2xx_spi_get_port_id(adev);
+#endif
 
 	pdata->num_chipselect = 1;
 	pdata->enable_dma = true;

@@ -42,6 +42,8 @@
 #define DW_IC_SS_SCL_LCNT	0x18
 #define DW_IC_FS_SCL_HCNT	0x1c
 #define DW_IC_FS_SCL_LCNT	0x20
+#define DW_IC_HS_SCL_HCNT	0x24
+#define DW_IC_HS_SCL_LCNT	0x28
 #define DW_IC_INTR_STAT		0x2c
 #define DW_IC_INTR_MASK		0x30
 #define DW_IC_RAW_INTR_STAT	0x34
@@ -94,6 +96,9 @@
 #define DW_IC_ERR_TX_ABRT	0x1
 
 #define DW_IC_TAR_10BITADDR_MASTER BIT(12)
+
+#define DW_IC_COMP_PARAM_1_HIGH_SPEED		(BIT(2) | BIT(3))
+#define DW_IC_COMP_PARAM_1_MAX_SPEED_MODE_MASK	GENMASK(3, 2)
 
 /*
  * status codes
@@ -192,6 +197,14 @@ static void dw_writel(struct dw_i2c_dev *dev, u32 b, int offset)
 	} else {
 		writel_relaxed(b, dev->base + offset);
 	}
+}
+
+static void __i2c_dw_force_reset(struct dw_i2c_dev *dev)
+{
+	dw_writel(dev, 0, 0x204);
+	udelay(10);
+	dw_writel(dev, 7, 0x204);
+	udelay(10);
 }
 
 static u32
@@ -293,7 +306,7 @@ static unsigned long i2c_dw_clk_rate(struct dw_i2c_dev *dev)
 int i2c_dw_init(struct dw_i2c_dev *dev)
 {
 	u32 hcnt, lcnt;
-	u32 reg;
+	u32 reg, comp_param1;
 	u32 sda_falling_time, scl_falling_time;
 	int ret;
 
@@ -319,6 +332,8 @@ int i2c_dw_init(struct dw_i2c_dev *dev)
 			dev->release_lock(dev);
 		return -ENODEV;
 	}
+
+	comp_param1 = dw_readl(dev, DW_IC_COMP_PARAM_1);
 
 	/* Disable the adapter */
 	__i2c_dw_enable(dev, false);
@@ -347,8 +362,11 @@ int i2c_dw_init(struct dw_i2c_dev *dev)
 	dw_writel(dev, lcnt, DW_IC_SS_SCL_LCNT);
 	dev_dbg(dev->dev, "Standard-mode HCNT:LCNT = %d:%d\n", hcnt, lcnt);
 
-	/* Set SCL timing parameters for fast-mode */
-	if (dev->fs_hcnt && dev->fs_lcnt) {
+	/* Set SCL timing parameters for fast-mode or fast-mode plus */
+	if ((dev->clk_freq == 1000000) && dev->fp_hcnt && dev->fp_lcnt) {
+		hcnt = dev->fp_hcnt;
+		lcnt = dev->fp_lcnt;
+	} else if (dev->fs_hcnt && dev->fs_lcnt) {
 		hcnt = dev->fs_hcnt;
 		lcnt = dev->fs_lcnt;
 	} else {
@@ -365,6 +383,25 @@ int i2c_dw_init(struct dw_i2c_dev *dev)
 	dw_writel(dev, hcnt, DW_IC_FS_SCL_HCNT);
 	dw_writel(dev, lcnt, DW_IC_FS_SCL_LCNT);
 	dev_dbg(dev->dev, "Fast-mode HCNT:LCNT = %d:%d\n", hcnt, lcnt);
+
+	if ((dev->master_cfg & DW_IC_CON_SPEED_MASK) ==
+		DW_IC_CON_SPEED_HIGH) {
+		if ((comp_param1 & DW_IC_COMP_PARAM_1_MAX_SPEED_MODE_MASK)
+			!= DW_IC_COMP_PARAM_1_HIGH_SPEED) {
+			dev_err(dev->dev, "High Speed not supported!\n");
+			dev->master_cfg &= ~DW_IC_CON_SPEED_MASK;
+			dev->master_cfg |= DW_IC_CON_SPEED_FAST;
+			if (dev->fs_sda_ht)
+				dev->sda_hold_time = dev->fs_sda_ht;
+		} else if (dev->hs_hcnt && dev->hs_lcnt) {
+			hcnt = dev->hs_hcnt;
+			lcnt = dev->hs_lcnt;
+			dw_writel(dev, hcnt, DW_IC_HS_SCL_HCNT);
+			dw_writel(dev, lcnt, DW_IC_HS_SCL_LCNT);
+			dev_dbg(dev->dev, "HighSpeed-mode HCNT:LCNT = %d:%d\n",
+				hcnt, lcnt);
+		}
+	}
 
 	/* Configure SDA Hold Time if required */
 	if (dev->sda_hold_time) {
@@ -399,6 +436,7 @@ static int i2c_dw_wait_bus_not_busy(struct dw_i2c_dev *dev)
 	while (dw_readl(dev, DW_IC_STATUS) & DW_IC_STATUS_ACTIVITY) {
 		if (timeout <= 0) {
 			dev_warn(dev->dev, "timeout waiting for bus ready\n");
+			__i2c_dw_force_reset(dev);
 			return -ETIMEDOUT;
 		}
 		timeout--;
@@ -527,7 +565,7 @@ i2c_dw_xfer_msg(struct dw_i2c_dev *dev)
 			if (msgs[dev->msg_write_idx].flags & I2C_M_RD) {
 
 				/* avoid rx buffer overrun */
-				if (rx_limit - dev->rx_outstanding <= 0)
+				if (dev->rx_outstanding >= dev->rx_fifo_depth)
 					break;
 
 				dw_writel(dev, cmd | 0x100, DW_IC_DATA_CMD);
@@ -664,8 +702,9 @@ i2c_dw_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int num)
 	i2c_dw_xfer_init(dev);
 
 	/* wait for tx to complete */
-	if (!wait_for_completion_timeout(&dev->cmd_complete, HZ)) {
+	if (!wait_for_completion_timeout(&dev->cmd_complete, adap->timeout)) {
 		dev_err(dev->dev, "controller timed out\n");
+		__i2c_dw_force_reset(dev);
 		/* i2c_dw_init implicitly disables the adapter */
 		i2c_dw_init(dev);
 		ret = -ETIMEDOUT;

@@ -1472,7 +1472,7 @@ static int isys_probe(struct intel_ipu4_bus_device *adev)
 
 	if (!is_intel_ipu5_hw_a0(isp)) {
 		/* Has the domain been attached? */
-		if (!mmu || !isp->pkg_dir_dma_addr) {
+		if (!mmu) {
 			trace_printk("E|TMWK\n");
 			return -EPROBE_DEFER;
 		}

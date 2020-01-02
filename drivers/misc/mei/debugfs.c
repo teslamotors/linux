@@ -50,6 +50,7 @@ static ssize_t mei_dbgfs_read_meclients(struct file *fp, char __user *ubuf,
 	}
 
 	pos += scnprintf(buf + pos, bufsz - pos, HDR);
+#undef HDR
 
 	/*  if the driver is not enabled the list won't be consistent */
 	if (dev->dev_state != MEI_DEV_ENABLED)
@@ -90,23 +91,37 @@ static ssize_t mei_dbgfs_read_active(struct file *fp, char __user *ubuf,
 {
 	struct mei_device *dev = fp->private_data;
 	struct mei_cl *cl;
-	const size_t bufsz = 1024;
+	size_t bufsz = 1;
 	char *buf;
 	int i = 0;
 	int pos = 0;
 	int ret;
 
+#define HDR "   |me|host|state|rd|wr|\n"
+
 	if (!dev)
 		return -ENODEV;
 
-	buf = kzalloc(bufsz, GFP_KERNEL);
-	if  (!buf)
-		return -ENOMEM;
-
-	pos += scnprintf(buf + pos, bufsz - pos,
-			"  |me|host|state|rd|wr|\n");
-
 	mutex_lock(&dev->device_lock);
+
+	/*
+	 * if the driver is not enabled the list won't be consistent,
+	 * we output empty table
+	 */
+	if (dev->dev_state == MEI_DEV_ENABLED)
+		list_for_each_entry(cl, &dev->file_list, link)
+			bufsz++;
+
+	bufsz *= sizeof(HDR) + 1;
+
+	buf = kzalloc(bufsz, GFP_KERNEL);
+	if  (!buf) {
+		mutex_unlock(&dev->device_lock);
+		return -ENOMEM;
+	}
+
+	pos += scnprintf(buf + pos, bufsz - pos, HDR);
+#undef HDR
 
 	/*  if the driver is not enabled the list won't be consistent */
 	if (dev->dev_state != MEI_DEV_ENABLED)
@@ -115,8 +130,8 @@ static ssize_t mei_dbgfs_read_active(struct file *fp, char __user *ubuf,
 	list_for_each_entry(cl, &dev->file_list, link) {
 
 		pos += scnprintf(buf + pos, bufsz - pos,
-			"%2d|%2d|%4d|%5d|%2d|%2d|\n",
-			i, cl->me_client_id, cl->host_client_id, cl->state,
+			"%3d|%2d|%4d|%5d|%2d|%2d|\n",
+			i, mei_cl_me_id(cl), cl->host_client_id, cl->state,
 			!list_empty(&cl->rd_completed), cl->writing_state);
 		i++;
 	}
@@ -149,6 +164,26 @@ static ssize_t mei_dbgfs_read_devstate(struct file *fp, char __user *ubuf,
 			mei_dev_state_str(dev->dev_state));
 	pos += scnprintf(buf + pos, bufsz - pos, "hbm: %s\n",
 			mei_hbm_state_str(dev->hbm_state));
+
+	if (dev->hbm_state >= MEI_HBM_ENUM_CLIENTS &&
+	    dev->hbm_state <= MEI_HBM_STARTED) {
+		pos += scnprintf(buf + pos, bufsz - pos, "hbm features:\n");
+		pos += scnprintf(buf + pos, bufsz - pos, "\tPG: %01d\n",
+				 dev->hbm_f_pg_supported);
+		pos += scnprintf(buf + pos, bufsz - pos, "\tDC: %01d\n",
+				 dev->hbm_f_dc_supported);
+		pos += scnprintf(buf + pos, bufsz - pos, "\tIE: %01d\n",
+				 dev->hbm_f_ie_supported);
+		pos += scnprintf(buf + pos, bufsz - pos, "\tDOT: %01d\n",
+				 dev->hbm_f_dot_supported);
+		pos += scnprintf(buf + pos, bufsz - pos, "\tEV: %01d\n",
+				 dev->hbm_f_ev_supported);
+		pos += scnprintf(buf + pos, bufsz - pos, "\tFA: %01d\n",
+				 dev->hbm_f_fa_supported);
+		pos += scnprintf(buf + pos, bufsz - pos, "\tOS: %01d\n",
+				 dev->hbm_f_os_supported);
+	}
+
 	pos += scnprintf(buf + pos, bufsz - pos, "pg:  %s, %s\n",
 			mei_pg_is_enabled(dev) ? "ENABLED" : "DISABLED",
 			mei_pg_state_str(mei_pg_state(dev)));
@@ -159,6 +194,67 @@ static ssize_t mei_dbgfs_read_devstate(struct file *fp, char __user *ubuf,
 static const struct file_operations mei_dbgfs_fops_devstate = {
 	.open = simple_open,
 	.read = mei_dbgfs_read_devstate,
+	.llseek = generic_file_llseek,
+};
+
+/* backported functions */
+static
+ssize_t debugfs_read_file_bool(struct file *file, char __user *user_buf,
+			       size_t count, loff_t *ppos)
+{
+	char buf[3];
+	bool *val = file->private_data;
+
+	if (*val)
+		buf[0] = 'Y';
+	else
+		buf[0] = 'N';
+	buf[1] = '\n';
+	buf[2] = 0x00;
+	return simple_read_from_buffer(user_buf, count, ppos, buf, 2);
+}
+
+static
+ssize_t debugfs_write_file_bool(struct file *file, const char __user *user_buf,
+				size_t count, loff_t *ppos)
+{
+	char buf[32];
+	size_t buf_size;
+	bool bv;
+	bool *val = file->private_data;
+
+	buf_size = min(count, (sizeof(buf)-1));
+	if (copy_from_user(buf, user_buf, buf_size))
+		return -EFAULT;
+
+	buf[buf_size] = '\0';
+	if (strtobool(buf, &bv) == 0)
+		*val = bv;
+
+	return count;
+}
+
+static ssize_t mei_dbgfs_write_allow_fa(struct file *file,
+					const char __user *user_buf,
+					size_t count, loff_t *ppos)
+{
+	struct mei_device *dev;
+	int ret;
+
+	dev = container_of(file->private_data,
+			   struct mei_device, allow_fixed_address);
+
+	ret = debugfs_write_file_bool(file, user_buf, count, ppos);
+	if (ret < 0)
+		return ret;
+	dev->override_fixed_address = true;
+	return ret;
+}
+
+static const struct file_operations mei_dbgfs_fops_allow_fa = {
+	.open = simple_open,
+	.read = debugfs_read_file_bool,
+	.write = mei_dbgfs_write_allow_fa,
 	.llseek = generic_file_llseek,
 };
 
@@ -191,6 +287,8 @@ int mei_dbgfs_register(struct mei_device *dev, const char *name)
 	if (!dir)
 		return -ENOMEM;
 
+	dev->dbgfs_dir = dir;
+
 	f = debugfs_create_file("meclients", S_IRUSR, dir,
 				dev, &mei_dbgfs_fops_meclients);
 	if (!f) {
@@ -200,7 +298,7 @@ int mei_dbgfs_register(struct mei_device *dev, const char *name)
 	f = debugfs_create_file("active", S_IRUSR, dir,
 				dev, &mei_dbgfs_fops_active);
 	if (!f) {
-		dev_err(dev->dev, "meclients: registration failed\n");
+		dev_err(dev->dev, "active: registration failed\n");
 		goto err;
 	}
 	f = debugfs_create_file("devstate", S_IRUSR, dir,
@@ -209,7 +307,13 @@ int mei_dbgfs_register(struct mei_device *dev, const char *name)
 		dev_err(dev->dev, "devstate: registration failed\n");
 		goto err;
 	}
-	dev->dbgfs_dir = dir;
+	f = debugfs_create_file("allow_fixed_address", S_IRUSR | S_IWUSR, dir,
+				&dev->allow_fixed_address,
+				&mei_dbgfs_fops_allow_fa);
+	if (!f) {
+		dev_err(dev->dev, "allow_fixed_address: registration failed\n");
+		goto err;
+	}
 	return 0;
 err:
 	mei_dbgfs_deregister(dev);

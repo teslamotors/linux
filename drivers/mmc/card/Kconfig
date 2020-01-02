@@ -7,6 +7,7 @@ comment "MMC/SD/SDIO Card Drivers"
 config MMC_BLOCK
 	tristate "MMC block device driver"
 	depends on BLOCK
+	select RPMB
 	default y
 	help
 	  Say Y here to enable the MMC block device driver support.

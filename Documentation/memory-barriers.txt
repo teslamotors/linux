@@ -636,7 +636,11 @@ as follows:
 	q = a;
 	b = p;  /* BUG: Compiler and CPU can both reorder!!! */
 
-So don't leave out the ACCESS_ONCE().
+Finally, the READ_ONCE_CTRL() includes an smp_read_barrier_depends()
+that DEC Alpha needs in order to respect control depedencies. Alternatively
+use one of atomic{,64}_read_ctrl().
+
+So don't leave out the READ_ONCE_CTRL().
 
 It is tempting to try to enforce ordering on identical stores on both
 branches of the "if" statement as follows:
@@ -810,9 +814,10 @@ In summary:
       help to preserve the needed conditional.
 
   (*) Control dependencies require that the compiler avoid reordering the
-      dependency into nonexistence.  Careful use of ACCESS_ONCE() or
-      barrier() can help to preserve your control dependency.  Please
-      see the Compiler Barrier section for more information.
+      dependency into nonexistence.  Careful use of READ_ONCE_CTRL(),
+      atomic{,64}_read_ctrl() or smp_read_barrier_depends() can help to
+      preserve your control dependency.  Please see the Compiler Barrier
+      section for more information.
 
   (*) Control dependencies pair normally with other types of barriers.
 

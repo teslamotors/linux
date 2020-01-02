@@ -42,6 +42,8 @@ obj-$(CONFIG_X86_CPUFREQ_NFORCE2)	+= cpufreq-nforce2.o
 obj-$(CONFIG_X86_INTEL_PSTATE)		+= intel_pstate.o
 obj-$(CONFIG_X86_AMD_FREQ_SENSITIVITY)	+= amd_freq_sensitivity.o
 obj-$(CONFIG_X86_SFI_CPUFREQ)		+= sfi-cpufreq.o
+obj-$(CONFIG_X86_INTEL_TFM_GOVERNOR)	+= intel_tfm_governor.o
+intel_tfm_governor-objs	:= intel_tfm_core.o intel_tfm_cpu.o intel_tfm_gpu.o
 
 ##################################################################################
 # ARM SoC drivers

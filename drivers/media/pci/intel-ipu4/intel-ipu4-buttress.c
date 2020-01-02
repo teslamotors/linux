@@ -52,7 +52,7 @@
 
 #define BUTTRESS_IPC_TX_TIMEOUT			1000
 #define BUTTRESS_IPC_RX_TIMEOUT			1000
-#define BUTTRESS_IPC_VALIDITY_TIMEOUT		1000
+#define BUTTRESS_IPC_VALIDITY_TIMEOUT		5000
 
 #define BUTTRESS_POWER_TIMEOUT			1000
 
@@ -93,7 +93,7 @@ int intel_ipu4_buttress_ipc_reset(struct intel_ipu4_device *isp,
 {
 	struct intel_ipu4_buttress *b = &isp->buttress;
 	unsigned long tout_jfs;
-	unsigned tout = 500;
+	unsigned tout = BUTTRESS_IPC_VALIDITY_TIMEOUT;
 	u32 val = 0;
 
 	if (is_intel_ipu_hw_fpga(isp)) {
@@ -184,6 +184,17 @@ int intel_ipu4_buttress_ipc_reset(struct intel_ipu4_device *isp,
 			QUERY, isp->base + ipc->csr_in);
 
 			writel(EXIT, isp->base + ipc->csr_out);
+
+			/*
+			 * Read csr_in again to make sure if RST_PHASE2 is done.
+			 * If csr_in is QUERY, it should be handled again.
+			 */
+			usleep_range(100, 500);
+			val = readl(isp->base + ipc->csr_in);
+			if (val & QUERY) {
+				dev_dbg(&isp->pdev->dev, "%s: csr_in = %x\n", __func__, val);
+				continue;
+			}
 
 			mutex_unlock(&b->ipc_mutex);
 
@@ -1492,6 +1503,7 @@ DEFINE_SIMPLE_ATTRIBUTE(intel_ipu4_buttress_start_tsc_sync_fops,
 			NULL, /* intel_ipu4_buttress_start_tsc_sync_get, */
 			intel_ipu4_buttress_start_tsc_sync_set, "%llu\n");
 
+#endif /* CONFIG_DEBUG_FS */
 
 int intel_ipu4_buttress_tsc_read(struct intel_ipu4_device *isp, u64 *val)
 {
@@ -1552,6 +1564,8 @@ u64 intel_ipu4_buttress_tsc_ticks_to_ns(u64 ticks)
 	return ticks * 10000 / 192;
 }
 EXPORT_SYMBOL_GPL(intel_ipu4_buttress_tsc_ticks_to_ns);
+
+#ifdef CONFIG_DEBUG_FS
 
 static int intel_ipu4_buttress_tsc_get(void *data, u64 *val)
 {

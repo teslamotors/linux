@@ -48,7 +48,11 @@ extern bool xen_hvm_need_lapic(void);
 
 static inline bool xen_x2apic_para_available(void)
 {
+#ifdef CONFIG_XEN_PVHVM
 	return xen_hvm_need_lapic();
+#else
+	return false;
+#endif
 }
 #else
 static inline bool xen_x2apic_para_available(void)

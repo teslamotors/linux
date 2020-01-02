@@ -6,6 +6,12 @@ config SND_PCM
 	tristate
 	select SND_TIMER
 
+config SND_PCM_ELD
+	bool
+
+config SND_PCM_IEC958
+	bool
+
 config SND_DMAENGINE_PCM
 	tristate
 
@@ -219,9 +225,6 @@ config SND_PCM_XRUN_DEBUG
 	  the process or driver which causes the scheduling gaps.
 
 config SND_VMASTER
-	bool
-
-config SND_KCTL_JACK
 	bool
 
 config SND_DMA_SGBUF

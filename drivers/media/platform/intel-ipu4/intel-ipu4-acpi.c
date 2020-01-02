@@ -800,6 +800,8 @@ static const struct ipu4_acpi_devices supported_devices[] = {
 	  sizeof(imx132_op_clocks) },
 	{ "TXNW3643", LM3643_NAME,    get_lm3643_pdata, NULL, 0 },
 	{ "AMS3638", AS3638_NAME,    get_as3638_pdata, NULL, 0 },
+	{ "ADV7481A", CRLMODULE_NAME,    get_crlmodule_pdata, NULL, 0 },
+	{ "ADV7481B", CRLMODULE_NAME,    get_crlmodule_pdata, NULL, 0 },
 };
 
 static int get_table_index(struct device *device, const __u8 *acpi_name)
@@ -824,6 +826,8 @@ static const struct acpi_device_id ipu4_acpi_match[] = {
 	{ "SONY214A", 0 },
 	{ "SONY132A", 0 },
 	{ "OV5670AA", 0 },
+	{ "ADV7481A", 0},
+	{ "ADV7481B", 0},
 	{},
 };
 

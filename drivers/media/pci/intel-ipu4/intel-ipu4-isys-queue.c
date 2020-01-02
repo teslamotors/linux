@@ -109,7 +109,7 @@ static int buf_init(struct vb2_buffer *vb)
 		vb2_queue_to_intel_ipu4_isys_queue(vb->vb2_queue);
 	struct intel_ipu4_isys_video *av = intel_ipu4_isys_queue_to_video(aq);
 
-	dev_dbg(&av->isys->adev->dev, "buffer: %s: buf_init\n", av->vdev.name);
+	pr_info("ipu4 %s: buffer: %s: buf_init\n", __func__, av->vdev.name);
 
 	if (aq->buf_init)
 		return aq->buf_init(vb);
@@ -1154,9 +1154,16 @@ void intel_ipu4_isys_queue_buf_done(struct intel_ipu4_isys_buffer *ib)
 {
 	struct vb2_buffer *vb = intel_ipu4_isys_buffer_to_vb2_buffer(ib);
 
-	vb2_buffer_done(vb, vb->vb2_queue->error ?
-		 VB2_BUF_STATE_ERROR :
-		 VB2_BUF_STATE_DONE);
+	if (atomic_read(&(ib->str2mmio_flag))) {
+		vb2_buffer_done(vb, VB2_BUF_STATE_ERROR);
+		/*
+		 * Operation on buffer is ended with error and will be reported
+		 * to the userspace when it is de-queued
+		 */
+		atomic_set(&(ib->str2mmio_flag), 0);
+	} else {
+		vb2_buffer_done(vb, VB2_BUF_STATE_DONE);
+	}
 }
 
 void intel_ipu4_isys_queue_buf_ready(struct intel_ipu4_isys_pipeline *ip,
@@ -1195,6 +1202,11 @@ void intel_ipu4_isys_queue_buf_ready(struct intel_ipu4_isys_pipeline *ip,
 			continue;
 		}
 
+		if (info->error_info.error ==
+			IPU_FW_ISYS_ERROR_HW_REPORTED_STR2MMIO) {
+			/* Check for 'IPU_FW_ISYS_ERROR_HW_REPORTED_STR2MMIO' error message*/
+			atomic_set(&(ib->str2mmio_flag), 1);
+		}
 		dev_dbg(&isys->adev->dev, "buffer: found buffer %pad\n", &addr);
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)

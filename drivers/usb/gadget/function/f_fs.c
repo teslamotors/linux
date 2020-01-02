@@ -750,6 +750,10 @@ static ssize_t ffs_epfile_io(struct file *file, struct ffs_io_data *io_data)
 				goto error;
 			}
 		}
+		dev_dbg(&gadget->dev,
+			"Supported buffer size is %d.\n", (int)data_len);
+		dev_dbg(&gadget->dev,
+			"Bulk data from user: %s\n", data);
 	}
 
 	/* We will be using request */

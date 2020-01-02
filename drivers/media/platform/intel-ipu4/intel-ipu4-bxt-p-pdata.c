@@ -575,7 +575,7 @@ static struct intel_ipu4_isys_subdev_info ti964_sd_2 = {
  * Map buttress output sensor clocks to sensors -
  * this should be coming from ACPI
  */
-struct intel_ipu4_isys_clk_mapping clk_mapping[] = {
+static struct intel_ipu4_isys_clk_mapping clk_mapping[] = {
 	{ CLKDEV_INIT("2-001a", NULL, NULL), "OSC_CLK_OUT0" },
 	{ CLKDEV_INIT("2-0010", NULL, NULL), "OSC_CLK_OUT0" },
 	{ CLKDEV_INIT("2-a0e0", NULL, NULL), "OSC_CLK_OUT0" },

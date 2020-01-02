@@ -1,0 +1,12 @@
+config SECURE_BOOT
+	bool "Secure Boot Status"
+	default n
+        select PCI
+	help
+		Check the secure boot status when the module
+		is initialised and store it in RAM.
+
+		Kernel applications can check the secure boot
+		status via the API.
+
+	  	If in doubt, say "N".

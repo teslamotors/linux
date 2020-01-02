@@ -34,6 +34,7 @@
 #include "intel-ipu4-trace-event.h"
 
 static const uint32_t csi2_supported_codes_pad_sink[] = {
+	MEDIA_BUS_FMT_Y10_1X10,
 	MEDIA_BUS_FMT_RGB565_1X16,
 	MEDIA_BUS_FMT_RGB888_1X24,
 	MEDIA_BUS_FMT_UYVY8_1X16,
@@ -62,6 +63,7 @@ static const uint32_t csi2_supported_codes_pad_sink[] = {
 };
 
 static const uint32_t csi2_supported_codes_pad_source[] = {
+	MEDIA_BUS_FMT_Y10_1X10,
 	MEDIA_BUS_FMT_RGB565_1X16,
 	MEDIA_BUS_FMT_RGB888_1X24,
 	MEDIA_BUS_FMT_UYVY8_1X16,
@@ -868,11 +870,11 @@ void intel_ipu_isys_csi2_wait_last_eof(struct intel_ipu4_isys_csi2 *csi2)
 		csi2->wait_for_sync[i] = true;
 		spin_unlock_irqrestore(&csi2->isys->lock, flags);
 		tout = wait_for_completion_timeout(&csi2->eof_completion,
-			INTEL_IPU_EOF_TIMEOUT_JIFFIES);
+			csi2->isys->csi2_in_error_state ? 0 : INTEL_IPU_EOF_TIMEOUT_JIFFIES);
 		if (!tout)
-			dev_err(&csi2->isys->adev->dev,
-				"csi2-%d: timeout at sync to eof of vc %d\n",
-				csi2->index, i);
+			dev_warn(&csi2->isys->adev->dev,
+				 "csi2-%d: timeout at sync to eof of vc %d\n",
+				 csi2->index, i);
 		csi2->wait_for_sync[i] = false;
 	}
 }

@@ -58,6 +58,7 @@
 #include <asm/alternative-asm.h>
 #include <asm/asm.h>
 #include <asm/smap.h>
+#include <asm/nospec-branch.h>
 
 /* Avoid __ASSEMBLER__'ifying <linux/audit.h> just for this.  */
 #include <linux/elf-em.h>
@@ -308,7 +309,8 @@ ENTRY(ret_from_kernel_thread)
 	pushl_cfi $0x0202		# Reset kernel eflags
 	popfl_cfi
 	movl PT_EBP(%esp),%eax
-	call *PT_EBX(%esp)
+	movl	PT_EBX(%esp), %edx
+	CALL_NOSPEC %edx
 	movl $0,PT_EAX(%esp)
 	jmp syscall_exit
 	CFI_ENDPROC
@@ -427,6 +429,8 @@ sysenter_past_esp:
 sysenter_do_call:
 	cmpl $(NR_syscalls), %eax
 	jae sysenter_badsys
+	sbb %edi, %edi /* sanitize syscall nr wrt speculation */
+	and %edi, %eax
 	call *sys_call_table(,%eax,4)
 sysenter_after_call:
 	movl %eax,PT_EAX(%esp)
@@ -502,6 +506,8 @@ ENTRY(system_call)
 	cmpl $(NR_syscalls), %eax
 	jae syscall_badsys
 syscall_call:
+	sbb %edi, %edi /* sanitize syscall nr wrt speculation */
+	and %edi, %eax
 	call *sys_call_table(,%eax,4)
 syscall_after_call:
 	movl %eax,PT_EAX(%esp)		# store the return value
@@ -1155,7 +1161,8 @@ trace:
 	movl 0x4(%ebp), %edx
 	subl $MCOUNT_INSN_SIZE, %eax
 
-	call *ftrace_trace_function
+	movl    ftrace_trace_function, %ecx
+	CALL_NOSPEC %ecx
 
 	popl %edx
 	popl %ecx
@@ -1190,7 +1197,7 @@ return_to_handler:
 	movl %eax, %ecx
 	popl %edx
 	popl %eax
-	jmp *%ecx
+	JMP_NOSPEC %ecx
 #endif
 
 #ifdef CONFIG_TRACING
@@ -1238,7 +1245,7 @@ error_code:
 	movl %ecx, %es
 	TRACE_IRQS_OFF
 	movl %esp,%eax			# pt_regs pointer
-	call *%edi
+	CALL_NOSPEC %edi
 	jmp ret_from_exception
 	CFI_ENDPROC
 END(page_fault)

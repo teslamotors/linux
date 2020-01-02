@@ -1,0 +1,91 @@
+/*
+ * Copyright © 2015 Intel Corporation
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice (including the next
+ * paragraph) shall be included in all copies or substantial portions of the
+ * Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
+ * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ *
+ */
+
+#ifndef _I915_PARAMS_H_
+#define _I915_PARAMS_H_
+
+#include <linux/cache.h> /* for __read_mostly */
+
+struct i915_params {
+	int modeset;
+	int panel_ignore_lid;
+	int semaphores;
+	int lvds_channel_mode;
+	int panel_use_ssc;
+	int vbt_sdvo_panel_type;
+	int enable_rc6;
+	int enable_dc;
+	int enable_fbc;
+	int enable_ppgtt;
+	int enable_execlists;
+	int enable_psr;
+	unsigned int alpha_support;
+	int disable_power_well;
+	int enable_ips;
+	int invert_brightness;
+	int enable_guc_loading;
+	int enable_guc_submission;
+	int guc_log_level;
+	int use_mmio_flip;
+	int mmio_debug;
+	int edp_vswing;
+	int reset;
+	int enable_preemption;
+	int flip_priority;
+	int context_priority_mode;
+	int preempting_priority;
+	unsigned int inject_load_failure;
+	unsigned int forcepreempt_timeout;
+	unsigned int tsd_init;
+	int tsd_delay;
+	unsigned int avail_planes_per_pipe;
+	unsigned long long domain_plane_owners;
+	/* leave bools at the end to not create holes */
+	bool enable_cmd_parser;
+	bool enable_hangcheck;
+	bool fastboot;
+	bool prefault_disable;
+	bool load_detect_test;
+	bool force_reset_modeset_test;
+	bool error_capture;
+	bool disable_display;
+	bool disable_vtd_wa;
+	bool verbose_state_checks;
+	bool nuclear_pageflip;
+	bool enable_dp_mst;
+	bool enable_dpcd_backlight;
+	bool enable_gvt;
+	bool enable_ipc;
+	bool enable_guc_critical_logging;
+	bool enable_initial_modeset;
+	bool enable_pvmmio;
+	bool enable_gvt_oos;
+	bool enable_conformance_check;
+	bool force_hdmi_sink;
+};
+
+extern struct i915_params i915 __read_mostly;
+
+#endif
+

@@ -24,6 +24,7 @@
 #include <linux/tpm.h>
 #include <linux/platform_data/st33zp24.h>
 
+#include "../tpm.h"
 #include "st33zp24.h"
 
 #define TPM_DUMMY_BYTE			0xAA
@@ -258,7 +259,6 @@ static SIMPLE_DEV_PM_OPS(st33zp24_i2c_ops, st33zp24_pm_suspend,
 
 static struct i2c_driver st33zp24_i2c_driver = {
 	.driver = {
-		.owner = THIS_MODULE,
 		.name = TPM_ST33_I2C,
 		.pm = &st33zp24_i2c_ops,
 		.of_match_table = of_match_ptr(of_st33zp24_i2c_match),

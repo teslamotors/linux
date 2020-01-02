@@ -285,6 +285,15 @@ config VIDEO_SAA711X
 	  To compile this driver as a module, choose M here: the
 	  module will be called saa7115.
 
+config VIDEO_TC3587_TI940
+	tristate "Toshiba TC3587 video decoder (Intel TI940 based)"
+	depends on VIDEO_V4L2 && I2C
+	---help---
+	  This is a driver for the Toshiba TC3587 based on the minimal
+	  TI940 driver provided by Intel for their IPU4. It only does the
+	  necessary initialization to get the TC3587 running, there is no
+	  support for changing video modes or other parameters at run time.
+
 config VIDEO_TVP514X
 	tristate "Texas Instruments TVP514x video decoder"
 	depends on VIDEO_V4L2 && I2C
@@ -730,6 +739,13 @@ config VIDEO_TI964
         depends on VIDEO_V4L2 && I2C && REGMAP_I2C
 	---help---
 	TI964 video aggregator driver
+
+config VIDEO_TI940
+	tristate "TI940 deserializer"
+        depends on VIDEO_V4L2 && I2C
+	select REGMAP_I2C
+	---help---
+	TI940 deserializer driver
 
 endmenu
 

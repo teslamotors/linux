@@ -132,7 +132,9 @@ static int intel_ipu4_isys_library_close(struct intel_ipu4_isys *isys)
 	 * some time as the FW must stop its actions including code fetch
 	 * to SP icache.
 	 */
+	spin_lock(&isys->power_lock);
 	rval = intel_ipu4_lib_call(device_close, isys);
+	spin_unlock(&isys->power_lock);
 	if (rval)
 		dev_err(dev, "Device close failure: %d\n", rval);
 
@@ -144,10 +146,12 @@ static int intel_ipu4_isys_library_close(struct intel_ipu4_isys *isys)
 		timeout--;
 	} while (rval != 0 && timeout);
 
+	spin_lock(&isys->power_lock);
 	if (!rval)
 		isys->fwcom = NULL; /* No further actions needed */
 	else
 		dev_err(dev, "Device release time out %d\n", rval);
+	spin_unlock(&isys->power_lock);
 	return rval;
 }
 

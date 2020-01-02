@@ -50,4 +50,6 @@ struct dwc3_platform_data {
 	u32 fladj_value;
 
 	const char *hsphy_interface;
+
+	unsigned has_dsm_for_softreset:1;
 };

@@ -1738,6 +1738,7 @@ struct task_struct {
 #ifdef CONFIG_DEBUG_ATOMIC_SLEEP
 	unsigned long	task_state_change;
 #endif
+	int pagefault_disabled;
 };
 
 /* Future-safe accessor for struct task_struct's cpus_allowed. */

@@ -227,6 +227,9 @@ int pxa2xx_spi_map_dma_buffers(struct driver_data *drv_data)
 	if (drv_data->len < chip->dma_burst_size)
 		return 0;
 
+	if (drv_data->len < chip->pio_dma_threshold)
+		return 0;
+
 	ret = pxa2xx_spi_map_dma_buffer(drv_data, DMA_TO_DEVICE);
 	if (ret <= 0) {
 		dev_warn(&drv_data->pdev->dev, "failed to DMA map TX\n");

@@ -1926,7 +1926,7 @@ static int psys_runtime_pm_resume(struct device *dev)
 	}
 	spin_unlock_irqrestore(&psys->power_lock, flags);
 
-	if (!intel_ipu4_buttress_auth_done(adev->isp)) {
+	if (!intel_ipu4_buttress_auth_done(adev->isp) || !psys->fwcom) {
 		dev_err(dev, "%s: not yet authenticated, skipping\n", __func__);
 		return 0;
 	}
@@ -2258,6 +2258,24 @@ static int intel_ipu4_psys_fw_init(struct intel_ipu4_psys *psys)
 	return 0;
 }
 
+static struct workqueue_struct *fw_auth_workqueue;
+
+typedef struct {
+	struct work_struct work;
+	struct intel_ipu4_psys *psys;
+} fw_auth_task_t;
+
+static void trigger_fw_auth(struct work_struct *work)
+{
+	fw_auth_task_t *task = (fw_auth_task_t *) work;
+	struct intel_ipu4_psys *psys = task->psys;
+
+	intel_ipu4_psys_fw_init(psys);
+
+	kfree(work);
+}
+
+
 static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 {
 	struct intel_ipu4_mmu *mmu = dev_get_drvdata(adev->iommu);
@@ -2413,10 +2431,14 @@ static int intel_ipu4_psys_probe(struct intel_ipu4_bus_device *adev)
 
 	dev_info(&adev->dev, "pkg_dir entry count:%d\n", caps.pg_count);
 
-	rval = intel_ipu4_psys_fw_init(psys);
-	if (rval) {
-		dev_err(&adev->dev, "FW init failed(%d)\n", rval);
-		goto out_free_pgs;
+	fw_auth_workqueue = create_workqueue("ipu4_fw_auth_workqueue");
+	fw_auth_task_t *fw_auth_task = NULL;
+
+	fw_auth_task = kmalloc(sizeof(fw_auth_task_t), GFP_ATOMIC);
+	if (fw_auth_task) {
+		INIT_WORK((struct work_struct *) fw_auth_task, trigger_fw_auth);
+		fw_auth_task->psys = psys;
+		queue_work(fw_auth_workqueue, (struct work_struct *)fw_auth_task);
 	}
 
 	psys->dev.parent = &adev->dev;
@@ -2656,6 +2678,7 @@ static struct intel_ipu4_bus_driver intel_ipu4_psys_driver = {
 		.name = INTEL_IPU4_PSYS_NAME,
 		.owner = THIS_MODULE,
 		.pm = PSYS_PM_OPS,
+		.probe_type = PROBE_PREFER_ASYNCHRONOUS,
 	},
 };
 

@@ -2052,11 +2052,8 @@ static int dma_convert_to_hda_format(struct hda_codec *codec,
 {
 	unsigned int format_val;
 
-	format_val = snd_hda_calc_stream_format(codec,
-				sample_rate,
-				channels,
-				SNDRV_PCM_FORMAT_S32_LE,
-				32, 0);
+	format_val = snd_hdac_calc_stream_format(sample_rate,
+				channels, SNDRV_PCM_FORMAT_S32_LE, 32, 0);
 
 	if (hda_format)
 		*hda_format = (unsigned short)format_val;
@@ -4657,6 +4654,17 @@ static int patch_ca0132(struct hda_codec *codec)
 	codec->spec = spec;
 	spec->codec = codec;
 
+	codec->patch_ops = ca0132_patch_ops;
+	codec->pcm_format_first = 1;
+	codec->no_sticky_stream = 1;
+
+	/* Detect codec quirk */
+	quirk = snd_pci_quirk_lookup(codec->bus->pci, ca0132_quirks);
+	if (quirk)
+		spec->quirk = quirk->value;
+	else
+		spec->quirk = QUIRK_NONE;
+
 	spec->dsp_state = DSP_DOWNLOAD_INIT;
 	spec->num_mixers = 1;
 	spec->mixers[0] = ca0132_mixer;
@@ -4677,28 +4685,23 @@ static int patch_ca0132(struct hda_codec *codec)
 	if (err < 0)
 		return err;
 
-	codec->patch_ops = ca0132_patch_ops;
-	codec->pcm_format_first = 1;
-	codec->no_sticky_stream = 1;
-
 	return 0;
 }
 
 /*
  * patch entries
  */
-static struct hda_codec_preset snd_hda_preset_ca0132[] = {
-	{ .id = 0x11020011, .name = "CA0132",     .patch = patch_ca0132 },
+static struct hda_device_id snd_hda_id_ca0132[] = {
+	HDA_CODEC_ENTRY(0x11020011, "CA0132", patch_ca0132),
 	{} /* terminator */
 };
-
-MODULE_ALIAS("snd-hda-codec-id:11020011");
+MODULE_DEVICE_TABLE(hdaudio, snd_hda_id_ca0132);
 
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Creative Sound Core3D codec");
 
 static struct hda_codec_driver ca0132_driver = {
-	.preset = snd_hda_preset_ca0132,
+	.id = snd_hda_id_ca0132,
 };
 
 module_hda_codec_driver(ca0132_driver);

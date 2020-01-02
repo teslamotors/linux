@@ -363,6 +363,18 @@ done:
 }
 
 /**
+ * driver_wait_probe_done
+ * Wait until the probe sequence is finished.
+ *
+ */
+void driver_wait_probe_done(void)
+{
+	pr_debug("%s: probe_count = %d\n", __func__,
+	atomic_read(&probe_count));
+	wait_event(probe_waitqueue, atomic_read(&probe_count) == 0);
+}
+
+/**
  * driver_probe_done
  * Determine if the probe sequence is finished or not.
  *

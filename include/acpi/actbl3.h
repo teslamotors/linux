@@ -51,7 +51,8 @@
  * These tables are not consumed directly by the ACPICA subsystem, but are
  * included here to support device drivers and the AML disassembler.
  *
- * The tables in this file are fully defined within the ACPI specification.
+ * In general, the tables in this file are fully defined within the ACPI
+ * specification.
  *
  ******************************************************************************/
 
@@ -68,7 +69,6 @@
 #define ACPI_SIG_PCCT           "PCCT"	/* Platform Communications Channel Table */
 #define ACPI_SIG_PMTT           "PMTT"	/* Platform Memory Topology Table */
 #define ACPI_SIG_RASF           "RASF"	/* RAS Feature table */
-#define ACPI_SIG_TPM2           "TPM2"	/* Trusted Platform Module 2.0 H/W interface table */
 
 #define ACPI_SIG_S3PT           "S3PT"	/* S3 Performance (sub)Table */
 #define ACPI_SIG_PCCS           "PCC"	/* PCC Shared Memory Region */
@@ -683,35 +683,6 @@ enum acpi_rasf_status {
 #define ACPI_RASF_ERROR                 (1<<2)
 #define ACPI_RASF_STATUS                (0x1F<<3)
 
-/*******************************************************************************
- *
- * TPM2 - Trusted Platform Module (TPM) 2.0 Hardware Interface Table
- *        Version 3
- *
- * Conforms to "TPM 2.0 Hardware Interface Table (TPM2)" 29 November 2011
- *
- ******************************************************************************/
-
-struct acpi_table_tpm2 {
-	struct acpi_table_header header;	/* Common ACPI table header */
-	u32 flags;
-	u64 control_address;
-	u32 start_method;
-};
-
-/* Control area structure (not part of table, pointed to by control_address) */
-
-struct acpi_tpm2_control {
-	u32 reserved;
-	u32 error;
-	u32 cancel;
-	u32 start;
-	u64 interrupt_control;
-	u32 command_size;
-	u64 command_address;
-	u32 response_size;
-	u64 response_address;
-};
 
 /* Reset to default packing */
 

@@ -31,7 +31,7 @@ endchoice
 
 config VIDEO_INTEL_IPU5
 	tristate "Intel intel-ipu5 driver"
-	depends on ACPI
+	depends on ACPI && (VIDEO_INTEL_IPU4 = n)
 	select IOMMU_API
 	select IOMMU_IOVA
 	select X86_DEV_DMA_OPS if X86
@@ -58,3 +58,9 @@ config VIDEO_INTEL_IPU_FW_LIB
 config VIDEO_INTEL_IPU4_DEBUG
 	tristate "User space interface for firmware testing"
 	depends on VIDEO_INTEL_IPU4
+
+config VIDEO_INTEL_IPU4_POWER_CYCLE_AT_STREAMOFF
+	bool "Enable power cycling of IPU hardware at streamoff of last stream"
+	---help---
+	Triggers HW power cycle without need of closing/reopening IPU device
+        node by userspace application after stopping last active stream.

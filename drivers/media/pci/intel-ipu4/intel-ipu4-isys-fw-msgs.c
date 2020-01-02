@@ -171,7 +171,9 @@ static int intel_ipu4_isys_abi_fw_close(struct intel_ipu4_isys *isys)
 	 * some time as the FW must stop its actions including code fetch
 	 * to SP icache.
 	*/
+	spin_lock(&isys->power_lock);
 	rval = intel_ipu4_fw_com_close(isys->fwcom);
+	spin_unlock(&isys->power_lock);
 	if (rval)
 		dev_err(dev, "Device close failure: %d\n", rval);
 
@@ -183,10 +185,12 @@ static int intel_ipu4_isys_abi_fw_close(struct intel_ipu4_isys *isys)
 		timeout--;
 	} while (rval != 0 && timeout);
 
+	spin_lock(&isys->power_lock);
 	if (!rval)
 		isys->fwcom = NULL; /* No further actions needed */
 	else
 		dev_err(dev, "Device release time out %d\n", rval);
+	spin_unlock(&isys->power_lock);
 	return rval;
 }
 
@@ -321,6 +325,7 @@ static int intel_ipu4_isys_abi_fw_init(struct intel_ipu4_isys *isys,
 		rval = intel_ipu4_fw_com_ready(isys->fwcom);
 		if (!rval)
 			break;
+		retry--;
 	} while (retry > 0);
 
 	if (!retry && rval) {

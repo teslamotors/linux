@@ -59,23 +59,22 @@ static void trigger_error(struct intel_ipu4_isys_csi2 *csi2)
 	spin_unlock_irqrestore(&csi2->isys->lock, flags);
 }
 
+
 void intel_ipu4_isys_csi2_trigger_error(struct intel_ipu4_isys_csi2 *csi2)
 {
-
 	csi2->isys->reset_needed = true;
-       	trigger_error(csi2);
-      
+	trigger_error(csi2);
 }
 
 void intel_ipu4_isys_csi2_trigger_error_all(struct intel_ipu4_isys *isys)
 {
 	int i;
-
 	isys->reset_needed = true;
 	for (i = 0; i < isys->pdata->ipdata->csi2.nports; i++) {
-        	trigger_error(&isys->csi2[i]);
-        }
+		trigger_error(&isys->csi2[i]);
+	}
 }
+
 
 struct intel_ipu_isys_csi2_ops csi2_funcs_ipu4 = {
 	.set_stream = intel_ipu4_isys_csi2_set_stream,
@@ -827,6 +826,7 @@ static void eof_wdt_handler(struct work_struct *w)
 			wake_up_interruptible(&aq->vbq.owner->wait);
 		}
 		csi2->isys->csi2_in_error_state = 1;
+
 		if (csi2->current_owner && !csi2->error_signal_send) {
 			memset(&info, 0, sizeof(struct siginfo));
 			info.si_signo = SIGUSR1;

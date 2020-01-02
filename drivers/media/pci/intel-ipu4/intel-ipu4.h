@@ -24,6 +24,9 @@
 #include "intel-ipu4-buttress.h"
 #include "intel-ipu4-trace.h"
 
+/* disable debug trace in production env, remove notice of trace_printk*/
+#define trace_printk(fmt, ...)
+
 #define INTEL_IPU4_NAME			"intel-ipu4"
 
 #define INTEL_IPU4_ISYS_FIRMWARE_B0	"ipu4_isys_bxt_fw_b0_pkg_dir.bin"
@@ -64,6 +67,8 @@
 #define INTEL_IPU4_HW_BXT_P		0x5a88
 #define INTEL_IPU4_HW_BXT_P_A0_REV	0x3
 #define INTEL_IPU4_HW_BXT_P_B1_REV	0xa
+#define INTEL_IPU4_HW_BXT_P_D0_REV	0xb
+#define INTEL_IPU4_HW_BXT_P_E0_REV	0xc
 
 #define INTEL_IPU5_HW_FPGA_A0		0x5a19
 

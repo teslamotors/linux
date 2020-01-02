@@ -597,57 +597,51 @@ static bool radeon_read_disabled_bios(struct radeon_device *rdev)
 #ifdef CONFIG_ACPI
 static bool radeon_acpi_vfct_bios(struct radeon_device *rdev)
 {
+	bool ret = false;
 	struct acpi_table_header *hdr;
 	acpi_size tbl_size;
 	UEFI_ACPI_VFCT *vfct;
-	unsigned offset;
+	GOP_VBIOS_CONTENT *vbios;
+	VFCT_IMAGE_HEADER *vhdr;
 
 	if (!ACPI_SUCCESS(acpi_get_table_with_size("VFCT", 1, &hdr, &tbl_size)))
 		return false;
 	if (tbl_size < sizeof(UEFI_ACPI_VFCT)) {
 		DRM_ERROR("ACPI VFCT table present but broken (too short #1)\n");
-		return false;
+		goto out_unmap;
 	}
 
 	vfct = (UEFI_ACPI_VFCT *)hdr;
-	offset = vfct->VBIOSImageOffset;
-
-	while (offset < tbl_size) {
-		GOP_VBIOS_CONTENT *vbios = (GOP_VBIOS_CONTENT *)((char *)hdr + offset);
-		VFCT_IMAGE_HEADER *vhdr = &vbios->VbiosHeader;
-
-		offset += sizeof(VFCT_IMAGE_HEADER);
-		if (offset > tbl_size) {
-			DRM_ERROR("ACPI VFCT image header truncated\n");
-			return false;
-		}
-
-		offset += vhdr->ImageLength;
-		if (offset > tbl_size) {
-			DRM_ERROR("ACPI VFCT image truncated\n");
-			return false;
-		}
-
-		if (vhdr->ImageLength &&
-		    vhdr->PCIBus == rdev->pdev->bus->number &&
-		    vhdr->PCIDevice == PCI_SLOT(rdev->pdev->devfn) &&
-		    vhdr->PCIFunction == PCI_FUNC(rdev->pdev->devfn) &&
-		    vhdr->VendorID == rdev->pdev->vendor &&
-		    vhdr->DeviceID == rdev->pdev->device) {
-			rdev->bios = kmemdup(&vbios->VbiosContent,
-					     vhdr->ImageLength,
-					     GFP_KERNEL);
-
-			if (!rdev->bios) {
-				kfree(rdev->bios);
-				return false;
-			}
-			return true;
-		}
+	if (vfct->VBIOSImageOffset + sizeof(VFCT_IMAGE_HEADER) > tbl_size) {
+		DRM_ERROR("ACPI VFCT table present but broken (too short #2)\n");
+		goto out_unmap;
 	}
 
-	DRM_ERROR("ACPI VFCT table present but broken (too short #2)\n");
-	return false;
+	vbios = (GOP_VBIOS_CONTENT *)((char *)hdr + vfct->VBIOSImageOffset);
+	vhdr = &vbios->VbiosHeader;
+	DRM_INFO("ACPI VFCT contains a BIOS for %02x:%02x.%d %04x:%04x, size %d\n",
+			vhdr->PCIBus, vhdr->PCIDevice, vhdr->PCIFunction,
+			vhdr->VendorID, vhdr->DeviceID, vhdr->ImageLength);
+
+	if (vhdr->PCIBus != rdev->pdev->bus->number ||
+	    vhdr->PCIDevice != PCI_SLOT(rdev->pdev->devfn) ||
+	    vhdr->PCIFunction != PCI_FUNC(rdev->pdev->devfn) ||
+	    vhdr->VendorID != rdev->pdev->vendor ||
+	    vhdr->DeviceID != rdev->pdev->device) {
+		DRM_INFO("ACPI VFCT table is not for this card\n");
+		goto out_unmap;
+	}
+
+	if (vfct->VBIOSImageOffset + sizeof(VFCT_IMAGE_HEADER) + vhdr->ImageLength > tbl_size) {
+		DRM_ERROR("ACPI VFCT image truncated\n");
+		goto out_unmap;
+	}
+
+	rdev->bios = kmemdup(&vbios->VbiosContent, vhdr->ImageLength, GFP_KERNEL);
+	ret = !!rdev->bios;
+
+out_unmap:
+	return ret;
 }
 #else
 static inline bool radeon_acpi_vfct_bios(struct radeon_device *rdev)

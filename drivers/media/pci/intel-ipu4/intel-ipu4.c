@@ -425,6 +425,32 @@ static struct intel_ipu4_receiver_electrical_params ipu4_ev_params[] = {
 	  .ports[1].DrcVal_combined = 31,
 	  .ports[1].CtleVal = 4
 	},
+
+	{ 0, 1500000000ul / 2, INTEL_IPU4_HW_BXT_P, INTEL_IPU4_HW_BXT_P_D0_REV,
+	  .RcompVal_combo = 11,
+	  .RcompVal_legacy = 11,
+	  .ports[0].CrcVal = 18,
+	  .ports[0].DrcVal = 29,
+	  .ports[0].DrcVal_combined = 29,
+	  .ports[0].CtleVal = 4,
+	  .ports[1].CrcVal = 18,
+	  .ports[1].DrcVal = 29,
+	  .ports[1].DrcVal_combined = 31,
+	  .ports[1].CtleVal = 4
+	},
+
+	{ 0, 1500000000ul / 2, INTEL_IPU4_HW_BXT_P, INTEL_IPU4_HW_BXT_P_E0_REV,
+	  .RcompVal_combo = 11,
+	  .RcompVal_legacy = 11,
+	  .ports[0].CrcVal = 18,
+	  .ports[0].DrcVal = 29,
+	  .ports[0].DrcVal_combined = 29,
+	  .ports[0].CtleVal = 4,
+	  .ports[1].CrcVal = 18,
+	  .ports[1].DrcVal = 29,
+	  .ports[1].DrcVal_combined = 31,
+	  .ports[1].CtleVal = 4
+	},
 	{ },
 };
 

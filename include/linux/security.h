@@ -27,6 +27,8 @@
 #include <linux/slab.h>
 #include <linux/err.h>
 #include <linux/string.h>
+#include <linux/mm.h>
+#include <linux/fs.h>
 
 struct linux_binprm;
 struct cred;
@@ -3166,7 +3168,15 @@ static inline void security_audit_rule_free(void *lsmrule)
 #endif /* CONFIG_AUDIT */
 
 #ifdef CONFIG_SECURITYFS
-
+extern int securityfs_pin_fs(void);
+extern int __securityfs_setup_d_inode(struct inode *dir, struct dentry *dentry,
+				      umode_t mode, void *data,
+				      const struct file_operations *fops,
+				      const struct inode_operations *iops);
+extern struct dentry *securityfs_create_dentry(const char *name, umode_t mode,
+				        struct dentry *parent, void *data,
+					const struct file_operations *fops,
+					const struct inode_operations *iops);
 extern struct dentry *securityfs_create_file(const char *name, umode_t mode,
 					     struct dentry *parent, void *data,
 					     const struct file_operations *fops);
@@ -3174,6 +3184,28 @@ extern struct dentry *securityfs_create_dir(const char *name, struct dentry *par
 extern void securityfs_remove(struct dentry *dentry);
 
 #else /* CONFIG_SECURITYFS */
+static inline int securityfs_pin_fs(void)
+{
+	return -ENODEV;
+}
+
+static inline int __securityfs_setup_d_inode(struct inode *dir,
+					struct dentry *dentry,
+					umode_t mode, void *data,
+					const struct file_operations *fops,
+					const struct inode_operations *iops)
+{
+	return -ENODEV;
+}
+
+static inline struct dentry *securityfs_create_dentry(const char *name,
+					umode_t mode,
+					struct dentry *parent, void *data,
+					const struct file_operations *fops,
+					const struct inode_operations *iops)
+{
+	return ERR_PTR(-ENODEV);
+}
 
 static inline struct dentry *securityfs_create_dir(const char *name,
 						   struct dentry *parent)

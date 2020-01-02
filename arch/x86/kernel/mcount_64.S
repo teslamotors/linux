@@ -7,7 +7,7 @@
 #include <linux/linkage.h>
 #include <asm/ptrace.h>
 #include <asm/ftrace.h>
-
+#include <asm/nospec-branch.h>
 
 	.code64
 	.section .entry.text, "ax"
@@ -278,8 +278,8 @@ trace:
 	/* save_mcount_regs fills in first two parameters */
 	save_mcount_regs
 
-	call   *ftrace_trace_function
-
+	movq ftrace_trace_function, %r8
+	CALL_NOSPEC %r8
 	restore_mcount_regs
 
 	jmp fgraph_trace
@@ -322,5 +322,5 @@ GLOBAL(return_to_handler)
 	movq 8(%rsp), %rdx
 	movq (%rsp), %rax
 	addq $24, %rsp
-	jmp *%rdi
+	JMP_NOSPEC %rdi
 #endif

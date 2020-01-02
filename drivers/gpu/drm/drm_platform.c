@@ -48,8 +48,8 @@ static int drm_get_platform_dev(struct platform_device *platdev,
 	DRM_DEBUG("\n");
 
 	dev = drm_dev_alloc(driver, &platdev->dev);
-	if (!dev)
-		return -ENOMEM;
+	if (IS_ERR(dev))
+		return PTR_ERR(dev);
 
 	dev->platformdev = platdev;
 
@@ -57,34 +57,12 @@ static int drm_get_platform_dev(struct platform_device *platdev,
 	if (ret)
 		goto err_free;
 
-	DRM_INFO("Initialized %s %d.%d.%d %s on minor %d\n",
-		 driver->name, driver->major, driver->minor, driver->patchlevel,
-		 driver->date, dev->primary->index);
-
 	return 0;
 
 err_free:
 	drm_dev_unref(dev);
 	return ret;
 }
-
-int drm_platform_set_busid(struct drm_device *dev, struct drm_master *master)
-{
-	int id;
-
-	id = dev->platformdev->id;
-	if (id < 0)
-		id = 0;
-
-	master->unique = kasprintf(GFP_KERNEL, "platform:%s:%02d",
-						dev->platformdev->name, id);
-	if (!master->unique)
-		return -ENOMEM;
-
-	master->unique_len = strlen(master->unique);
-	return 0;
-}
-EXPORT_SYMBOL(drm_platform_set_busid);
 
 /**
  * drm_platform_init - Register a platform device with the DRM subsystem
@@ -94,6 +72,9 @@ EXPORT_SYMBOL(drm_platform_set_busid);
  * Registers the specified DRM device driver and platform device with the DRM
  * subsystem, initializing a drm_device structure and calling the driver's
  * .load() function.
+ *
+ * NOTE: This function is deprecated, please use drm_dev_alloc() and
+ * drm_dev_register() instead and remove your &drm_driver.load callback.
  *
  * Return: 0 on success or a negative error code on failure.
  */

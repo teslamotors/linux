@@ -24,6 +24,11 @@
 #include "public_key.h"
 #include "x509_parser.h"
 
+#ifdef CONFIG_MANIFEST
+/* ifdef is used here to mark Linux non-standard code*/
+#include <security/manifest.h>
+#endif
+
 static bool use_builtin_keys;
 static struct asymmetric_key_id *ca_keyid;
 
@@ -241,6 +246,23 @@ static int x509_validate_trust(struct x509_certificate *cert,
 	return ret;
 }
 
+#ifdef CONFIG_MANIFEST
+static char keystrbuf[512];
+
+static const char *key_id_to_str(const struct asymmetric_key_id *kid)
+{
+	size_t len = kid->len;
+
+	/* not more than 511 characters plus null terminator */
+	if (len > sizeof(keystrbuf) - 1)
+		len = sizeof(keystrbuf) - 1;
+
+	memset(keystrbuf, 0, sizeof(keystrbuf));
+	memcpy(keystrbuf, kid->data, len);
+	return keystrbuf;
+}
+#endif
+
 /*
  * Attempt to parse a data blob for a key as an X509 certificate.
  */
@@ -251,6 +273,10 @@ static int x509_key_preparse(struct key_preparsed_payload *prep)
 	const char *q;
 	size_t srlen, sulen;
 	char *desc = NULL, *p;
+#ifdef CONFIG_MANIFEST
+	char hexprefix[MANIFEST_SKID_PREFIX_LEN * 2 + 1];
+	char *ptr;
+#endif
 	int ret;
 
 	cert = x509_cert_parse(prep->data, prep->datalen);
@@ -279,17 +305,110 @@ static int x509_key_preparse(struct key_preparsed_payload *prep)
 	cert->pub->algo = pkey_algo[cert->pub->pkey_algo];
 	cert->pub->id_type = PKEY_ID_X509;
 
-	/* Check the signature on the key if it appears to be self-signed */
-	if (!cert->akid_skid ||
-	    asymmetric_key_id_same(cert->skid, cert->akid_skid)) {
-		ret = x509_check_signature(cert->pub, cert); /* self-signed */
-		if (ret < 0)
-			goto error_free_cert;
-	} else if (!prep->trusted) {
-		ret = x509_validate_trust(cert, get_system_trusted_keyring());
-		if (!ret)
+#ifdef CONFIG_MANIFEST
+	memset(hexprefix, 0, sizeof(hexprefix));
+	ptr = NULL;
+	/* Check if Subject Key ID matches manifest key prefix */
+	if (cert->raw_skid && cert->raw_skid_size >
+		(MANIFEST_SKID_PREFIX_LEN + MANIFEST_SKID_USAGE_LEN) &&
+		!memcmp(cert->raw_skid, MANIFEST_SKID_PREFIX,
+				MANIFEST_SKID_PREFIX_LEN)) {
+
+		uint32_t usage_bits[MANIFEST_USAGE_SIZE];
+
+		pr_devel("Cert issuer: %s, Cert subject: %s\n",
+				 cert->issuer, cert->subject);
+
+		/* Subject Key ID contains manifest key usage bits */
+		memcpy(usage_bits, cert->raw_skid + MANIFEST_SKID_PREFIX_LEN,
+			   MANIFEST_SKID_USAGE_LEN);
+
+		pr_devel("Cert usage bits: %*phN\n",
+				 MANIFEST_SKID_USAGE_LEN, usage_bits);
+
+		/* If self-signed certificate then verify directly against manifest hashes */
+		if (!cert->akid_skid ||
+			asymmetric_key_id_same(cert->skid, cert->akid_skid)) {
+
+			pr_devel("Checking self signed cert %s...\n",
+					 key_id_to_str(cert->skid));
+
+			ret = x509_check_signature(cert->pub, cert); /* self-signed */
+			if (ret < 0) {
+				pr_err("Cert signature check failed: %d\n", ret);
+				goto error_free_cert;
+			}
+			ret = verify_x509_cert_against_manifest(cert, usage_bits);
+			if (ret < 0) {
+				pr_err("Self signed cert does not match manifest: %d\n", ret);
+				goto error_free_cert;
+			}
 			prep->trusted = 1;
+		/* If secondary certificate then verify against the primary one */
+		} else if (!prep->trusted) {
+			struct key *key;
+			uint32_t parent_usage_bits[MANIFEST_USAGE_SIZE];
+
+			pr_devel("Verifying non-self signed certificate against %s...\n",
+					 key_id_to_str(cert->akid_skid));
+
+			/* Get the primary key to check signature of the (secondary) cert */
+			key = x509_request_asymmetric_key(get_manifest_keyring(),
+							  cert->akid_skid, false);
+			if (IS_ERR(key)) {
+				pr_err("Master key not found in manifest keyring.\n");
+				goto error_free_cert;
+			}
+			ret = x509_check_signature(key->payload.data, cert);
+			if (ret < 0) {
+				pr_err("Invalid key description: %s\n", key->description);
+				key_put(key);
+				goto error_free_cert;
+			}
+
+			/* Get usage bits from the primary key description (hex format) */
+			pr_devel("Key description: %s\n", key->description);
+			bin2hex(hexprefix, MANIFEST_SKID_PREFIX,
+							   MANIFEST_SKID_PREFIX_LEN);
+			ptr = strstr(key->description, hexprefix);
+			if (!ptr) {
+				key_put(key);
+				goto error_free_cert;
+			}
+			ret = hex2bin((char *) parent_usage_bits,
+						  ptr + MANIFEST_SKID_PREFIX_LEN * 2,
+						  MANIFEST_SKID_USAGE_LEN);
+			if (ret) {
+				pr_err("Missing or invalid usage bits hex in key %s\n",
+						key->description);
+				key_put(key);
+				goto error_free_cert;
+			}
+
+			/* Check if usage bits match */
+			if (!check_usage_bits(usage_bits, parent_usage_bits))
+				prep->trusted = 1;
+			else
+				pr_err("Usage bits do not match master key %s\n",
+						key->description);
+			key_put(key);
+		}
+	} else {
+#endif
+		/* Check the signature on the key if it appears to be self-signed */
+		if (!cert->akid_skid ||
+			asymmetric_key_id_same(cert->skid, cert->akid_skid)) {
+			ret = x509_check_signature(cert->pub, cert); /* self-signed */
+			if (ret < 0)
+				goto error_free_cert;
+		} else if (!prep->trusted) {
+			ret = x509_validate_trust(cert, get_system_trusted_keyring());
+			if (!ret)
+				prep->trusted = 1;
+		}
+#ifdef CONFIG_MANIFEST
 	}
+#endif
 
 	/* Propose a description */
 	sulen = strlen(cert->subject);

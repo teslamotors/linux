@@ -58,10 +58,14 @@ config SND_SOC_ALL_CODECS
 	select SND_SOC_DA7213 if I2C
 	select SND_SOC_DA732X if I2C
 	select SND_SOC_DA9055 if I2C
+	select SND_SOC_TDF8532 if I2C
+	select SND_SOC_TDA7802 if I2C
 	select SND_SOC_DMIC
 	select SND_SOC_BT_SCO
 	select SND_SOC_ES8328_SPI if SPI_MASTER
 	select SND_SOC_ES8328_I2C if I2C
+	select SND_SOC_HDAC_HDMI
+	select SND_SOC_ICS43432
 	select SND_SOC_ISABELLE if I2C
 	select SND_SOC_JZ4740_CODEC
 	select SND_SOC_LM4857 if I2C
@@ -83,6 +87,7 @@ config SND_SOC_ALL_CODECS
 	select SND_SOC_PCM512x_I2C if I2C
 	select SND_SOC_PCM512x_SPI if SPI_MASTER
 	select SND_SOC_RT286 if I2C
+	select SND_SOC_RT298 if I2C
 	select SND_SOC_RT5631 if I2C
 	select SND_SOC_RT5640 if I2C
 	select SND_SOC_RT5645 if I2C
@@ -430,6 +435,14 @@ config SND_SOC_BT_SCO
 config SND_SOC_DMIC
 	tristate
 
+config SND_SOC_TDF8532
+    tristate "NXP Semiconductors TDF8532 Codec"
+	depends on I2C
+
+config SND_SOC_TDA7802
+	tristate "ST TDA7802 Codec"
+	depends on I2C
+
 config SND_SOC_HDMI_CODEC
        tristate "HDMI stub CODEC"
 
@@ -443,6 +456,12 @@ config SND_SOC_ES8328_I2C
 config SND_SOC_ES8328_SPI
 	tristate
 	select SND_SOC_ES8328
+
+config SND_SOC_HDAC_HDMI
+	tristate
+	select SND_HDA_EXT_CORE
+	select SND_PCM_ELD
+	select HDMI
 
 config SND_SOC_ISABELLE
         tristate
@@ -507,7 +526,18 @@ config SND_SOC_RL6231
 	default m if SND_SOC_RT5670=m
 	default m if SND_SOC_RT5677=m
 
+config SND_SOC_RL6347A
+	tristate
+	default y if SND_SOC_RT286=y
+	default y if SND_SOC_RT298=y
+	default m if SND_SOC_RT286=m
+	default m if SND_SOC_RT298=m
+
 config SND_SOC_RT286
+	tristate
+	depends on I2C
+
+config SND_SOC_RT298
 	tristate
 	depends on I2C
 

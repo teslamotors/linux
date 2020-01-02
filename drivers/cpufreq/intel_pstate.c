@@ -28,6 +28,7 @@
 #include <linux/acpi.h>
 #include <linux/vmalloc.h>
 #include <trace/events/power.h>
+#include <linux/notifier.h>
 
 #include <asm/div64.h>
 #include <asm/msr.h>
@@ -43,6 +44,12 @@
 #define int_tofp(X) ((int64_t)(X) << FRAC_BITS)
 #define fp_toint(X) ((X) >> FRAC_BITS)
 
+/* Number of timer cycles for triggering force notification */
+#define NUM_CYCLES 10
+
+static ATOMIC_NOTIFIER_HEAD(pstate_freq_notifier_list);
+
+static int notification_registered_flag;
 
 static inline int32_t mul_fp(int32_t x, int32_t y)
 {
@@ -102,6 +109,7 @@ struct _pid {
 
 struct cpudata {
 	int cpu;
+	int counter;
 
 	struct timer_list timer;
 
@@ -292,9 +300,99 @@ static void intel_pstate_hwp_set(void)
 	put_online_cpus();
 }
 
+/**
+ * pstate_cpu_enable_turbo_usage - enable cpu turbo mode
+ *
+ * Enable turbo mode for all cpu cores by changing
+ * no_turbo variable
+ *
+ * Return 0 on success, otherwise errno
+ */
+int pstate_cpu_enable_turbo_usage(void)
+{
+	update_turbo_state();
+	if (limits.turbo_disabled) {
+		pr_warn("intel_pstate: Turbo disabled by BIOS or unavailable on processor\n");
+		return -EPERM;
+	}
+
+	limits.no_turbo = 0;
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(pstate_cpu_enable_turbo_usage);
+
+/**
+ * pstate_cpu_disable_turbo_usage - disable cpu turbo mode
+ *
+ * Disable turbo mode for all cpu cores by changing
+ * no_turbo variable
+ *
+ * Return 0 on success, otherwise errno
+ */
+int pstate_cpu_disable_turbo_usage(void)
+{
+	limits.no_turbo = 1;
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(pstate_cpu_disable_turbo_usage);
+
+/**
+ * pstate_cpu_pstate2freq – convert perf state to frequency value
+ *
+ * convert a performance state number to the matching clock
+ * frequency in kHz
+ *
+ * @pstate – the perf index number to be mapped to a frequency
+ * Return frequency value in kHz, -1 if pstate is out of range
+ */
+int pstate_cpu_pstate2freq(int pstate)
+{
+	/* Check if intel_pstate driver disabled */
+	if (!all_cpu_data)
+		return -1;
+
+	if (pstate < pstate_funcs.get_min() ||
+		pstate > pstate_funcs.get_turbo())
+		return -1;
+
+	return pstate * pstate_funcs.get_scaling();
+}
+EXPORT_SYMBOL_GPL(pstate_cpu_pstate2freq);
+
+/**
+ * pstate_cpu_get_max_pstate() - get the highest possible pstate number
+ *
+ * Return the maximum number of available P-States for CPU
+ */
+int pstate_cpu_get_max_pstate(void)
+{
+	/* Check if intel_pstate driver disabled */
+	if (!all_cpu_data)
+		return -1;
+
+	return pstate_funcs.get_turbo();
+}
+EXPORT_SYMBOL_GPL(pstate_cpu_get_max_pstate);
+
+/**
+ * pstate_cpu_get_sample() - get the cpu notifications sample rate
+ *
+ * Return the maximum sample rate for cpu notifications in ms
+ */
+int pstate_cpu_get_sample(void)
+{
+	return NUM_CYCLES * pid_params.sample_rate_ms;
+}
+EXPORT_SYMBOL_GPL(pstate_cpu_get_sample);
+
 /************************** debugfs begin ************************/
 static int pid_param_set(void *data, u64 val)
 {
+	if (notification_registered_flag)
+		return -EAGAIN;
+
 	*(u32 *)data = val;
 	intel_pstate_reset_all_pid();
 	return 0;
@@ -406,6 +504,9 @@ static ssize_t store_no_turbo(struct kobject *a, struct attribute *b,
 		pr_warn("intel_pstate: Turbo disabled by BIOS or unavailable on processor\n");
 		return -EPERM;
 	}
+
+	if (notification_registered_flag)
+		return -EAGAIN;
 
 	limits.no_turbo = clamp_t(int, input, 0, 1);
 
@@ -800,6 +901,36 @@ static void intel_pstate_get_min_max(struct cpudata *cpu, int *min, int *max)
 	*min = clamp_t(int, min_perf, cpu->pstate.min_pstate, max_perf);
 }
 
+/**
+ * Register a notifier callback whenever the CPU frequency changes.
+ * @nb: pointer to the notifier block for the callback
+ */
+int pstate_register_freq_notify(struct notifier_block *nb)
+{
+	notification_registered_flag++;
+	return atomic_notifier_chain_register(&pstate_freq_notifier_list, nb);
+}
+EXPORT_SYMBOL_GPL(pstate_register_freq_notify);
+
+/**
+ * Unregister a gpu freqency change notifier callback.
+ * @nb: pointer to the notifier block for the callback
+ */
+int pstate_unregister_freq_notify(struct notifier_block *nb)
+{
+	notification_registered_flag--;
+	return atomic_notifier_chain_unregister(&pstate_freq_notifier_list, nb);
+}
+EXPORT_SYMBOL_GPL(pstate_unregister_freq_notify);
+
+static int pstate_notifier_call_chain(struct cpudata *cpu)
+{
+	cpu->counter = 0;
+	return atomic_notifier_call_chain(&pstate_freq_notifier_list,
+		(unsigned long) cpu->pstate.current_pstate,
+		(void *) (long) (cpu->cpu));
+}
+
 static void intel_pstate_set_pstate(struct cpudata *cpu, int pstate, bool force)
 {
 	int max_perf, min_perf;
@@ -811,14 +942,20 @@ static void intel_pstate_set_pstate(struct cpudata *cpu, int pstate, bool force)
 
 		pstate = clamp_t(int, pstate, min_perf, max_perf);
 
-		if (pstate == cpu->pstate.current_pstate)
+		if (pstate == cpu->pstate.current_pstate) {
+			if (++cpu->counter >= NUM_CYCLES)
+				pstate_notifier_call_chain(cpu);
+
 			return;
+		}
 	}
 	trace_cpu_frequency(pstate * cpu->pstate.scaling, cpu->cpu);
 
 	cpu->pstate.current_pstate = pstate;
 
 	pstate_funcs.set(cpu, pstate);
+
+	pstate_notifier_call_chain(cpu);
 }
 
 static void intel_pstate_get_cpu_pstates(struct cpudata *cpu)

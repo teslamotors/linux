@@ -21,10 +21,15 @@
 #include <linux/types.h>
 #include <linux/interrupt.h>
 #include <linux/firmware.h>
+#include <linux/kfifo.h>
+#include <linux/kref.h>
+#include <sound/compress_driver.h>
+#include "../skylake/skl-sst-dsp.h"
 
 struct sst_mem_block;
 struct sst_module;
 struct sst_fw;
+struct sst_pdata;
 
 /* do we need to remove or keep */
 #define DSP_DRAM_ADDR_OFFSET		0x400000
@@ -75,6 +80,10 @@ struct sst_addr {
 	u32 dram_offset;
 	u32 dsp_iram_offset;
 	u32 dsp_dram_offset;
+	u32 sram0_base;
+	u32 sram1_base;
+	u32 w0_stat_sz;
+	u32 w0_up_sz;
 	void __iomem *lpe;
 	void __iomem *shim;
 	void __iomem *pci_cfg;
@@ -89,6 +98,39 @@ struct sst_mailbox {
 	void __iomem *out_base;
 	size_t in_size;
 	size_t out_size;
+};
+
+/*
+ * Audio DSP Trace Buffer Configuration.
+*/
+struct sst_dbg_rbuffer {
+	DECLARE_KFIFO_PTR(fifo_dsp, u32);
+	struct kref	refcount;
+	unsigned long	total_avail;
+	/* To set the state of the stream incase of XRUN */
+	struct snd_compr_stream *stream;
+};
+
+/*
+ * DSP Trace Buffer for FW Logging
+ * Assumption: Each core is assigned equal proportion of memory window for fw
+ * logging addressed in the increasing order of core id (i.e., the first trace
+ * buffer belong to core 0 and so on).
+*/
+struct sst_trace_window {
+	/* base address and size of fw logging windows */
+	void __iomem	*addr;
+	u32		size;
+	/* driver ringbuffer array for each DSP */
+	struct sst_dbg_rbuffer	**dbg_buffers;
+	/* fw write pointer array for each DSP */
+	void __iomem	**dsp_wps;
+	/* number of buffers within fw logging window */
+	u32		nr_dsp;
+	/* indicates which DSPs have logging enabled */
+	u32		flags;
+       /* dsp fw log level*/
+	u32 log_priority;
 };
 
 /*
@@ -253,10 +295,20 @@ struct sst_mem_block {
 	struct list_head list;		/* Map list of free/used blocks */
 };
 
+#define SKL_DSP_MAX_CORES  4
+
+struct skl_dsp_core_info {
+	unsigned int cores; /* Number of DSP cores on the SoC */
+	int core_state[SKL_DSP_MAX_CORES];
+	int core_usage_count[SKL_DSP_MAX_CORES];
+};
+
 /*
  * Generic SST Shim Interface.
  */
 struct sst_dsp {
+
+	/* Shared for all platforms */
 
 	/* runtime */
 	struct sst_dsp_device *sst_dev;
@@ -267,10 +319,6 @@ struct sst_dsp {
 	void *thread_context;
 	int irq;
 	u32 id;
-
-	/* list of free and used ADSP memory blocks */
-	struct list_head used_block_list;
-	struct list_head free_block_list;
 
 	/* operations */
 	struct sst_ops *ops;
@@ -283,6 +331,15 @@ struct sst_dsp {
 
 	/* mailbox */
 	struct sst_mailbox mailbox;
+
+	/* Trace Buffer */
+	struct sst_trace_window	trace_wind;
+
+	/* HSW/Byt data */
+
+	/* list of free and used ADSP memory blocks */
+	struct list_head used_block_list;
+	struct list_head free_block_list;
 
 	/* SST FW files loaded and their modules */
 	struct list_head module_list;
@@ -299,6 +356,26 @@ struct sst_dsp {
 	/* DMA FW loading */
 	struct sst_dma *dma;
 	bool fw_use_dma;
+	/* cAVS I2S data */
+	u8 num_i2s_ports;
+
+
+	/* SKL data */
+
+	const char *fw_name;
+
+	/* To allocate CL dma buffers */
+	struct skl_dsp_loader_ops dsp_ops;
+	struct skl_dsp_fw_ops fw_ops;
+	int sst_state;
+	struct skl_cl_dev cl_dev;
+	u32 intr_status;
+	const struct firmware *fw;
+	struct snd_dma_buffer dmab;
+	struct skl_dsp_core_info core_info;
+#if IS_ENABLED(CONFIG_SND_SOC_INTEL_CNL_FPGA)
+	struct snd_dma_buffer dsp_fw_buf;
+#endif
 };
 
 /* Size optimised DRAM/IRAM memcpy */
@@ -370,4 +447,5 @@ void sst_dma_free(struct sst_dma *dma);
 
 u32 sst_dsp_get_offset(struct sst_dsp *dsp, u32 offset,
 	enum sst_mem_type type);
+
 #endif

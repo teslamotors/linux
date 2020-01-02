@@ -43,7 +43,7 @@ config PINCTRL_BROXTON
 
 config PINCTRL_APL_DEVICE
 	bool "Intel Apollo Lake GPIO pin control Platform Device Emulation"
-	depends on PINCTRL_BROXTON
+	depends on PINCTRL_BROXTON && !ACPI
 	help
 	  This driver is to set up platform device in the absent of ACPI
 	  enumeration.

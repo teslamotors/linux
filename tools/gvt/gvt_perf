@@ -1,0 +1,1176 @@
+#!/usr/bin/python
+
+#Copyright(c) 2011-2016 Intel Corporation. All rights reserved.
+#Permission is hereby granted, free of charge, to any person obtaining a
+#copy of this software and associated documentation files (the "Software"),
+#to deal in the Software without restriction, including without limitation
+#the rights to use, copy, modify, merge, publish, distribute, sublicense,
+#and/or sell copies of the Software, and to permit persons to whom the
+#Software is furnished to do so, subject to the following conditions:
+#The above copyright notice and this permission notice (including the next
+#paragraph) shall be included in all copies or substantial portions of the
+#Software.
+#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+#IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+#FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
+#THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+#LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+#OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+#SOFTWARE.
+
+import os, sys, re
+import time
+import shlex, subprocess
+import fileinput
+from optparse import OptionParser
+from subprocess import *
+
+parser = OptionParser()
+parser.add_option("-i", "--vgpuid", dest="vgpuid", type="int",
+		   help="Specify the instance id to be sampled")
+parser.add_option("-t", "--timeout", dest="timeout", type="int",
+		   help="Timeout in seconds")
+parser.add_option("-v", "--verbose", dest="verbose",
+		   help="print status message", action="store_true")
+
+(options, args) = parser.parse_args()
+if options.verbose:
+	print (options, args)
+
+#from stackoverflow
+class Tee(object):
+	def __init__(self, *files):
+		self.files = files
+	def write(self, obj):
+		for f in self.files:
+			f.write(obj)
+
+tag = long(time.time())
+e = {}
+# check environment
+path_gvt_debug = "/sys/kernel/debug/gvt"
+path_vgt = "/sys/kernel/vgt"
+path_i915 = "/sys/kernel/debug/dri/0/i915_perf_info"
+max_ring_num = 5
+xen_flag = True
+gvt_flag = True
+verbose_flag = False
+
+if options.verbose:
+    verbose_flag = True
+
+if os.path.exists(path_gvt_debug):
+	if os.path.exists("/var/run/xen"):
+		print "Running in XenGT environment..."
+                e["env"] = "Dom0"
+	elif os.path.exists("/var/run/xenstored"):
+		print "Running in XenGT environment..."
+                e["env"] = "Dom0"
+	else:
+		xen_flag = False
+		print "Running in KVMGT environment..."
+		e["sample_xengtop"] = FALSE
+                e["env"] = "KVM Host"
+else:
+	print "Running in Native,VM or VT-d environment..."
+        xen_flag = False
+        gvt_flag = False
+        e["env"] = "DomU/Native"
+
+if xen_flag:
+	e["log_top"] = "/tmp/xengt.top.%ld" % tag
+	e["log_xentop"] = '/tmp/xengt.xentop.%ld' % tag
+	e["log_gpu"] = '/tmp/xengt.gpu.%ld' % tag
+	e["log_file"] = '/tmp/xengt.log.%ld' % tag
+	e["log_vm"] = '/tmp/xengt.vm.%ld' % tag
+	e["log_i915_old"] = '/tmp/xengt.i915.old.%ld' % tag
+	e["log_i915_new"] = '/tmp/xengt.i915.new.%ld' % tag
+elif gvt_flag:
+	e["log_top"] = "/tmp/kvmgt.top.%ld" % tag
+	e["log_gpu"] = '/tmp/kvmgt.gpu.%ld' % tag
+	e["log_file"] = '/tmp/kvmgt.log.%ld' % tag
+	e["log_i915_old"] = '/tmp/kvmgt.i915.old.%ld' % tag
+	e["log_i915_new"] = '/tmp/kvmgt.i915.new.%ld' % tag
+else:
+	e["log_top"] = "/tmp/i915.top.%ld" % tag
+	e["log_gpu"] = '/tmp/i915.gpu.%ld' % tag
+	e["log_file"] = '/tmp/i915.log.%ld' % tag
+	e["log_i915_old"] = '/tmp/i915.i915.old.%ld' % tag
+	e["log_i915_new"] = '/tmp/i915.i915.new.%ld' % tag
+
+# output to both console and logfile
+e["logf"] = open(e["log_file"], "w")
+e["old_stdout"] = sys.stdout
+sys.stdout = Tee(sys.stdout, e["logf"])
+
+e["vgpuid"] = -1
+if options.vgpuid:
+	e["vgpuid"] = int(options.vgpuid)
+print "TAG: %ld (logfile: %s)" % (tag, e["log_file"])
+
+e["timeout"] = 360
+if options.timeout:
+	e["timeout"] = options.timeout
+print "Timeout: %d" % e["timeout"]
+
+def err_exit(e, msg):
+	print "Clean up environment on error (%s)" % msg
+        if top:
+            top.stop()
+        if xentop:
+            xentop.stop()
+        if gpu_freq:
+            gpu_freq.stop()
+	sys.stdout = e["old_stdout"]
+	e["logf"].close()
+	sys.exit()
+
+def get_cpu_info():
+    cpu_num = 0
+    cpu_mhz = ""
+    for line in fileinput.input("/proc/cpuinfo"):
+	m = re.search("^processor[ \t]*:", line)
+	if m:
+		cpu_num += 1
+		continue
+
+	if not cpu_mhz:
+		m = re.search("cpu MHz[ \t].: (?P<freq>[0-9\.]*)", line)
+		if m:
+			cpu_mhz = m.group("freq")
+			continue
+
+    if cpu_num == 0 or not cpu_mhz:
+	err_exit(e, "Failed to get cpu num(%d) and cpu_mhz(%s))" % (cpu_num, cpu_mhz))
+
+    e["cpu_num"] = cpu_num
+    e["cpu_mhz"] = cpu_mhz
+    e["cpu_freq"] = long(float(cpu_mhz) * 1000000)
+
+    print "Detecting %d cpus (%sMHz)" % (cpu_num, cpu_mhz)
+
+def percentage(v1, v2):
+	residue = (v1 * 100) / v2
+	remainder = (((v1 * 100) % v2) * 100) / v2
+	return "%ld.%02ld%%" % (residue, remainder)
+
+def avg(cnt, cycles):
+	if not cnt:
+		return 0
+	return cycles/float(cnt)
+
+def analyze_output(path, pattern, key):
+	items = []
+	for line in fileinput.input(path):
+	    m = re.search(pattern, line)
+	    if not m:
+		continue
+	    items.append(m.group(key))
+	return items
+
+def get_avg_util_int(s):
+	count = 0
+	tot = 0
+	for item in s:
+		if item == '0' or item == '0.0':
+			continue
+		tot += int(item)
+		count += 1
+
+	if count:
+		#print tot, count, tot/count
+		return tot / count
+	else:
+		return 0
+
+def get_avg_util_float(s):
+	count = 0
+	tot = 0.0
+	first = 0.0
+	for item in s:
+		if item == '0' or item == '0.0':
+			continue
+		tot += float(item)
+		count += 1
+		if count == 1:
+			first = float(item)
+
+	if count:
+		#print tot, count, tot/count
+		count -= 1
+		tot -= first
+		if count:
+			return tot / count
+		else:
+			return 0
+	else:
+		return 0
+
+def print_engine_item_vs_total_general(format1, format2, format3, format4, title, total, sum_array):
+	print format1 %title ,
+        for i in range(max_ring_num):
+	    data = sum_array[i]
+	    print format2 %(data),
+	    if total[i]:
+		print format3 %(percentage(data, total[i])),
+	    else:
+		print format4 %(""),
+	print ""
+
+class Stats:
+    def __init__(self):
+        self.old = {}
+        self.new = {}
+        self.delta = {}
+        self.path = {}
+
+    def calc_delta(self, t):
+        s1 = self.old;
+        s2 = self.new;
+	if s1.keys() != s2.keys():
+	    err_exit(e, "Unmatched before/after sampling!" + s1.keys() + s2.keys())
+
+        s = {}
+        #print s1
+	for l in s1.keys():
+            if isinstance(s1[l], dict):
+                s[l] = {}
+                for attr in s1[l].keys():
+                    s[l][attr] = (s2[l][attr] - s1[l][attr])/t
+            else:
+                s[l] = (s2[l] - s1[l])/t
+        self.delta = s
+
+    def start(self):
+        self.populate(self.old)
+
+    def stop(self):
+        self.populate(self.new)
+
+    def populate(self, stat):
+        s = stat
+        for key in self.nodes.keys():
+	    node = self.nodes[key]
+	    count = node["node"] + 'cnt'
+	    cycles = node["node"] + 'cycles'
+	    items = { 'count' : count, 'cycles': cycles }
+	    for i in items.keys():
+		item = items[i]
+		if node[i] and node["engine"]:
+	            s[item] = {};
+		    s[item] = self.read_stat_array(item);
+		elif node[i]:
+		    s[item] = self.read_stat(item);
+
+    def print_engine_item(self, format1, format2, title, key):
+        node = self.nodes[key]
+        vs = self.delta
+        if not node["engine"]:
+            return
+        if node["count"]:
+	    item = node["node"] + "cnt"
+        else:
+	    item = node["node"] + "cycles"
+        if not title:
+            title = node["name"]
+	print format1 %(title),
+        for engine in range(max_ring_num):
+	    print format2 %long(vs[item][engine]),
+        print ""
+
+    def print_engine_item_vs_total(self, format1, format2, format3, format4, title, total, key):
+        node = self.nodes[key]
+        vs = self.delta
+        if not node["engine"]:
+            return
+        if node["count"]:
+	    item = node["node"] + "cnt"
+        else:
+	    item = node["node"] + "cycles"
+        if not title:
+            title = node["name"]
+        sum_array = vs[item]
+        print_engine_item_vs_total_general(format1, format2, format3,
+                format4, title, total, sum_array)
+
+    def read_stat(self, node):
+	fi = open(self.path + node, "r")
+	s = fi.read()
+	fi.close()
+	return long(s)
+
+    def read_stat_array(self, node):
+        s = {}
+        fi = open(self.path + node, "r")
+
+	engine = 0;
+	while 1:
+            line = fi.readline()
+            if not line:
+                break;
+            line = line.strip()
+
+            s[engine] = long(line)
+            engine += 1
+	return s
+
+    def get_data(self, item):
+        return self.delta[item]
+
+class I915(Stats):
+    mmio_nodes =  {
+        "MMIO Read",
+        "MMIO Write",
+    };
+    engine_nodes = {
+        "GPU Cycles",
+        "Request Submitted Count",
+        "Request Completed Count",
+        "Preempt Cnt",
+        "Lite Restore Cnt",
+    };
+
+    def __init__(self):
+        self.path = path_i915
+        self.oldpath = e["log_i915_old"]
+        self.newpath =  e["log_i915_new"]
+        self.old = {}
+        self.new = {}
+        self.delta = {}
+
+    def start(self):
+        open(self.oldpath, "wb").write(open(self.path, "rb").read())
+
+    def stop(self):
+        open(self.newpath, "wb").write(open(self.path, "rb").read())
+
+    def calc_delta(self, t):
+        self.populate(self.old, self.oldpath)
+        self.populate(self.new, self.newpath)
+        Stats.calc_delta(self, t)
+
+    def populate(self, stat, path):
+        stat["mmio"] = {}
+        self.collect_mmio_data(stat["mmio"], path)
+        self.collect_per_engine_data(stat, path)
+
+    def collect_mmio_data(self, s, path):
+        for node in I915.mmio_nodes:
+            cnt = node + " Cnt"
+            cycles = node + " Cycles"
+            self.parse_mmio_node(cnt, s, path)
+            self.parse_mmio_node(cycles, s, path)
+
+    def collect_per_engine_data(self, s, path):
+        self.parse_per_engine_nodes(s, path)
+
+    def parse_mmio_node(self, node, s, path):
+        fi = open(path, "r")
+        key = node + "=(?P<value>[0-9\.]*)"
+        while 1:
+            line = fi.readline()
+            if not line:
+                break
+
+            m = re.search(key, line)
+            if m:
+                s[node] = long(m.group("value"))
+                break
+        fi.close()
+
+    def parse_per_engine_nodes(self, s, path):
+        fi = open(path, "r")
+        pass_info = False
+        while 1:
+            line = fi.readline()
+            if not line:
+                break
+            line = line.strip()
+
+            m = re.search("Ring", line)
+            if m:
+                engine = line
+                s[engine] = {}
+                pass_info = True
+                continue
+            elif not m and not pass_info:
+                continue
+
+            for info in I915.engine_nodes:
+                key = info + "=(?P<value>[0-9\.]*)"
+                i = re.search(key, line)
+                if i:
+                    s[engine][info] = long(i.group("value"))
+                    continue
+        fi.close()
+
+    def print_engine_item(self, format1, format2, title, key):
+        s = self.delta
+	print format1 %(title),
+	for i in range (max_ring_num):
+            engine = "Ring " + str(i)
+            count = s[engine][key]
+            print format2 %(count),
+	print ""
+
+    def show_mmio_info(self, format1, format2):
+        print "----"
+        print format1 % ("Type", "Count", "Cycles", "Avg", "CPU%")
+        print format1 % ("----", "----", "----", "----", "----")
+        s = self.delta["mmio"]
+        for key in I915.mmio_nodes:
+            count = key + " Cnt"
+            cycles = key + " Cycles"
+            print format2 %(key, s[count], s[cycles],
+			 avg(s[count], s[cycles]),
+			 percentage(s[cycles], e["cpu_freq"]))
+
+class VGPU (Stats):
+    nodes = {
+	"gpu_cycles" : {
+		"node"	: "gpu_",
+                "name"  : "Allocated GPU cycles",
+		"count" : 0,
+		"cycles": 1,
+		"engine": 1,
+		"scheduler" : 0,
+	},
+	"requests_completed_count" : {
+		"node"	: "requests_completed_",
+                "name"  : "Req Completed Count",
+		"count" : 1,
+		"cycles": 0,
+		"engine": 1,
+		"scheduler" : 0,
+	},
+	"requests_submitted_count" : {
+		"node"	: "requests_submitted_",
+                "name"  : "Req Submit Count",
+		"count" : 1,
+		"cycles": 0,
+		"engine": 1,
+		"scheduler" : 0,
+	},
+	"elsp_cnt" : {
+		"node"	: "elsp_",
+                "name"  : "ELSP Count",
+		"count" : 1,
+		"cycles": 0,
+		"engine": 1,
+		"scheduler" : 0,
+	},
+	"workload_submit_cycles" : {
+		"node"	: "workload_submit_",
+                "name"  : "Submit to QueueIn",
+		"count" : 0,
+		"cycles": 1,
+		"engine": 1,
+		"scheduler" : 0,
+	},
+	"workload_queue_in_out_cycles" : {
+		"node"	: "workload_queue_in_out_",
+                "name"  : "QueueIn to QueueOut",
+		"count" : 0,
+		"cycles": 1,
+		"engine": 1,
+		"scheduler" : 0,
+	},
+	"pick_workload_cycles" : {
+		"node"	: "pick_workload_",
+                "name"  : "Pick",
+		"count" : 0,
+		"cycles": 1,
+		"engine": 1,
+		"scheduler" : 1,
+	},
+	"schedule_misc_cycles" : {
+		"node"	: "schedule_misc_",
+                "name"  : "Misc",
+		"count" : 0,
+		"cycles": 1,
+		"engine": 1,
+		"scheduler" : 1,
+	},
+	"dispatch_cycles" : {
+		"node"	: "dispatch_",
+                "name"  : "Dispatch",
+		"count" : 0,
+		"cycles": 1,
+		"engine": 1,
+		"scheduler" : 1,
+	},
+	"dispatch_lock_cycles" : {
+		"node"	: "dispatch_lock_",
+                "name"  : "Dispatch Lock",
+		"count" : 0,
+		"cycles": 1,
+		"engine": 1,
+		"scheduler" : 0,
+	},
+	"wait_gpu_complete_cycles" : {
+		"node"	: "wait_complete_",
+                "name"  : "Wait GPU complete",
+		"count" : 0,
+		"cycles": 1,
+		"engine": 1,
+		"scheduler" : 1,
+	},
+	"post_gpu_complete_cycles" : {
+		"node"	: "after_complete_",
+                "name"  : "Post Complete",
+		"count" : 0,
+		"cycles": 1,
+		"engine": 1,
+		"scheduler" : 1,
+	},
+	"workload_scan_shadow_cycles" : {
+		"node"	: "scan_shadow_wl_",
+                "name"  : "Workload Shadow&Scan",
+		"count" : 0,
+		"cycles": 1,
+		"engine": 1,
+		"scheduler" : 0,
+	},
+	"GGTT reads" : {
+		"node"	: "gtt_mmio_r",
+                "name"  : "GGTT reads",
+		"count" : 1,
+		"cycles": 1,
+		"engine": 0,
+		"scheduler" : 0,
+	},
+	"GGTT writes" : {
+		"node"	: "gtt_mmio_w",
+                "name"  : "GGTT writes",
+		"count" : 1,
+		"cycles": 1,
+		"engine": 0,
+		"scheduler" : 0,
+	},
+	"MMIO reads" : {
+		"node"	: "mmio_r",
+                "name"  : "MMIO reads",
+		"count" : 1,
+		"cycles": 1,
+		"engine": 0,
+		"scheduler" : 0,
+	},
+	"MMIO writes" : {
+		"node"	: "mmio_w",
+                "name"  : "MMIO writes",
+		"count" : 1,
+		"cycles": 1,
+		"engine": 0,
+		"scheduler" : 0,
+	},
+	"MMIO read Lock" : {
+		"node"	: "mmio_rl_",
+                "name"  : "MMIO read Lock",
+		"count" : 1,
+		"cycles": 1,
+		"engine": 0,
+		"scheduler" : 0,
+	},
+	"MMIO write Lock" : {
+		"node"	: "mmio_wl_",
+                "name"  : "MMIO write Lock",
+		"count" : 1,
+		"cycles": 1,
+		"engine": 0,
+		"scheduler" : 0,
+	},
+	"WP writes" : {
+		"node"	: "wp_",
+                "name"  : "WP writes",
+		"count" : 1,
+		"cycles": 1,
+		"engine": 0,
+		"scheduler" : 0,
+	},
+	"PPGTT WP writes" : {
+		"node"	: "ppgtt_wp_",
+                "name"  : "PPGTT WP writes",
+		"count" : 1,
+		"cycles": 1,
+		"engine": 0,
+		"scheduler" : 0,
+	},
+	"PPGTT guest page find hit" : {
+		"node"	: "gpt_find_hit_",
+                "name"  : "PPGTT guest page find hit",
+		"count" : 1,
+		"cycles": 1,
+		"engine": 0,
+		"scheduler" : 0,
+	},
+	"PPGTT guest page find miss" : {
+		"node"	: "gpt_find_miss_",
+                "name"  : "PPGTT guest page find miss",
+		"count" : 1,
+		"cycles": 1,
+		"engine": 0,
+		"scheduler" : 0,
+	},
+	"PPGTT shadow page find hit" : {
+		"node"	: "spt_find_hit_",
+                "name"  : "PPGTT shadow page find hit",
+		"count" : 1,
+		"cycles": 1,
+		"engine": 0,
+		"scheduler" : 0,
+	},
+	"PPGTT shadow page find miss" : {
+		"node"	: "spt_find_miss_",
+                "name"  : "PPGTT shadow page find miss",
+		"count" : 1,
+		"cycles": 1,
+		"engine": 0,
+		"scheduler" : 0,
+	},
+	"Sync oos pte" : {
+		"node"	: "oos_pte_",
+                "name"  : "Sync oos pte",
+		"count" : 1,
+		"cycles": 1,
+		"engine": 0,
+		"scheduler" : 0,
+	},
+	"Sync oos page" : {
+		"node"	: "oos_page_",
+                "name"  : "Sync oos page",
+		"count" : 1,
+		"cycles": 1,
+		"engine": 0,
+		"scheduler" : 0,
+	},
+
+	"PPGTT shadow last-level page" : {
+		"node"	: "shadow_last_level_page_",
+                "name"  : "PPGTT shadow last-level page",
+		"count" : 1,
+		"cycles": 1,
+		"engine": 0,
+		"scheduler" : 0,
+	},
+    };
+
+    def __init__(self, vgpuid, name, path):
+        self.vgpuid = vgpuid
+        self.name = name
+        self.path = path
+        self.old = {}
+        self.new = {}
+        self.delta = {}
+        self.nodes = VGPU.nodes
+
+    def print_item(self, vs, type, bias):
+	format2 = "%-32s %-16.2lf %-16.2lf %-16.2lf %-8s "
+	if not type in self.nodes:
+		print "Unknown type (%s)\n" % type
+		return
+
+	count = self.nodes[type]["node"] + 'cnt'
+	cycles = self.nodes[type]["node"] + 'cycles'
+        name = self.nodes[type]["name"]
+	print format2 % (name, vs[count], vs[cycles],
+			 avg(vs[count], vs[cycles] + vs[count]*bias),
+			 percentage(vs[cycles] + vs[count]*bias, e["cpu_freq"]),
+			 )
+
+    def print_mean_oos_pte_cnt_per_page(self, vs):
+	format2 = "%-32s %-16.2lf %-16s %-16s %-8s "
+        type = "Mean oos pte cnt per page"
+        oos_pte_type = "Sync oos pte"
+        oos_page_type = "Sync oos page"
+        oos_pte_cnt = vs[self.nodes[oos_pte_type]["node"] + 'cnt']
+        oos_page_cnt = vs[self.nodes[oos_page_type]["node"] + 'cnt']
+        mean_count = oos_pte_cnt
+        if oos_page_cnt:
+                mean_count = oos_pte_cnt / oos_page_cnt
+        cycles = 0
+        print format2 % (type, mean_count, "/", "/", "/")
+
+    def show(self):
+	format1 = "%-32s %-16s %-16s %-16s %-8s "
+        format2 = "%-20s %18s %17s %17s %17s %17s"
+	format3 = "%-20s"
+	format4 = " %16.2lf"
+        print "--------------------vGPU %d------------------------------"  %self.vgpuid
+	print format1 % ("Dom0 handle time", "Count", "Cycles", "Avg", "CPU%")
+	print format1 % ("----", "----", "----", "----", "----", )
+
+	bias_read = 0
+	bias_write = 0
+        vs = self.delta
+	if vs["mmio_rl_cnt"]:
+	    bias_read = vs["mmio_rl_cycles"]/vs["mmio_rl_cnt"]
+	if vs["mmio_wl_cnt"]:
+	    bias_write = vs["mmio_wl_cycles"]/vs["mmio_wl_cnt"]
+
+	self.print_item(vs, "MMIO reads", bias_read)
+	self.print_item(vs, "MMIO writes", bias_write)
+	self.print_item(vs, "GGTT reads", bias_read)
+	self.print_item(vs, "GGTT writes", bias_write)
+	self.print_item(vs, "WP writes", bias_write)
+	self.print_item(vs, "PPGTT WP writes", bias_write)
+	self.print_item(vs, "PPGTT guest page find hit", 0)
+	self.print_item(vs, "PPGTT guest page find miss", 0)
+	self.print_item(vs, "PPGTT shadow page find hit", 0)
+	self.print_item(vs, "PPGTT shadow page find miss", 0)
+	self.print_item(vs, "PPGTT shadow last-level page", 0)
+	self.print_item(vs, "Sync oos page", 0)
+	self.print_item(vs, "Sync oos pte", 0)
+	self.print_mean_oos_pte_cnt_per_page(vs)
+
+	print "--------------------"
+        print format2 %("", "Ring 0", "Ring 1", "Ring 2", "Ring 3", "Ring 4")
+        for key in self.nodes.keys():
+	    node = self.nodes[key]
+            self.print_engine_item(format3, format4, node["name"], key)
+
+class GVT (Stats):
+    nodes = {
+	"wait_workload" : {
+		"node"	: "wait_workload_",
+                "name"  : "Wait (in Pick)",
+		"count" : 0,
+		"cycles": 1,
+		"engine": 1,
+		"scheduler" : 0,
+	},
+	"pick_workload_hit" : {
+		"node"	: "pick_hit_",
+                "name"  : "Pick workload hit",
+		"count" : 1,
+		"cycles": 0,
+		"engine": 1,
+		"scheduler" : 0,
+	},
+	"pick_workload_miss" : {
+		"node"	: "pick_miss_",
+                "name"  : "Pick workload miss",
+		"count" : 1,
+		"cycles": 0,
+		"engine": 1,
+		"scheduler" : 0,
+	},
+    };
+
+    def __init__(self):
+        self.old = {}
+        self.new = {}
+        self.delta = {}
+        self.path = path_gvt_debug + "/"
+        self.nodes = GVT.nodes
+
+class VGPUS:
+    def __init__(self):
+        self.vgpu_info = {}
+        if not xen_flag:
+            for path in os.listdir(path_gvt_debug):
+                m = re.search("vgpu(?P<id>[0-9]+)", path)
+	        if not m:
+	            continue
+	        id = int(m.group("id"))
+	    self.vgpu_info[id] = {}
+	    self.vgpu_info[id]["name"] = path
+	    self.vgpu_info[id]["path"] = path_gvt_debug + "/" +  path + "/"
+        else:
+	    os.system("xl list > %s" % e["log_vm"])
+	    for line in fileinput.input(e["log_vm"]):
+	        if line.find("VCPUs") != -1:
+		    continue
+
+	        m = re.search("(?P<name>[^ ^\t]+)[ \t]*(?P<id>[0-9]+)", line)
+	        if not m:
+		    err_exit(e, "Confusing VM info: %s" % line)
+
+	        vmid = int(m.group("id"))
+                vmName = m.group("name")
+	        if vmid == 0:
+                    e["dom0_name"] = vmName
+                else:
+	            vgpu_id = long(open(path_vgt + "/vm" + m.group("id") + "/vgpu_id").read())
+	            self.vgpu_info[vgpu_id] = {}
+	            self.vgpu_info[vgpu_id]["name"] = "vGPU" + str(vgpu_id)
+		    self.vgpu_info[vgpu_id]["vmid"] = vmid
+		    self.vgpu_info[vgpu_id]["vmName"] = vmName
+	            self.vgpu_info[vgpu_id]["path"] = path_gvt_debug + "/vgpu" +  str(vgpu_id) + "/"
+
+    def get_info(self):
+        return self.vgpu_info
+
+    def start(self):
+        for id in self.vgpu_info:
+            self.vgpu_info[id]["vgpu"] = VGPU(id, self.vgpu_info[id]["name"], self.vgpu_info[id]["path"])
+            self.vgpu_info[id]["vgpu"].start()
+
+    def stop(self):
+        for id in self.vgpu_info:
+            self.vgpu_info[id]["vgpu"].stop()
+
+    def calc_delta(self, time):
+        for id in self.vgpu_info:
+            self.vgpu_info[id]["vgpu"].calc_delta(time)
+
+    def get_vgpu_sum_per_engine(self, item, engine):
+        sum = 0
+        for id in self.vgpu_info:
+	    sum += long(self.vgpu_info[id]["vgpu"].get_data(item)[engine])
+        return sum
+
+    def get_vgpu_sum(self, item):
+        sum = [0, 0, 0, 0, 0]
+        for i in range(max_ring_num):
+            sum[i] = self.get_vgpu_sum_per_engine(item, i)
+        return sum
+
+    def show(self):
+        for id in self.vgpu_info:
+	    self.vgpu_info[id]["vgpu"].show()
+
+    def print_engine_item_vs_total(self, format1, format2, format3, format4, title, total, item):
+        sum_array = self.get_vgpu_sum(item)
+        if not title:
+            title = VGPU.nodes[item]["name"]
+        print_engine_item_vs_total_general(format1, format2, format3,
+                format4, title, total, sum_array)
+
+    def print_engine_item_forall(self, format1, format2, key):
+        for id in self.vgpu_info:
+            title = self.vgpu_info[id]["name"]
+	    self.vgpu_info[id]["vgpu"].print_engine_item(format1, format2,
+                    title, key)
+
+class SchedulerInfo:
+    def __init__(self, gvt, vgpus):
+        self.gvt = gvt
+        self.vgpus = vgpus
+
+    def show(self):
+	print "--------------------Scheduler Info------------------------------"
+	format1 = "%-20s %18s %24s %25s %25s %25s"
+	format2 = "%-20s"
+	format3 = "%16.2f"
+	format4 = "(%6s)"
+	format5 = "%8s"
+	print format1 %("", "Ring 0", "Ring 1", "Ring 2", "Ring 3", "Ring 4")
+        title = "Guest Requests Count"
+	null = [0, 0, 0, 0, 0]
+        self.vgpus.print_engine_item_vs_total(format2, format3,
+                format4, format5, title, null, "requests_completed_cnt")
+
+	self.gvt.print_engine_item_vs_total(format2, format3, format4,
+                format5, "", null, "pick_workload_hit")
+
+	self.gvt.print_engine_item_vs_total(format2, format3, format4,
+                format5, "", null, "pick_workload_miss")
+
+	print "----"
+
+	total_cycles = [0, 0, 0, 0, 0]
+	for key in VGPU.nodes.keys():
+	    node = VGPU.nodes[key]
+	    if node["scheduler"]:
+		item = node["node"] + "cycles"
+		for i in range(max_ring_num):
+	            total_cycles[i] += self.vgpus.get_vgpu_sum_per_engine(item, i)
+
+	for key in VGPU.nodes.keys():
+	    node = VGPU.nodes[key]
+	    if node["scheduler"]:
+		item = node["node"] + "cycles"
+		title = node["name"]
+                self.vgpus.print_engine_item_vs_total(format2, format3,
+                        format4, format5, title, total_cycles, item )
+
+
+	print "----"
+	self.gvt.print_engine_item_vs_total(format2, format3, format4, format5, "", total_cycles, "wait_workload")
+
+        self.vgpus.print_engine_item_vs_total(format2, format3,
+                format4, format5, "", total_cycles, "workload_submit_cycles")
+
+        self.vgpus.print_engine_item_vs_total(format2, format3,
+                format4, format5, "", total_cycles, "workload_queue_in_out_cycles")
+
+class Xentop:
+    patten = "^[ ]+%s[ ]+[a-z\-]+[ ]+[0-9]+[ ]+(?P<cpu>[0-9]+\.[0-9]+)"
+
+    def __init__(self, log_path, dom0_name, vgpu_info):
+        self.stat = {}
+        self.dom0_name = dom0_name
+        self.vgpu_info = vgpu_info
+        self.log_path = log_path
+
+    def start(self):
+	line = "/usr/sbin/xentop -b -d 1"
+	args = shlex.split(line)
+	self.log = open(self.log_path, "w")
+	self.process = subprocess.Popen(args, stdout = self.log)
+
+    def stop(self):
+        self.process.terminate()
+        self.log.close()
+
+    def analyze(self):
+        dom_utils = analyze_output(self.log_path, Xentop.patten % self.dom0_name, "cpu")
+        self.stat[0] = get_avg_util_float(dom_utils)
+
+        for id in self.vgpu_info:
+            dom_utils = analyze_output(self.log_path, Xentop.patten % self.vgpu_info[id]["vmName"], "cpu")
+            self.stat[id] = get_avg_util_float(dom_utils)
+
+    def show(self):
+        print "----"
+        print "[xentop]Dom0: %2.2f%%" % self.stat[0]
+        for id in self.vgpu_info:
+            vmid = self.vgpu_info[id]["vmid"]
+            print "[xentop]VM%d vgpu%d: %2.2f%%" % (vmid, id, self.stat[id])
+
+class Top:
+    def __init__(self, logpath):
+        self.logpath = logpath
+        self.stat = {}
+
+    def start(self):
+	line = "/usr/bin/top -b -d 1"
+	args = shlex.split(line)
+	self.log = open(self.logpath, "w")
+	self.process = subprocess.Popen(args, stdout = self.log)
+
+    def stop(self):
+        self.process.terminate()
+        self.log.close()
+
+    def analyze(self):
+        idle_data = analyze_output(self.logpath, "Cpu\(s\):.*, (?P<idle>[0-9]+\.[0-9]+)\%id", "idle")
+        self.stat['cpu_idle'] = get_avg_util_float(idle_data)
+
+        count = 0
+        iter = 0
+        cmds = {}
+        for line in fileinput.input(self.logpath):
+            if line.find("top -") >= 0:
+                count += 1
+                compare = False
+	        continue
+
+            if line.find("PID USER") >= 0:
+	        compare = True
+	        continue
+
+	    if not compare:
+	        continue
+
+            m = re.search(" *\w+ +\w+ +\w+ +[\w\-]+ +[\w\.]+ +[\w\.]+ +[\w\.]+ +\w+ +(?P<cpu>[0-9\.]+) +[0-9\.]+ +[0-9\:\.]+ +(?P<cmd>[^ ]+)", line)
+	    if not m:
+	        continue;
+
+            if m.group("cmd") not in cmds:
+	        cmds[m.group("cmd")] = []
+	    cmds[m.group("cmd")].append(m.group("cpu"))
+
+        self.stat['procs'] = {}
+	for cmd in cmds.keys():
+	    tot = 0
+	    for var in cmds[cmd]:
+	        tot += int(float(var))
+	    self.stat['procs'][cmd] = tot / count
+
+    def show(self):
+        print "----"
+        total_usage = 0
+        print "[top]%16s : %2.2f%%" % ("Total CPU%", (100.0 - self.stat['cpu_idle']) * e["cpu_num"])
+        count = 6
+        for cmd, val in sorted(self.stat['procs'].iteritems(), key=lambda(k, v): (v, k), reverse=True):
+            if not count or val == 0:
+                break
+            count -= 1
+            cmd = cmd.strip()
+            print "[top]%16s : %2.2f%%" % (cmd, val)
+	    total_usage += val
+        print "[top]%16s : %2.2f%%" % ("Total CPU usage%", total_usage)
+
+class GPUFreq:
+    def __init__(self, logpath):
+        self.logpath = logpath
+        self.stat = {}
+
+    def start(self):
+	if os.path.isfile('/usr/bin/gpu_freq'):
+		os.remove('/usr/bin/gpu_freq')
+	f = open('/usr/bin/gpu_freq', "w")
+	f.write(' while true; do cat /sys/kernel/debug/dri/0/i915_frequency_info | grep CAGF; sleep 1; done')
+	f.close()
+	line = "/bin/sh /usr/bin/gpu_freq"
+	args = shlex.split(line)
+	self.log = open(self.logpath, "w")
+	self.process = subprocess.Popen(args, stdout = self.log)
+
+    def stop(self):
+        self.process.terminate()
+        self.log.close()
+
+    def analyze(self):
+        gpu_freqs = analyze_output(self.logpath, "^CAGF: (?P<freq>[0-9]*)MHz$", "freq")
+        self.stat["gpu_freq"] = get_avg_util_int(gpu_freqs)
+
+    def show(self):
+        print "----"
+        print "GPU: %dMHz" % self.stat["gpu_freq"]
+
+def collect_data_start():
+    global xentop
+    global top
+    global gpu_freq
+    global i915
+    global vgpus
+    global gvt
+    vgpus = None
+    xentop = None
+    top = None
+    i915 = None
+    gpu_freq = None
+    gvt = None
+
+    get_cpu_info()
+    if gvt_flag:
+        vgpus = VGPUS()
+
+    if xen_flag:
+        xentop = Xentop(e["log_xentop"], e["dom0_name"], vgpus.get_info())
+        xentop.start()
+
+    top = Top(e["log_top"])
+    top.start();
+
+    gpu_freq = GPUFreq(e["log_gpu"])
+    gpu_freq.start()
+
+    i915 = I915()
+    i915.start()
+
+    if not gvt_flag:
+        return
+
+    gvt = GVT()
+    gvt.start()
+
+    vgpus.start()
+
+def collect_data_stop():
+    if xentop:
+        xentop.stop()
+
+    if top:
+        top.stop()
+
+    if gpu_freq:
+        gpu_freq.stop()
+
+    if i915:
+        i915.stop()
+
+    if gvt:
+        gvt.stop()
+
+    if vgpus:
+        vgpus.stop()
+
+def calculate_data(time):
+    if gpu_freq:
+        gpu_freq.analyze()
+    if top:
+        top.analyze()
+    if i915:
+        i915.calc_delta(time)
+    if xentop:
+        xentop.analyze()
+    if gvt:
+        gvt.calc_delta(time)
+    if vgpus:
+        vgpus.calc_delta(time)
+
+def print_engines_header(name):
+	print "--------------------%s------------------------------" %(name)
+	format1 = "%-20s %-16s %-16s %-16s %-16s %-16s"
+	print format1 %(name, "Ring 0", "Ring 1", "Ring 2", "Ring 3", "Ring 4")
+
+def print_requests_count(format1, format2, i915, vgpus):
+	print_engines_header("Req Complete Count")
+	i915.print_engine_item(format1, format2, "All", "Request Completed Count")
+	if vgpus:
+		vgpus.print_engine_item_forall(format1, format2, "requests_completed_count")
+
+        print_engines_header("Req Submit Count")
+	i915.print_engine_item(format1, format2, "All", "Request Submitted Count")
+	if vgpus:
+		vgpus.print_engine_item_forall(format1, format2,
+                        "requests_submitted_count")
+
+	print_engines_header("Lite Restore Cnt")
+	i915.print_engine_item(format1, format2, "All", "Lite Restore Cnt")
+
+
+def print_gpu_cycles(format1, format2, i915, vgpus):
+	print_engines_header("Allocated GPU Cycles")
+	i915.print_engine_item(format1, format2, "All", "GPU Cycles")
+	if vgpus:
+		vgpus.print_engine_item_forall(format1, format2,
+                        "gpu_cycles")
+
+def print_preempt_count(format1, format2, i915):
+	print_engines_header("Host Preempt")
+	i915.print_engine_item(format1, format2, "Preempt Count", "Preempt Cnt")
+
+def show_result(time):
+    print "================GVT perf running in %s======================" % e["env"]
+    print "Elapsed time: %.2fs (%ld cycles), CPU MHz(%s)" % (time, time * e["cpu_freq"], e["cpu_mhz"])
+    format1 = "%-20s %-16s %-16s %-16s %-8s"
+    format2 = "%-20s %-16.2lf %-16.2lf %-16.2lf %-8s"
+    format3 = "%-20s"
+    format4 = "%-16.2f"
+
+    if gpu_freq:
+        gpu_freq.show()
+
+    if top:
+        top.show()
+    else:
+        print "No top"
+    if xentop:
+        xentop.show()
+
+    if i915:
+        i915.show_mmio_info(format1, format2)
+        print_requests_count(format3, format4, i915, vgpus)
+        print_preempt_count(format3, format4, i915)
+        print_gpu_cycles(format3, format4, i915, vgpus)
+    if gvt:
+        scheduler = SchedulerInfo(gvt, vgpus)
+        scheduler.show()
+    if vgpus:
+        vgpus.show()
+
+
+collect_data_start()
+
+print "Wait for %d seconds..." % e["timeout"]
+t1 = time.time()
+try:
+	time.sleep(e["timeout"])
+except KeyboardInterrupt:
+	print "Interrupted"
+t2 = time.time()
+
+collect_data_stop()
+
+print "Analyze result...\n\n\n"
+elapsed = float(t2 - t1)
+calculate_data(elapsed)
+
+show_result(elapsed)
+
+sys.stdout = e["old_stdout"]
+e["logf"].close()

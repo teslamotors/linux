@@ -450,9 +450,9 @@ static void mwifiex_fw_dpc(const struct firmware *firmware, void *context)
 	struct mwifiex_private *priv;
 	struct mwifiex_adapter *adapter = context;
 	struct mwifiex_fw_image fw;
-	struct semaphore *sem = adapter->card_sem;
 	bool init_failed = false;
 	struct wireless_dev *wdev;
+	struct completion *fw_done = adapter->fw_done;
 
 	if (!firmware) {
 		dev_err(adapter->dev,
@@ -587,7 +587,8 @@ done:
 	}
 	if (init_failed)
 		mwifiex_free_adapter(adapter);
-	up(sem);
+	/* Tell all current and future waiters we're finished */
+	complete_all(fw_done);
 	return;
 }
 
@@ -1099,13 +1100,10 @@ static void mwifiex_main_work_queue(struct work_struct *work)
  *      - Add logical interfaces
  */
 int
-mwifiex_add_card(void *card, struct semaphore *sem,
+mwifiex_add_card(void *card, struct completion *fw_done,
 		 struct mwifiex_if_ops *if_ops, u8 iface_type)
 {
 	struct mwifiex_adapter *adapter;
-
-	if (down_interruptible(sem))
-		goto exit_sem_err;
 
 	if (mwifiex_register(card, if_ops, (void **)&adapter)) {
 		pr_err("%s: software init failed\n", __func__);
@@ -1113,7 +1111,7 @@ mwifiex_add_card(void *card, struct semaphore *sem,
 	}
 
 	adapter->iface_type = iface_type;
-	adapter->card_sem = sem;
+	adapter->fw_done = fw_done;
 
 	adapter->hw_status = MWIFIEX_HW_STATUS_INITIALIZING;
 	adapter->surprise_removed = false;
@@ -1182,9 +1180,6 @@ err_kmalloc:
 	mwifiex_free_adapter(adapter);
 
 err_init_sw:
-	up(sem);
-
-exit_sem_err:
 	return -1;
 }
 EXPORT_SYMBOL_GPL(mwifiex_add_card);
@@ -1200,13 +1195,10 @@ EXPORT_SYMBOL_GPL(mwifiex_add_card);
  *      - Unregister the device
  *      - Free the adapter structure
  */
-int mwifiex_remove_card(struct mwifiex_adapter *adapter, struct semaphore *sem)
+int mwifiex_remove_card(struct mwifiex_adapter *adapter)
 {
 	struct mwifiex_private *priv = NULL;
 	int i;
-
-	if (down_interruptible(sem))
-		goto exit_sem_err;
 
 	if (!adapter)
 		goto exit_remove;
@@ -1272,8 +1264,6 @@ int mwifiex_remove_card(struct mwifiex_adapter *adapter, struct semaphore *sem)
 	mwifiex_free_adapter(adapter);
 
 exit_remove:
-	up(sem);
-exit_sem_err:
 	return 0;
 }
 EXPORT_SYMBOL_GPL(mwifiex_remove_card);

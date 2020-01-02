@@ -20,6 +20,7 @@
 #ifndef _MWIFIEX_MAIN_H_
 #define _MWIFIEX_MAIN_H_
 
+#include <linux/completion.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/sched.h>
@@ -894,7 +895,10 @@ struct mwifiex_adapter {
 	u32 usr_dot_11ac_mcs_support;
 
 	atomic_t pending_bridged_pkts;
-	struct semaphore *card_sem;
+
+	/* For synchronizing FW initialization with device lifecycle. */
+	struct completion *fw_done;
+
 	bool ext_scan;
 	u8 fw_api_ver;
 	u8 key_api_major_ver, key_api_minor_ver;
@@ -1254,8 +1258,8 @@ static inline u8 mwifiex_is_any_intf_active(struct mwifiex_private *priv)
 
 int mwifiex_init_shutdown_fw(struct mwifiex_private *priv,
 			     u32 func_init_shutdown);
-int mwifiex_add_card(void *, struct semaphore *, struct mwifiex_if_ops *, u8);
-int mwifiex_remove_card(struct mwifiex_adapter *, struct semaphore *);
+int mwifiex_add_card(void *, struct completion *fw_done, struct mwifiex_if_ops *, u8);
+int mwifiex_remove_card(struct mwifiex_adapter *);
 
 void mwifiex_get_version(struct mwifiex_adapter *adapter, char *version,
 			 int maxlen);

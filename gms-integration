@@ -1,0 +1,59 @@
+###
+### Upstream integration
+###
+forklift/4.1 3916d352308de1902723d146c63825a89d0531ef
+	drm/i915: Add IOTG forklift identifier
+
+###
+### GMS integration
+###
+topic/forklift_reverts 2edf8299a04cc59d854f74e18900be0bdb5d4b2b
+	Revert "drm/i915/gen9: Remove WaEnableYV12BugFixInHalfSliceChicken7"
+topic/forklift_extras e02fc1993cabf3a38ab4e47dc47bcedd664d7748
+	acpi: Export acpi_bus_type
+topic/bxt-enablement 160977af96e1c060eebe3930d22e92b51a01800e
+	drm/i915: Add support for OCL Turbo Boost
+topic/gms/driver_timing 8b4e22e6f311f421e1d1083d884d1af21ec20be9
+	drm/i915/profile: Add profile time storage for HuC load
+topic/vpg/forklift_updates 19c23b94ce46197150848851b9174a6fdf70b25a
+	drm/i915/guc: Change default GuC FW for BXT to v9.29
+topic/vpg_mocs_update 186f61d2454a6b39e3d324184e8ec0560fce4104
+	drm/i915: Fix I915_MOCS_CACHED entry to avoid snooping
+topic/vpg/rbc b53d56ea344892498d6930cae029a80e779b1afd
+	drm/i915: calculate aux_offset and aux_stride differently for RBC (v5)
+topic/vpg/get_aperature2 eac587d16383f070366c33c62fc5adcac6ac5faf
+	drm/i915: Add I915_GEM_GET_APERTURE2 ioctl
+topic/vpg/stolen_memory b1005d7b25249754b20fb4566a45afd325d6a1f0
+	drm/i915: Fixing warnings introduced by stolen memory changes
+topic/vpg_debug 98adf8d051f35135944293f7efd61a6e6a655481
+	drm/i915: Watchdog timeout: Export media reset count from GuC to debugfs
+topic/vpg/preemption c314ddfc269dfb631d40d7a3d51f18b2439676da
+	drm/i915/preempt: Add I915_PARAM_HAS_PREEMPTION
+topic/vpg_gpa_patches 976d7ef616c3c7c65f349ffb2a98bc5a837defb0
+	Merge branch 'topic/vpg/preemption' into topic/vpg_gpa_patches
+topic/vpg/media_watchdog 828ed8c4d514c509b8c05efa725436b13006cf7b
+	Merge branch 'topic/vpg/preemption' into topic/vpg/media_watchdog
+topic/ssg/gvt-patches faa2c545e938dd3dbfdf631cc8b16ca10d1a1e83
+	drm/i915: set initialised only when init_context callback is NULL
+topic/backlight_aux f68ccdb6ec0bdca80556b39e5bac7c42071ddad1
+	drm/i915: Add backlight Control using DPCD registers for DP connectors
+topic/gms/background_color 4fb7690f9cb4338617add1046746336cc0705641
+	drm/i915/gen9: Add support for pipe background color (v3)
+topic/plane_blend 4d11ff3f046f26d33d657131b2504abd5c555038
+	drm/i915: Fix compiler warning in intel_plane_state_check_blend()
+topic/initial_modeset_splash 27d478d9cd272963a2ad7a3593eeec9f25ae87c9
+	drm/i915: Use intel data structures to find encoder
+topic/mipidsi e8b08c7395a4ea2c979d7a566362e111e970f9ec
+	drm/i915/bxt: DSI dual-link shift WA for A0 (v2)
+topic/governor 61ed7d8fa9b699c7a675c3bfe0b1aabc3c1977bd
+	drm/i915: Restrict i915_gpu_pstate2freq() to rps min/max range
+topic/gms/nv12 c6a54acb89c8e7fdf689728f1ab1fb31243dd49f
+	drm/i915: Restrict NV12 support to APL E0+ (v2)
+topic/gms/hsd_bugfixes e67cc1bd3433e867b5e36827dc0ec571ca99a510
+	drm/i915: Remove dead code related to GEN9LP decoupled mmio
+hsd/1804714356 7337c1827757664a76e4bc2d0dcc6a0c3da7e1e8
+	drm/i915: Handle validation of relocation object with size = 2GB
+topic/ipu_flush_workaround cb1d78831142d843232602d65f1b3594d31ebebf
+	drm/i915:Avoid cache flush when calling IPU DMA driver
+topic/gms_buildid 4202c00049271c089cbb3df1d5188c0874cc38c6
+	drm/i915: Add IOTG build identifier

@@ -7,6 +7,7 @@ config INTEL_IPU4_BXT_P_PDATA
 	bool "Enable built in platform data for Broxton-P"
 	---help---
 	Pre-ACPI system platform data is compiled inside kernel
+
 config INTEL_IPU4_BXT_GP_PDATA
 	bool "Enable built in platform data for Gordon Peak"
 	---help---
@@ -14,6 +15,11 @@ config INTEL_IPU4_BXT_GP_PDATA
 
 config INTEL_IPU4_BXT_GT_PDATA
 	tristate "Enable built in platform data for Broxton-GT"
+	---help---
+	Pre-ACPI system platform data is compiled inside kernel
+
+config INTEL_IPU4_BXT_TESLA_PDATA
+	bool "Enable built in platform data for Tesla board"
 	---help---
 	Pre-ACPI system platform data is compiled inside kernel
 

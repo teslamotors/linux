@@ -36,6 +36,20 @@ static ssize_t type##_show(struct device *dev,			\
 } \
 static DEVICE_ATTR_RO(type)
 
+static ssize_t modalias_show(struct device *dev, struct device_attribute *attr,
+			     char *buf)
+{
+	struct hdac_device *hdac_dev = container_of(dev, struct hdac_device, dev);
+
+	if (hdac_dev->type == HDA_DEV_LEGACY)
+		return sprintf(buf, "hdaudio:v%08Xr%08X\n", hdac_dev->vendor_id, hdac_dev->revision_id);
+	else if (hdac_dev->type == HDA_DEV_ASOC)
+		return sprintf(buf, "ehdaudio:v%08Xr%08X\n", hdac_dev->vendor_id, hdac_dev->revision_id);
+
+	return -EINVAL;
+}
+static DEVICE_ATTR_RO(modalias);
+
 CODEC_ATTR(type);
 CODEC_ATTR(vendor_id);
 CODEC_ATTR(subsystem_id);
@@ -54,6 +68,7 @@ static struct attribute *hdac_dev_attrs[] = {
 	&dev_attr_mfg.attr,
 	&dev_attr_vendor_name.attr,
 	&dev_attr_chip_name.attr,
+	&dev_attr_modalias.attr,
 	NULL
 };
 
@@ -321,8 +336,7 @@ static void widget_tree_free(struct hdac_device *codec)
 			free_widget_node(*p, &widget_node_group);
 		kfree(tree->nodes);
 	}
-	if (tree->root)
-		kobject_put(tree->root);
+	kobject_put(tree->root);
 	kfree(tree);
 	codec->widgets = NULL;
 }
@@ -390,6 +404,9 @@ static int widget_tree_create(struct hdac_device *codec)
 int hda_widget_sysfs_init(struct hdac_device *codec)
 {
 	int err;
+
+	if (codec->widgets)
+		return 0; /* already created */
 
 	err = widget_tree_create(codec);
 	if (err < 0) {

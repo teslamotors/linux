@@ -367,6 +367,7 @@ EXPORT_SYMBOL(acpi_bus_power_manageable);
 
 #ifdef CONFIG_PM
 static DEFINE_MUTEX(acpi_pm_notifier_lock);
+static DEFINE_MUTEX(acpi_pm_notifier_install_lock);
 
 static void acpi_pm_notify_handler(acpi_handle handle, u32 val, void *not_used)
 {
@@ -411,25 +412,28 @@ acpi_status acpi_add_pm_notifier(struct acpi_device *adev, struct device *dev,
 	if (!dev && !work_func)
 		return AE_BAD_PARAMETER;
 
-	mutex_lock(&acpi_pm_notifier_lock);
+	mutex_lock(&acpi_pm_notifier_install_lock);
 
 	if (adev->wakeup.flags.notifier_present)
 		goto out;
-
-	adev->wakeup.ws = wakeup_source_register(dev_name(&adev->dev));
-	adev->wakeup.context.dev = dev;
-	if (work_func)
-		INIT_WORK(&adev->wakeup.context.work, work_func);
 
 	status = acpi_install_notify_handler(adev->handle, ACPI_SYSTEM_NOTIFY,
 					     acpi_pm_notify_handler, NULL);
 	if (ACPI_FAILURE(status))
 		goto out;
 
+	mutex_lock(&acpi_pm_notifier_lock);
+	adev->wakeup.ws = wakeup_source_register(dev_name(&adev->dev));
+	adev->wakeup.context.dev = dev;
+// TODO
+	if (work_func)
+		INIT_WORK(&adev->wakeup.context.work, work_func);
+
 	adev->wakeup.flags.notifier_present = true;
+	mutex_unlock(&acpi_pm_notifier_lock);
 
  out:
-	mutex_unlock(&acpi_pm_notifier_lock);
+	mutex_unlock(&acpi_pm_notifier_install_lock);
 	return status;
 }
 
@@ -441,7 +445,7 @@ acpi_status acpi_remove_pm_notifier(struct acpi_device *adev)
 {
 	acpi_status status = AE_BAD_PARAMETER;
 
-	mutex_lock(&acpi_pm_notifier_lock);
+	mutex_lock(&acpi_pm_notifier_install_lock);
 
 	if (!adev->wakeup.flags.notifier_present)
 		goto out;
@@ -452,6 +456,8 @@ acpi_status acpi_remove_pm_notifier(struct acpi_device *adev)
 	if (ACPI_FAILURE(status))
 		goto out;
 
+	mutex_lock(&acpi_pm_notifier_lock);
+// TODO
 	if (adev->wakeup.context.work.func) {
 		cancel_work_sync(&adev->wakeup.context.work);
 		adev->wakeup.context.work.func = NULL;
@@ -460,9 +466,10 @@ acpi_status acpi_remove_pm_notifier(struct acpi_device *adev)
 	wakeup_source_unregister(adev->wakeup.ws);
 
 	adev->wakeup.flags.notifier_present = false;
+	mutex_unlock(&acpi_pm_notifier_lock);
 
  out:
-	mutex_unlock(&acpi_pm_notifier_lock);
+	mutex_unlock(&acpi_pm_notifier_install_lock);
 	return status;
 }
 

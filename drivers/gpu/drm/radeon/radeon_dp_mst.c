@@ -285,7 +285,6 @@ static struct drm_connector *radeon_dp_add_mst_connector(struct drm_dp_mst_topol
 	drm_object_attach_property(&connector->base, dev->mode_config.path_property, 0);
 	drm_object_attach_property(&connector->base, dev->mode_config.tile_property, 0);
 	drm_mode_connector_set_path_property(connector, pathprop);
-	drm_reinit_primary_mode_group(dev);
 
 	drm_modeset_lock_all(dev);
 	radeon_fb_add_connector(rdev, connector);

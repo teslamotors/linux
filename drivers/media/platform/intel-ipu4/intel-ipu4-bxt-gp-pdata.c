@@ -24,21 +24,21 @@
 #include "../../pci/intel-ipu4/intel-ipu4.h"
 
 #define ADV7481_HDMI_LANES      4
-#define ADV7481_HDMI_I2C_ADDRESS 0xe0
+#define ADV7481_HDMI_I2C_ADDRESS 0x70
 
 #define ADV7481_LANES		1
 /*
  * below i2c address is dummy one, to be able to register single
  * ADV7481 chip as two sensors
  */
-#define ADV7481_I2C_ADDRESS	0xe1
+#define ADV7481_I2C_ADDRESS	0x71
 
 
 #define GPIO_BASE		434
 
 
 static struct crlmodule_platform_data adv7481_cvbs_pdata = {
-	.ext_clk = 286363636,
+	.ext_clk = 24000000,
 	.xshutdown = GPIO_BASE + 64, /*dummy for now*/
 	.lanes = ADV7481_LANES,
 	.module_name = "ADV7481 CVBS"
@@ -64,7 +64,7 @@ static struct intel_ipu4_isys_subdev_info adv7481_cvbs_crl_sd = {
 
 static struct crlmodule_platform_data adv7481_hdmi_pdata = {
 	/* FIXME: may need to revisit */
-	.ext_clk = 286363636,
+	.ext_clk = 24000000,
 	.xshutdown = GPIO_BASE + 30,
 	.lanes = ADV7481_HDMI_LANES,
 	.module_name = "ADV7481 HDMI",
@@ -99,7 +99,7 @@ static struct intel_ipu4_isys_subdev_info adv7481_hdmi_crl_sd = {
  * ADV7481 have its own oscillator, no buttres clock
  * needed.
  */
-struct intel_ipu4_isys_clk_mapping clk_mapping[] = {
+static struct intel_ipu4_isys_clk_mapping clk_mapping[] = {
 	{ CLKDEV_INIT(NULL, NULL, NULL), NULL }
 };
 

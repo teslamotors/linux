@@ -1,0 +1,5 @@
+menu "DMABUF options"
+
+source "drivers/dma-buf/hyper_dmabuf/Kconfig"
+
+endmenu

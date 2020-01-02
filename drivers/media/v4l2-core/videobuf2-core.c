@@ -252,7 +252,7 @@ static void __vb2_buf_mem_free(struct vb2_buffer *vb)
 	for (plane = 0; plane < vb->num_planes; ++plane) {
 		call_void_memop(vb, put, vb->planes[plane].mem_priv);
 		vb->planes[plane].mem_priv = NULL;
-		dprintk(3, "freed plane %d of buffer %d\n", plane,
+		dprintk(0, "freed plane %d of buffer %d\n", plane,
 			vb->v4l2_buf.index);
 	}
 }
@@ -347,7 +347,7 @@ static void __setup_offsets(struct vb2_queue *q, unsigned int n)
 		for (plane = 0; plane < vb->num_planes; ++plane) {
 			vb->v4l2_planes[plane].m.mem_offset = off;
 
-			dprintk(3, "buffer %d, plane %d offset 0x%08lx\n",
+			dprintk(0, "buffer %d, plane %d offset 0x%08lx\n",
 					buffer, plane, off);
 
 			off += vb->v4l2_planes[plane].length;
@@ -371,11 +371,15 @@ static int __vb2_queue_alloc(struct vb2_queue *q, enum v4l2_memory memory,
 	int ret;
 
 	for (buffer = 0; buffer < num_buffers; ++buffer) {
+
 		/* Allocate videobuf buffer structures */
 		vb = kzalloc(q->buf_struct_size, GFP_KERNEL);
 		if (!vb) {
-			dprintk(1, "memory alloc for buffer struct failed\n");
+			dprintk(0, "memory alloc for buffer struct failed\n");
 			break;
+		} else {
+			dprintk(0, "memory alloc succeeded for buffer struct: "
+					"buffer %d\n", buffer);
 		}
 
 		/* Length stores number of planes for multiplanar buffers */
@@ -393,10 +397,13 @@ static int __vb2_queue_alloc(struct vb2_queue *q, enum v4l2_memory memory,
 		if (memory == V4L2_MEMORY_MMAP) {
 			ret = __vb2_buf_mem_alloc(vb);
 			if (ret) {
-				dprintk(1, "failed allocating memory for "
+				dprintk(0, "failed allocating memory for "
 						"buffer %d\n", buffer);
 				kfree(vb);
 				break;
+			} else {
+				dprintk(0, "successfully allocated video memory for "
+						"buffer %d\n", buffer);
 			}
 			/*
 			 * Call the driver-provided buffer initialization
@@ -405,11 +412,14 @@ static int __vb2_queue_alloc(struct vb2_queue *q, enum v4l2_memory memory,
 			 */
 			ret = call_vb_qop(vb, buf_init, vb);
 			if (ret) {
-				dprintk(1, "buffer %d %p initialization"
+				dprintk(0, "buffer %d %p initialization"
 					" failed\n", buffer, vb);
 				__vb2_buf_mem_free(vb);
 				kfree(vb);
 				break;
+			} else {
+				dprintk(0, "buffer %d %p initialization"
+					" succeeded\n", buffer, vb);
 			}
 		}
 
@@ -420,7 +430,7 @@ static int __vb2_queue_alloc(struct vb2_queue *q, enum v4l2_memory memory,
 	if (memory == V4L2_MEMORY_MMAP)
 		__setup_offsets(q, buffer);
 
-	dprintk(1, "allocated %d buffers, %d plane(s) each\n",
+	dprintk(0, "allocated %d buffers, %d plane(s) each\n",
 			buffer, num_planes);
 
 	return buffer;
@@ -907,7 +917,7 @@ static int __reqbufs(struct vb2_queue *q, struct v4l2_requestbuffers *req)
 		mutex_lock(&q->mmap_lock);
 		if (q->memory == V4L2_MEMORY_MMAP && __buffers_in_use(q)) {
 			mutex_unlock(&q->mmap_lock);
-			dprintk(1, "memory in use, cannot free\n");
+			dprintk(0, "memory in use, cannot free\n");
 			return -EBUSY;
 		}
 
@@ -916,6 +926,8 @@ static int __reqbufs(struct vb2_queue *q, struct v4l2_requestbuffers *req)
 		 * QUEUED state which is possible if buffers were prepared or
 		 * queued without ever calling STREAMON.
 		 */
+		dprintk(0, "queue_cancel called to clean up buffers that "
+				"were never streamed\n");
 		__vb2_queue_cancel(q);
 		ret = __vb2_queue_free(q, q->num_buffers);
 		mutex_unlock(&q->mmap_lock);
@@ -951,8 +963,11 @@ static int __reqbufs(struct vb2_queue *q, struct v4l2_requestbuffers *req)
 	/* Finally, allocate buffers and video memory */
 	allocated_buffers = __vb2_queue_alloc(q, req->memory, num_buffers, num_planes);
 	if (allocated_buffers == 0) {
-		dprintk(1, "memory allocation failed\n");
+		dprintk(0, "memory allocation failed\n");
 		return -ENOMEM;
+	} else {
+		dprintk(0, "successfully allocated memory for %d/%d buffers\n",
+			allocated_buffers, num_buffers);
 	}
 
 	/*
@@ -1039,7 +1054,7 @@ static int __create_bufs(struct vb2_queue *q, struct v4l2_create_buffers *create
 	int ret;
 
 	if (q->num_buffers == VIDEO_MAX_FRAME) {
-		dprintk(1, "maximum number of buffers already allocated\n");
+		dprintk(0, "maximum number of buffers already allocated\n");
 		return -ENOBUFS;
 	}
 
@@ -1065,7 +1080,7 @@ static int __create_bufs(struct vb2_queue *q, struct v4l2_create_buffers *create
 	allocated_buffers = __vb2_queue_alloc(q, create->memory, num_buffers,
 				num_planes);
 	if (allocated_buffers == 0) {
-		dprintk(1, "memory allocation failed\n");
+		dprintk(0, "memory allocation failed\n");
 		return -ENOMEM;
 	}
 
@@ -2299,7 +2314,7 @@ static int vb2_internal_streamon(struct vb2_queue *q, enum v4l2_buf_type type)
 
 	q->streaming = 1;
 
-	dprintk(3, "successful\n");
+	dprintk(0, "successful\n");
 	return 0;
 }
 
@@ -2366,7 +2381,7 @@ static int vb2_internal_streamoff(struct vb2_queue *q, enum v4l2_buf_type type)
 	__vb2_queue_cancel(q);
 	q->waiting_for_buffers = !V4L2_TYPE_IS_OUTPUT(q->type);
 
-	dprintk(3, "successful\n");
+	dprintk(0, "successful\n");
 	return 0;
 }
 
@@ -2584,7 +2599,7 @@ int vb2_mmap(struct vb2_queue *q, struct vm_area_struct *vma)
 	if (ret)
 		return ret;
 
-	dprintk(3, "buffer %d, plane %d successfully mapped\n", buffer, plane);
+	dprintk(0, "buffer %d, plane %d successfully mapped\n", buffer, plane);
 	return 0;
 }
 EXPORT_SYMBOL_GPL(vb2_mmap);
@@ -3344,15 +3359,22 @@ int vb2_ioctl_reqbufs(struct file *file, void *priv,
 	struct video_device *vdev = video_devdata(file);
 	int res = __verify_memory_type(vdev->queue, p->memory, p->type);
 
-	if (res)
+	if (res) {
 		return res;
-	if (vb2_queue_is_busy(vdev, file))
+	} else {
+		dprintk(0, "memory type valid\n");
+	}
+	if (vb2_queue_is_busy(vdev, file)) {
 		return -EBUSY;
+	} else {
+		dprintk(0, "vb2 queue is not busy\n");
+	}
 	res = __reqbufs(vdev->queue, p);
 	/* If count == 0, then the owner has released all buffers and he
 	   is no longer owner of the queue. Otherwise we have a new owner. */
 	if (res == 0)
 		vdev->queue->owner = p->count ? file->private_data : NULL;
+	dprintk(0, "finishing vb2_ioctl_reqbufs\n");
 	return res;
 }
 EXPORT_SYMBOL_GPL(vb2_ioctl_reqbufs);

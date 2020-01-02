@@ -7,6 +7,7 @@
 #include <linux/if_arp.h>
 #include <linux/ipv6.h>
 #include <linux/mpls.h>
+#include <linux/nospec.h>
 #include <linux/vmalloc.h>
 #include <net/ip.h>
 #include <net/dst.h>
@@ -82,6 +83,21 @@ static bool mpls_pkt_too_big(const struct sk_buff *skb, unsigned int mtu)
 
 	if (skb_is_gso(skb) && skb_gso_network_seglen(skb) <= mtu)
 		return false;
+
+	return true;
+}
+
+static bool mpls_label_index_nospec(struct net *net, unsigned int *index)
+{
+	/* The first 16 labels are reserved, and may not be set */
+	if (*index < 16)
+		return false;
+
+	/* The full 20 bit range may not be supported. */
+	if (*index >= net->mpls.platform_labels)
+		return false;
+
+	*index = array_index_nospec(*index, net->mpls.platform_labels);
 
 	return true;
 }
@@ -345,12 +361,7 @@ static int mpls_route_add(struct mpls_route_config *cfg)
 		index = find_free_label(net);
 	}
 
-	/* The first 16 labels are reserved, and may not be set */
-	if (index < 16)
-		goto errout;
-
-	/* The full 20 bit range may not be supported. */
-	if (index >= net->mpls.platform_labels)
+	if (!mpls_label_index_nospec(net, &index))
 		goto errout;
 
 	/* Ensure only a supported number of labels are present */
@@ -423,12 +434,7 @@ static int mpls_route_del(struct mpls_route_config *cfg)
 
 	index = cfg->rc_label;
 
-	/* The first 16 labels are reserved, and may not be removed */
-	if (index < 16)
-		goto errout;
-
-	/* The full 20 bit range may not be supported */
-	if (index >= net->mpls.platform_labels)
+        if (!mpls_label_index_nospec(net, &index))
 		goto errout;
 
 	mpls_route_update(net, index, NULL, NULL, &cfg->rc_nlinfo);
@@ -740,8 +746,8 @@ static int rtm_to_route_config(struct sk_buff *skb,  struct nlmsghdr *nlh,
 					   &cfg->rc_label))
 				goto errout;
 
-			/* The first 16 labels are reserved, and may not be set */
-			if (cfg->rc_label < 16)
+			if (!mpls_label_index_nospec(cfg->rc_nlinfo.nl_net,
+						     &cfg->rc_label))
 				goto errout;
 
 			break;

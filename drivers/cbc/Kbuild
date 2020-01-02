@@ -1,0 +1,21 @@
+
+cbc-ldisc-y := cbc-core.o
+
+cbc-ldisc-y += link/cbc_link_checksum.o
+cbc-ldisc-y += link/cbc_link_layer.o
+cbc-ldisc-y += link/cbc_load_monitor.o
+cbc-ldisc-y += link/cbc_kmod_load_monitoring.o
+
+cbc-ldisc-y += mux/cbc_mux_multiplexer.o
+
+cbc-ldisc-y += dev/cbc_memory.o
+cbc-ldisc-y += dev/cbc_device.o
+cbc-ldisc-y += dev/cbc_device_manager.o
+
+
+ccflags-y += -I$(src)/service
+ccflags-y += -I$(src)/core
+ccflags-y += -I$(src)/
+
+obj-$(CONFIG_CBC_LDISC) += cbc-ldisc.o
+

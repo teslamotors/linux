@@ -28,6 +28,7 @@ unsigned int intel_ipu4_isys_mbus_code_to_bpp(u32 code)
 	switch (code) {
 	case MEDIA_BUS_FMT_RGB888_1X24:
 		return 24;
+	case MEDIA_BUS_FMT_Y10_1X10:
 	case MEDIA_BUS_FMT_RGB565_1X16:
 	case MEDIA_BUS_FMT_UYVY8_1X16:
 	case MEDIA_BUS_FMT_YUYV8_1X16:
@@ -81,6 +82,7 @@ unsigned int intel_ipu4_isys_mbus_code_to_mipi(u32 code)
 	case MEDIA_BUS_FMT_SGRBG12_1X12:
 	case MEDIA_BUS_FMT_SRGGB12_1X12:
 		return INTEL_IPU4_ISYS_MIPI_CSI2_TYPE_RAW12;
+	case MEDIA_BUS_FMT_Y10_1X10:
 	case MEDIA_BUS_FMT_SBGGR10_1X10:
 	case MEDIA_BUS_FMT_SGBRG10_1X10:
 	case MEDIA_BUS_FMT_SGRBG10_1X10:

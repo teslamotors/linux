@@ -12,6 +12,7 @@ config SND_MFLD_MACHINE
 
 config SND_SST_MFLD_PLATFORM
 	tristate
+	select SND_SOC_COMPRESS
 
 config SND_SST_IPC
 	tristate
@@ -26,14 +27,9 @@ config SND_SST_IPC_ACPI
 	depends on ACPI
 
 config SND_SOC_INTEL_SST
-	tristate "ASoC support for Intel(R) Smart Sound Technology"
+	tristate
 	select SND_SOC_INTEL_SST_ACPI if ACPI
 	depends on (X86 || COMPILE_TEST)
-	depends on DW_DMAC_CORE
-	help
-          This adds support for Intel(R) Smart Sound Technology (SST).
-          Say Y if you have such a device
-          If unsure select "N".
 
 config SND_SOC_INTEL_SST_ACPI
 	tristate
@@ -46,8 +42,9 @@ config SND_SOC_INTEL_BAYTRAIL
 
 config SND_SOC_INTEL_HASWELL_MACH
 	tristate "ASoC Audio DSP support for Intel Haswell Lynxpoint"
-	depends on SND_SOC_INTEL_SST && X86_INTEL_LPSS && I2C && \
-		   I2C_DESIGNWARE_PLATFORM
+	depends on X86_INTEL_LPSS && I2C && I2C_DESIGNWARE_PLATFORM
+	depends on DW_DMAC_CORE
+	select SND_SOC_INTEL_SST
 	select SND_SOC_INTEL_HASWELL
 	select SND_SOC_RT5640
 	help
@@ -58,7 +55,9 @@ config SND_SOC_INTEL_HASWELL_MACH
 
 config SND_SOC_INTEL_BYT_RT5640_MACH
 	tristate "ASoC Audio driver for Intel Baytrail with RT5640 codec"
-	depends on SND_SOC_INTEL_SST && X86_INTEL_LPSS && I2C
+	depends on X86_INTEL_LPSS && I2C
+	depends on DW_DMAC_CORE
+	select SND_SOC_INTEL_SST
 	select SND_SOC_INTEL_BAYTRAIL
 	select SND_SOC_RT5640
 	help
@@ -67,7 +66,9 @@ config SND_SOC_INTEL_BYT_RT5640_MACH
 
 config SND_SOC_INTEL_BYT_MAX98090_MACH
 	tristate "ASoC Audio driver for Intel Baytrail with MAX98090 codec"
-	depends on SND_SOC_INTEL_SST && X86_INTEL_LPSS && I2C
+	depends on X86_INTEL_LPSS && I2C
+	depends on DW_DMAC_CORE
+	select SND_SOC_INTEL_SST
 	select SND_SOC_INTEL_BAYTRAIL
 	select SND_SOC_MAX98090
 	help
@@ -76,8 +77,10 @@ config SND_SOC_INTEL_BYT_MAX98090_MACH
 
 config SND_SOC_INTEL_BROADWELL_MACH
 	tristate "ASoC Audio DSP support for Intel Broadwell Wildcatpoint"
-	depends on SND_SOC_INTEL_SST && X86_INTEL_LPSS && DW_DMAC && \
+	depends on X86_INTEL_LPSS && I2C && DW_DMAC && \
 		   I2C_DESIGNWARE_PLATFORM
+	depends on DW_DMAC_CORE
+	select SND_SOC_INTEL_SST
 	select SND_SOC_INTEL_HASWELL
 	select SND_COMPRESS_OFFLOAD
 	select SND_SOC_RT286
@@ -121,3 +124,349 @@ config SND_SOC_INTEL_CHT_BSW_RT5645_MACH
 	  This adds support for ASoC machine driver for Intel(R) Cherrytrail & Braswell
 	  platforms with RT5645 audio codec.
 	  If unsure select "N".
+
+config SND_SOC_INTEL_SKYLAKE
+	tristate
+	select SND_HDA_EXT_CORE
+	select SND_HDA_DSP_LOADER
+	select SND_SOC_TOPOLOGY
+	select SND_HDA_I915
+	select SND_SOC_INTEL_SST
+	select WANT_DEV_COREDUMP
+	select SND_SOC_COMPRESS
+
+config SND_SOC_INTEL_SKL_RT286_MACH
+	tristate "ASoC Audio driver for SKL with RT286 I2S mode"
+	depends on X86 && ACPI
+	select SND_HDA_I915
+	select SND_SOC_INTEL_SST
+	select SND_SOC_INTEL_SKYLAKE
+	select SND_SOC_RT286
+	select SND_SOC_DMIC
+	select SND_SOC_HDAC_HDMI
+	help
+	   This adds support for ASoC machine driver for Skylake platforms
+	   with RT286 I2S audio codec.
+	   Say Y if you have such a device
+	   If unsure select "N".
+
+config SND_SOC_INTEL_BXT_MRGFLD_MACH
+        tristate "SOC Machine Audio driver for MRGFLD HDA"
+        select SND_SOC_WM_ADSP
+        select SND_SOC_ARIZONA
+        select SND_SOC_WM5110
+	select SND_SOC_WM8998
+        select MFD_ARIZONA_I2C
+        select MFD_WM5110
+	select MFD_WM8998
+        select REGULATOR_ARIZONA
+        select GPIO_ARIZONA
+	select SND_SOC_INTEL_SST
+	select SND_SOC_INTEL_SKYLAKE
+	select SND_SOC_DMIC
+	select SND_SOC_HDAC_HDMI
+	select SND_SOC_COMPRESS
+        help
+        This adds support for ASoC machine driver . This will create an alsa
+        sound card.
+        Say Y if you have such a device
+        If unsure select "N".
+
+config SND_SOC_INTEL_BXTP_IVI_HU_MACH
+        tristate "ASoC Audio driver for BXTP IVI HU with Dummy Codec"
+        select SND_SOC_INTEL_SST
+        select SND_SOC_INTEL_SKYLAKE
+	select SND_SOC_COMPRESS
+        default n
+        help
+        This adds support for ASoC machine driver for Broxton-P platforms
+        with Dummy I2S audio codec for IVI Head Unit.
+        Say Y if you have such a device
+        If unsure select "N".
+
+config SND_SOC_INTEL_BXTP_IVI_RSE_MACH
+        tristate "ASoC Audio driver for BXTP IVI RSE with Dummy Codecs"
+        select SND_SOC_INTEL_SST
+        select SND_SOC_INTEL_SKYLAKE
+	select SND_SOC_COMPRESS
+        default n
+        help
+        This adds support for ASoC machine driver for Broxton-P platforms
+        with Dummy I2S audio codec for IVI Rear Seat Unit.
+        Say Y if you have such a device
+        If unsure select "N".
+
+config SND_SOC_INTEL_BXT_GPMRB_MACH
+	tristate "ASoC Audio driver for BXT IVI GP MRB with TDF8532 codec"
+	select SND_SOC_INTEL_SST
+	select SND_SOC_INTEL_SKYLAKE
+	select SND_SOC_COMPRESS
+	select SND_SOC_TDF8532
+	select DW_DMAC
+	default n
+	help
+	This adds support for ASoC machine driver for Broxton IVI GP MRB platform
+	Say Y if you have such a device
+	If unsure select "N".
+
+config SND_SOC_INTEL_SKYLAKE_MODEL3
+        bool "Enable Skylake Model3 platform driver"
+        default n
+        help
+        This enables Model3 support in the Skylake platform driver.
+        Say "Y" if you are using a Model3 board.
+        Otherwise choose "N".
+
+config SND_SOC_INTEL_MODEL3_MACH
+        tristate "ASoC Audio driver for Model3"
+        select SND_SOC_INTEL_SST
+        select SND_SOC_INTEL_SKYLAKE
+        select SND_SOC_INTEL_SKYLAKE_MODEL3
+        select SND_SOC_COMPRESS
+        select DW_DMAC
+        default n
+        help
+        This adds support for ASoC machine driver for Model3 platform
+        Say Y if you have such a device
+        If unsure select "N".
+
+config SND_SOC_INTEL_MODEL3_MACH_TDF8532_CODEC
+        bool "Enable TDF8532 codec for Model3"
+        depends on SND_SOC_INTEL_MODEL3_MACH
+        select SND_SOC_TDF8532
+        default n
+        help
+        This adds support for TDF8532 codec to BE DAI link.
+
+config SND_SOC_INTEL_MODEL3_MACH_TDA7802_CODEC
+        bool "Enable TDA7802 codec for Model3"
+        depends on SND_SOC_INTEL_MODEL3_MACH
+        select SND_SOC_TDA7802
+        default y
+        help
+        This adds support for TDA7802 codec to BE DAI link.
+        Say "Y" if you are using Model3 board.
+        Otherwise choose "N".
+
+config SND_SOC_INTEL_SKYLAKE_MODELSX_INFO2
+        bool "Enable Skylake ModelSX Infotainment 2 platform driver"
+        default n
+        help
+        This enables ModelSX Infotainment 2 support in the Skylake platform driver.
+        Say "Y" if you are using a ModelSX_info2 board.
+        Otherwise choose "N".
+
+config SND_SOC_INTEL_MODELSX_INFO2_MACH
+        tristate "ASoC Audio driver for ModelSX Infotainment 2"
+        select SND_SOC_INTEL_SST
+        select SND_SOC_INTEL_SKYLAKE
+        select SND_SOC_INTEL_SKYLAKE_MODELSX_INFO2
+        select SND_SOC_COMPRESS
+        select DW_DMAC
+        default n
+        help
+        This adds support for ASoC machine driver for ModelSX_info2 platform
+        Say Y if you have such a device
+        If unsure select "N".
+
+config SND_SOC_INTEL_MODELSX_INFO2_MACH_TDA7802_CODEC
+        bool "Enable TDA7802 codec for ModelSX Infotainment 2"
+        depends on SND_SOC_INTEL_MODELSX_INFO2_MACH
+        select SND_SOC_TDA7802
+        default y
+        help
+        This adds support for TDA7802 codec to BE DAI link.
+        Say "Y" if you are using ModelSX_info2 board.
+        Otherwise choose "N".
+
+config SND_SOC_INTEL_BXT_HSBOARD_MACH
+        tristate "ASoC Audio driver for BXT IVI HSBOARD"
+        select SND_SOC_INTEL_SST
+        select SND_SOC_INTEL_SKYLAKE
+	select SND_SOC_COMPRESS
+        select HSBOARD_BRD
+        default n
+        help
+        This adds support for ASoC machine driver for Broxton IVI HSBOARD platform
+        Say Y if you have such a device
+        If unsure select "N".
+
+config SND_SOC_INTEL_BXTP_IVI_GENERIC_MACH
+        tristate "ASoC Audio driver for BXTP IVI Generic with Dummy Codecs"
+        select SND_SOC_INTEL_SST
+        select SND_SOC_INTEL_SKYLAKE
+        select SND_SOC_COMPRESS
+        default n
+        help
+        This adds support for ASoC machine driver for Broxton-P platforms
+        with Dummy I2S audio codec for IVI generic configuration.
+        Say Y if you have such a device
+	If unsure select "N".
+
+config SND_SOC_INTEL_BXT_GPMRB_MACH
+        tristate "ASoC Audio driver for BXT IVI GP MRB"
+        select SND_SOC_INTEL_SST
+        select SND_SOC_INTEL_SKYLAKE
+        select SND_SOC_TDF8532
+	select SND_SOC_COMPRESS
+        select DW_DMAC
+        default n
+        help
+        This adds support for ASoC machine driver for Broxton IVI GP MRB platform
+        Say Y if you have such a device
+        If unsure select "N".
+
+config SND_SOC_INTEL_BXT_ULL_MACH
+       tristate "ASoC ULL reference driver with dummy codec"
+       select SND_SOC_INTEL_SST
+       select SND_SOC_INTEL_SKYLAKE
+       select SND_SOC_COMPRESS
+       select DW_DMAC
+       default n
+       help
+       This adds support for ASoC ULL machine driver with a DSP loop and
+       Dummy I2S audio codec. Serves as a basic example with no processing
+       modules embedded in the loop.
+       Say Y if you have such a device.
+       If unsure select "N".
+
+config SND_SOC_INTEL_SKL_NAU88L25_SSM4567_MACH
+	tristate "ASoC Audio driver for SKL with NAU88L25 and SSM4567 in I2S Mode"
+	select SND_SOC_INTEL_SST
+	select SND_SOC_INTEL_SKYLAKE
+	select SND_SOC_NAU8825
+	select SND_SOC_SSM4567
+	select SND_SOC_DMIC
+	help
+	  This adds support for ASoC Onboard Codec I2S machine driver. This will
+	  create an alsa sound card for NAU88L25 + SSM4567.
+	  Say Y if you have such a device
+	  If unsure select "N".
+
+config SND_SOC_INTEL_SKL_RT5650_MACH
+       tristate "ASoC Audio driver for SKL with ALC5650 in I2S Mode"
+       select SND_SOC_INTEL_SST
+       select SND_SOC_INTEL_SKYLAKE
+       select SND_SOC_RT5645
+       select SND_SOC_DMIC
+       help
+         This adds support for ASoC Onboard Codec I2S machine driver. This will
+         create an alsa sound card for ALC5650.
+         Say Y if you have such a device
+         If unsure select "N".
+
+config SND_SOC_INTEL_BXT_RT298_MACH
+        tristate "ASoC Audio driver for BXT with RT298 I2S mode"
+        select SND_SOC_INTEL_SST
+        select SND_SOC_INTEL_SKYLAKE
+        select SND_SOC_RT298
+        select SND_SOC_DMIC
+	select SND_SOC_COMPRESS
+        default n
+        help
+        This adds support for ASoC machine driver for Broxton platforms
+        with RT298 I2S audio codec.
+        Say Y if you have such a device
+        If unsure select "N".
+
+config SND_SOC_INTEL_BXT_ANC_MACH
+        tristate "Reference ASoC Machine driver for BXT with ANC loop"
+        select SND_SOC_INTEL_SST
+        select SND_SOC_INTEL_SKYLAKE
+        select SND_SOC_RT298
+        select SND_SOC_DMIC
+	select SND_SOC_COMPRESS
+        default n
+        help
+        This adds support for ASoC machine driver for Broxton platforms
+        with RT298 I2S audio codec.
+        Say Y if you have such a device
+        If unsure select "N".
+
+config SND_SOC_INTEL_CNL_WM8281_MACH
+        tristate "ASoC Audio driver for CNL with WM8281 in I2S Mode"
+        select SND_SOC_WM_ADSP
+        select SND_SOC_ARIZONA
+        select SND_SOC_WM5110
+	select SND_SOC_WM8998
+        select MFD_ARIZONA_I2C
+        select MFD_WM5110
+	select MFD_WM8998
+        select REGULATOR_ARIZONA
+        select GPIO_ARIZONA
+	select SND_SOC_INTEL_SST
+	select SND_SOC_INTEL_SKYLAKE
+	select SND_SOC_DMIC
+	select SND_SOC_COMPRESS
+        help
+        This adds support for ASoC machine driver . This will create an alsa
+        sound card.
+        Say Y if you have such a device
+        If unsure select "N".
+
+config SND_SOC_INTEL_CNL_FPGA
+	bool "Enable CNL FPGA board settings"
+	help
+	  Say Y here to enable the support for CNL audio FPGA Device.
+
+config SND_SOC_INTEL_APLI_LHCRB_DUMMY_MACH
+    tristate "ASoC Audio driver for APLI LHCRB Dummy Codec"
+    depends on X86_INTEL_LPSS && I2C
+    select SND_SOC_INTEL_SST
+    select SND_SOC_INTEL_SKYLAKE
+    default n
+    help
+      This adds support for ASoC machine driver for  Intel(R)
+      Apollo Lake-I Leaf Hill Customer reference board platform.
+      Say Y if you have such a device
+      If unsure select "N".
+
+config SND_SOC_INTEL_APLI_LHCRB_DUMMY_PROJECT_A_MACH
+    tristate "ASoC Audio driver for APLI LHCRB Dummy ProjectA Codec"
+    depends on X86_INTEL_LPSS && I2C
+    select SND_SOC_INTEL_SST
+    select SND_SOC_INTEL_SKYLAKE
+    default n
+    help
+      This adds support for ASoC machine driver for  Intel(R)
+      Apollo Lake-I Leaf Hill Customer reference board platform.
+      Say Y if you have such a device
+      If unsure select "N".
+
+config SND_SOC_INTEL_APLI_LHCRB_GENERIC_MACH
+    tristate "ASoC Machine Audio driver for APLI LHCRB Generic with Dummy Codecs"
+    depends on X86_INTEL_LPSS
+    select SND_SOC_INTEL_SST
+    select SND_SOC_INTEL_SKYLAKE
+    default n
+    help
+      This adds support for ASoC machine driver for  Intel(R)
+      Apollo Lake-I Leaf Hill Customer reference board platform.
+      Say Y if you have such a device
+      If unsure select "N".
+
+config SND_SOC_INTEL_APLI_LHCRB_WM8731_MACH
+    tristate "ASoC Audio driver for APLI LHCRB WM8731 Codec"
+    depends on X86_INTEL_LPSS && I2C
+    select SND_SOC_INTEL_SST
+    select SND_SOC_INTEL_SKYLAKE
+    select SND_SOC_WM8731
+    default n
+    help
+      This adds support for ASoC machine driver for  Intel(R)
+      Apollo Lake-I Leaf Hill Customer reference board platform.
+      Say Y if you have such a device
+      If unsure select "N".
+
+config SND_SOC_INTEL_APLI_LHCRB_AIC3107_MACH
+    tristate "ASoC Audio driver for APLI LHCRB AIC3107"
+    depends on X86_INTEL_LPSS && I2C
+    select SND_SOC_INTEL_SST
+    select SND_SOC_INTEL_SKYLAKE
+    select SND_SOC_TLV320AIC3x
+    default n
+    help
+      This adds support for ASoC machine driver for  Intel(R)
+      Apollo Lake-I Leaf Hill Customer reference board platform.
+      Say Y if you have such a device
+      If unsure select "N".

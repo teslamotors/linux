@@ -31,9 +31,6 @@
 #define DRV_VERSION "1.0"
 
 static struct sbi_platform_data *plat_data;
-#define sbi_pdev_bus plat_data->bus
-#define sbi_pdev_slot plat_data->p2sb
-#define sbi_apl_lock plat_data->lock
 
 static u32 sbi_address(const struct sbi_apl_message *args)
 {
@@ -169,18 +166,22 @@ int sbi_apl_commit(struct sbi_apl_message *args)
 	int ret;
 	struct pci_bus *sbi_pdev;
 
+	/* We're called before we're ready */
+	if (!plat_data)
+		return -EAGAIN;
+
 	ret = sbi_validate(args);
 	if (ret)
 		return ret;
 
-	sbi_pdev = pci_find_bus(0, sbi_pdev_bus);
+	sbi_pdev = pci_find_bus(0, plat_data->bus);
 	if (!sbi_pdev)
 		return -ENODEV;
-	mutex_lock(sbi_apl_lock);
-	sbi_hide(sbi_pdev, sbi_pdev_slot, 0);
-	ret = sbi_do_write(sbi_pdev, sbi_pdev_slot, args);
-	sbi_hide(sbi_pdev, sbi_pdev_slot, 1);
-	mutex_unlock(sbi_apl_lock);
+	mutex_lock(plat_data->lock);
+	sbi_hide(sbi_pdev, plat_data->p2sb, 0);
+	ret = sbi_do_write(sbi_pdev, plat_data->p2sb, args);
+	sbi_hide(sbi_pdev, plat_data->p2sb, 1);
+	mutex_unlock(plat_data->lock);
 
 	return ret;
 }

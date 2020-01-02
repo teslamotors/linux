@@ -22,6 +22,7 @@
 #ifndef	_MWIFIEX_PCIE_H
 #define	_MWIFIEX_PCIE_H
 
+#include    <linux/completion.h>
 #include    <linux/pci.h>
 #include    <linux/pcieport_if.h>
 #include    <linux/interrupt.h>
@@ -29,7 +30,7 @@
 #include    "main.h"
 
 #define PCIE8766_DEFAULT_FW_NAME "mrvl/pcie8766_uapsta.bin"
-#define PCIE8897_DEFAULT_FW_NAME "mrvl/pcie8897_uapsta.bin"
+#define PCIE8897_DEFAULT_FW_NAME "mrvl/pcieuart8897_combo.bin"
 
 #define PCIE_VENDOR_ID_MARVELL              (0x11ab)
 #define PCIE_DEVICE_ID_MARVELL_88W8766P		(0x2b30)
@@ -252,6 +253,7 @@ struct pcie_service_card {
 	struct pci_dev *dev;
 	struct mwifiex_adapter *adapter;
 	struct mwifiex_pcie_device pcie;
+	struct completion fw_done;
 
 	u8 txbd_flush;
 	u32 txbd_wrptr;

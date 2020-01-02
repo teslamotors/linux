@@ -30,6 +30,7 @@
 #include <linux/mutex.h>
 #include <linux/slab.h>
 #include <linux/mm.h>
+#include <linux/vmalloc.h>
 #include "shared_memory_access.h"
 #include "shared_memory_map.h"
 #include "vied_subsystem_access.h"

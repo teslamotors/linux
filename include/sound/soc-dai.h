@@ -192,6 +192,30 @@ struct snd_soc_dai_ops {
 		struct snd_soc_dai *);
 };
 
+struct snd_soc_cdai_ops {
+	/*
+	 * for compress ops
+	 */
+	int (*startup)(struct snd_compr_stream *,
+			struct snd_soc_dai *);
+	int (*shutdown)(struct snd_compr_stream *,
+			struct snd_soc_dai *);
+	int (*set_params)(struct snd_compr_stream *,
+			struct snd_compr_params *, struct snd_soc_dai *);
+	int (*get_params)(struct snd_compr_stream *,
+			struct snd_codec *, struct snd_soc_dai *);
+	int (*set_metadata)(struct snd_compr_stream *,
+			struct snd_compr_metadata *, struct snd_soc_dai *);
+	int (*get_metadata)(struct snd_compr_stream *,
+			struct snd_compr_metadata *, struct snd_soc_dai *);
+	int (*trigger)(struct snd_compr_stream *, int,
+			struct snd_soc_dai *);
+	int (*pointer)(struct snd_compr_stream *,
+			struct snd_compr_tstamp *, struct snd_soc_dai *);
+	int (*ack)(struct snd_compr_stream *, size_t,
+			struct snd_soc_dai *);
+};
+
 /*
  * Digital Audio Interface Driver.
  *
@@ -214,12 +238,13 @@ struct snd_soc_dai_driver {
 	int (*suspend)(struct snd_soc_dai *dai);
 	int (*resume)(struct snd_soc_dai *dai);
 	/* compress dai */
-	bool compress_dai;
+	int (*compress_new)(struct snd_soc_pcm_runtime *rtd, int num);
 	/* DAI is also used for the control bus */
 	bool bus_control;
 
 	/* ops */
 	const struct snd_soc_dai_ops *ops;
+	const struct snd_soc_cdai_ops *cops;
 
 	/* DAI capabilities */
 	struct snd_soc_pcm_stream capture;

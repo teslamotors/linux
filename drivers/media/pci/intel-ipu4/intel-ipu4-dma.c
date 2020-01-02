@@ -134,10 +134,15 @@ static void intel_ipu4_dma_sync_single_for_cpu(
 {
 	struct device *aiommu = to_intel_ipu4_bus_device(dev)->iommu;
 	struct intel_ipu4_mmu *mmu = dev_get_drvdata(aiommu);
+	phys_addr_t p_addr = iommu_iova_to_phys(mmu->dmap->domain, dma_handle);
+	void *virt;
 
-	clflush_cache_range(
-		phys_to_virt(iommu_iova_to_phys(
-				     mmu->dmap->domain, dma_handle)), size);
+	if (page_is_ram((p_addr & PAGE_MASK) >> PAGE_SHIFT))
+		virt = phys_to_virt(p_addr);
+	else
+		virt = ioremap(p_addr, size);
+
+	clflush_cache_range(virt, size);
 }
 
 static void intel_ipu4_dma_sync_sg_for_cpu(
@@ -148,13 +153,19 @@ static void intel_ipu4_dma_sync_sg_for_cpu(
 	struct intel_ipu4_mmu *mmu = dev_get_drvdata(aiommu);
 	struct scatterlist *sg;
 	int i;
+	void *virt;
 
 	for_each_sg(sglist, sg, nents, i) {
-		clflush_cache_range(
-			phys_to_virt(iommu_iova_to_phys(
-					     mmu->dmap->domain,
-					     sg_dma_address(sg))),
-			sg->length);
+		phys_addr_t p_addr = iommu_iova_to_phys(
+				mmu->dmap->domain,
+				sg_dma_address(sg));
+
+		if (page_is_ram((p_addr & PAGE_MASK) >> PAGE_SHIFT))
+			virt = phys_to_virt(p_addr);
+		else
+			virt = ioremap(p_addr, sg->length);
+
+		clflush_cache_range(virt, sg->length);
 	}
 }
 
@@ -208,11 +219,11 @@ out_vunmap:
 	vunmap(area->addr);
 
 out_unmap:
-	__iommu_free_buffer(dev, pages, size, attrs);
 	for (i--; i >= 0; i--) {
 		iommu_unmap(mmu->dmap->domain, (iova->pfn_lo + i) << PAGE_SHIFT,
 			    PAGE_SIZE);
 	}
+	__iommu_free_buffer(dev, pages, size, attrs);
 out_free_iova:
 	__free_iova(&mmu->dmap->iovad, iova);
 
@@ -225,6 +236,7 @@ static void intel_ipu4_dma_free(struct device *dev, size_t size, void *vaddr,
 	struct device *aiommu = to_intel_ipu4_bus_device(dev)->iommu;
 	struct intel_ipu4_mmu *mmu = dev_get_drvdata(aiommu);
 	struct vm_struct *area = find_vm_area(vaddr);
+	struct page **pages;
 	struct iova *iova = find_iova(&mmu->dmap->iovad,
 				dma_handle >> PAGE_SHIFT);
 
@@ -238,14 +250,16 @@ static void intel_ipu4_dma_free(struct device *dev, size_t size, void *vaddr,
 
 	size = PAGE_ALIGN(size);
 
+	pages = area->pages;
+
+	vunmap(vaddr);
+
 	iommu_unmap(mmu->dmap->domain, iova->pfn_lo << PAGE_SHIFT,
 		(iova->pfn_hi - iova->pfn_lo + 1) << PAGE_SHIFT);
 
+	__iommu_free_buffer(dev, pages, size, attrs);
+
 	__free_iova(&mmu->dmap->iovad, iova);
-
-	__iommu_free_buffer(dev, area->pages, size, attrs);
-
-	vunmap(vaddr);
 
 	mmu->tlb_invalidate(mmu);
 }
@@ -372,16 +386,39 @@ static int intel_ipu4_dma_get_sgtable(struct device *dev, struct sg_table *sgt,
 	struct vm_struct *area = find_vm_area(cpu_addr);
 	int n_pages;
 	int ret = 0;
+#ifdef CONFIG_XEN
+	struct scatterlist *sgl;
+	int i;
+#endif
 
 	if (WARN_ON(!area->pages))
 		return -ENOMEM;
 
 	n_pages = PAGE_ALIGN(size) >> PAGE_SHIFT;
 
+#ifdef CONFIG_XEN
+	if (xen_domain()) {
+		ret = sg_alloc_table(sgt, n_pages, GFP_KERNEL);
+
+		if (ret) {
+			dev_dbg(dev, "IPU get sgt table fail\n");
+			return ret;
+		}
+
+		sgl = sgt->sgl;
+		for (i = 0; i < n_pages; ++i) {
+			sg_set_page(sgl, area->pages[i], PAGE_SIZE, 0);
+			sgl = sg_next(sgl);
+		}
+	} else {
+#endif
 	ret = sg_alloc_table_from_pages(sgt, area->pages, n_pages, 0, size,
 						GFP_KERNEL);
 	if (ret)
 		dev_dbg(dev, "IPU get sgt table fail\n");
+#ifdef CONFIG_XEN
+	}
+#endif
 
 	return ret;
 }

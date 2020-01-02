@@ -20,6 +20,9 @@
 #include <linux/module.h>
 #include <linux/pm_runtime.h>
 #include <linux/sizes.h>
+#ifdef CONFIG_XEN_DOM0
+#include <asm/xen/page.h>
+#endif
 
 #include "intel-ipu4.h"
 #include "intel-ipu4-bus.h"
@@ -78,7 +81,11 @@
 			(INTEL_IPU4_MMU_MAX_TLB_L1_STREAMS * 0x20))
 
 #define TBL_PHYS_ADDR(a)	((phys_addr_t)(a) << ISP_PADDR_SHIFT)
+#ifdef CONFIG_XEN_DOM0
+#define TBL_VIRT_ADDR(a)	phys_to_virt(mfn_to_pfn(a) << ISP_PADDR_SHIFT)
+#else
 #define TBL_VIRT_ADDR(a)	phys_to_virt(TBL_PHYS_ADDR(a))
+#endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 1, 0)
 #define to_intel_ipu4_mmu_domain(dom) ((dom)->priv)
@@ -253,14 +260,21 @@ static int intel_ipu4_mmu_domain_init(struct iommu_domain *domain)
 	if (!ptr)
 		goto err;
 
+#ifdef CONFIG_XEN_DOM0
+	adom->dummy_page = pfn_to_mfn(virt_to_phys(ptr) >> ISP_PAGE_SHIFT);
+#else
 	adom->dummy_page = virt_to_phys(ptr) >> ISP_PAGE_SHIFT;
+#endif
 
 	ptr = alloc_page_table(adom, false);
 	if (!ptr)
 		goto err;
 
+#ifdef CONFIG_XEN_DOM0
+	adom->dummy_l2_tbl = pfn_to_mfn(virt_to_phys(ptr) >> ISP_PAGE_SHIFT);
+#else
 	adom->dummy_l2_tbl = virt_to_phys(ptr) >> ISP_PAGE_SHIFT;
-
+#endif
 	/*
 	 * We always map the L1 page table (a single page as well as
 	 * the L2 page tables).
@@ -304,14 +318,20 @@ static struct iommu_domain *intel_ipu4_mmu_domain_alloc(unsigned int type)
 	ptr = (void *)__get_free_page(GFP_KERNEL | GFP_DMA32);
 	if (!ptr)
 		goto err_mem;
-
+#ifdef CONFIG_XEN_DOM0
+	adom->dummy_page = pfn_to_mfn(virt_to_phys(ptr) >> ISP_PAGE_SHIFT);
+#else
 	adom->dummy_page = virt_to_phys(ptr) >> ISP_PAGE_SHIFT;
-
+#endif
 	ptr = alloc_page_table(adom, false);
 	if (!ptr)
 		goto err;
 
+#ifdef CONFIG_XEN_DOM0
+	adom->dummy_l2_tbl = pfn_to_mfn(virt_to_phys(ptr) >> ISP_PAGE_SHIFT);
+#else
 	adom->dummy_l2_tbl = virt_to_phys(ptr) >> ISP_PAGE_SHIFT;
+#endif
 
 	/*
 	 * We always map the L1 page table (a single page as well as
@@ -419,7 +439,11 @@ static int l2_map(struct iommu_domain *domain, unsigned long iova,
 		if (!l2_virt)
 			return -ENOMEM;
 
+#ifdef CONFIG_XEN_DOM0
+		l1_entry = pfn_to_mfn(virt_to_phys(l2_virt) >> ISP_PADDR_SHIFT);
+#else
 		l1_entry = virt_to_phys(l2_virt) >> ISP_PADDR_SHIFT;
+#endif
 		pr_debug("allocated page for l1_idx %u\n", l1_idx);
 
 		spin_lock_irqsave(&adom->lock, flags);
@@ -452,7 +476,11 @@ static int l2_map(struct iommu_domain *domain, unsigned long iova,
 		return -EBUSY;
 	}
 
+#ifdef CONFIG_XEN_DOM0
+	l2_pt[l2_idx] = pfn_to_mfn(paddr >> ISP_PADDR_SHIFT);
+#else
 	l2_pt[l2_idx] = paddr >> ISP_PADDR_SHIFT;
+#endif
 
 	spin_unlock_irqrestore(&adom->lock, flags);
 
@@ -528,8 +556,13 @@ static phys_addr_t intel_ipu4_mmu_iova_to_phys(struct iommu_domain *domain,
 	struct intel_ipu4_mmu_domain *adom = to_intel_ipu4_mmu_domain(domain);
 	uint32_t *l2_pt = TBL_VIRT_ADDR(adom->pgtbl[iova >> ISP_L1PT_SHIFT]);
 
+#ifdef CONFIG_XEN_DOM0
+	return (phys_addr_t)mfn_to_pfn(l2_pt[(iova & ISP_L2PT_MASK) >> ISP_L2PT_SHIFT])
+		<< ISP_PAGE_SHIFT;
+#else
 	return (phys_addr_t)l2_pt[(iova & ISP_L2PT_MASK) >> ISP_L2PT_SHIFT]
 		<< ISP_PAGE_SHIFT;
+#endif
 }
 
 static int allocate_trash_buffer(struct intel_ipu4_bus_device *adev)
@@ -611,9 +644,15 @@ static int intel_ipu4_mmu_hw_init(struct device *dev)
 		u16 block_addr;
 
 		/* Write page table address per MMU */
+#ifdef CONFIG_XEN_DOM0
+		writel(pfn_to_mfn((phys_addr_t)virt_to_phys(adom->pgtbl)
+		       >> ISP_PADDR_SHIFT),
+		       mmu->mmu_hw[i].base + REG_L1_PHYS);
+#else
 		writel((phys_addr_t)virt_to_phys(adom->pgtbl)
 		       >> ISP_PADDR_SHIFT,
 		       mmu->mmu_hw[i].base + REG_L1_PHYS);
+#endif
 
 		/* Set info bits per MMU */
 		if (pdata->type == INTEL_IPU4_MMU_TYPE_INTEL_IPU4)
@@ -835,6 +874,11 @@ static int intel_ipu4_mmu_suspend(struct device *dev)
 	struct intel_ipu4_bus_device *adev = to_intel_ipu4_bus_device(dev);
 	struct intel_ipu4_mmu *mmu = intel_ipu4_bus_get_drvdata(adev);
 	unsigned long flags;
+
+	if (!mmu) {
+		pr_err("Oops. suspend before mmu is initialized?");
+		return 0;
+	}
 
 	spin_lock_irqsave(&mmu->ready_lock, flags);
 	mmu->ready = false;

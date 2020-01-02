@@ -299,6 +299,13 @@ static const struct pci_device_id i2_designware_pci_ids[] = {
 	{ PCI_VDEVICE(INTEL, 0x22C5), baytrail },
 	{ PCI_VDEVICE(INTEL, 0x22C6), baytrail },
 	{ PCI_VDEVICE(INTEL, 0x22C7), baytrail },
+	/* Skylake */
+	{ PCI_VDEVICE(INTEL, 0x9D60), haswell },
+	{ PCI_VDEVICE(INTEL, 0x9D61), haswell },
+	{ PCI_VDEVICE(INTEL, 0x9D62), haswell },
+	{ PCI_VDEVICE(INTEL, 0x9D63), haswell },
+	{ PCI_VDEVICE(INTEL, 0x9D64), haswell },
+	{ PCI_VDEVICE(INTEL, 0x9D65), haswell },
 	{ 0,}
 };
 MODULE_DEVICE_TABLE(pci, i2_designware_pci_ids);

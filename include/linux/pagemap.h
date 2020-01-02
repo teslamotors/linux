@@ -539,7 +539,7 @@ extern void add_page_wait_queue(struct page *page, wait_queue_t *waiter);
  * This assumes that two userspace pages are always sufficient.  That's
  * not true if PAGE_CACHE_SIZE > PAGE_SIZE.
  */
-static inline int fault_in_pages_writeable(char __user *uaddr, int size)
+static inline int fault_in_pages_writeable(char __user *uaddr, size_t size)
 {
 	int ret;
 
@@ -565,7 +565,7 @@ static inline int fault_in_pages_writeable(char __user *uaddr, int size)
 	return ret;
 }
 
-static inline int fault_in_pages_readable(const char __user *uaddr, int size)
+static inline int fault_in_pages_readable(const char __user *uaddr, size_t size)
 {
 	volatile char c;
 	int ret;

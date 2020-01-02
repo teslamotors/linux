@@ -110,6 +110,8 @@ source "drivers/rtc/Kconfig"
 
 source "drivers/dma/Kconfig"
 
+source "drivers/dma-buf/Kconfig"
+
 source "drivers/dca/Kconfig"
 
 source "drivers/auxdisplay/Kconfig"
@@ -165,6 +167,8 @@ source "drivers/pwm/Kconfig"
 source "drivers/irqchip/Kconfig"
 
 source "drivers/ipack/Kconfig"
+
+source "drivers/cbc/Kconfig"
 
 source "drivers/reset/Kconfig"
 

@@ -172,4 +172,49 @@ DEFINE_GUEST_HANDLE_STRUCT(vcpu_register_vcpu_info);
 
 /* Send an NMI to the specified VCPU. @extra_arg == NULL. */
 #define VCPUOP_send_nmi             11
+
+/* Request an I/O emulation for the specified VCPU. */
+#define VCPUOP_request_io_emulation       14
+#define PV_IOREQ_READ      1
+#define PV_IOREQ_WRITE     0
+
+#define PV_IOREQ_TYPE_PIO          0 /* pio */
+#define PV_IOREQ_TYPE_COPY         1 /* mmio ops */
+
+struct vcpu_emul_ioreq {
+    uint64_t      addr;           /* physical address */
+    uint64_t      data;           /* data (or paddr of data) */
+    uint64_t      count;          /* for rep prefixes */
+    uint32_t      size;           /* size in bytes */
+    uint16_t      _pad0;
+    uint8_t       state:4;
+    uint8_t       data_is_ptr:1;  /* if 1, data above is the guest paddr
+                                   * of the real data to use. */
+    uint8_t       dir:1;          /* 1=read, 0=write */
+    uint8_t       df:1;
+    uint8_t       _pad1:1;
+    uint8_t       type;           /* I/O type */
+};
+DEFINE_GUEST_HANDLE_STRUCT(vcpu_emul_ioreq);
+
+#define VCPUOP_get_sysdata           16
+/* sub operations */
+#define VCPUOP_sysdata_get_segment   0
+#define VCPUOP_sysdata_read	     1
+struct vcpu_sysdata_request {
+    uint64_t      op_type;
+    union {
+	struct {
+	    uint32_t     selector;
+            uint32_t     pad1;
+	    uint64_t     xdt_desc[2];
+	};
+	struct {
+	    uint64_t     src_addr;	/* linear address */
+            uint64_t     sys_data;
+            uint32_t     bytes;
+	};
+    };
+};
+
 #endif /* __XEN_PUBLIC_VCPU_H__ */

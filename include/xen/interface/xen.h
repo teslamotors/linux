@@ -113,6 +113,7 @@
 #define VIRQ_XC_RESERVED 11 /* G. Reserved for XenClient                     */
 #define VIRQ_ENOMEM     12 /* G. (DOM0) Low on heap memory       */
 
+#define VIRQ_VGT_GFX	15 /* (DOM0) Used for graphics interrupt          */
 /* Architecture-specific VIRQ definitions. */
 #define VIRQ_ARCH_0    16
 #define VIRQ_ARCH_1    17
@@ -747,6 +748,112 @@ struct tmem_op {
 };
 
 DEFINE_GUEST_HANDLE(u64);
+
+/* XEN_DOMCTL_getdomaininfo */
+struct xen_domctl_getdomaininfo {
+	/* OUT variables. */
+	domid_t  domain;              /* Also echoed in domctl.domain */
+	/* Domain is scheduled to die. */
+#define _XEN_DOMINF_dying     0
+#define XEN_DOMINF_dying      (1U<<_XEN_DOMINF_dying)
+	/* Domain is an HVM guest (as opposed to a PV guest). */
+#define _XEN_DOMINF_hvm_guest 1
+#define XEN_DOMINF_hvm_guest  (1U<<_XEN_DOMINF_hvm_guest)
+	/* The guest OS has shut down. */
+#define _XEN_DOMINF_shutdown  2
+#define XEN_DOMINF_shutdown   (1U<<_XEN_DOMINF_shutdown)
+	/* Currently paused by control software. */
+#define _XEN_DOMINF_paused    3
+#define XEN_DOMINF_paused     (1U<<_XEN_DOMINF_paused)
+	/* Currently blocked pending an event.     */
+#define _XEN_DOMINF_blocked   4
+#define XEN_DOMINF_blocked    (1U<<_XEN_DOMINF_blocked)
+	/* Domain is currently running.            */
+#define _XEN_DOMINF_running   5
+#define XEN_DOMINF_running    (1U<<_XEN_DOMINF_running)
+	/* Being debugged.  */
+#define _XEN_DOMINF_debugged  6
+#define XEN_DOMINF_debugged   (1U<<_XEN_DOMINF_debugged)
+	/* XEN_DOMINF_shutdown guest-supplied code.  */
+#define XEN_DOMINF_shutdownmask 255
+#define XEN_DOMINF_shutdownshift 16
+	uint32_t flags;              /* XEN_DOMINF_* */
+	aligned_u64 tot_pages;
+	aligned_u64 max_pages;
+	aligned_u64 outstanding_pages;
+	aligned_u64 shr_pages;
+	aligned_u64 paged_pages;
+	aligned_u64 shared_info_frame; /* GMFN of shared_info struct */
+	aligned_u64 cpu_time;
+	uint32_t nr_online_vcpus;    /* Number of VCPUs currently online. */
+	uint32_t max_vcpu_id;        /* Maximum VCPUID in use by this domain. */
+	uint32_t ssidref;
+	xen_domain_handle_t handle;
+	uint32_t cpupool;
+};
+DEFINE_GUEST_HANDLE_STRUCT(xen_domctl_getdomaininfo);
+
+#define XEN_DOMCTL_INTERFACE_VERSION 0x0000000b
+#define XEN_DOMCTL_pausedomain                    3
+#define XEN_DOMCTL_unpausedomain                  4
+#define XEN_DOMCTL_getdomaininfo                  5
+#define XEN_DOMCTL_memory_mapping                 39
+#define XEN_DOMCTL_iomem_permission               20
+
+
+#define XEN_DOMCTL_vgt_io_trap			  700
+
+#define MAX_VGT_IO_TRAP_INFO 4
+
+struct vgt_io_trap_info {
+        uint64_t s;
+        uint64_t e;
+};
+
+struct xen_domctl_vgt_io_trap {
+        uint32_t n_pio;
+        struct vgt_io_trap_info pio[MAX_VGT_IO_TRAP_INFO];
+
+        uint32_t n_mmio;
+        struct vgt_io_trap_info mmio[MAX_VGT_IO_TRAP_INFO];
+};
+
+/* Bind machine I/O address range -> HVM address range. */
+/* XEN_DOMCTL_memory_mapping */
+#define DPCI_ADD_MAPPING        1
+#define DPCI_REMOVE_MAPPING     0
+struct xen_domctl_memory_mapping {
+	aligned_u64 first_gfn; /* first page (hvm guest phys page) in range */
+	aligned_u64 first_mfn; /* first page (machine page) in range. */
+	aligned_u64 nr_mfns;   /* number of pages in range (>0) */
+	uint32_t add_mapping;  /* Add or remove mapping */
+	uint32_t padding;      /* padding for 64-bit aligned struct */
+};
+typedef struct xen_domctl_memory_mapping xen_domctl_memory_mapping_t;
+DEFINE_GUEST_HANDLE_STRUCT(xen_domctl_memory_mapping_t);
+
+/* XEN_DOMCTL_iomem_permission */
+struct xen_domctl_iomem_permission {
+    aligned_u64 first_mfn;/* first page (physical page number) in range */
+    aligned_u64 nr_mfns;  /* number of pages in range (>0) */
+    uint8_t  allow_access;     /* allow (!0) or deny (0) access to range? */
+};
+typedef struct xen_domctl_iomem_permission xen_domctl_iomem_permission_t;
+DEFINE_GUEST_HANDLE_STRUCT(xen_domctl_iomem_permission_t);
+
+struct xen_domctl {
+	uint32_t cmd;
+	uint32_t interface_version; /* XEN_DOMCTL_INTERFACE_VERSION */
+	domid_t  domain;
+	union {
+		struct xen_domctl_getdomaininfo     getdomaininfo;
+		struct xen_domctl_vgt_io_trap       vgt_io_trap;
+		struct xen_domctl_memory_mapping    memory_mapping;
+		struct xen_domctl_iomem_permission 	iomem_perm;
+		uint8_t                             pad[256];
+	}u;
+};
+DEFINE_GUEST_HANDLE_STRUCT(xen_domctl);
 
 #else /* __ASSEMBLY__ */
 

@@ -1,0 +1,28 @@
+1. Base:
+	Description:
+		- base dal infrastucture
+		- registeration
+		- io
+	Files:
+		dal_class.c
+	Prefix:
+		dal_XXX
+2. User space API:
+	Description:
+		character device api
+	Files:
+		dal_cdev.c dal_cdev.h
+	Prefix:
+		dal_dev_XXX
+3. Kernel space API:
+	Description:
+		- kernel api
+	FIles:
+		dal_kdi.c
+	Prefix:
+
+4. BH Plugin:
+	Prefix:
+		bh_XXXX
+
+TOOD:

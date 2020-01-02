@@ -62,6 +62,7 @@ struct intel_ipu4_isys_buffer {
 	enum intel_ipu4_isys_buffer_type type;
 	struct list_head req_head;
 	struct media_device_request *req;
+	atomic_t str2mmio_flag;
 };
 
 struct intel_ipu4_isys_video_buffer {

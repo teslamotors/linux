@@ -1,0 +1,35 @@
+keystore driver
+
+DEVICES:
+misc: /dev/keystore - keystore interface
+
+
+ * make all
+
+ * default and all
+ * make TRACE=y - enable excessive print outs
+ * make DEBUG=n - disable verbose debug output
+
+INSTALLATION:
+ * run in root privileged make install
+   - (e.g) sudo make install
+ * NOTE: no need to install in development work mode
+
+LOADING:
+ * modprobe keystore or insmod ./keystore.ko
+ * (DEVELOPMENT MODE) ./scripts/reload.sh - unload (if loaded) and load the driver
+
+REMOVING:
+ * modprobe -r keystore
+ * (DEVELOPMENT MODE) ./scripts/unload.sh
+
+INFO:
+ * debug messages are displayed in dmesg or /var/log/messages
+
+DEVELOPMENT SCRIPTS:
+ * ./scripts/install.sh
+ * ./scripts/load.sh
+ * ./scripts/reload.sh
+ * ./scripts/unload.sh
+ * ./scripts/test.sh
+ * ./scripts/version.sh

@@ -1053,7 +1053,19 @@ static int mmc_switch_status(struct mmc_card *card)
 	u32 status;
 	int err;
 
-	err = mmc_send_status(card, &status);
+	err = mmc_send_status_no_retries(card, &status);
+	/*
+	 * CRC error means any of the response bits might be flipped, so
+	 * checking the SWITCH_ERROR bit (or other bits) is not meaningful.
+	 * Equally, SWITCH_ERROR is cleared as soon the response is sent, so
+	 * retrying is pointless. Best option is to assume no error.
+	 */
+	if (err == -EILSEQ) {
+		pr_debug("%s: Ignoring CMD13 CRC error and status response\n",
+			 mmc_hostname(card->host));
+		return 0;
+	}
+
 	if (err)
 		return err;
 

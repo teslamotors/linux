@@ -416,11 +416,74 @@ static void __init reserve_initrd(void)
 
 	memblock_free(ramdisk_image, ramdisk_end - ramdisk_image);
 }
+
+static void __init check_initrd_for_fwimages ( char *cmd_line)
+{
+	struct header
+	{
+		unsigned magic;
+		unsigned type;
+		unsigned res1;
+		unsigned res2;
+		unsigned offset;
+		unsigned res3;
+		unsigned res4;
+	};
+
+#define ROUNDED_DOWN(value, align_to) ((value) & ~((align_to) - 1))
+#define ROUNDED_UP(value, align_to) ROUNDED_DOWN((value) + (align_to) - 1, (align_to))
+
+	if (initrd_start)
+	{
+		struct header *h = ( struct header *)initrd_start;
+
+		if ( initrd_start & 0xfff)
+		{
+			printk("ERROR: RAMDISK not aligned on 4K boundery\n");
+			return;
+		}
+
+		/* Check if the magic pattern and type are correct */
+		if ( h->magic == 0x2e6b7069 && h->type == 0x40000)
+		{
+			int i;
+			char *name;
+			unsigned *sizes = ( ( unsigned *)(h + 1));
+			unsigned nsub = ( h->offset - 7 * sizeof ( unsigned)) / sizeof ( unsigned);
+			unsigned char *sub = ( ( unsigned char *)h) + h->offset;
+			char buf [64];
+			int s;
+
+			for ( i = 0; i < nsub; i += 2)
+			{
+				name = sub;
+
+				/* alignment */
+				sub += ROUNDED_UP(sizes[i], 4);
+
+				s = snprintf (buf, sizeof(buf), " %s=0x%x@0x%x", name, sizes[i+1], sub);
+				strcat ( cmd_line, buf);
+
+				sub += ROUNDED_UP(sizes[i+1], 4);
+			}
+
+			/* Prevent the initrd is freed'up */
+			initrd_start = initrd_end = 0;
+		}
+
+	}
+
+#undef ROUNDED_DOWN(value, align_to)
+#undef ROUNDED_UP(value, align_to)
+}
 #else
 static void __init early_reserve_initrd(void)
 {
 }
 static void __init reserve_initrd(void)
+{
+}
+static void __init check_initrd_for_fwimages ( char *cmd_line)
 {
 }
 #endif /* CONFIG_BLK_DEV_INITRD */
@@ -1147,6 +1210,7 @@ void __init setup_arch(char **cmdline_p)
 	setup_log_buf(1);
 
 	reserve_initrd();
+	check_initrd_for_fwimages (boot_command_line);
 
 #if defined(CONFIG_ACPI) && defined(CONFIG_BLK_DEV_INITRD)
 	acpi_initrd_override((void *)initrd_start, initrd_end - initrd_start);

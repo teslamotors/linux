@@ -1,0 +1,13 @@
+#
+# CBC (CarrierBoardCommunication) subsystem configuration
+#
+
+config CBC_LDISC
+	tristate "CBC (CarrierBoardCommunication) line discipline"
+	depends on TTY
+        help
+          This line discipline provides support for demultiplexing the
+          CBC (CarrierBoardCommunication) protocol and presents the mux
+          as a set of individual char devices.
+
+
