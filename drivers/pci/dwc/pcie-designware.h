@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Synopsys DesignWare PCIe host controller driver
  *
@@ -5,15 +6,12 @@
  *		http://www.samsung.com
  *
  * Author: Jingoo Han <jg1.han@samsung.com>
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
  */
 
 #ifndef _PCIE_DESIGNWARE_H
 #define _PCIE_DESIGNWARE_H
 
+#include <linux/dma-mapping.h>
 #include <linux/irq.h>
 #include <linux/msi.h>
 #include <linux/pci.h>
@@ -23,8 +21,7 @@
 
 /* Parameters for the waiting for link up routine */
 #define LINK_WAIT_MAX_RETRIES		10
-#define LINK_WAIT_USLEEP_MIN		90000
-#define LINK_WAIT_USLEEP_MAX		100000
+#define LINK_WAIT_USLEEP_MIN		9
 
 /* Parameters for the waiting for iATU enabled routine */
 #define LINK_WAIT_MAX_IATU_RETRIES	5
@@ -52,6 +49,14 @@
 #define PCIE_MSI_INTR0_MASK		0x82C
 #define PCIE_MSI_INTR0_STATUS		0x830
 
+/* Gen3 Control Register */
+#define PCIE_GEN3_RELATED_OFF		0x890
+/* Disables equilzation feature */
+#define PCIE_GEN3_EQUALIZATION_DISABLE	(0x1 << 16)
+#define PCIE_GEN3_EQ_PHASE_2_3		(0x1 << 9)
+#define PCIE_GEN3_RXEQ_PH01_EN		(0x1 << 12)
+#define PCIE_GEN3_RXEQ_RGRDLESS_RXTS	(0x1 << 13)
+
 #define PCIE_ATU_VIEWPORT		0x900
 #define PCIE_ATU_REGION_INBOUND		(0x1 << 31)
 #define PCIE_ATU_REGION_OUTBOUND	(0x0 << 31)
@@ -78,6 +83,47 @@
 #define PCIE_MISC_CONTROL_1_OFF		0x8BC
 #define PCIE_DBI_RO_WR_EN		(0x1 << 0)
 
+#define PCIE_REG_ADDR_TYPE_LOC	19
+
+enum dw_pcie_addr_type {
+	ADDR_TYPE_ATU = 0x6,
+	ADDR_TYPE_DMA = 0x7,
+};
+
+#define PCIE_ADDR_TYPE_DMA  (0x7 << 19)
+
+#define PF0_DMA_WRITE_ENGINE_EN_OFF		(PCIE_ADDR_TYPE_DMA | 0x000C)
+#define PF0_DMA_WRITE_DOORBELL_OFF		(PCIE_ADDR_TYPE_DMA | 0x0010)
+#define PF0_DMA_WRITE_INT_STATUS_OFF	(PCIE_ADDR_TYPE_DMA | 0x004C)
+#define PF0_DMA_WRITE_INT_MASK_OFF		(PCIE_ADDR_TYPE_DMA | 0x0054)
+#define PF0_DMA_WRITE_INT_CLEAR_OFF		(PCIE_ADDR_TYPE_DMA | 0x0058)
+#define PF0_DMA_CH_CONTROL1_OFF_WRCH_0	(PCIE_ADDR_TYPE_DMA | 0x0200)
+#define PF0_DMA_XFER_SIZE_OFF_WRCH_0	(PCIE_ADDR_TYPE_DMA | 0x0208)
+#define PF0_DMA_SAR_LOW_OFF_WRCH_0		(PCIE_ADDR_TYPE_DMA | 0x020C)
+#define PF0_DMA_SAR_HIGH_OFF_WRCH_0		(PCIE_ADDR_TYPE_DMA | 0x0210)
+#define PF0_DMA_DAR_LOW_OFF_WRCH_0		(PCIE_ADDR_TYPE_DMA | 0x0214)
+#define PF0_DMA_DAR_HIGH_OFF_WRCH_0		(PCIE_ADDR_TYPE_DMA | 0x0218)
+
+#define PF0_DMA_READ_ENGINE_EN_OFF		(PCIE_ADDR_TYPE_DMA | 0x002C)
+#define PF0_DMA_READ_DOORBELL_OFF		(PCIE_ADDR_TYPE_DMA | 0x0030)
+#define PF0_DMA_READ_INT_STATUS_OFF		(PCIE_ADDR_TYPE_DMA | 0x00A0)
+#define PF0_DMA_READ_INT_MASK_OFF		(PCIE_ADDR_TYPE_DMA | 0x00A8)
+#define PF0_DMA_READ_INT_CLEAR_OFF		(PCIE_ADDR_TYPE_DMA | 0x00AC)
+#define PF0_DMA_READ_ERR_STATUS_LOW_OFF	(PCIE_ADDR_TYPE_DMA | 0x00B4)
+#define PF0_DMA_READ_ERR_STATUS_HIGH_OFF (PCIE_ADDR_TYPE_DMA | 0x00B8)
+#define PF0_DMA_CH_CONTROL1_OFF_RDCH_0	(PCIE_ADDR_TYPE_DMA | 0x0300)
+#define PF0_DMA_XFER_SIZE_OFF_RDCH_0	(PCIE_ADDR_TYPE_DMA | 0x0308)
+#define PF0_DMA_SAR_LOW_OFF_RDCH_0		(PCIE_ADDR_TYPE_DMA | 0x030C)
+#define PF0_DMA_SAR_HIGH_OFF_RDCH_0		(PCIE_ADDR_TYPE_DMA | 0x0310)
+#define PF0_DMA_DAR_LOW_OFF_RDCH_0		(PCIE_ADDR_TYPE_DMA | 0x0314)
+#define PF0_DMA_DAR_HIGH_OFF_RDCH_0		(PCIE_ADDR_TYPE_DMA | 0x0318)
+
+#define DMA_DOORBELL_STOP   (0x1 << 31)
+
+#define DMA_CH0_DONE		(0x1 << 0)
+#define DMA_CH0_ABORT		(0x1 << 16)
+#define DMA_CH0_COMPLETED_STATUS (DMA_CH0_ABORT | DMA_CH0_DONE)
+
 /*
  * iATU Unroll-specific register definitions
  * From 4.80 core version the address translation will be made by unroll
@@ -99,19 +145,23 @@
 
 #define MSI_MESSAGE_CONTROL		0x52
 #define MSI_CAP_MMC_SHIFT		1
+#define MSI_CAP_MMC_MASK		(7 << MSI_CAP_MMC_SHIFT)
 #define MSI_CAP_MME_SHIFT		4
 #define MSI_CAP_MSI_EN_MASK		0x1
 #define MSI_CAP_MME_MASK		(7 << MSI_CAP_MME_SHIFT)
 #define MSI_MESSAGE_ADDR_L32		0x54
 #define MSI_MESSAGE_ADDR_U32		0x58
+#define MSI_MESSAGE_DATA_32		0x58
+#define MSI_MESSAGE_DATA_64		0x5C
 
-/*
- * Maximum number of MSI IRQs can be 256 per controller. But keep
- * it 32 as of now. Probably we will never need more than 32. If needed,
- * then increment it in multiple of 32.
- */
-#define MAX_MSI_IRQS			32
-#define MAX_MSI_CTRLS			(MAX_MSI_IRQS / 32)
+#define MAX_MSI_IRQS			256
+#define MAX_MSI_IRQS_PER_CTRL		32
+#define MAX_MSI_CTRLS			(MAX_MSI_IRQS / MAX_MSI_IRQS_PER_CTRL)
+#define MSI_DEF_NUM_VECTORS		32
+
+/* Maximum number of inbound/outbound iATUs */
+#define MAX_IATU_IN			256
+#define MAX_IATU_OUT			256
 
 struct pcie_port;
 struct dw_pcie;
@@ -143,7 +193,10 @@ struct dw_pcie_host_ops {
 	phys_addr_t (*get_msi_addr)(struct pcie_port *pp);
 	u32 (*get_msi_data)(struct pcie_port *pp, int pos);
 	void (*scan_bus)(struct pcie_port *pp);
-	int (*msi_host_init)(struct pcie_port *pp, struct msi_controller *chip);
+	void (*set_num_vectors)(struct pcie_port *pp);
+	int (*msi_host_init)(struct pcie_port *pp);
+	void (*msi_irq_ack)(int irq, struct pcie_port *pp);
+	void (*msi_handler)(struct pcie_port *pp);
 };
 
 struct pcie_port {
@@ -168,7 +221,11 @@ struct pcie_port {
 	const struct dw_pcie_host_ops *ops;
 	int			msi_irq;
 	struct irq_domain	*irq_domain;
-	unsigned long		msi_data;
+	struct irq_domain	*msi_domain;
+	dma_addr_t		msi_data;
+	u32			num_vectors;
+	u32			irq_status[MAX_MSI_CTRLS];
+	raw_spinlock_t		lock;
 	DECLARE_BITMAP(msi_irq_in_use, MAX_MSI_IRQS);
 };
 
@@ -179,8 +236,10 @@ enum dw_pcie_as_type {
 };
 
 struct dw_pcie_ep_ops {
+	void	(*ep_set_mask)(struct dw_pcie_ep *ep, u32 reg, u32 mask);
 	void	(*ep_init)(struct dw_pcie_ep *ep);
-	int	(*raise_irq)(struct dw_pcie_ep *ep, enum pci_epc_irq_type type,
+	int	(*raise_irq)(struct dw_pcie_ep *ep, u8 func_no,
+			     enum pci_epc_irq_type type,
 			     u8 interrupt_num);
 };
 
@@ -192,14 +251,18 @@ struct dw_pcie_ep {
 	size_t			page_size;
 	u8			bar_to_atu[6];
 	phys_addr_t		*outbound_addr;
-	unsigned long		ib_window_map;
-	unsigned long		ob_window_map;
+	unsigned long		*ib_window_map;
+	unsigned long		*ob_window_map;
 	u32			num_ib_windows;
 	u32			num_ob_windows;
+	void __iomem		*msi_mem;
+	phys_addr_t		msi_mem_phys;
+	bool		dma_write_active;
+	bool		dma_read_active;
 };
 
 struct dw_pcie_ops {
-	u64	(*cpu_addr_fixup)(u64 cpu_addr);
+	u64	(*cpu_addr_fixup)(struct dw_pcie *pcie, u64 cpu_addr);
 	u32	(*read_dbi)(struct dw_pcie *pcie, void __iomem *base, u32 reg,
 			    size_t size);
 	void	(*write_dbi)(struct dw_pcie *pcie, void __iomem *base, u32 reg,
@@ -242,6 +305,7 @@ int dw_pcie_prog_inbound_atu(struct dw_pcie *pci, int index, int bar,
 void dw_pcie_disable_atu(struct dw_pcie *pci, int index,
 			 enum dw_pcie_region_type type);
 void dw_pcie_setup(struct dw_pcie *pci);
+u8 dw_pcie_iatu_unroll_enabled(struct dw_pcie *pci);
 
 static inline void dw_pcie_writel_dbi(struct dw_pcie *pci, u32 reg, u32 val)
 {
@@ -308,8 +372,10 @@ static inline void dw_pcie_dbi_ro_wr_dis(struct dw_pcie *pci)
 #ifdef CONFIG_PCIE_DW_HOST
 irqreturn_t dw_handle_msi_irq(struct pcie_port *pp);
 void dw_pcie_msi_init(struct pcie_port *pp);
+void dw_pcie_free_msi(struct pcie_port *pp);
 void dw_pcie_setup_rc(struct pcie_port *pp);
 int dw_pcie_host_init(struct pcie_port *pp);
+int dw_pcie_allocate_domains(struct pcie_port *pp);
 #else
 static inline irqreturn_t dw_handle_msi_irq(struct pcie_port *pp)
 {
@@ -317,6 +383,10 @@ static inline irqreturn_t dw_handle_msi_irq(struct pcie_port *pp)
 }
 
 static inline void dw_pcie_msi_init(struct pcie_port *pp)
+{
+}
+
+static inline void dw_pcie_free_msi(struct pcie_port *pp)
 {
 }
 
@@ -328,12 +398,20 @@ static inline int dw_pcie_host_init(struct pcie_port *pp)
 {
 	return 0;
 }
+
+static inline int dw_pcie_allocate_domains(struct pcie_port *pp)
+{
+	return 0;
+}
 #endif
 
 #ifdef CONFIG_PCIE_DW_EP
 void dw_pcie_ep_linkup(struct dw_pcie_ep *ep);
 int dw_pcie_ep_init(struct dw_pcie_ep *ep);
 void dw_pcie_ep_exit(struct dw_pcie_ep *ep);
+int dw_pcie_ep_raise_msi_irq(struct dw_pcie_ep *ep, u8 func_no, u8
+			     interrupt_num);
+void dw_pcie_ep_reset_bar(struct dw_pcie *pci, enum pci_barno bar);
 #else
 static inline void dw_pcie_ep_linkup(struct dw_pcie_ep *ep)
 {
@@ -345,6 +423,16 @@ static inline int dw_pcie_ep_init(struct dw_pcie_ep *ep)
 }
 
 static inline void dw_pcie_ep_exit(struct dw_pcie_ep *ep)
+{
+}
+
+static inline int dw_pcie_ep_raise_msi_irq(struct dw_pcie_ep *ep, u8 func_no,
+					   u8 interrupt_num)
+{
+	return 0;
+}
+
+static inline void dw_pcie_ep_reset_bar(struct dw_pcie *pci, enum pci_barno bar)
 {
 }
 #endif

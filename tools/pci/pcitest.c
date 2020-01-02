@@ -23,7 +23,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/ioctl.h>
-#include <time.h>
 #include <unistd.h>
 
 #include <linux/pcitest.h>
@@ -40,15 +39,15 @@ struct pci_test {
 	bool		read;
 	bool		write;
 	bool		copy;
+	bool		dmaread;
+	bool		dmawrite;
 	unsigned long	size;
 };
 
 static int run_test(struct pci_test *test)
 {
-	long ret;
+	long ret = 0;
 	int fd;
-	struct timespec start, end;
-	double time;
 
 	fd = open(test->device, O_RDWR);
 	if (fd < 0) {
@@ -110,18 +109,37 @@ static int run_test(struct pci_test *test)
 			fprintf(stdout, "%s\n", result[ret]);
 	}
 
-	fflush(stdout);
+	if (test->dmawrite) {
+		ret = ioctl(fd, PCITEST_DMAWRITE, test->size);
+		fprintf(stdout, "DMA WRITE (%7ld bytes):\t\t", test->size);
+		if (ret < 0)
+			fprintf(stdout, "TEST FAILED\n");
+		else
+			fprintf(stdout, "%s\n", result[ret]);
+	}
+
+	if (test->dmaread) {
+		ret = ioctl(fd, PCITEST_DMAREAD, test->size);
+		fprintf(stdout, "DMA READ (%7ld bytes):\t\t", test->size);
+		if (ret < 0)
+			fprintf(stdout, "TEST FAILED\n");
+		else
+			fprintf(stdout, "%s\n", result[ret]);
+	}
+
+	return ret;
 }
 
 int main(int argc, char **argv)
 {
 	int c;
+	int ret;
 	struct pci_test *test;
 
 	test = calloc(1, sizeof(*test));
 	if (!test) {
 		perror("Fail to allocate memory for pci_test\n");
-		return -ENOMEM;
+		exit(EXIT_FAILURE);
 	}
 
 	/* since '0' is a valid BAR number, initialize it to -1 */
@@ -133,7 +151,7 @@ int main(int argc, char **argv)
 	/* set default endpoint device */
 	test->device = "/dev/pci-endpoint-test.0";
 
-	while ((c = getopt(argc, argv, "D:b:m:lrwcs:")) != EOF)
+	while ((c = getopt(argc, argv, "D:b:m:lrwcRWs:")) != EOF)
 	switch (c) {
 	case 'D':
 		test->device = optarg;
@@ -160,6 +178,12 @@ int main(int argc, char **argv)
 	case 'c':
 		test->copy = true;
 		continue;
+	case 'R':
+		test->dmaread = true;
+		continue;
+	case 'W':
+		test->dmawrite = true;
+		continue;
 	case 's':
 		test->size = strtoul(optarg, NULL, 0);
 		continue;
@@ -177,11 +201,15 @@ usage:
 			"\t-r			Read buffer test\n"
 			"\t-w			Write buffer test\n"
 			"\t-c			Copy buffer test\n"
+			"\t-R			DMARead buffer test\n"
+			"\t-W			DMAWrite buffer test\n"
 			"\t-s <size>		Size of buffer {default: 100KB}\n",
 			argv[0]);
-		return -EINVAL;
+		exit(EXIT_FAILURE);
 	}
 
-	run_test(test);
-	return 0;
+	/* 0 is also considered as an error */
+	if ((ret = run_test(test)) <= 0)
+		exit(EXIT_FAILURE);
+	return EXIT_SUCCESS;
 }

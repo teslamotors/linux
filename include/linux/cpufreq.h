@@ -538,6 +538,7 @@ int cpufreq_register_governor(struct cpufreq_governor *governor);
 void cpufreq_unregister_governor(struct cpufreq_governor *governor);
 
 struct cpufreq_governor *cpufreq_default_governor(void);
+struct cpufreq_governor *cpufreq_powersave_governor(void);
 struct cpufreq_governor *cpufreq_fallback_governor(void);
 
 static inline void cpufreq_policy_apply_limits(struct cpufreq_policy *policy)

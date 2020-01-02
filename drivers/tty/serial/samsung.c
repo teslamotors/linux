@@ -1733,19 +1733,22 @@ static int s3c24xx_serial_init_port(struct s3c24xx_uart_port *ourport,
 	ret = platform_get_irq(platdev, 1);
 	if (ret > 0)
 		ourport->tx_irq = ret;
-	/*
-	 * DMA is currently supported only on DT platforms, if DMA properties
-	 * are specified.
-	 */
-	if (platdev->dev.of_node && of_find_property(platdev->dev.of_node,
-						     "dmas", NULL)) {
-		ourport->dma = devm_kzalloc(port->dev,
-					    sizeof(*ourport->dma),
-					    GFP_KERNEL);
-		if (!ourport->dma) {
-			ret = -ENOMEM;
-			goto err;
+	if (platdev->dev.of_node) {
+		/*
+		 * DMA is currently supported only on DT platforms, if DMA properties
+		 * are specified.
+		 */
+		if (of_find_property(platdev->dev.of_node, "dmas", NULL)) {
+			ourport->dma = devm_kzalloc(port->dev,
+										sizeof(*ourport->dma),
+										GFP_KERNEL);
+			if (!ourport->dma) {
+				ret = -ENOMEM;
+				goto err;
+			}
 		}
+		if (of_property_read_bool(platdev->dev.of_node, "low-latency"))
+			port->flags |= UPF_LOW_LATENCY;
 	}
 
 	ourport->clk	= clk_get(&platdev->dev, "uart");

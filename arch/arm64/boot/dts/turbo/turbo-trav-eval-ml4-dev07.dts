@@ -1,0 +1,253 @@
+/*
+ * TURBO TRAV EVALUATION board device tree source
+ *
+ * Copyright (c) 2017 Samsung Electronics Co., Ltd.
+ *		http://www.samsung.com
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+
+/dts-v1/;
+#include "turbo-trav.dtsi"
+#include "turbo-trav-eval.dtsi"
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+/ {
+	model = "Trav Eval board based on TRAV SoC";
+	compatible = "turbo,trav-eval-ml4-dev07", "turbo,trav";
+};
+
+&serial_0 {
+	interrupts = <GIC_SPI 171 IRQ_TYPE_LEVEL_HIGH>;
+};
+
+&serial_1 {
+	interrupts = <GIC_SPI 172 IRQ_TYPE_LEVEL_HIGH>;
+};
+
+&pdma0 {
+	status = "okay";
+	interrupts = <GIC_SPI 190 IRQ_TYPE_LEVEL_HIGH>;
+	iommus = <&smmu_peric 0x2 0x0>;
+};
+
+&pdma1 {
+	status = "okay";
+	interrupts = <GIC_SPI 191 IRQ_TYPE_LEVEL_HIGH>;
+	iommus = <&smmu_peric 0x1 0x0>;
+};
+
+&mdma0 {
+	status = "okay";
+	interrupts = <GIC_SPI 424 IRQ_TYPE_LEVEL_HIGH>;
+	iommus = <&smmu_imem 0x800 0x0>;
+};
+
+&mdma1 {
+	status = "okay";
+	interrupts = <GIC_SPI 425 IRQ_TYPE_LEVEL_HIGH>;
+	iommus = <&smmu_imem 0x801 0x0>;
+};
+
+&mct {
+	interrupts = <GIC_SPI 455 IRQ_TYPE_LEVEL_HIGH>,
+		<GIC_SPI 456 IRQ_TYPE_LEVEL_HIGH>,
+		<GIC_SPI 457 IRQ_TYPE_LEVEL_HIGH>,
+		<GIC_SPI 458 IRQ_TYPE_LEVEL_HIGH>,
+		<GIC_SPI 459 IRQ_TYPE_LEVEL_HIGH>,
+		<GIC_SPI 460 IRQ_TYPE_LEVEL_HIGH>,
+		<GIC_SPI 461 IRQ_TYPE_LEVEL_HIGH>,
+		<GIC_SPI 462 IRQ_TYPE_LEVEL_HIGH>,
+		<GIC_SPI 463 IRQ_TYPE_LEVEL_HIGH>,
+		<GIC_SPI 464 IRQ_TYPE_LEVEL_HIGH>,
+		<GIC_SPI 465 IRQ_TYPE_LEVEL_HIGH>,
+		<GIC_SPI 466 IRQ_TYPE_LEVEL_HIGH>,
+		<GIC_SPI 467 IRQ_TYPE_LEVEL_HIGH>,
+		<GIC_SPI 468 IRQ_TYPE_LEVEL_HIGH>,
+		<GIC_SPI 469 IRQ_TYPE_LEVEL_HIGH>,
+		<GIC_SPI 470 IRQ_TYPE_LEVEL_HIGH>;
+};
+
+&pwm_0 {
+	status = "okay";
+};
+
+&pwm_1 {
+	status = "okay";
+};
+
+&clock_cmu {
+	status = "okay";
+};
+
+&clock_imem {
+	status = "okay";
+};
+
+&clock_cpucl {
+	status = "okay";
+};
+
+&clock_cpucl {
+	status = "okay";
+};
+
+&spi_0 {
+	status = "okay";
+};
+
+&spi_1 {
+	status = "okay";
+};
+
+&spi_2 {
+	status = "okay";
+};
+
+&clock_peric {
+	status = "okay";
+};
+
+&clock_mfc {
+	status = "okay";
+};
+
+&smmu_peric {
+	status = "okay";
+};
+
+&smmu_imem {
+	status = "okay";
+};
+
+&hsi2c_0 {
+	status = "okay";
+};
+
+&hsi2c_1 {
+	status = "okay";
+};
+
+&hsi2c_2 {
+	status = "okay";
+};
+
+&hsi2c_3 {
+	status = "okay";
+};
+
+&hsi2c_4 {
+	status = "okay";
+};
+
+&hsi2c_5 {
+	status = "okay";
+};
+
+&hsi2c_6 {
+	status = "okay";
+};
+
+&hsi2c_7 {
+	status = "okay";
+};
+
+&smmu_fsys0 {
+	status = "okay";
+};
+
+&dwc3_0 {
+	status = "okay";
+};
+
+&ufs1 {
+	status = "disabled";
+};
+
+&mfc_0 {
+	status = "okay";
+};
+
+&ethernet_0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&eth0_tx_clk>, <&eth0_tx_data>, <&eth0_tx_ctrl>,
+		<&eth0_phy_intr>, <&eth0_rx_clk>, <&eth0_rx_data>,
+		<&eth0_rx_ctrl>, <&eth0_mdio>;
+	status = "okay";
+};
+
+&pcie4_rc {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pcie1_clkreq>, <&pcie1_wake>;
+	gpios = <&gpf6 2 GPIO_ACTIVE_HIGH>;
+	status = "okay";
+};
+
+&pcie4_ep {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pcie1_clkreq>, <&pcie1_wake>;
+	gpios = <&gpf6 2 GPIO_ACTIVE_HIGH>;
+	status = "disabled";
+};
+
+&pcie0_rc {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pcie0_clkreq>, <&pcie0_wake0>;
+	gpios = <&gpc8 2 GPIO_ACTIVE_HIGH>;
+	status = "disabled";
+};
+
+&pcie0_ep {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pcie0_clkreq>, <&pcie0_wake0>;
+	gpios = <&gpc8 2 GPIO_ACTIVE_HIGH>;
+	status = "disabled";
+};
+
+&pcie1_rc {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pcie0_clkreq>, <&pcie0_wake1>;
+	gpios = <&gpc8 2 GPIO_ACTIVE_HIGH>;
+	status = "disabled";
+};
+
+&pcie1_ep {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pcie0_clkreq>, <&pcie0_wake1>;
+	gpios = <&gpc8 2 GPIO_ACTIVE_HIGH>;
+	status = "disabled";
+};
+
+&clock_gpu {
+	status = "okay";
+};
+
+&mali {
+	status = "okay";
+};
+
+&m_can0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&m_can0_bus>;
+	status = "okay";
+};
+
+&m_can1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&m_can1_bus>;
+	status = "okay";
+};
+
+&m_can2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&m_can2_bus>;
+	status = "okay";
+};
+
+&m_can3 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&m_can3_bus>;
+	status = "okay";
+};

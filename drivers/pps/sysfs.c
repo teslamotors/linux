@@ -57,6 +57,63 @@ static ssize_t clear_show(struct device *dev, struct device_attribute *attr,
 }
 static DEVICE_ATTR_RO(clear);
 
+static ssize_t assert_monotonic_show(struct device *dev,
+									 struct device_attribute *attr,
+									 char *buf)
+{
+	struct pps_device *pps = dev_get_drvdata(dev);
+
+	if (!(pps->info.mode & PPS_CAPTUREASSERT))
+		return 0;
+
+	return sprintf(buf, "%lld.%09d#%d\n",
+			(long long) pps->assert_mono_tu.sec, pps->assert_mono_tu.nsec,
+			pps->assert_sequence);
+}
+static DEVICE_ATTR_RO(assert_monotonic);
+
+static ssize_t clear_monotonic_show(struct device *dev, struct device_attribute *attr,
+			  char *buf)
+{
+	struct pps_device *pps = dev_get_drvdata(dev);
+
+	if (!(pps->info.mode & PPS_CAPTURECLEAR))
+		return 0;
+
+	return sprintf(buf, "%lld.%09d#%d\n",
+			(long long) pps->clear_mono_tu.sec, pps->clear_mono_tu.nsec,
+			pps->clear_sequence);
+}
+static DEVICE_ATTR_RO(clear_monotonic);
+
+static ssize_t assert_raw_show(struct device *dev, struct device_attribute *attr,
+			   char *buf)
+{
+	struct pps_device *pps = dev_get_drvdata(dev);
+
+	if (!(pps->info.mode & PPS_CAPTUREASSERT))
+		return 0;
+
+	return sprintf(buf, "%lld.%09d#%d\n",
+			(long long) pps->assert_raw_tu.sec, pps->assert_raw_tu.nsec,
+			pps->assert_sequence);
+}
+static DEVICE_ATTR_RO(assert_raw);
+
+static ssize_t clear_raw_show(struct device *dev, struct device_attribute *attr,
+			  char *buf)
+{
+	struct pps_device *pps = dev_get_drvdata(dev);
+
+	if (!(pps->info.mode & PPS_CAPTURECLEAR))
+		return 0;
+
+	return sprintf(buf, "%lld.%09d#%d\n",
+			(long long) pps->clear_raw_tu.sec, pps->clear_raw_tu.nsec,
+			pps->clear_sequence);
+}
+static DEVICE_ATTR_RO(clear_raw);
+
 static ssize_t mode_show(struct device *dev, struct device_attribute *attr,
 			 char *buf)
 {
@@ -96,6 +153,10 @@ static DEVICE_ATTR_RO(path);
 static struct attribute *pps_attrs[] = {
 	&dev_attr_assert.attr,
 	&dev_attr_clear.attr,
+	&dev_attr_assert_raw.attr,
+	&dev_attr_clear_raw.attr,
+	&dev_attr_assert_monotonic.attr,
+	&dev_attr_clear_monotonic.attr,
 	&dev_attr_mode.attr,
 	&dev_attr_echo.attr,
 	&dev_attr_name.attr,

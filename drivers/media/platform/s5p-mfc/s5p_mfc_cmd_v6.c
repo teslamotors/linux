@@ -101,6 +101,12 @@ static int s5p_mfc_open_inst_cmd_v6(struct s5p_mfc_ctx *ctx)
 	case S5P_MFC_CODEC_VP8_DEC:
 		codec_type = S5P_FIMV_CODEC_VP8_DEC_V6;
 		break;
+	case S5P_MFC_CODEC_HEVC_DEC:
+		codec_type = S5P_FIMV_CODEC_HEVC_DEC;
+		break;
+	case S5P_MFC_CODEC_VP9_DEC:
+		codec_type = S5P_FIMV_CODEC_VP9_DEC;
+		break;
 	case S5P_MFC_CODEC_H264_ENC:
 		codec_type = S5P_FIMV_CODEC_H264_ENC_V6;
 		break;
@@ -116,13 +122,19 @@ static int s5p_mfc_open_inst_cmd_v6(struct s5p_mfc_ctx *ctx)
 	case S5P_MFC_CODEC_VP8_ENC:
 		codec_type = S5P_FIMV_CODEC_VP8_ENC_V7;
 		break;
+	case S5P_MFC_CODEC_HEVC_ENC:
+		codec_type = S5P_FIMV_CODEC_HEVC_ENC;
+		break;
+	case S5P_MFC_CODEC_VP9_ENC:
+		codec_type = S5P_FIMV_CODEC_VP9_ENC;
+		break;
 	default:
 		codec_type = S5P_FIMV_CODEC_NONE_V6;
 	}
 	mfc_write(dev, codec_type, S5P_FIMV_CODEC_TYPE_V6);
 	mfc_write(dev, ctx->ctx.dma, S5P_FIMV_CONTEXT_MEM_ADDR_V6);
 	mfc_write(dev, ctx->ctx.size, S5P_FIMV_CONTEXT_MEM_SIZE_V6);
-	mfc_write(dev, 0, S5P_FIMV_D_CRC_CTRL_V6); /* no crc */
+	mfc_write(dev, 1, S5P_FIMV_D_CRC_CTRL_V6); /* no crc */
 
 	return s5p_mfc_cmd_host2risc_v6(dev, S5P_FIMV_H2R_CMD_OPEN_INSTANCE_V6,
 					&h2r_args);

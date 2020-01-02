@@ -195,6 +195,23 @@ static int of_thermal_set_emul_temp(struct thermal_zone_device *tz,
 	return data->ops->set_emul_temp(data->sensor_data, temp);
 }
 
+/**
+ * of_thermal_get_all_temp - function to get all temperature
+ *
+ * @tz: pointer to a thermal zone
+ *
+ * This function gives the ability to get all sensors temperature,
+ * which is handy for debugging
+ *
+ * Return: zero on success
+ */
+static int of_thermal_get_all_temp(struct thermal_zone_device *tz)
+{
+        struct __thermal_zone *data = tz->devdata;
+
+        return data->ops->get_all_temp(data->sensor_data);
+}
+
 static int of_thermal_get_trend(struct thermal_zone_device *tz, int trip,
 				enum thermal_trend *trend)
 {
@@ -434,6 +451,9 @@ thermal_zone_of_add_sensor(struct device_node *zone,
 
 	if (ops->set_emul_temp)
 		tzd->ops->set_emul_temp = of_thermal_set_emul_temp;
+
+	if (ops->get_all_temp)
+		tzd->ops->get_all_temp = of_thermal_get_all_temp;
 
 	mutex_unlock(&tzd->lock);
 

@@ -13,8 +13,6 @@
 #include <dt-bindings/sound/samsung-i2s.h>
 #include <linux/delay.h>
 #include <linux/slab.h>
-#include <linux/clk.h>
-#include <linux/clk-provider.h>
 #include <linux/io.h>
 #include <linux/module.h>
 #include <linux/of.h>
@@ -27,88 +25,19 @@
 
 #include <linux/platform_data/asoc-s3c.h>
 
-#include "dma.h"
-#include "idma.h"
 #include "i2s.h"
 #include "i2s-regs.h"
 
 #define msecs_to_loops(t) (loops_per_jiffy / 1000 * HZ * t)
 
-struct samsung_i2s_variant_regs {
-	unsigned int	bfs_off;
-	unsigned int	rfs_off;
-	unsigned int	sdf_off;
-	unsigned int	txr_off;
-	unsigned int	rclksrc_off;
-	unsigned int	mss_off;
-	unsigned int	cdclkcon_off;
-	unsigned int	lrp_off;
-	unsigned int	bfs_mask;
-	unsigned int	rfs_mask;
-	unsigned int	ftx0cnt_off;
-};
-
-struct samsung_i2s_dai_data {
-	u32 quirks;
-	unsigned int pcm_rates;
-	const struct samsung_i2s_variant_regs *i2s_variant_regs;
-};
-
-struct i2s_dai {
-	/* Platform device for this DAI */
-	struct platform_device *pdev;
-	/* Memory mapped SFR region */
-	void __iomem	*addr;
-	/* Rate of RCLK source clock */
-	unsigned long rclk_srcrate;
-	/* Frame Clock */
-	unsigned frmclk;
-	/*
-	 * Specifically requested RCLK,BCLK by MACHINE Driver.
-	 * 0 indicates CPU driver is free to choose any value.
-	 */
-	unsigned rfs, bfs;
-	/* I2S Controller's core clock */
-	struct clk *clk;
-	/* Clock for generating I2S signals */
-	struct clk *op_clk;
-	/* Pointer to the Primary_Fifo if this is Sec_Fifo, NULL otherwise */
-	struct i2s_dai *pri_dai;
-	/* Pointer to the Secondary_Fifo if it has one, NULL otherwise */
-	struct i2s_dai *sec_dai;
-#define DAI_OPENED	(1 << 0) /* Dai is opened */
-#define DAI_MANAGER	(1 << 1) /* Dai is the manager */
-	unsigned mode;
-	/* Driver for this DAI */
-	struct snd_soc_dai_driver i2s_dai_drv;
-	/* DMA parameters */
-	struct snd_dmaengine_dai_dma_data dma_playback;
-	struct snd_dmaengine_dai_dma_data dma_capture;
-	struct snd_dmaengine_dai_dma_data idma_playback;
-	dma_filter_fn filter;
-	u32	quirks;
-	u32	suspend_i2smod;
-	u32	suspend_i2scon;
-	u32	suspend_i2spsr;
-	const struct samsung_i2s_variant_regs *variant_regs;
-
-	/* Spinlock protecting access to the device's registers */
-	spinlock_t spinlock;
-	spinlock_t *lock;
-
-	/* Below fields are only valid if this is the primary FIFO */
-	struct clk *clk_table[3];
-	struct clk_onecell_data clk_data;
+enum samsung_dai_type {
+	TYPE_PRI,
+	TYPE_SEC,
 };
 
 /* Lock for cross i/f checks */
 static DEFINE_SPINLOCK(lock);
 
-/* If this is the 'overlay' stereo DAI */
-static inline bool is_secondary(struct i2s_dai *i2s)
-{
-	return i2s->pri_dai ? true : false;
-}
 
 /* If operating in SoC-Slave mode */
 static inline bool is_slave(struct i2s_dai *i2s)
@@ -133,12 +62,6 @@ static inline bool tx_active(struct i2s_dai *i2s)
 		active &= CON_TXDMA_ACTIVE;
 
 	return active ? true : false;
-}
-
-/* Return pointer to the other DAI */
-static inline struct i2s_dai *get_other_dai(struct i2s_dai *i2s)
-{
-	return i2s->pri_dai ? : i2s->sec_dai;
 }
 
 /* If the other interface of the controller is transmitting data */
@@ -784,6 +707,38 @@ static int i2s_hw_params(struct snd_pcm_substream *substream,
 	return 0;
 }
 
+static int i2s_set_tdm_slot(struct snd_soc_dai *dai, unsigned int tx_mask,
+				unsigned int rx_mask, int slots, int slot_width)
+{
+	struct i2s_dai *i2s = to_info(dai);
+	u32 tdm;
+
+	if (!(i2s->quirks & QUIRK_SUPPORTS_TDM)) {
+		dev_err(&i2s->pdev->dev, "TDM not supported\n");
+		return -EINVAL;
+	}
+
+	tdm = readl(i2s->addr + I2STDM);
+	tdm &= ~(TDM_TX_SLOTS_MASK << TDM_TX_SLOTS_SHIFT);
+	tdm &= ~(TDM_RX_SLOTS_MASK << TDM_RX_SLOTS_SHIFT);
+	if (slots) {
+		i2s->mode |= DAI_TDM_MODE;
+		tdm |= TDM_ENABLE;
+		tdm |= ((slots-1) & TDM_TX_SLOTS_MASK)
+			<< TDM_TX_SLOTS_SHIFT;
+		tdm |= ((slots-1) & TDM_RX_SLOTS_MASK)
+			<< TDM_RX_SLOTS_SHIFT;
+		pr_info("tdm mode transmission - tx: %d, rx: %d where txmask: 0x%08X, rxmask: 0x%08X\n",
+				slots, slots, tx_mask, rx_mask);
+	} else {
+		i2s->mode &= ~DAI_TDM_MODE;
+		tdm &= ~TDM_ENABLE;
+	}
+	writel(tdm, i2s->addr + I2STDM);
+
+	return 0;
+}
+
 /* We set constraints on the substream acc to the version of I2S */
 static int i2s_startup(struct snd_pcm_substream *substream,
 	  struct snd_soc_dai *dai)
@@ -848,6 +803,9 @@ static int config_setup(struct i2s_dai *i2s)
 	if (!bfs && other)
 		bfs = other->bfs;
 
+	if (!bfs && (i2s->quirks & QUIRK_SUPPORTS_TDM)&& i2s->slotnum)
+		bfs = blc * i2s->slotnum;
+
 	/* Select least possible multiple(2) if no constraint set */
 	if (!bfs)
 		bfs = blc * 2;
@@ -868,6 +826,9 @@ static int config_setup(struct i2s_dai *i2s)
 			rfs = 256;
 		else
 			rfs = 384;
+
+		if ((i2s->quirks & QUIRK_SUPPORTS_TDM) && i2s->slotnum)
+			rfs /= (i2s->slotnum / TDM_DEFAULT_SLOT_NUM_DIVIDER);
 	}
 
 	/* If already setup and running */
@@ -1082,6 +1043,7 @@ static const struct snd_soc_dai_ops samsung_i2s_dai_ops = {
 	.set_fmt = i2s_set_fmt,
 	.set_clkdiv = i2s_set_clkdiv,
 	.set_sysclk = i2s_set_sysclk,
+	.set_tdm_slot = i2s_set_tdm_slot,
 	.startup = i2s_startup,
 	.shutdown = i2s_shutdown,
 	.delay = i2s_delay,
@@ -1258,6 +1220,7 @@ static int samsung_i2s_probe(struct platform_device *pdev)
 	u32 regs_base, quirks = 0, idma_addr = 0;
 	struct device_node *np = pdev->dev.of_node;
 	const struct samsung_i2s_dai_data *i2s_dai_data;
+	int use_opclk = 0;
 	int ret;
 
 	if (IS_ENABLED(CONFIG_OF) && pdev->dev.of_node)
@@ -1316,6 +1279,33 @@ static int samsung_i2s_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "failed to enable clock: %d\n", ret);
 		return ret;
 	}
+
+	if (of_find_property(np, "samsung,use-opclk", NULL)) {
+		pri_dai->op_clk = devm_clk_get(&pdev->dev, "i2s_opclk0");
+		if (IS_ERR(pri_dai->op_clk)) {
+			dev_err(&pdev->dev, "Failed to get op clock\n");
+			return PTR_ERR(pri_dai->op_clk);
+		}
+
+		ret = clk_prepare_enable(pri_dai->op_clk);
+		if (ret != 0) {
+			dev_err(&pdev->dev,
+					"failed to enable op clock: %d\n", ret);
+			goto err_disable_iisclk;
+		}
+		use_opclk = 1;
+	}
+
+	if (of_find_property(np, "samsung,supports-tdm", NULL)) {
+		quirks |= QUIRK_SUPPORTS_TDM;
+		of_property_read_u32(np, "samsung,tdm-slotnum",
+						&pri_dai->slotnum);
+		dev_info(&pdev->dev, "TDM mode was applied : %d\n",
+				pri_dai->slotnum);
+	} else {
+		pri_dai->slotnum = 0;
+	}
+
 	pri_dai->dma_playback.addr = regs_base + I2STXD;
 	pri_dai->dma_capture.addr = regs_base + I2SRXD;
 	pri_dai->dma_playback.chan_name = "tx";
@@ -1375,6 +1365,12 @@ static int samsung_i2s_probe(struct platform_device *pdev)
 						&sec_dai->i2s_dai_drv, 1);
 		if (ret < 0)
 			goto err_disable_clk;
+
+		if (use_opclk) {
+			pri_dai->rclk_srcrate = clk_get_rate(pri_dai->op_clk);
+			sec_dai->rclk_srcrate = pri_dai->rclk_srcrate;
+			sec_dai->op_clk = pri_dai->op_clk;
+		}
 	}
 
 	if (i2s_pdata && i2s_pdata->cfg_gpio && i2s_pdata->cfg_gpio(pdev)) {
@@ -1393,7 +1389,10 @@ static int samsung_i2s_probe(struct platform_device *pdev)
 		return 0;
 
 	pm_runtime_disable(&pdev->dev);
+
 err_disable_clk:
+	clk_disable_unprepare(pri_dai->op_clk);
+err_disable_iisclk:
 	clk_disable_unprepare(pri_dai->clk);
 	return ret;
 }

@@ -11,6 +11,8 @@
 #define _SAMSUNG_DMA_H
 
 #include <sound/dmaengine_pcm.h>
+#include <linux/dma-direction.h>
+#include <linux/dma-iommu.h>
 
 /*
  * @tx, @rx arguments can be NULL if the DMA channel names are "tx", "rx",

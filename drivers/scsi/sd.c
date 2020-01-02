@@ -3140,6 +3140,11 @@ static int sd_revalidate_disk(struct gendisk *disk)
 	dev_max = min_not_zero(dev_max, sdkp->max_xfer_blocks);
 	q->limits.max_dev_sectors = logical_to_sectors(sdp, dev_max);
 
+	/* Override opt_xfer_blocks for devices reporting invalid VPD */
+	if (sdkp->opt_xfer_blocks && sdp->override_opt_xfer_len)
+		sdkp->opt_xfer_blocks =
+			bytes_to_logical(sdp, sdp->override_opt_xfer_len);
+
 	/*
 	 * Determine the device's preferred I/O size for reads and writes
 	 * unless the reported value is unreasonably small, large, or

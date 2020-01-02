@@ -1,0 +1,20 @@
+Bindings for a tachometer reading a GPIO line
+
+Required properties:
+- compatible : "gpio-tachometer"
+- gpios: Specifies the pin that receives fan tachometer pulse
+
+Optional properties:
+- pulses-per-rev: The number of pulses generated from the fan per
+	revolution. This depends on how the motor in the fan is designed.
+	e.g.) 4-pole motor generates 2 pulses per revolution
+	      6-pole motor generates 3 pulses per revolution
+
+Examples:
+
+	tachometer {
+		compatible = "gpio-tachometer";
+		gpio = <&gpg1 5 0>;
+		pulses-per-rev = <2>;
+		status = "okay";
+	};

@@ -224,6 +224,9 @@ config DEBUG_TEST_DRIVER_REMOVE
 	  test this functionality.
 
 source "drivers/base/test/Kconfig"
+source "drivers/base/dma_buf_test_exporter/Kconfig"
+source "drivers/base/memory_group_manager/Kconfig"
+source "drivers/base/smc_protected_mode_switcher/Kconfig"
 
 config SYS_HYPERVISOR
 	bool

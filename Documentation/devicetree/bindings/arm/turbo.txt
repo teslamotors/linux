@@ -1,0 +1,6 @@
+Turbo platforms device tree bindings
+---------------------------------------
+
+- TRAV eval board:
+    Required root node properties:
+      - compatible = "turbo,trav", "turbo,trav-eval";

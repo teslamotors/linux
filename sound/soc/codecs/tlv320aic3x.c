@@ -155,6 +155,7 @@ static const struct regmap_config aic3x_regmap = {
 	SOC_SINGLE_EXT(xname, reg, shift, mask, invert, \
 		snd_soc_dapm_get_volsw, snd_soc_dapm_put_volsw_aic3x)
 
+static bool aic3x_is_shared_reset(struct aic3x_priv *aic3x);
 /*
  * All input lines are connected when !0xf and disconnected with 0xf bit field,
  * so we have to use specific dapm_put call for input mixer
@@ -1382,7 +1383,21 @@ static int aic3x_set_power(struct snd_soc_codec *codec, int power)
 
 		/* Sync reg_cache with the hardware */
 		regcache_cache_only(aic3x->regmap, false);
-		regcache_sync(aic3x->regmap);
+		ret = regcache_sync(aic3x->regmap);
+		if (ret != 0) {
+			dev_err(codec->dev, "Failed to sync register cache: %d\n",
+				ret);
+			/* Put codec to reset */
+			if (gpio_is_valid(aic3x->gpio_reset) &&
+				!aic3x_is_shared_reset(aic3x)) {
+				gpio_set_value(aic3x->gpio_reset, 0);
+			}
+			aic3x->power = 0;
+			regcache_cache_only(aic3x->regmap, true);
+			regulator_bulk_disable(ARRAY_SIZE(aic3x->supplies),
+						aic3x->supplies);
+			goto out;
+		}
 
 		/* Rewrite paired PLL D registers in case cached sync skipped
 		 * writing one of them and thus caused other one also not

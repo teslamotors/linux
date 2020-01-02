@@ -250,5 +250,5 @@ struct usb_device_driver usb_generic_driver = {
 	.suspend = generic_suspend,
 	.resume = generic_resume,
 #endif
-	.supports_autosuspend = 1,
+	.supports_autosuspend = false,
 };

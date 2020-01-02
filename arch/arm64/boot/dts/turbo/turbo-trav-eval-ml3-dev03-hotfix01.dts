@@ -1,0 +1,83 @@
+/*
+ * TURBO TRAV EVALUATION board device tree source
+ *
+ * Copyright (c) 2017 Samsung Electronics Co., Ltd.
+ *		http://www.samsung.com
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+
+/dts-v1/;
+#include "turbo-trav.dtsi"
+#include "turbo-trav-eval.dtsi"
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+
+/ {
+	model = "Trav Eval board based on TRAV SoC";
+	compatible = "turbo,trav-eval-ml3-dev03-hotfix01", "turbo,trav";
+};
+
+&serial_0 {
+	interrupts = <GIC_SPI 171 IRQ_TYPE_LEVEL_HIGH>;
+};
+
+&serial_1 {
+	interrupts = <GIC_SPI 172 IRQ_TYPE_LEVEL_HIGH>;
+};
+
+&pdma0 {
+	status = "okay";
+	interrupts = <GIC_SPI 190 IRQ_TYPE_LEVEL_HIGH>;
+};
+
+&pdma1 {
+	status = "okay";
+	interrupts = <GIC_SPI 191 IRQ_TYPE_LEVEL_HIGH>;
+};
+
+&mdma0 {
+	status = "okay";
+	interrupts = <GIC_SPI 424 IRQ_TYPE_LEVEL_HIGH>;
+};
+
+&mdma1 {
+	status = "okay";
+	interrupts = <GIC_SPI 425 IRQ_TYPE_LEVEL_HIGH>;
+};
+
+&mct {
+	interrupts = <GIC_SPI 455 IRQ_TYPE_LEVEL_HIGH>,
+		<GIC_SPI 456 IRQ_TYPE_LEVEL_HIGH>,
+		<GIC_SPI 457 IRQ_TYPE_LEVEL_HIGH>,
+		<GIC_SPI 458 IRQ_TYPE_LEVEL_HIGH>,
+		<GIC_SPI 459 IRQ_TYPE_LEVEL_HIGH>,
+		<GIC_SPI 460 IRQ_TYPE_LEVEL_HIGH>,
+		<GIC_SPI 461 IRQ_TYPE_LEVEL_HIGH>,
+		<GIC_SPI 462 IRQ_TYPE_LEVEL_HIGH>,
+		<GIC_SPI 463 IRQ_TYPE_LEVEL_HIGH>,
+		<GIC_SPI 464 IRQ_TYPE_LEVEL_HIGH>,
+		<GIC_SPI 465 IRQ_TYPE_LEVEL_HIGH>,
+		<GIC_SPI 466 IRQ_TYPE_LEVEL_HIGH>,
+		<GIC_SPI 467 IRQ_TYPE_LEVEL_HIGH>,
+		<GIC_SPI 468 IRQ_TYPE_LEVEL_HIGH>,
+		<GIC_SPI 469 IRQ_TYPE_LEVEL_HIGH>,
+		<GIC_SPI 470 IRQ_TYPE_LEVEL_HIGH>;
+};
+
+&pwm_0 {
+	status = "okay";
+};
+
+&pwm_1 {
+	status = "okay";
+};
+
+&ethernet_1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&eth1_tx_clk>, <&eth1_tx_data>, <&eth1_tx_ctrl>,
+		<&eth1_phy_intr>, <&eth1_rx_clk>, <&eth1_rx_data>,
+		<&eth1_rx_ctrl>, <&eth1_mdio>;
+	status = "okay";
+};

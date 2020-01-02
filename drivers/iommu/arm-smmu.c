@@ -1540,6 +1540,7 @@ static void arm_smmu_get_resv_regions(struct device *dev,
 {
 	struct iommu_resv_region *region;
 	int prot = IOMMU_WRITE | IOMMU_NOEXEC | IOMMU_MMIO;
+	struct pci_dev *pdev = NULL;
 
 	region = iommu_alloc_resv_region(MSI_IOVA_BASE, MSI_IOVA_LENGTH,
 					 prot, IOMMU_RESV_SW_MSI);
@@ -1547,6 +1548,30 @@ static void arm_smmu_get_resv_regions(struct device *dev,
 		return;
 
 	list_add_tail(&region->list, head);
+
+	/* Reserve the PCIe memory regions so that they don't end up getting
+	 * allocated for the end-point DMA etc. Otherwise root-complex can
+	 * return unsupported request for those addresses leading to master-abort
+	 * on the endpoint, making the end-point non-functional.
+	 * Ideally we should do this only for the IOMMU which has PCI devices.
+	 * But for now this will do.
+	 */
+	for_each_pci_dev(pdev) {
+		struct resource *r;
+		int i;
+
+		for (i = 0; i < PCI_NUM_RESOURCES; i++) {
+			r = &pdev->resource[i];
+			if (!r->flags || !(r->flags & IORESOURCE_MEM))
+				continue;
+			region =
+				iommu_alloc_resv_region(r->start, r->end - r->start,
+                                        0 /*PROT_NONE*/, IOMMU_RESV_DIRECT);
+	        if (!region)
+				panic("couldn't reserve region in the iommu");
+			list_add_tail(&region->list, head);
+		}
+	}
 
 	iommu_dma_get_resv_regions(dev, head);
 }

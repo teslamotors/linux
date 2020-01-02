@@ -373,6 +373,29 @@ struct dev_pm_opp *dev_pm_opp_find_freq_exact(struct device *dev,
 }
 EXPORT_SYMBOL_GPL(dev_pm_opp_find_freq_exact);
 
+static noinline struct dev_pm_opp *_find_freq_ceil_all(struct opp_table *opp_table,
+						   unsigned long *freq)
+{
+	struct dev_pm_opp *temp_opp, *opp = ERR_PTR(-ERANGE);
+
+	mutex_lock(&opp_table->lock);
+
+	list_for_each_entry(temp_opp, &opp_table->opp_list, node) {
+		if (temp_opp->rate >= *freq) {
+			opp = temp_opp;
+			*freq = opp->rate;
+
+			/* Increment the reference count of OPP */
+			dev_pm_opp_get(opp);
+			break;
+		}
+	}
+
+	mutex_unlock(&opp_table->lock);
+
+	return opp;
+}
+
 static noinline struct dev_pm_opp *_find_freq_ceil(struct opp_table *opp_table,
 						   unsigned long *freq)
 {
@@ -626,6 +649,7 @@ int dev_pm_opp_set_rate(struct device *dev, unsigned long target_freq)
 
 	old_freq = clk_get_rate(clk);
 
+#ifdef ALLOW_RETURN_EARLY
 	/* Return early if nothing to do */
 	if (old_freq == freq) {
 		dev_dbg(dev, "%s: old/new frequencies (%lu Hz) are same, nothing to do\n",
@@ -633,8 +657,9 @@ int dev_pm_opp_set_rate(struct device *dev, unsigned long target_freq)
 		ret = 0;
 		goto put_opp_table;
 	}
+#endif
 
-	old_opp = _find_freq_ceil(opp_table, &old_freq);
+	old_opp = _find_freq_ceil_all(opp_table, &old_freq);
 	if (IS_ERR(old_opp)) {
 		dev_err(dev, "%s: failed to find current OPP for freq %lu (%ld)\n",
 			__func__, old_freq, PTR_ERR(old_opp));

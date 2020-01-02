@@ -1,0 +1,1752 @@
+/*
+ * TURBO TRAV EVALUATION board device tree source
+ *
+ * Copyright (c) 2017 Samsung Electronics Co., Ltd.
+ *		http://www.samsung.com
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+
+#include "turbo-trav.dtsi"
+#include <dt-bindings/gpio/gpio.h>
+
+/ {
+	model = "Trav Eval board based on TRAV SoC";
+	compatible = "turbo,trav-eval", "turbo,trav";
+
+	aliases {
+		serial0 = &serial_0;
+		serial1 = &serial_1;
+	};
+
+	firmware {
+		tesla {
+			board_version = "TURBO_BOARD_VERSION_TOKEN_STRING";
+			turbo_a_b = "TURBO_A_B_TOKEN_STRING";
+			otp_chip_id = "TURBO_OTP_CHIP_ID_32_TOKEN_STRING";
+			soc_id = "TURBO_SOC_ID_TOKEN_STRING";
+			bootfrom = "BOOTFROM_TOKEN_STRING";
+			bootxfrom = "BOOTXFROM_TOKEN_STRING";
+			a72_warm_reset = "A72_WARM_RESET_STRING";
+			a72bl1_coreboot_version = "A72BL1_COREBOOT_VERSION_TOKEN_STRING";
+			a72bootblock_coreboot_version = "A72BOOTBLOCK_COREBOOT_VERSION_TOKEN_STRING";
+			coreboot_version = "COREBOOT_VERSION_TOKEN_STRING";
+			coreboot_extra_version = "COREBOOT_EXTRA_VERSION_TOKEN_STRING";
+			coreboot_build = "COREBOOT_BUILD_TOKEN_LONG_STRING";
+			board_pcba_version = "BOARD_PCBA_VERSION_TOKEN_STRING";
+			scsbl1_build_git_hash = "SCSBL1_BUILD_GIT_HASH_TOKEN_STRING_1234567890";
+			scsbl2_build_git_hash = "SCSBL2_BUILD_GIT_HASH_TOKEN_STRING_1234567890";
+			sms_build_git_hash = "SMS_BUILD_GIT_HASH_TOKEN_STRING_1234567890";
+			ddr_vendor = "DDR_VENDOR_TOKEN_STRING";
+			bootx_bl1_data_ver = "BOOTX_BL1_DATA_VER_STRING";
+			hw_minor = "TURBO_HW_MINOR_TOKEN_STRING";
+		};
+	};
+
+	chosen {
+		linux,stdout-path = &serial_0;
+		linux,initrd-start = <0xE0000000>;
+		linux,initrd-end = <0xE4F00000>;
+		bootargs = "console=ttySAC0,115200n8 clk_ignore_unused
+			earlycon=exynos4210,0x14180000 root=/dev/ram0
+			init=/linuxrc max_loop=1";
+	};
+
+	/* ECC: [0x080000000, 0x240000000) : 7GiB */
+	memory@80000000 {
+		device_type = "memory";
+		reg = <0x0 0x80000000 0x1 0xC0000000>;
+	};
+
+	reserved-memory {
+		oops: ramoops@fffe0000 {
+			compatible = "ramoops";
+			reg = <0x0 0xfffe0000 0x0 0x20000>;
+			record-size = <0x10000>;	/* 64KiB for oops */
+			console-size = <0x10000>;	/* 64KiB */
+			no-dump-oops;
+			no-map;
+		};
+	};
+
+	usb30_vbus_reg: regulator-usb30 {
+		compatible = "regulator-fixed";
+		regulator-name = "VBUS_5V";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		gpio = <&gpf4 1 GPIO_ACTIVE_HIGH>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&usb30_vbus_en>;
+		enable-active-high;
+	};
+
+	regulator-gps-ant {
+		compatible = "regulator-fixed";
+		regulator-name = "gps-ant";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		gpio = <&gpg2 4 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+		regulator-boot-on;
+		regulator-always-on;
+	};
+
+	sound {
+		compatible = "samsung,trav-audio";
+		samsung,audio-cpu = <&tdm_0>;
+		samsung,audio-codec = <&tlv320aic3104>;
+		samsung,i2s-tx-fifo = <0x140E0010>;
+		samsung,i2s-rx-fifo = <0x140E0014>;
+		samsung,i2s-tx-s-fifo = <0x140E001C>;
+		relay-gpio = <&gpg1 4 0>;
+		mute-gpio = <&gpg2 1 0>;
+		status = "okay";
+	};
+
+	fan0: pwm-fan {
+		compatible = "pwm-fan";
+		pwms = <&pwm_1 1 40000 1>;
+		cooling-min-state = <0>;
+		cooling-max-state = <9>;
+		#cooling-cells = <2>;
+		cooling-levels = <60 80 100 120 140 160 180 200 220 240>;
+		status = "okay";
+	};
+
+	tachometer {
+		compatible = "gpio-tachometer";
+		gpio = <&gpg1 5 0>;
+		pulses-per-rev = <2>;
+		status = "okay";
+	};
+
+	pps {
+        compatible = "pps-gpio";
+        gpios = <&gpg0 4 GPIO_ACTIVE_HIGH>;
+        status = "okay";
+    };
+};
+
+&fin_pll {
+	clock-frequency = <24000000>;
+};
+
+&serial_0 {
+	status = "okay";
+};
+
+&serial_1 {
+	status = "okay";
+};
+
+&clock_cmu {
+	status = "okay";
+};
+
+&clock_imem {
+	status = "okay";
+};
+
+&clock_cpucl {
+	status = "okay";
+};
+
+&clock_peric {
+	status = "okay";
+};
+
+&clock_fsys0 {
+	status = "okay";
+};
+
+&clock_fsys1 {
+	status = "okay";
+};
+
+&clock_mfc {
+	status = "okay";
+};
+
+&clock_cam_csi {
+	status = "okay";
+};
+
+&clock_trip0 {
+	status = "okay";
+};
+
+&clock_trip1 {
+	status = "okay";
+};
+
+&smmu_peric {
+	status = "okay";
+};
+
+&smmu_imem {
+	status = "okay";
+};
+
+&smmu_fsys0 {
+	status = "okay";
+};
+
+&mdma0 {
+	status = "okay";
+};
+
+&mdma1 {
+	status = "okay";
+};
+
+&pdma0 {
+	status = "okay";
+};
+
+&pdma1 {
+	status = "okay";
+};
+
+&spi_0 {
+	status = "okay";
+};
+
+&spi_1 {
+	status = "okay";
+	num-cs = <2>;
+	cs-gpios = <&gpb4 5 1>, <&gpg0 6 1>;
+	spi@0 {
+		compatible = "smi130_accel";
+		spi-max-frequency = <1000000>;
+		reg = <0>;
+		controller-data {
+			samsung,spi-feedback-delay = <0>;
+		};
+	};
+	spi@1 {
+		compatible = "bmg160";
+		spi-max-frequency = <1000000>;
+		reg = <1>;
+		controller-data {
+			samsung,spi-feedback-delay = <0>;
+		};
+	};
+};
+
+&spi_2 {
+	status = "okay";
+};
+
+&pwm_0 {
+	status = "okay";
+};
+
+&pwm_1 {
+	status = "okay";
+};
+
+&hsi2c_0 {
+	status = "okay";
+
+	dummysensor1@0x10 {
+		compatible = "turbo,trav-sensor0";
+		reg = <0x10>;
+
+		port {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			csis_trav_sensor_0_ep: endpoint {
+				reg = <0>;
+				clock-lanes = <0>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&csis_0_ch0>;
+			};
+		};
+	};
+
+	dummysensor2@0x11 {
+		compatible = "turbo,trav-sensor1";
+		reg = <0x11>;
+
+		port {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			csis_trav_sensor_1_ep: endpoint {
+				reg = <0>;
+				clock-lanes = <0>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&csis_1_ch0>;
+			};
+		};
+	};
+
+	dummysensor3@0x12 {
+		compatible = "turbo,trav-sensor2";
+		reg = <0x12>;
+
+		port {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			csis_trav_sensor_2_ep: endpoint {
+				reg = <0>;
+				clock-lanes = <0>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&csis_2_ch0>;
+			};
+		};
+	};
+
+	dummysensor4@0x13 {
+		compatible = "turbo,trav-sensor3";
+		reg = <0x13>;
+
+		port {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			csis_trav_sensor_3_ep: endpoint {
+				reg = <0>;
+				clock-lanes = <0>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&csis_3_ch0>;
+			};
+		};
+	};
+
+	dummysensor5@0x14 {
+		compatible = "turbo,trav-sensor4";
+		reg = <0x14>;
+
+		port {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			csis_trav_sensor_4_ep: endpoint {
+				reg = <0>;
+				clock-lanes = <0>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&csis_4_ch0>;
+			};
+		};
+	};
+
+	dummysensor6@0x15 {
+		compatible = "turbo,trav-sensor5";
+		reg = <0x15>;
+
+		port {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			csis_trav_sensor_5_ep: endpoint {
+				reg = <0>;
+				clock-lanes = <0>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&csis_5_ch0>;
+			};
+		};
+	};
+
+	dummysensor7@0x16 {
+		compatible = "turbo,trav-sensor6";
+		reg = <0x16>;
+
+		port {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			csis_trav_sensor_6_ep: endpoint {
+				reg = <0>;
+				clock-lanes = <0>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&csis_6_ch0>;
+			};
+		};
+	};
+
+	dummysensor8@0x17 {
+		compatible = "turbo,trav-sensor7";
+		reg = <0x17>;
+
+		port {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			csis_trav_sensor_7_ep: endpoint {
+				reg = <0>;
+				clock-lanes = <0>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&csis_7_ch0>;
+			};
+		};
+	};
+
+	dummysensor9@0x18 {
+		compatible = "turbo,trav-sensor8";
+		reg = <0x18>;
+
+		port {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			csis_trav_sensor_8_ep: endpoint {
+				reg = <0>;
+				clock-lanes = <0>;
+				data-lanes = <1 2>;
+				remote-endpoint = <&csis_8_ch0>;
+			};
+		};
+	};
+
+	dummysensor10@0x19 {
+		compatible = "turbo,trav-sensor9";
+		reg = <0x19>;
+
+		port {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			csis_trav_sensor_9_ep: endpoint {
+				reg = <0>;
+				clock-lanes = <0>;
+				data-lanes = <1 2>;
+				remote-endpoint = <&csis_9_ch0>;
+			};
+		};
+	};
+
+	dummysensor11@0x1A {
+		compatible = "turbo,trav-sensor10";
+		reg = <0x1A>;
+
+		port {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			csis_trav_sensor_10_ep: endpoint {
+				reg = <0>;
+				clock-lanes = <0>;
+				data-lanes = <1 2>;
+				remote-endpoint = <&csis_10_ch0>;
+			};
+		};
+	};
+
+	dummysensor12@0x1B {
+		compatible = "turbo,trav-sensor11";
+		reg = <0x1B>;
+
+		port {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			csis_trav_sensor_11_ep: endpoint {
+				reg = <0>;
+				clock-lanes = <0>;
+				data-lanes = <1 2>;
+				remote-endpoint = <&csis_11_ch0>;
+			};
+		};
+	};
+};
+
+&hsi2c_1 {
+	status = "okay";
+
+	dummy_sensor@10 {
+		compatible = "trav-sensor0";
+		reg = <0x10>;
+
+		port {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			trav_sensor_0_ep: endpoint {
+				reg = <0>;
+				clock-lanes = <0>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&dprx_0_ch0>;
+			};
+		};
+	};
+
+	dummy_sensor@11 {
+		compatible = "trav-sensor0";
+		reg = <0x11>;
+
+		port {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			trav_sensor_1_ep: endpoint {
+				reg = <1>;
+				clock-lanes = <0>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&dprx_0_ch1>;
+			};
+		};
+	};
+
+	dummy_sensor@12 {
+		compatible = "trav-sensor0";
+		reg = <0x12>;
+
+		port {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			trav_sensor_2_ep: endpoint {
+				reg = <2>;
+				clock-lanes = <0>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&dprx_0_ch2>;
+			};
+		};
+	};
+
+	dummy_sensor@13 {
+		compatible = "trav-sensor0";
+		reg = <0x13>;
+
+		port {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			trav_sensor_3_ep: endpoint {
+				reg = <3>;
+				clock-lanes = <0>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&dprx_0_ch3>;
+			};
+		};
+	};
+
+	dummy_sensor@14 {
+		compatible = "trav-sensor0";
+		reg = <0x14>;
+
+		port {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			trav_sensor_4_ep: endpoint {
+				reg = <4>;
+				clock-lanes = <0>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&dprx_0_ch4>;
+			};
+		};
+	};
+
+	dummy_sensor@15 {
+		compatible = "trav-sensor0";
+		reg = <0x15>;
+
+		port {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			trav_sensor_5_ep: endpoint {
+				reg = <5>;
+				clock-lanes = <0>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&dprx_0_ch5>;
+			};
+		};
+	};
+
+	dummy_sensor@16 {
+		compatible = "trav-sensor0";
+		reg = <0x16>;
+
+		port {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			trav_sensor_6_ep: endpoint {
+				reg = <6>;
+				clock-lanes = <0>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&dprx_0_ch6>;
+			};
+		};
+	};
+
+	dummy_sensor@17 {
+		compatible = "trav-sensor0";
+		reg = <0x17>;
+
+		port {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			trav_sensor_7_ep: endpoint {
+				reg = <7>;
+				clock-lanes = <0>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&dprx_0_ch7>;
+			};
+		};
+	};
+
+	dummy_sensor@20 {
+		compatible = "trav-sensor1";
+		reg = <0x20>;
+
+		port {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			trav_sensor_8_ep: endpoint {
+				reg = <0>;
+				clock-lanes = <0>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&dprx_1_ch0>;
+			};
+		};
+	};
+
+	dummy_sensor@21 {
+		compatible = "trav-sensor1";
+		reg = <0x21>;
+
+		port {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			trav_sensor_9_ep: endpoint {
+				reg = <1>;
+				clock-lanes = <0>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&dprx_1_ch1>;
+			};
+		};
+	};
+
+	dummy_sensor@22 {
+		compatible = "trav-sensor1";
+		reg = <0x22>;
+
+		port {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			trav_sensor_10_ep: endpoint {
+				reg = <2>;
+				clock-lanes = <0>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&dprx_1_ch2>;
+			};
+		};
+	};
+
+	dummy_sensor@23 {
+		compatible = "trav-sensor1";
+		reg = <0x23>;
+
+		port {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			trav_sensor_11_ep: endpoint {
+				reg = <3>;
+				clock-lanes = <0>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&dprx_1_ch3>;
+			};
+		};
+	};
+
+	dummy_sensor@24 {
+		compatible = "trav-sensor1";
+		reg = <0x24>;
+
+		port {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			trav_sensor_12_ep: endpoint {
+				reg = <4>;
+				clock-lanes = <0>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&dprx_1_ch4>;
+			};
+		};
+	};
+
+	dummy_sensor@25 {
+		compatible = "trav-sensor1";
+		reg = <0x25>;
+
+		port {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			trav_sensor_13_ep: endpoint {
+				reg = <5>;
+				clock-lanes = <0>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&dprx_1_ch5>;
+			};
+		};
+	};
+
+	dummy_sensor@26 {
+		compatible = "trav-sensor1";
+		reg = <0x26>;
+
+		port {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			trav_sensor_14_ep: endpoint {
+				reg = <6>;
+				clock-lanes = <0>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&dprx_1_ch6>;
+			};
+		};
+	};
+
+	dummy_sensor@27 {
+		compatible = "trav-sensor1";
+		reg = <0x27>;
+
+		port {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			trav_sensor_15_ep: endpoint {
+				reg = <7>;
+				clock-lanes = <0>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&dprx_1_ch7>;
+			};
+		};
+	};
+
+	dummy_sensor@30 {
+		compatible = "trav-sensor2";
+		reg = <0x30>;
+
+		port {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			trav_sensor_16_ep: endpoint {
+				reg = <0>;
+				clock-lanes = <0>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&dprx_2_ch0>;
+			};
+		};
+	};
+
+	dummy_sensor@31 {
+		compatible = "trav-sensor2";
+		reg = <0x31>;
+
+		port {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			trav_sensor_17_ep: endpoint {
+				reg = <1>;
+				clock-lanes = <0>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&dprx_2_ch1>;
+			};
+		};
+	};
+
+	dummy_sensor@32 {
+		compatible = "trav-sensor2";
+		reg = <0x32>;
+
+		port {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			trav_sensor_18_ep: endpoint {
+				reg = <2>;
+				clock-lanes = <0>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&dprx_2_ch2>;
+			};
+		};
+	};
+
+	dummy_sensor@33 {
+		compatible = "trav-sensor2";
+		reg = <0x33>;
+
+		port {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			trav_sensor_19_ep: endpoint {
+				reg = <3>;
+				clock-lanes = <0>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&dprx_2_ch3>;
+			};
+		};
+	};
+
+	dummy_sensor@34 {
+		compatible = "trav-sensor2";
+		reg = <0x34>;
+
+		port {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			trav_sensor_20_ep: endpoint {
+				reg = <4>;
+				clock-lanes = <0>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&dprx_2_ch4>;
+			};
+		};
+	};
+
+	dummy_sensor@35 {
+		compatible = "trav-sensor2";
+		reg = <0x35>;
+
+		port {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			trav_sensor_21_ep: endpoint {
+				reg = <5>;
+				clock-lanes = <0>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&dprx_2_ch5>;
+			};
+		};
+	};
+
+	dummy_sensor@36 {
+		compatible = "trav-sensor2";
+		reg = <0x36>;
+
+		port {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			trav_sensor_22_ep: endpoint {
+				reg = <6>;
+				clock-lanes = <0>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&dprx_2_ch6>;
+			};
+		};
+	};
+
+	dummy_sensor@37 {
+		compatible = "trav-sensor2";
+		reg = <0x37>;
+
+		port {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			trav_sensor_23_ep: endpoint {
+				reg = <7>;
+				clock-lanes = <0>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&dprx_2_ch7>;
+			};
+		};
+	};
+
+	dummy_sensor@40 {
+		compatible = "trav-sensor3";
+		reg = <0x40>;
+
+		port {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			trav_sensor_24_ep: endpoint {
+				reg = <0>;
+				clock-lanes = <0>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&dprx_2_ch0>;
+			};
+		};
+	};
+
+	dummy_sensor@41 {
+		compatible = "trav-sensor3";
+		reg = <0x41>;
+
+		port {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			trav_sensor_25_ep: endpoint {
+				reg = <1>;
+				clock-lanes = <0>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&dprx_2_ch1>;
+			};
+		};
+	};
+
+	dummy_sensor@42 {
+		compatible = "trav-sensor3";
+		reg = <0x42>;
+
+		port {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			trav_sensor_26_ep: endpoint {
+				reg = <2>;
+				clock-lanes = <0>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&dprx_2_ch2>;
+			};
+		};
+	};
+
+	dummy_sensor@43 {
+		compatible = "trav-sensor3";
+		reg = <0x43>;
+
+		port {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			trav_sensor_27_ep: endpoint {
+				reg = <3>;
+				clock-lanes = <0>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&dprx_2_ch3>;
+			};
+		};
+	};
+
+	dummy_sensor@44 {
+		compatible = "trav-sensor3";
+		reg = <0x44>;
+
+		port {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			trav_sensor_28_ep: endpoint {
+				reg = <4>;
+				clock-lanes = <0>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&dprx_2_ch4>;
+			};
+		};
+	};
+
+	dummy_sensor@45 {
+		compatible = "trav-sensor3";
+		reg = <0x45>;
+
+		port {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			trav_sensor_29_ep: endpoint {
+				reg = <5>;
+				clock-lanes = <0>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&dprx_2_ch5>;
+			};
+		};
+	};
+
+	dummy_sensor@46 {
+		compatible = "trav-sensor3";
+		reg = <0x46>;
+
+		port {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			trav_sensor_30_ep: endpoint {
+				reg = <6>;
+				clock-lanes = <0>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&dprx_2_ch6>;
+			};
+		};
+	};
+
+	dummy_sensor@47 {
+		compatible = "trav-sensor3";
+		reg = <0x47>;
+
+		port {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			trav_sensor_31_ep: endpoint {
+				reg = <7>;
+				clock-lanes = <0>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&dprx_2_ch7>;
+			};
+		};
+	};
+
+};
+
+&hsi2c_2 {
+	status = "okay";
+};
+
+&hsi2c_3 {
+	status = "okay";
+};
+
+&hsi2c_4 {
+	status = "okay";
+};
+
+&hsi2c_5 {
+	status = "okay";
+
+	tlv320aic3104: tlv320aic3104@18 {
+		#sound-dai-cells = <0>;
+		compatible = "ti,tlv320aic3104";
+		gpio-reset = <&gpg1 6 GPIO_ACTIVE_LOW>;
+		reg = <0x18>;
+		status = "okay";
+	};
+};
+
+&hsi2c_6 {
+	status = "okay";
+};
+
+&hsi2c_7 {
+	status = "okay";
+};
+
+&usbdrd_phy {
+	vbus-supply = <&usb30_vbus_reg>;
+	status = "okay";
+};
+
+&dwc3_0 {
+	dr_mode = "host";
+	status = "okay";
+};
+
+&ufs0 {
+	status = "okay";
+};
+
+&mfc_0 {
+	status = "okay";
+};
+
+&ethernet_0 {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&eth0_tx_clk>, <&eth0_tx_data>, <&eth0_tx_ctrl>,
+		<&eth0_phy_intr>, <&eth0_rx_clk>, <&eth0_rx_data>,
+		<&eth0_rx_ctrl>, <&eth0_mdio>;
+	local-mac-address = [45 54 48 30 4D 43]; /* ETH0MC */
+
+	/* port 0 in turbo A has no phy */
+	use-phy = "ETH0_PHY";
+	rx-clock-skew-no-phy = <&syscon_fsys0 0x0 0x2>;
+
+	/* Used specifically for use-phy == NONE_PHY */
+	fixed-link {
+		speed=<1000>;
+		full-duplex;
+	};
+};
+
+&ethernet_1 {
+	status = "okay";
+        pinctrl-names = "default";
+        pinctrl-0 = <&eth1_tx_clk>, <&eth1_tx_data>, <&eth1_tx_ctrl>,
+                <&eth1_phy_intr>, <&eth1_rx_clk>, <&eth1_rx_data>,
+                <&eth1_rx_ctrl>, <&eth1_mdio>;
+	local-mac-address = [45 54 48 31 4D 43]; /* ETH1MC */
+
+	/* port 1 in turbo A has no phy */
+	use-phy = "ETH1_PHY";
+	rx-clock-skew-no-phy = <&sysreg_peric 0x10 0x0>;
+
+	/* Used specifically for use-phy == NONE_PHY */
+	fixed-link {
+		speed=<1000>;
+		full-duplex;
+	};
+};
+
+&csis_0 {
+	compatible = "turbo,trav-csis";
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			reg = <0>;
+		csis_0_ch0: endpoint {
+			slave-mode;
+			remote-endpoint = <&csis_trav_sensor_0_ep>;
+			};
+		};
+	};
+};
+
+&csis_1 {
+	compatible = "turbo,trav-csis";
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			reg = <1>;
+		csis_1_ch0: endpoint {
+			slave-mode;
+			remote-endpoint = <&csis_trav_sensor_1_ep>;
+			};
+		};
+	};
+};
+
+&csis_2 {
+	compatible = "turbo,trav-csis";
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			reg = <2>;
+		csis_2_ch0: endpoint {
+			slave-mode;
+			remote-endpoint = <&csis_trav_sensor_2_ep>;
+			};
+		};
+	};
+};
+
+&csis_3 {
+	compatible = "turbo,trav-csis";
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			reg = <3>;
+		csis_3_ch0: endpoint {
+			slave-mode;
+			remote-endpoint = <&csis_trav_sensor_3_ep>;
+			};
+		};
+	};
+};
+
+&csis_4 {
+	compatible = "turbo,trav-csis";
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			reg = <0>;
+		csis_4_ch0: endpoint {
+			slave-mode;
+			remote-endpoint = <&csis_trav_sensor_4_ep>;
+			};
+		};
+	};
+};
+
+&csis_5 {
+	compatible = "turbo,trav-csis";
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			reg = <1>;
+		csis_5_ch0: endpoint {
+			slave-mode;
+			remote-endpoint = <&csis_trav_sensor_5_ep>;
+			};
+		};
+	};
+};
+
+&csis_6 {
+	compatible = "turbo,trav-csis";
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			reg = <2>;
+		csis_6_ch0: endpoint {
+			slave-mode;
+			remote-endpoint = <&csis_trav_sensor_6_ep>;
+			};
+		};
+	};
+};
+
+&csis_7 {
+	compatible = "turbo,trav-csis";
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			reg = <3>;
+		csis_7_ch0: endpoint {
+			slave-mode;
+			remote-endpoint = <&csis_trav_sensor_7_ep>;
+			};
+		};
+	};
+};
+
+&csis_8 {
+	compatible = "turbo,trav-csis";
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			reg = <0>;
+		csis_8_ch0: endpoint {
+			slave-mode;
+			remote-endpoint = <&csis_trav_sensor_8_ep>;
+			};
+		};
+	};
+};
+
+&csis_9 {
+	compatible = "turbo,trav-csis";
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			reg = <1>;
+		csis_9_ch0: endpoint {
+			slave-mode;
+			remote-endpoint = <&csis_trav_sensor_9_ep>;
+			};
+		};
+	};
+};
+
+&csis_10 {
+	compatible = "turbo,trav-csis";
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			reg = <2>;
+		csis_10_ch0: endpoint {
+			slave-mode;
+			remote-endpoint = <&csis_trav_sensor_10_ep>;
+			};
+		};
+	};
+};
+
+&csis_11 {
+	compatible = "turbo,trav-csis";
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			reg = <3>;
+		csis_11_ch0: endpoint {
+			slave-mode;
+			remote-endpoint = <&csis_trav_sensor_11_ep>;
+			};
+		};
+	};
+};
+
+&dprx_0 {
+	status = "disabled";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			reg = <0>;
+		dprx_0_ch0: endpoint {
+				slave-mode;
+				remote-endpoint = <&trav_sensor_0_ep>;
+			};
+		};
+
+		port@1 {
+			reg = <1>;
+		dprx_0_ch1: endpoint {
+				slave-mode;
+				remote-endpoint = <&trav_sensor_1_ep>;
+			};
+		};
+
+		port@2{
+			reg = <2>;
+		dprx_0_ch2: endpoint {
+				slave-mode;
+				remote-endpoint = <&trav_sensor_2_ep>;
+			};
+		};
+
+		port@3{
+			reg = <3>;
+		dprx_0_ch3: endpoint {
+				slave-mode;
+				remote-endpoint = <&trav_sensor_3_ep>;
+			};
+		};
+
+		port@4 {
+			reg = <4>;
+		dprx_0_ch4: endpoint {
+				slave-mode;
+				remote-endpoint = <&trav_sensor_4_ep>;
+			};
+		};
+
+		port@5 {
+			reg = <5>;
+		dprx_0_ch5: endpoint {
+				slave-mode;
+				remote-endpoint = <&trav_sensor_5_ep>;
+			};
+		};
+
+		port@6{
+			reg = <6>;
+		dprx_0_ch6: endpoint {
+				slave-mode;
+				remote-endpoint = <&trav_sensor_6_ep>;
+			};
+		};
+
+		port@7{
+			reg = <7>;
+		dprx_0_ch7: endpoint {
+				slave-mode;
+				remote-endpoint = <&trav_sensor_7_ep>;
+			};
+		};
+	};
+};
+
+&dprx_1 {
+	status = "disabled";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			reg = <0>;
+		dprx_1_ch0: endpoint {
+				slave-mode;
+				remote-endpoint = <&trav_sensor_8_ep>;
+			};
+		};
+
+		port@1 {
+			reg = <1>;
+		dprx_1_ch1: endpoint {
+				slave-mode;
+				remote-endpoint = <&trav_sensor_9_ep>;
+			};
+		};
+
+		port@2{
+			reg = <2>;
+		dprx_1_ch2: endpoint {
+				slave-mode;
+				remote-endpoint = <&trav_sensor_10_ep>;
+			};
+		};
+
+		port@3{
+			reg = <3>;
+		dprx_1_ch3: endpoint {
+				slave-mode;
+				remote-endpoint = <&trav_sensor_11_ep>;
+			};
+		};
+
+		port@4 {
+			reg = <4>;
+		dprx_1_ch4: endpoint {
+				slave-mode;
+				remote-endpoint = <&trav_sensor_12_ep>;
+			};
+		};
+
+		port@5 {
+			reg = <5>;
+		dprx_1_ch5: endpoint {
+				slave-mode;
+				remote-endpoint = <&trav_sensor_13_ep>;
+			};
+		};
+
+		port@6{
+			reg = <6>;
+		dprx_1_ch6: endpoint {
+				slave-mode;
+				remote-endpoint = <&trav_sensor_14_ep>;
+			};
+		};
+
+		port@7{
+			reg = <7>;
+		dprx_1_ch7: endpoint {
+				slave-mode;
+				remote-endpoint = <&trav_sensor_15_ep>;
+			};
+		};
+	};
+};
+
+&dprx_2 {
+	status = "disabled";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			reg = <0>;
+		dprx_2_ch0: endpoint {
+				slave-mode;
+				remote-endpoint = <&trav_sensor_16_ep>;
+			};
+		};
+
+		port@1 {
+			reg = <1>;
+		dprx_2_ch1: endpoint {
+				slave-mode;
+				remote-endpoint = <&trav_sensor_17_ep>;
+			};
+		};
+
+		port@2{
+			reg = <2>;
+		dprx_2_ch2: endpoint {
+				slave-mode;
+				remote-endpoint = <&trav_sensor_18_ep>;
+			};
+		};
+
+		port@3{
+			reg = <3>;
+		dprx_2_ch3: endpoint {
+				slave-mode;
+				remote-endpoint = <&trav_sensor_19_ep>;
+			};
+		};
+
+		port@4 {
+			reg = <4>;
+		dprx_2_ch4: endpoint {
+				slave-mode;
+				remote-endpoint = <&trav_sensor_20_ep>;
+			};
+		};
+
+		port@5 {
+			reg = <5>;
+		dprx_2_ch5: endpoint {
+				slave-mode;
+				remote-endpoint = <&trav_sensor_21_ep>;
+			};
+		};
+
+		port@6{
+			reg = <6>;
+		dprx_2_ch6: endpoint {
+				slave-mode;
+				remote-endpoint = <&trav_sensor_22_ep>;
+			};
+		};
+
+		port@7{
+			reg = <7>;
+		dprx_2_ch7: endpoint {
+				slave-mode;
+				remote-endpoint = <&trav_sensor_23_ep>;
+			};
+		};
+	};
+};
+
+&dprx_3 {
+	status = "disabled";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			reg = <0>;
+		dprx_3_ch0: endpoint {
+				slave-mode;
+				remote-endpoint = <&trav_sensor_24_ep>;
+			};
+		};
+
+		port@1 {
+			reg = <1>;
+		dprx_3_ch1: endpoint {
+				slave-mode;
+				remote-endpoint = <&trav_sensor_25_ep>;
+			};
+		};
+
+		port@2{
+			reg = <2>;
+		dprx_3_ch2: endpoint {
+				slave-mode;
+				remote-endpoint = <&trav_sensor_26_ep>;
+			};
+		};
+
+		port@3{
+			reg = <3>;
+		dprx_3_ch3: endpoint {
+				slave-mode;
+				remote-endpoint = <&trav_sensor_27_ep>;
+			};
+		};
+
+		port@4 {
+			reg = <4>;
+		dprx_3_ch4: endpoint {
+				slave-mode;
+				remote-endpoint = <&trav_sensor_28_ep>;
+			};
+		};
+
+		port@5 {
+			reg = <5>;
+		dprx_3_ch5: endpoint {
+				slave-mode;
+				remote-endpoint = <&trav_sensor_29_ep>;
+			};
+		};
+
+		port@6{
+			reg = <6>;
+		dprx_3_ch6: endpoint {
+				slave-mode;
+				remote-endpoint = <&trav_sensor_30_ep>;
+			};
+		};
+
+		port@7{
+			reg = <7>;
+		dprx_3_ch7: endpoint {
+				slave-mode;
+				remote-endpoint = <&trav_sensor_31_ep>;
+			};
+		};
+	};
+};
+
+&pcie_phy0 {
+	status = "okay";
+};
+
+&pcie_phy1 {
+	status = "okay";
+};
+
+&pcie4_rc {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pcie1_clkreq>, <&pcie1_wake>, <&pcie1_preset>;
+	status = "okay";
+};
+
+&pcie4_ep {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pcie1_clkreq>, <&pcie1_wake>, <&pcie1_preset>;
+};
+
+&pcie0_rc {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pcie0_clkreq>, <&pcie0_wake0>, <&pcie0_preset0>;
+	status = "okay";
+};
+
+&pcie0_ep {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pcie0_clkreq>, <&pcie0_wake0>, <&pcie0_preset0>;
+};
+
+&pcie1_rc {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pcie0_clkreq>, <&pcie0_wake1>, <&pcie0_preset0>;
+};
+
+&pcie1_ep {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pcie0_clkreq>, <&pcie0_wake1>, <&pcie0_preset0>;
+};
+
+&clock_gpu {
+	status = "okay";
+};
+
+&mali {
+	status = "okay";
+};
+
+&m_can0 {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&m_can0_bus>;
+};
+
+&m_can1 {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&m_can1_bus>;
+};
+
+&m_can2 {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&m_can2_bus>;
+};
+
+&m_can3 {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&m_can3_bus>;
+};
+
+&adc {
+	status = "okay";
+};
+
+&smmu_isp {
+	/*
+	 * Please read comments regarding the usage of DMA_ATTR_SKIP_CPU_SYNC
+	 * in tripmem driver before you disable SMMU for ISP.
+	 */
+	status = "okay";
+};
+
+&isp {
+	status = "okay";
+};
+
+&smmu_trip0 {
+	/*
+	 * Please read comments regarding the usage of DMA_ATTR_SKIP_CPU_SYNC
+	 * in tripmem driver before you disable SMMU for TRIP0.
+	 */
+	status = "okay";
+};
+
+&smmu_trip1 {
+	/*
+	 * Please read comments regarding the usage of DMA_ATTR_SKIP_CPU_SYNC
+	 * in tripmem driver before you disable SMMU for TRIP1.
+	 */
+	status = "okay";
+};
+
+&trip_0 {
+	status = "okay";
+	firmware = "trip0.fw";
+};
+
+&trip_1 {
+	status = "okay";
+	firmware = "trip1.fw";
+};
+
+&tripmem {
+	status = "okay";
+};
+

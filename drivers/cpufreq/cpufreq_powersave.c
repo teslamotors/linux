@@ -42,6 +42,11 @@ MODULE_AUTHOR("Dominik Brodowski <linux@brodo.de>");
 MODULE_DESCRIPTION("CPUfreq policy governor 'powersave'");
 MODULE_LICENSE("GPL");
 
+struct cpufreq_governor *cpufreq_powersave_governor(void)
+{
+	return &cpufreq_gov_powersave;
+}
+
 #ifdef CONFIG_CPU_FREQ_DEFAULT_GOV_POWERSAVE
 struct cpufreq_governor *cpufreq_default_governor(void)
 {

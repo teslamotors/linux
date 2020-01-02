@@ -54,7 +54,7 @@ static struct s5p_mfc_fmt formats[] = {
 		.codec_mode	= S5P_MFC_CODEC_NONE,
 		.type		= MFC_FMT_RAW,
 		.num_planes	= 2,
-		.versions	= MFC_V6_BIT | MFC_V7_BIT | MFC_V8_BIT,
+		.versions	= MFC_V6PLUS_BITS,
 	},
 	{
 		.name		= "4:2:0 2 Planes Y/CrCb",
@@ -62,7 +62,95 @@ static struct s5p_mfc_fmt formats[] = {
 		.codec_mode	= S5P_MFC_CODEC_NONE,
 		.type		= MFC_FMT_RAW,
 		.num_planes	= 2,
-		.versions	= MFC_V6_BIT | MFC_V7_BIT | MFC_V8_BIT,
+		.versions	= MFC_V6PLUS_BITS,
+	},
+	{
+		.name 		= "4:2:2 2 Planes Y/CbCr",
+		.fourcc 	= V4L2_PIX_FMT_NV16M,
+		.codec_mode 	= S5P_MFC_CODEC_NONE,
+		.type 		= MFC_FMT_RAW,
+		.num_planes 	= 2,
+		.versions       = MFC_V12_BIT,
+	},
+	{
+		.name 		= "4:2:0 2 Planes Y/CbCr 10bit",
+		.fourcc 	= V4L2_PIX_FMT_NV12M_S10B,
+		.codec_mode 	= S5P_MFC_CODEC_NONE,
+		.type 		= MFC_FMT_RAW,
+		.num_planes 	= 2,
+		.versions       = MFC_V12_BIT,
+	},
+	{
+		.name 		= "4:2:0 2 Planes Y/CbCr P010 10bit",
+		.fourcc 	= V4L2_PIX_FMT_NV12M_P010,
+		.codec_mode 	= S5P_MFC_CODEC_NONE,
+		.type 		= MFC_FMT_RAW,
+		.num_planes 	= 2,
+		.versions       = MFC_V12_BIT,
+	},
+	{
+		.name 		= "4:2:0 2 Planes Y/CrCb 10bit",
+		.fourcc 	= V4L2_PIX_FMT_NV21M_S10B,
+		.codec_mode 	= S5P_MFC_CODEC_NONE,
+		.type 		= MFC_FMT_RAW,
+		.num_planes 	= 2,
+		.versions       = MFC_V12_BIT,
+	},
+	{
+		.name 		= "4:2:0 2 Planes Y/CrCb P010 10bit",
+		.fourcc 	= V4L2_PIX_FMT_NV21M_P010,
+		.codec_mode 	= S5P_MFC_CODEC_NONE,
+		.type 		= MFC_FMT_RAW,
+		.num_planes 	= 2,
+		.versions       = MFC_V12_BIT,
+	},
+	{
+		.name 		= "4:2:2 2 Planes Y/CbCr 10bit",
+		.fourcc 	= V4L2_PIX_FMT_NV16M_S10B,
+		.codec_mode 	= S5P_MFC_CODEC_NONE,
+		.type 		= MFC_FMT_RAW,
+		.num_planes 	= 2,
+		.versions       = MFC_V12_BIT,
+	},
+	{
+		.name 		= "4:2:2 2 Planes Y/CbCr P210 10bit",
+		.fourcc 	= V4L2_PIX_FMT_NV16M_P210,
+		.codec_mode 	= S5P_MFC_CODEC_NONE,
+		.type 		= MFC_FMT_RAW,
+		.num_planes 	= 2,
+		.versions       = MFC_V12_BIT,
+	},
+	{
+		.name 		= "4:2:2 2 Planes Y/CrCb 10bit",
+		.fourcc 	= V4L2_PIX_FMT_NV61M_S10B,
+		.codec_mode 	= S5P_MFC_CODEC_NONE,
+		.type 		= MFC_FMT_RAW,
+		.num_planes 	= 2,
+		.versions       = MFC_V12_BIT,
+	},
+	{
+		.name 		= "4:2:2 2 Planes Y/CrCb P210 10bit",
+		.fourcc 	= V4L2_PIX_FMT_NV61M_P210,
+		.codec_mode 	= S5P_MFC_CODEC_NONE,
+		.type 		= MFC_FMT_RAW,
+		.num_planes 	= 2,
+		.versions       = MFC_V12_BIT,
+	},
+	{
+                .name           = "4:2:0 3 Planes Y/CrCb",
+                .fourcc         = V4L2_PIX_FMT_YUV420M,
+                .codec_mode     = S5P_MFC_CODEC_NONE,
+                .type           = MFC_FMT_RAW,
+                .num_planes     = 3,
+                .versions       = MFC_V6PLUS_BITS,
+        },
+	{
+                .name           = "4:2:0 3 Planes Y/CrCb",
+                .fourcc         = V4L2_PIX_FMT_YVU420M,
+                .codec_mode     = S5P_MFC_CODEC_NONE,
+                .type           = MFC_FMT_RAW,
+                .num_planes     = 3,
+                .versions       = MFC_V6PLUS_BITS,
 	},
 	{
 		.name		= "H264 Encoded Stream",
@@ -70,8 +158,7 @@ static struct s5p_mfc_fmt formats[] = {
 		.codec_mode	= S5P_MFC_CODEC_H264_DEC,
 		.type		= MFC_FMT_DEC,
 		.num_planes	= 1,
-		.versions	= MFC_V5_BIT | MFC_V6_BIT | MFC_V7_BIT |
-								MFC_V8_BIT,
+		.versions	= MFC_V5PLUS_BITS,
 	},
 	{
 		.name		= "H264/MVC Encoded Stream",
@@ -79,7 +166,7 @@ static struct s5p_mfc_fmt formats[] = {
 		.codec_mode	= S5P_MFC_CODEC_H264_MVC_DEC,
 		.type		= MFC_FMT_DEC,
 		.num_planes	= 1,
-		.versions	= MFC_V6_BIT | MFC_V7_BIT | MFC_V8_BIT,
+		.versions	= MFC_V6PLUS_BITS,
 	},
 	{
 		.name		= "H263 Encoded Stream",
@@ -87,8 +174,7 @@ static struct s5p_mfc_fmt formats[] = {
 		.codec_mode	= S5P_MFC_CODEC_H263_DEC,
 		.type		= MFC_FMT_DEC,
 		.num_planes	= 1,
-		.versions	= MFC_V5_BIT | MFC_V6_BIT | MFC_V7_BIT |
-								MFC_V8_BIT,
+		.versions	= MFC_V5PLUS_BITS,
 	},
 	{
 		.name		= "MPEG1 Encoded Stream",
@@ -96,8 +182,7 @@ static struct s5p_mfc_fmt formats[] = {
 		.codec_mode	= S5P_MFC_CODEC_MPEG2_DEC,
 		.type		= MFC_FMT_DEC,
 		.num_planes	= 1,
-		.versions	= MFC_V5_BIT | MFC_V6_BIT | MFC_V7_BIT |
-								MFC_V8_BIT,
+		.versions	= MFC_V5PLUS_BITS,
 	},
 	{
 		.name		= "MPEG2 Encoded Stream",
@@ -105,8 +190,7 @@ static struct s5p_mfc_fmt formats[] = {
 		.codec_mode	= S5P_MFC_CODEC_MPEG2_DEC,
 		.type		= MFC_FMT_DEC,
 		.num_planes	= 1,
-		.versions	= MFC_V5_BIT | MFC_V6_BIT | MFC_V7_BIT |
-								MFC_V8_BIT,
+		.versions	= MFC_V5PLUS_BITS,
 	},
 	{
 		.name		= "MPEG4 Encoded Stream",
@@ -114,8 +198,7 @@ static struct s5p_mfc_fmt formats[] = {
 		.codec_mode	= S5P_MFC_CODEC_MPEG4_DEC,
 		.type		= MFC_FMT_DEC,
 		.num_planes	= 1,
-		.versions	= MFC_V5_BIT | MFC_V6_BIT | MFC_V7_BIT |
-								MFC_V8_BIT,
+		.versions	= MFC_V5PLUS_BITS,
 	},
 	{
 		.name		= "XviD Encoded Stream",
@@ -123,8 +206,7 @@ static struct s5p_mfc_fmt formats[] = {
 		.codec_mode	= S5P_MFC_CODEC_MPEG4_DEC,
 		.type		= MFC_FMT_DEC,
 		.num_planes	= 1,
-		.versions	= MFC_V5_BIT | MFC_V6_BIT | MFC_V7_BIT |
-								MFC_V8_BIT,
+		.versions	= MFC_V5PLUS_BITS,
 	},
 	{
 		.name		= "VC1 Encoded Stream",
@@ -132,8 +214,7 @@ static struct s5p_mfc_fmt formats[] = {
 		.codec_mode	= S5P_MFC_CODEC_VC1_DEC,
 		.type		= MFC_FMT_DEC,
 		.num_planes	= 1,
-		.versions	= MFC_V5_BIT | MFC_V6_BIT | MFC_V7_BIT |
-								MFC_V8_BIT,
+		.versions	= MFC_V5PLUS_BITS,
 	},
 	{
 		.name		= "VC1 RCV Encoded Stream",
@@ -141,8 +222,7 @@ static struct s5p_mfc_fmt formats[] = {
 		.codec_mode	= S5P_MFC_CODEC_VC1RCV_DEC,
 		.type		= MFC_FMT_DEC,
 		.num_planes	= 1,
-		.versions	= MFC_V5_BIT | MFC_V6_BIT | MFC_V7_BIT |
-								MFC_V8_BIT,
+		.versions	= MFC_V5PLUS_BITS,
 	},
 	{
 		.name		= "VP8 Encoded Stream",
@@ -150,7 +230,23 @@ static struct s5p_mfc_fmt formats[] = {
 		.codec_mode	= S5P_MFC_CODEC_VP8_DEC,
 		.type		= MFC_FMT_DEC,
 		.num_planes	= 1,
-		.versions	= MFC_V6_BIT | MFC_V7_BIT | MFC_V8_BIT,
+		.versions	= MFC_V6PLUS_BITS,
+	},
+	{
+		.name		= "HEVC Encoded Stream",
+		.fourcc		= V4L2_PIX_FMT_HEVC,
+		.codec_mode	= S5P_FIMV_CODEC_HEVC_DEC,
+		.type		= MFC_FMT_DEC,
+		.num_planes	= 1,
+		.versions	= MFC_V10_BIT | MFC_V12_BIT,
+	},
+	{
+		.name		= "VP9 Encoded Stream",
+		.fourcc		= V4L2_PIX_FMT_VP9,
+		.codec_mode	= S5P_FIMV_CODEC_VP9_DEC,
+		.type		= MFC_FMT_DEC,
+		.num_planes	= 1,
+		.versions	= MFC_V10_BIT | MFC_V12_BIT,
 	},
 };
 
@@ -350,10 +446,21 @@ static int vidioc_g_fmt(struct file *file, void *priv, struct v4l2_format *f)
 		/* Set pixelformat to the format in which MFC
 		   outputs the decoded frame */
 		pix_mp->pixelformat = ctx->dst_fmt->fourcc;
-		pix_mp->plane_fmt[0].bytesperline = ctx->buf_width;
-		pix_mp->plane_fmt[0].sizeimage = ctx->luma_size;
-		pix_mp->plane_fmt[1].bytesperline = ctx->buf_width;
-		pix_mp->plane_fmt[1].sizeimage = ctx->chroma_size;
+		pix_mp->plane_fmt[0].bytesperline = ctx->stride[0];
+		pix_mp->plane_fmt[1].bytesperline = ctx->stride[1];
+		if(ctx->is_10bit) {
+			pix_mp->plane_fmt[0].sizeimage =
+				ctx->luma_size + ctx->plane_size_2bits[0];
+			pix_mp->plane_fmt[1].sizeimage =
+				ctx->chroma_size + ctx->plane_size_2bits[1];
+		} else {
+			pix_mp->plane_fmt[0].sizeimage = ctx->luma_size;
+			pix_mp->plane_fmt[1].sizeimage = ctx->chroma_size;
+		}
+		if(ctx->dst_fmt->fourcc == V4L2_PIX_FMT_YUV420M || ctx->dst_fmt->fourcc == V4L2_PIX_FMT_YVU420M) {
+			pix_mp->plane_fmt[2].bytesperline = ctx->stride[2];
+			pix_mp->plane_fmt[2].sizeimage = ctx->chroma_size_1;
+		}
 	} else if (f->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
 		/* This is run on OUTPUT
 		   The buffer contains compressed image
@@ -639,13 +746,16 @@ static int vidioc_dqbuf(struct file *file, void *priv, struct v4l2_buffer *buf)
 		.type = V4L2_EVENT_EOS
 	};
 	struct s5p_mfc_ctx *ctx = fh_to_ctx(priv);
+	struct s5p_mfc_dev *dev = video_drvdata(file);
 	int ret;
+	const struct s5p_mfc_regs *mfc_regs = dev->mfc_regs;
 
 	if (ctx->state == MFCINST_ERROR) {
 		mfc_err_limited("Call on DQBUF after unrecoverable error\n");
 		return -EIO;
 	}
 
+	mfc_debug(2, "\n******* Luma CRC %x and Chroma CRC %x\n ********",readl(mfc_regs->d_luma_crc),readl(mfc_regs->d_chroma_crc));
 	switch (buf->type) {
 	case V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE:
 		return vb2_dqbuf(&ctx->vq_src, buf, file->f_flags & O_NONBLOCK);
@@ -911,6 +1021,8 @@ static int s5p_mfc_queue_setup(struct vb2_queue *vq,
 		   vq->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE) {
 		/* Output plane count is 2 - one for Y and one for CbCr */
 		*plane_count = 2;
+		if(ctx->dst_fmt->fourcc == V4L2_PIX_FMT_YUV420M || ctx->dst_fmt->fourcc == V4L2_PIX_FMT_YVU420M)
+			*plane_count = 3;
 		/* Setup buffer count */
 		if (*buf_count < ctx->pb_count)
 			*buf_count = ctx->pb_count;
@@ -929,12 +1041,16 @@ static int s5p_mfc_queue_setup(struct vb2_queue *vq,
 	    vq->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE) {
 		psize[0] = ctx->luma_size;
 		psize[1] = ctx->chroma_size;
+		if(ctx->dst_fmt->fourcc == V4L2_PIX_FMT_YUV420M || ctx->dst_fmt->fourcc == V4L2_PIX_FMT_YVU420M)
+			psize[2] = ctx->chroma_size_1;
 
 		if (IS_MFCV6_PLUS(dev))
 			alloc_devs[0] = ctx->dev->mem_dev[BANK_L_CTX];
 		else
 			alloc_devs[0] = ctx->dev->mem_dev[BANK_R_CTX];
 		alloc_devs[1] = ctx->dev->mem_dev[BANK_L_CTX];
+		if(ctx->dst_fmt->fourcc == V4L2_PIX_FMT_YUV420M || ctx->dst_fmt->fourcc == V4L2_PIX_FMT_YVU420M)
+			alloc_devs[2] = ctx->dev->mem_dev[BANK_L_CTX];
 	} else if (vq->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE &&
 		   ctx->state == MFCINST_INIT) {
 		psize[0] = ctx->dec_src_buf_size;
@@ -968,12 +1084,22 @@ static int s5p_mfc_buf_init(struct vb2_buffer *vb)
 			mfc_err("Plane buffer (CAPTURE) is too small\n");
 			return -EINVAL;
 		}
+		if(ctx->dst_fmt->fourcc == V4L2_PIX_FMT_YUV420M || ctx->dst_fmt->fourcc == V4L2_PIX_FMT_YVU420M) {
+			if (vb2_plane_size(vb, 2) < ctx->chroma_size_1) {
+				mfc_err("Plane buffer (CAPTURE) is too small\n");
+				return -EINVAL;
+			}
+		}
 		i = vb->index;
 		ctx->dst_bufs[i].b = vbuf;
 		ctx->dst_bufs[i].cookie.raw.luma =
 					vb2_dma_contig_plane_dma_addr(vb, 0);
 		ctx->dst_bufs[i].cookie.raw.chroma =
 					vb2_dma_contig_plane_dma_addr(vb, 1);
+		if(ctx->dst_fmt->fourcc == V4L2_PIX_FMT_YUV420M || ctx->dst_fmt->fourcc == V4L2_PIX_FMT_YVU420M) {
+			ctx->dst_bufs[i].cookie.raw.chroma_1 =
+						vb2_dma_contig_plane_dma_addr(vb, 2);
+		}
 		ctx->dst_bufs_cnt++;
 	} else if (vq->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
 		if (IS_ERR_OR_NULL(ERR_PTR(
@@ -1177,7 +1303,7 @@ void s5p_mfc_dec_init(struct s5p_mfc_ctx *ctx)
 	struct v4l2_format f;
 	f.fmt.pix_mp.pixelformat = V4L2_PIX_FMT_H264;
 	ctx->src_fmt = find_format(&f, MFC_FMT_DEC);
-	if (IS_MFCV8(ctx->dev))
+	if (IS_MFCV8_PLUS(ctx->dev))
 		f.fmt.pix_mp.pixelformat = V4L2_PIX_FMT_NV12M;
 	else if (IS_MFCV6_PLUS(ctx->dev))
 		f.fmt.pix_mp.pixelformat = V4L2_PIX_FMT_NV12MT_16X16;

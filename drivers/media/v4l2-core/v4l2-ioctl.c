@@ -1183,6 +1183,7 @@ static void v4l_fill_fmtdesc(struct v4l2_fmtdesc *fmt)
 	case V4L2_PIX_FMT_NV12MT_16X16:	descr = "Y/CbCr 4:2:0 (16x16 MB, N-C)"; break;
 	case V4L2_PIX_FMT_YUV420M:	descr = "Planar YUV 4:2:0 (N-C)"; break;
 	case V4L2_PIX_FMT_YVU420M:	descr = "Planar YVU 4:2:0 (N-C)"; break;
+	case V4L2_PIX_FMT_YUV420N:	descr = "Planar YUV 4:2:0 (N-C)"; break;
 	case V4L2_PIX_FMT_YUV422M:	descr = "Planar YUV 4:2:2 (N-C)"; break;
 	case V4L2_PIX_FMT_YVU422M:	descr = "Planar YVU 4:2:2 (N-C)"; break;
 	case V4L2_PIX_FMT_YUV444M:	descr = "Planar YUV 4:4:4 (N-C)"; break;
@@ -1243,6 +1244,14 @@ static void v4l_fill_fmtdesc(struct v4l2_fmtdesc *fmt)
 	case V4L2_TCH_FMT_TU08:		descr = "8-bit unsigned touch data"; break;
 	case V4L2_META_FMT_VSP1_HGO:	descr = "R-Car VSP1 1-D Histogram"; break;
 	case V4L2_META_FMT_VSP1_HGT:	descr = "R-Car VSP1 2-D Histogram"; break;
+	case V4L2_PIX_FMT_NV12M_S10B:	descr = "4:2:0 Y/CbCr 10bit"; break;
+	case V4L2_PIX_FMT_NV21M_S10B: 	descr = "4:2:0 Y/CrCb 10bit"; break;
+	case V4L2_PIX_FMT_NV12M_P010:	descr = "4:2:0 Y/CbCr P010 10bit"; break;
+	case V4L2_PIX_FMT_NV21M_P010:   descr = "4:2:0 Y/CrCb P010 10bit"; break;
+	case V4L2_PIX_FMT_NV16M_S10B:   descr = "4:2:2 Y/CbCr 10bit"; break;
+	case V4L2_PIX_FMT_NV61M_S10B:	descr = "4:2:2 Y/CrCb 10bit"; break;
+	case V4L2_PIX_FMT_NV16M_P210:	descr = "4:2:2 Y/CbCr P210 10bit"; break;
+	case V4L2_PIX_FMT_NV61M_P210:	descr = "4:2:2 Y/CrCb P210 10bit"; break;
 
 	default:
 		/* Compressed formats */
@@ -1265,6 +1274,7 @@ static void v4l_fill_fmtdesc(struct v4l2_fmtdesc *fmt)
 		case V4L2_PIX_FMT_VC1_ANNEX_L:	descr = "VC-1 (SMPTE 412M Annex L)"; break;
 		case V4L2_PIX_FMT_VP8:		descr = "VP8"; break;
 		case V4L2_PIX_FMT_VP9:		descr = "VP9"; break;
+		case V4L2_PIX_FMT_HEVC:         descr = "HEVC"; break;
 		case V4L2_PIX_FMT_CPIA1:	descr = "GSPCA CPiA YUV"; break;
 		case V4L2_PIX_FMT_WNVA:		descr = "WNVA"; break;
 		case V4L2_PIX_FMT_SN9C10X:	descr = "GSPCA SN9C10X"; break;

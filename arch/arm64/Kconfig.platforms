@@ -228,6 +228,13 @@ config ARCH_THUNDER2
 	  This enables support for Cavium's ThunderX2 CN99XX family of
 	  server processors.
 
+config ARCH_TRAV
+	bool "Turbo TRAV SoC Family"
+	select ARCH_EXYNOS
+	select CLKSRC_EXYNOS_MCT
+	help
+	  This enables support for Turbo's TRAV Family of SoCs.
+
 config ARCH_UNIPHIER
 	bool "Socionext UniPhier SoC Family"
 	select ARCH_HAS_RESET_CONTROLLER

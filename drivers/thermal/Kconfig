@@ -107,6 +107,13 @@ config THERMAL_DEFAULT_GOV_POWER_ALLOCATOR
 	  system and device power allocation. This governor can only
 	  operate on cooling devices that implement the power API.
 
+config THERMAL_DEFAULT_GOV_BANG_BANG
+	bool "bang_bang"
+	select THERMAL_GOV_BANG_BANG
+	help
+	  Use the bang_bang governor as default. This implements
+	  a simple two-point regulation with hysteresis.
+
 endchoice
 
 config THERMAL_GOV_FAIR_SHARE
@@ -481,4 +488,11 @@ config UNIPHIER_THERMAL
 	  Enable this to plug in UniPhier on-chip PVT thermal driver into the
 	  thermal framework. The driver supports CPU thermal zone temperature
 	  reporting and a couple of trip points.
+
+config TRAV_SMS_MBOX_THERMAL
+        tristate "Turbo Trav SMS mailbox thermal sensors"
+        depends on MFD_TRAV_SMS
+        help
+         This driver supports trav thermal sensors via mailbox.
+
 endif

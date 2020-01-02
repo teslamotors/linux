@@ -27,6 +27,9 @@ obj-$(CONFIG_GENERIC_MSI_IRQ_DOMAIN) += platform-msi.o
 obj-$(CONFIG_GENERIC_ARCH_TOPOLOGY) += arch_topology.o
 
 obj-y			+= test/
+obj-y			+= dma_buf_test_exporter/
+obj-y			+= memory_group_manager/
+obj-y			+= smc_protected_mode_switcher/
 
 ccflags-$(CONFIG_DEBUG_DRIVER) := -DDEBUG
 

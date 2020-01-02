@@ -1,0 +1,9 @@
+config VIDEO_MALI_C71
+	tristate "ARM Mali C71 ISP support"
+	depends on VIDEO_V4L2
+	depends on HAS_DMA && OF
+	select VIDEOBUF2_DMA_CONTIG
+	select V4L2_MEM2MEM_DEV
+	---help---
+	  Driver for an ARM Mali C71 (aka 'Morgan') image signal processor.
+

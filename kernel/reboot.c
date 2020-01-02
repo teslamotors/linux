@@ -28,7 +28,11 @@ EXPORT_SYMBOL(cad_pid);
 #if defined(CONFIG_ARM) || defined(CONFIG_UNICORE32)
 #define DEFAULT_REBOOT_MODE		= REBOOT_HARD
 #else
+#if IS_ENABLED(CONFIG_ARCH_TRAV)
+#define DEFAULT_REBOOT_MODE		= REBOOT_WARM
+#else
 #define DEFAULT_REBOOT_MODE
+#endif
 #endif
 enum reboot_mode reboot_mode DEFAULT_REBOOT_MODE;
 

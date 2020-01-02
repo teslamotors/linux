@@ -16,5 +16,7 @@
 #define PCITEST_WRITE		_IOW('P', 0x4, unsigned long)
 #define PCITEST_READ		_IOW('P', 0x5, unsigned long)
 #define PCITEST_COPY		_IOW('P', 0x6, unsigned long)
+#define PCITEST_DMAWRITE	_IOW('P', 0x7, unsigned long)
+#define PCITEST_DMAREAD	_IOW('P', 0x8, unsigned long)
 
 #endif /* __UAPI_LINUX_PCITEST_H */

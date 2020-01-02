@@ -201,6 +201,14 @@ config MTD_POWERNV_FLASH
 	  platforms from Linux. This device abstracts away the
 	  firmware interface for flash access.
 
+config MTD_SCS_FLASH
+	tristate "trav scs flash MTD driver"
+	depends on ARCH_TRAV
+	help
+	  This provides an MTD device to access scs flash on trav
+	  platforms from Linux. This device abstracts away the
+	  firmware interface for flash access. -v2
+
 comment "Disk-On-Chip Device Drivers"
 
 config MTD_DOCG3

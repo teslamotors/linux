@@ -631,8 +631,8 @@ static void xhci_stop_watchdog_timer_in_irq(struct xhci_hcd *xhci,
 		struct xhci_virt_ep *ep)
 {
 	ep->ep_state &= ~EP_STOP_CMD_PENDING;
-	/* Can't del_timer_sync in interrupt */
-	del_timer(&ep->stop_cmd_timer);
+	/* Can't cancel_delayed_work_sync in interrupt */
+	cancel_delayed_work(&ep->stop_cmd_work);
 }
 
 /*
@@ -946,22 +946,22 @@ void xhci_hc_died(struct xhci_hcd *xhci)
  * Instead we use a combination of that flag and checking if a new timer is
  * pending.
  */
-void xhci_stop_endpoint_command_watchdog(unsigned long arg)
+void xhci_stop_endpoint_command_watchdog(struct work_struct *work_req)
 {
+	struct delayed_work *d_work = to_delayed_work(work_req);
+	struct xhci_virt_ep *ep = to_xhci_virt_ep(d_work);
 	struct xhci_hcd *xhci;
-	struct xhci_virt_ep *ep;
 	unsigned long flags;
 
-	ep = (struct xhci_virt_ep *) arg;
 	xhci = ep->xhci;
 
 	spin_lock_irqsave(&xhci->lock, flags);
 
-	/* bail out if cmd completed but raced with stop ep watchdog timer.*/
+	/* bail out if cmd completed but raced with stop ep watchdog */
 	if (!(ep->ep_state & EP_STOP_CMD_PENDING) ||
-	    timer_pending(&ep->stop_cmd_timer)) {
+	    delayed_work_pending(&ep->stop_cmd_work)) {
 		spin_unlock_irqrestore(&xhci->lock, flags);
-		xhci_dbg(xhci, "Stop EP timer raced with cmd completion, exit");
+		xhci_dbg(xhci, "Stop EP work raced with cmd completion, exit");
 		return;
 	}
 
@@ -1819,7 +1819,7 @@ struct xhci_segment *trb_in_td(struct xhci_hcd *xhci,
 		end_trb_dma = xhci_trb_virt_to_dma(cur_seg, end_trb);
 
 		if (debug)
-			xhci_warn(xhci,
+			xhci_warn_ratelimited(xhci,
 				"Looking for event-dma %016llx trb-start %016llx trb-end %016llx seg-start %016llx seg-end %016llx\n",
 				(unsigned long long)suspect_dma,
 				(unsigned long long)start_dma,
@@ -2585,7 +2585,7 @@ static int handle_tx_event(struct xhci_hcd *xhci,
 					goto cleanup;
 				}
 				/* HC is busted, give up! */
-				xhci_err(xhci,
+				xhci_err_ratelimited(xhci,
 					"ERROR Transfer event TRB DMA ptr not "
 					"part of current TD ep_index %d "
 					"comp_code %u\n", ep_index,

@@ -1,0 +1,34 @@
+#
+# Synopsys network device configuration
+#
+
+config SYNOPSYS_DWC_QOS_4_21
+    tristate "Sypnopsys DWC Ethernet QOS v4.20a support"
+    select PHYLIB
+    select CRC32
+    select MII
+    depends on OF && HAS_DMA
+    ---help---
+      This driver supports the DWC Ethernet QoS version 4.20a from Synopsys
+
+config DWC_QOS_DEBUGFS
+    bool "Enable QoS Debug file system for SNPS QOS v4.20a driver"
+    default n
+    depends on SYNOPSYS_DWC_QOS_4_21
+    ---help---
+      This enables debug fs support for Synopsys QoS driver v4.20a
+
+config DWC_QOS_PGTEST
+    bool "Enable QoS PG Test for SNPS QOS v4.20a driver"
+    default n
+    depends on SYNOPSYS_DWC_QOS_4_21
+    ---help---
+      This enables PC test support for Synopsys QoS driver v4.20a
+
+config DWC_QOS_PTPSUPPORT
+    bool "Enable QoS PTP support for SNPS QOS v4.20a driver"
+    default n
+    depends on SYNOPSYS_DWC_QOS_4_21
+    select PTP_1588_CLOCK 
+    ---help---
+      This enables PTP support for Synopsys QoS driver v4.20a

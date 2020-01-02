@@ -190,6 +190,14 @@ enum v4l2_colorfx {
  * We reserve 16 controls for this driver. */
 #define V4L2_CID_USER_IMX_BASE			(V4L2_CID_USER_BASE + 0x1090)
 
+/* The base for the trav csis driver controls.
+ * We reserve 16 controls for this driver. */
+#define V4L2_CID_USER_TRAV_CSIS_BASE            (V4L2_CID_USER_BASE + 0x10A0)
+
+/* The base for the trav dprx driver controls.
+ * We reserve 16 controls for this driver. */
+#define V4L2_CID_USER_TRAV_DPRX_BASE		(V4L2_CID_USER_BASE + 0x10B0)
+
 /* MPEG-class control IDs */
 /* The MPEG controls are applicable to all codec controls
  * and the 'MPEG' part of the define is historical */
@@ -531,6 +539,7 @@ enum v4l2_mpeg_video_h264_hierarchical_coding_type {
 };
 #define V4L2_CID_MPEG_VIDEO_H264_HIERARCHICAL_CODING_LAYER	(V4L2_CID_MPEG_BASE+381)
 #define V4L2_CID_MPEG_VIDEO_H264_HIERARCHICAL_CODING_LAYER_QP	(V4L2_CID_MPEG_BASE+382)
+#define V4L2_CID_MPEG_VIDEO_H264_PREPEND_SPSPPS_TO_IDR          (V4L2_CID_MPEG_BASE+383)
 #define V4L2_CID_MPEG_VIDEO_MPEG4_I_FRAME_QP	(V4L2_CID_MPEG_BASE+400)
 #define V4L2_CID_MPEG_VIDEO_MPEG4_P_FRAME_QP	(V4L2_CID_MPEG_BASE+401)
 #define V4L2_CID_MPEG_VIDEO_MPEG4_B_FRAME_QP	(V4L2_CID_MPEG_BASE+402)
@@ -588,6 +597,168 @@ enum v4l2_vp8_golden_frame_sel {
 #define V4L2_CID_MPEG_VIDEO_VPX_I_FRAME_QP		(V4L2_CID_MPEG_BASE+509)
 #define V4L2_CID_MPEG_VIDEO_VPX_P_FRAME_QP		(V4L2_CID_MPEG_BASE+510)
 #define V4L2_CID_MPEG_VIDEO_VPX_PROFILE			(V4L2_CID_MPEG_BASE+511)
+
+/* CIDs for HEVC encoding. Number gaps are for compatibility */
+
+#define V4L2_CID_MPEG_VIDEO_HEVC_MIN_QP                         \
+					(V4L2_CID_MPEG_BASE + 512)
+#define V4L2_CID_MPEG_VIDEO_HEVC_MAX_QP                         \
+					(V4L2_CID_MPEG_BASE + 513)
+#define V4L2_CID_MPEG_VIDEO_HEVC_I_FRAME_QP                     \
+					(V4L2_CID_MPEG_BASE + 514)
+#define V4L2_CID_MPEG_VIDEO_HEVC_P_FRAME_QP                     \
+					(V4L2_CID_MPEG_BASE + 515)
+#define V4L2_CID_MPEG_VIDEO_HEVC_B_FRAME_QP                     \
+					(V4L2_CID_MPEG_BASE + 516)
+#define V4L2_CID_MPEG_VIDEO_HEVC_HIERARCHICAL_QP \
+					(V4L2_CID_MPEG_BASE + 517)
+#define V4L2_CID_MPEG_VIDEO_HEVC_HIERARCHICAL_CODING_TYPE       \
+					(V4L2_CID_MPEG_BASE + 518)
+enum v4l2_mpeg_video_hevc_hier_coding_type {
+	V4L2_MPEG_VIDEO_HEVC_HIERARCHICAL_CODING_B	= 0,
+	V4L2_MPEG_VIDEO_HEVC_HIERARCHICAL_CODING_P	= 1,
+};
+#define V4L2_CID_MPEG_VIDEO_HEVC_HIERARCHICAL_CODING_LAYER      \
+					(V4L2_CID_MPEG_BASE + 519)
+#define V4L2_CID_MPEG_VIDEO_HEVC_HIERARCHICAL_CODING_LAYER_QP   \
+					(V4L2_CID_MPEG_BASE + 520)
+#define V4L2_CID_MPEG_VIDEO_HEVC_PROFILE                        \
+					(V4L2_CID_MPEG_BASE + 521)
+enum v4l2_mpeg_video_hevc_profile {
+	V4L2_MPEG_VIDEO_HEVC_PROFILE_MAIN = 0,
+	V4L2_MPEG_VIDEO_HEVC_PROFILE_MAIN_STILL_PICTURE = 1,
+};
+#define V4L2_CID_MPEG_VIDEO_HEVC_LEVEL                          \
+					(V4L2_CID_MPEG_BASE + 522)
+enum v4l2_mpeg_video_hevc_level {
+	V4L2_MPEG_VIDEO_HEVC_LEVEL_1	= 0,
+	V4L2_MPEG_VIDEO_HEVC_LEVEL_2	= 1,
+	V4L2_MPEG_VIDEO_HEVC_LEVEL_2_1	= 2,
+	V4L2_MPEG_VIDEO_HEVC_LEVEL_3	= 3,
+	V4L2_MPEG_VIDEO_HEVC_LEVEL_3_1	= 4,
+	V4L2_MPEG_VIDEO_HEVC_LEVEL_4	= 5,
+	V4L2_MPEG_VIDEO_HEVC_LEVEL_4_1	= 6,
+	V4L2_MPEG_VIDEO_HEVC_LEVEL_5	= 7,
+	V4L2_MPEG_VIDEO_HEVC_LEVEL_5_1	= 8,
+	V4L2_MPEG_VIDEO_HEVC_LEVEL_5_2	= 9,
+	V4L2_MPEG_VIDEO_HEVC_LEVEL_6	= 10,
+	V4L2_MPEG_VIDEO_HEVC_LEVEL_6_1	= 11,
+	V4L2_MPEG_VIDEO_HEVC_LEVEL_6_2	= 12,
+};
+#define V4L2_CID_MPEG_VIDEO_HEVC_FRAME_RATE_RESOLUTION    \
+					(V4L2_CID_MPEG_BASE + 523)
+#define V4L2_CID_MPEG_VIDEO_HEVC_TIER_FLAG                \
+					(V4L2_CID_MPEG_BASE + 524)
+enum v4l2_mpeg_video_hevc_tier_flag {
+	V4L2_MPEG_VIDEO_HEVC_TIER_MAIN = 0,
+	V4L2_MPEG_VIDEO_HEVC_TIER_HIGH = 1,
+};
+#define V4L2_CID_MPEG_VIDEO_HEVC_MAX_PARTITION_DEPTH      \
+					(V4L2_CID_MPEG_BASE + 525)
+#define V4L2_CID_MPEG_VIDEO_HEVC_LF		          \
+					(V4L2_CID_MPEG_BASE + 526)
+#define V4L2_CID_MPEG_VIDEO_HEVC_LF_SLICE_BOUNDARY        \
+					(V4L2_CID_MPEG_BASE + 527)
+#define V4L2_CID_MPEG_VIDEO_HEVC_LF_BETA_OFFSET_DIV2      \
+					(V4L2_CID_MPEG_BASE + 528)
+#define V4L2_CID_MPEG_VIDEO_HEVC_LF_TC_OFFSET_DIV2        \
+					(V4L2_CID_MPEG_BASE + 529)
+#define V4L2_CID_MPEG_VIDEO_HEVC_REFRESH_TYPE             \
+					(V4L2_CID_MPEG_BASE + 530)
+enum v4l2_cid_mpeg_video_hevc_refresh_type {
+	V4L2_MPEG_VIDEO_HEVC_REFRESH_NONE		= 0,
+	V4L2_MPEG_VIDEO_HEVC_REFRESH_CRA		= 1,
+	V4L2_MPEG_VIDEO_HEVC_REFRESH_IDR		= 2,
+};
+#define V4L2_CID_MPEG_VIDEO_HEVC_REFRESH_PERIOD           \
+					(V4L2_CID_MPEG_BASE + 531)
+#define V4L2_CID_MPEG_VIDEO_HEVC_LOSSLESS_CU		  \
+					(V4L2_CID_MPEG_BASE + 532)
+#define V4L2_CID_MPEG_VIDEO_HEVC_CONST_INTRA_PRED	  \
+					(V4L2_CID_MPEG_BASE + 533)
+#define V4L2_CID_MPEG_VIDEO_HEVC_WAVEFRONT	          \
+					(V4L2_CID_MPEG_BASE + 534)
+#define V4L2_CID_MPEG_VIDEO_HEVC_SIGN_DATA_HIDING         \
+					(V4L2_CID_MPEG_BASE + 535)
+#define V4L2_CID_MPEG_VIDEO_HEVC_GENERAL_PB	          \
+					(V4L2_CID_MPEG_BASE + 536)
+#define V4L2_CID_MPEG_VIDEO_HEVC_TEMPORAL_ID	          \
+					(V4L2_CID_MPEG_BASE + 537)
+#define V4L2_CID_MPEG_VIDEO_HEVC_STRONG_SMOOTHING	  \
+					(V4L2_CID_MPEG_BASE + 538)
+#define V4L2_CID_MPEG_VIDEO_HEVC_MAX_NUM_MERGE_MV_MINUS1  \
+					(V4L2_CID_MPEG_BASE + 539)
+#define V4L2_CID_MPEG_VIDEO_HEVC_INTRA_PU_SPLIT		  \
+					(V4L2_CID_MPEG_BASE + 540)
+#define V4L2_CID_MPEG_VIDEO_HEVC_TMV_PREDICTION		  \
+					(V4L2_CID_MPEG_BASE + 541)
+#define V4L2_CID_MPEG_VIDEO_HEVC_WITHOUT_STARTCODE	  \
+					(V4L2_CID_MPEG_BASE + 542)
+#define V4L2_CID_MPEG_VIDEO_HEVC_QP_INDEX_CR              \
+					(V4L2_CID_MPEG_BASE + 543)
+#define V4L2_CID_MPEG_VIDEO_HEVC_QP_INDEX_CB              \
+					(V4L2_CID_MPEG_BASE + 544)
+#define V4L2_CID_MPEG_VIDEO_HEVC_SIZE_OF_LENGTH_FIELD     \
+					(V4L2_CID_MPEG_BASE + 545)
+enum v4l2_cid_mpeg_video_hevc_size_of_length_field {
+	V4L2_MPEG_VIDEO_HEVC_SIZE_0		= 0,
+	V4L2_MPEG_VIDEO_HEVC_SIZE_1		= 1,
+	V4L2_MPEG_VIDEO_HEVC_SIZE_2		= 2,
+	V4L2_MPEG_VIDEO_HEVC_SIZE_4		= 3,
+};
+#define V4L2_CID_MPEG_VIDEO_HEVC_HIER_CODING_LAYER0_BITRATE \
+					(V4L2_CID_MPEG_BASE + 546)
+#define V4L2_CID_MPEG_VIDEO_HEVC_HIER_CODING_LAYER1_BITRATE \
+					(V4L2_CID_MPEG_BASE + 547)
+#define V4L2_CID_MPEG_VIDEO_HEVC_HIER_CODING_LAYER2_BITRATE \
+					(V4L2_CID_MPEG_BASE + 548)
+#define V4L2_CID_MPEG_VIDEO_HEVC_HIER_CODING_LAYER3_BITRATE \
+					(V4L2_CID_MPEG_BASE + 549)
+#define V4L2_CID_MPEG_VIDEO_HEVC_HIER_CODING_LAYER4_BITRATE \
+					(V4L2_CID_MPEG_BASE + 550)
+#define V4L2_CID_MPEG_VIDEO_HEVC_HIER_CODING_LAYER5_BITRATE \
+					(V4L2_CID_MPEG_BASE + 551)
+#define V4L2_CID_MPEG_VIDEO_HEVC_HIER_CODING_LAYER6_BITRATE \
+					(V4L2_CID_MPEG_BASE + 552)
+#define V4L2_CID_MPEG_VIDEO_HEVC_BIT_DEPTH_MINUS8 \
+					(V4L2_CID_MPEG_BASE + 553)
+/* CIDs for VP9 encoding. Number gaps are for compatibility */
+#define V4L2_CID_MPEG_VIDEO_VP9_VERSION                         \
+                                        (V4L2_CID_MPEG_BASE + 600)
+#define V4L2_CID_MPEG_VIDEO_VP9_RC_FRAME_RATE                   \
+                                        (V4L2_CID_MPEG_BASE + 601)
+#define V4L2_CID_MPEG_VIDEO_VP9_MIN_QP                          \
+                                        (V4L2_CID_MPEG_BASE + 602)
+#define V4L2_CID_MPEG_VIDEO_VP9_MAX_QP                          \
+                                        (V4L2_CID_MPEG_BASE + 603)
+#define V4L2_CID_MPEG_VIDEO_VP9_I_FRAME_QP                      \
+                                        (V4L2_CID_MPEG_BASE + 604)
+#define V4L2_CID_MPEG_VIDEO_VP9_P_FRAME_QP                      \
+                                        (V4L2_CID_MPEG_BASE + 605)
+#define V4L2_CID_MPEG_VIDEO_VP9_GOLDEN_FRAMESEL                 \
+                                        (V4L2_CID_MPEG_BASE + 606)
+#define V4L2_CID_MPEG_VIDEO_VP9_GF_REFRESH_PERIOD               \
+                                        (V4L2_CID_MPEG_BASE + 607)
+#define V4L2_CID_MPEG_VIDEO_VP9_HIERARCHY_QP_ENABLE             \
+                                        (V4L2_CID_MPEG_BASE + 608)
+#define V4L2_CID_MPEG_VIDEO_VP9_HIERARCHICAL_CODING_LAYER_QP    \
+                                        (V4L2_CID_MPEG_BASE + 609)
+#define V4L2_CID_MPEG_VIDEO_VP9_REF_NUMBER_FOR_PFRAMES          \
+                                        (V4L2_CID_MPEG_BASE + 610)
+#define V4L2_CID_MPEG_VIDEO_VP9_HIERARCHICAL_CODING_LAYER       \
+                                        (V4L2_CID_MPEG_BASE + 611)
+#define V4L2_CID_MPEG_VIDEO_VP9_HIERARCHICAL_CODING_LAYER_BIT0  \
+                                        (V4L2_CID_MPEG_BASE + 612)
+#define V4L2_CID_MPEG_VIDEO_VP9_HIERARCHICAL_CODING_LAYER_BIT1  \
+                                        (V4L2_CID_MPEG_BASE + 613)
+#define V4L2_CID_MPEG_VIDEO_VP9_HIERARCHICAL_CODING_LAYER_BIT2  \
+                                        (V4L2_CID_MPEG_BASE + 614)
+#define V4L2_CID_MPEG_VIDEO_VP9_MAX_PARTITION_DEPTH             \
+                                        (V4L2_CID_MPEG_BASE + 615)
+#define V4L2_CID_MPEG_VIDEO_VP9_DISABLE_INTRA_PU_SPLIT          \
+                                        (V4L2_CID_MPEG_BASE + 616)
+#define V4L2_CID_MPEG_VIDEO_VP9_DISABLE_IVF_HEADER                  \
+                                        (V4L2_CID_MPEG_BASE + 617)
 
 /*  MPEG-class control IDs specific to the CX2341x driver as defined by V4L2 */
 #define V4L2_CID_MPEG_CX2341X_BASE 				(V4L2_CTRL_CLASS_MPEG | 0x1000)
@@ -657,6 +828,15 @@ enum v4l2_mpeg_mfc51_video_force_frame_type {
 #define V4L2_CID_MPEG_MFC51_VIDEO_H264_ADAPTIVE_RC_STATIC		(V4L2_CID_MPEG_MFC51_BASE+53)
 #define V4L2_CID_MPEG_MFC51_VIDEO_H264_NUM_REF_PIC_FOR_P		(V4L2_CID_MPEG_MFC51_BASE+54)
 
+/*  MPEG-class control IDs specific to the Samsung MFC 10.10 driver as defined by V4L2 */
+#define V4L2_CID_MPEG_MFC1010_BASE				(V4L2_CTRL_CLASS_MPEG | 0x1200)
+
+#define V4L2_CID_MPEG_MFC1010_VIDEO_HEVC_REF_NUMBER_FOR_PFRAMES		(V4L2_CID_MPEG_MFC1010_BASE+0)
+#define V4L2_CID_MPEG_MFC1010_VIDEO_HEVC_ADAPTIVE_RC_DARK		(V4L2_CID_MPEG_MFC1010_BASE+1)
+#define V4L2_CID_MPEG_MFC1010_VIDEO_HEVC_ADAPTIVE_RC_SMOOTH		(V4L2_CID_MPEG_MFC1010_BASE+2)
+#define V4L2_CID_MPEG_MFC1010_VIDEO_HEVC_ADAPTIVE_RC_STATIC		(V4L2_CID_MPEG_MFC1010_BASE+3)
+#define V4L2_CID_MPEG_MFC1010_VIDEO_HEVC_ADAPTIVE_RC_ACTIVITY		(V4L2_CID_MPEG_MFC1010_BASE+4)
+#define V4L2_CID_MPEG_MFC1010_VIDEO_HEVC_PREPEND_SPSPPS_TO_IDR		(V4L2_CID_MPEG_MFC1010_BASE+5)
 
 /*  Camera class control IDs */
 

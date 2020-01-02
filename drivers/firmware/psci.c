@@ -251,9 +251,21 @@ static int get_set_conduit_method(struct device_node *np)
 	return 0;
 }
 
+int __weak pmic_reset(void)
+{
+	return 0;
+}
+
 static void psci_sys_reset(enum reboot_mode reboot_mode, const char *cmd)
 {
+#if IS_ENABLED(CONFIG_ARCH_TRAV)
+	if (reboot_mode == REBOOT_WARM)
+		invoke_psci_fn(PSCI_0_2_FN_SYSTEM_RESET, 0, 0, 0);
+	else
+		pmic_reset();
+#else
 	invoke_psci_fn(PSCI_0_2_FN_SYSTEM_RESET, 0, 0, 0);
+#endif
 }
 
 static void psci_sys_poweroff(void)

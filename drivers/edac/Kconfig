@@ -450,6 +450,13 @@ config EDAC_SYNOPSYS
 	  Support for error detection and correction on the Synopsys DDR
 	  memory controller.
 
+config EDAC_TRAV
+	tristate "Tesla Turbo SoC DDR Memory Controller"
+	depends on OF && (ARCH_TRAV || COMPILE_TEST) && PM_SLEEP
+	help
+	  Support for error detection and correction on the Tesla Turbo
+	  SoC memory controller.
+
 config EDAC_XGENE
 	tristate "APM X-Gene SoC"
 	depends on (ARM64 || COMPILE_TEST)

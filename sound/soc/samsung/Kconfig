@@ -209,4 +209,13 @@ config SND_SOC_SAMSUNG_TM2_WM5110
 	help
 	  Say Y if you want to add support for SoC audio on the TM2 board.
 
+config SND_SOC_SAMSUNG_TRAV_AUDIO
+	tristate "SoC I2S/TDM Audio support for TRAV board"
+	depends on SND_SOC_SAMSUNG
+	select SND_SOC_TLV320AIC3X
+	select SND_SAMSUNG_I2S
+	help
+	  Say Y if you want to add support for SOC audio on the TRAV board
+	  with SND_SOC_TLV320AIC3X Codec.
+
 endif #SND_SOC_SAMSUNG

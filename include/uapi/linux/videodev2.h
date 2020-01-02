@@ -510,6 +510,8 @@ struct v4l2_pix_format {
 #define V4L2_PIX_FMT_RGB32   v4l2_fourcc('R', 'G', 'B', '4') /* 32  RGB-8-8-8-8   */
 #define V4L2_PIX_FMT_ARGB32  v4l2_fourcc('B', 'A', '2', '4') /* 32  ARGB-8-8-8-8  */
 #define V4L2_PIX_FMT_XRGB32  v4l2_fourcc('B', 'X', '2', '4') /* 32  XRGB-8-8-8-8  */
+#define V4L2_PIX_FMT_XRGB30  v4l2_fourcc('R', 'X', '3', '0') /* 32  XRGB-8-8-8-8  */
+#define V4L2_PIX_FMT_XRGB36  v4l2_fourcc('R', 'X', '3', '6') /* 32  XRGB-8-8-8-8  */
 
 /* Grey formats */
 #define V4L2_PIX_FMT_GREY    v4l2_fourcc('G', 'R', 'E', 'Y') /*  8  Greyscale     */
@@ -576,6 +578,47 @@ struct v4l2_pix_format {
 #define V4L2_PIX_FMT_YUV444M v4l2_fourcc('Y', 'M', '2', '4') /* 24  YUV444 planar */
 #define V4L2_PIX_FMT_YVU444M v4l2_fourcc('Y', 'M', '4', '2') /* 24  YVU444 planar */
 
+/* 10bit format support */
+#define V4L2_PIX_FMT_NV12N_10B		v4l2_fourcc('B', 'N', '1', '2')
+#define V4L2_PIX_FMT_NV12M_S10B		v4l2_fourcc('B', 'M', '1', '2')
+#define V4L2_PIX_FMT_NV21M_S10B		v4l2_fourcc('B', 'M', '2', '1')
+#define V4L2_PIX_FMT_NV16M_S10B		v4l2_fourcc('B', 'M', '1', '6')
+#define V4L2_PIX_FMT_NV61M_S10B		v4l2_fourcc('B', 'M', '6', '1')
+#define V4L2_PIX_FMT_NV12M_P010		v4l2_fourcc('P', 'M', '1', '2')
+#define V4L2_PIX_FMT_NV21M_P010		v4l2_fourcc('P', 'M', '2', '1')
+#define V4L2_PIX_FMT_NV16M_P210		v4l2_fourcc('P', 'M', '1', '6')
+#define V4L2_PIX_FMT_NV61M_P210		v4l2_fourcc('P', 'M', '6', '1')
+
+/* helper macros */
+#ifndef __ALIGN_UP
+#define __ALIGN_UP(x, a)        (((x) + ((a) - 1)) & ~((a) - 1))
+#endif
+
+#define NV12N_Y_SIZE(w, h)      (__ALIGN_UP((w), 16) * __ALIGN_UP((h), 16) + 256)
+#define NV12N_CBCR_SIZE(w, h)       (__ALIGN_UP((__ALIGN_UP((w), 16) * (__ALIGN_UP((h), 16) / 2) + 256), 16))
+#define NV12N_CBCR_BASE(base, w, h) ((base) + NV12N_Y_SIZE((w), (h)))
+#define NV12N_10B_Y_2B_SIZE(w,h)    ((__ALIGN_UP((w) / 4, 16) * __ALIGN_UP((h), 16) + 64))
+#define NV12N_10B_CBCR_2B_SIZE(w,h) ((__ALIGN_UP((w) / 4, 16) * (__ALIGN_UP((h), 16) / 2) + 64))
+#define NV12N_10B_CBCR_BASE(base,w,h)   ((base) + NV12N_Y_SIZE((w), (h)) + NV12N_10B_Y_2B_SIZE((w), (h)))
+
+/* 1 plane -- one Y, one Cb, one Cr*/
+#define V4L2_PIX_FMT_YUV420N        v4l2_fourcc('Y', 'N', '1', '2')
+#define YUV420N_Y_SIZE(w, h)        (__ALIGN_UP((w), 16) * __ALIGN_UP((h), 16))
+#define YUV420N_CB_SIZE(w, h)       (__ALIGN_UP((__ALIGN_UP((w) / 2, 16) * (__ALIGN_UP((h), 16) / 2)), 16))
+#define YUV420N_CR_SIZE(w, h)       (__ALIGN_UP((__ALIGN_UP((w) / 2, 16) * (__ALIGN_UP((h), 16) / 2)), 16))
+#define YUV420N_CB_BASE(base, w, h) ((base) + YUV420N_Y_SIZE((w), (h)))
+#define YUV420N_CR_BASE(base, w, h) (YUV420N_CB_BASE((base), (w), (h)) + YUV420N_CB_SIZE((w), (h)))
+
+#define NV12M_Y_SIZE(w, h)      (__ALIGN_UP((w), 16) * __ALIGN_UP((h), 16) + 256)
+#define NV12M_CBCR_SIZE(w, h)       ((__ALIGN_UP((w), 16) * __ALIGN_UP((h), 16) / 2) + 256)
+#define NV12M_Y_2B_SIZE(w, h)       (__ALIGN_UP((w / 4), 16) * (h) + 256)
+#define NV12M_CBCR_2B_SIZE(w, h)    (__ALIGN_UP((w / 4), 16) * (h / 2) + 256)
+
+#define NV16M_Y_SIZE(w, h)      (__ALIGN_UP((w), 16) * __ALIGN_UP((h), 16) + 256)
+#define NV16M_CBCR_SIZE(w, h)       (__ALIGN_UP((w), 16) * __ALIGN_UP((h), 16) + 256)
+#define NV16M_Y_2B_SIZE(w, h)       (__ALIGN_UP((w / 4), 16) * (h) + 256)
+#define NV16M_CBCR_2B_SIZE(w, h)    (__ALIGN_UP((w / 4), 16) * (h) + 256)
+
 /* Bayer formats - see http://www.siliconimaging.com/RGB%20Bayer.htm */
 #define V4L2_PIX_FMT_SBGGR8  v4l2_fourcc('B', 'A', '8', '1') /*  8  BGBG.. GRGR.. */
 #define V4L2_PIX_FMT_SGBRG8  v4l2_fourcc('G', 'B', 'R', 'G') /*  8  GBGB.. RGRG.. */
@@ -609,6 +652,10 @@ struct v4l2_pix_format {
 #define V4L2_PIX_FMT_SGBRG12P v4l2_fourcc('p', 'G', 'C', 'C')
 #define V4L2_PIX_FMT_SGRBG12P v4l2_fourcc('p', 'g', 'C', 'C')
 #define V4L2_PIX_FMT_SRGGB12P v4l2_fourcc('p', 'R', 'C', 'C')
+#define V4L2_PIX_FMT_SBGGR14 v4l2_fourcc('B', 'G', '1', '4') /* 12  BGBG.. GRGR.. */
+#define V4L2_PIX_FMT_SGBRG14 v4l2_fourcc('G', 'B', '1', '4') /* 12  GBGB.. RGRG.. */
+#define V4L2_PIX_FMT_SGRBG14 v4l2_fourcc('B', 'A', '1', '4') /* 12  GRGR.. BGBG.. */
+#define V4L2_PIX_FMT_SRGGB14 v4l2_fourcc('R', 'G', '1', '4') /* 12  RGRG.. GBGB.. */
 #define V4L2_PIX_FMT_SBGGR16 v4l2_fourcc('B', 'Y', 'R', '2') /* 16  BGBG.. GRGR.. */
 #define V4L2_PIX_FMT_SGBRG16 v4l2_fourcc('G', 'B', '1', '6') /* 16  GBGB.. RGRG.. */
 #define V4L2_PIX_FMT_SGRBG16 v4l2_fourcc('G', 'R', '1', '6') /* 16  GRGR.. BGBG.. */
@@ -635,6 +682,7 @@ struct v4l2_pix_format {
 #define V4L2_PIX_FMT_VC1_ANNEX_L v4l2_fourcc('V', 'C', '1', 'L') /* SMPTE 421M Annex L compliant stream */
 #define V4L2_PIX_FMT_VP8      v4l2_fourcc('V', 'P', '8', '0') /* VP8 */
 #define V4L2_PIX_FMT_VP9      v4l2_fourcc('V', 'P', '9', '0') /* VP9 */
+#define V4L2_PIX_FMT_HEVC     v4l2_fourcc('H', 'E', 'V', 'C') /* HEVC */
 
 /*  Vendor-specific formats   */
 #define V4L2_PIX_FMT_CPIA1    v4l2_fourcc('C', 'P', 'I', 'A') /* cpia1 YUV */

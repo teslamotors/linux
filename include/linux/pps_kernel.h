@@ -46,9 +46,8 @@ struct pps_source_info {
 };
 
 struct pps_event_time {
-#ifdef CONFIG_NTP_PPS
+	struct timespec64 ts_monotonic;
 	struct timespec64 ts_raw;
-#endif /* CONFIG_NTP_PPS */
 	struct timespec64 ts_real;
 };
 
@@ -62,6 +61,10 @@ struct pps_device {
 	__u32 clear_sequence;			/* PPS clear event seq # */
 	struct pps_ktime assert_tu;
 	struct pps_ktime clear_tu;
+	struct pps_ktime assert_raw_tu;
+	struct pps_ktime clear_raw_tu;
+	struct pps_ktime assert_mono_tu;
+	struct pps_ktime clear_mono_tu;
 	int current_mode;			/* PPS mode at event time */
 
 	unsigned int last_ev;			/* last PPS event id */
@@ -116,18 +119,16 @@ static inline void pps_get_ts(struct pps_event_time *ts)
 
 	ktime_get_snapshot(&snap);
 	ts->ts_real = ktime_to_timespec64(snap.real);
-#ifdef CONFIG_NTP_PPS
 	ts->ts_raw = ktime_to_timespec64(snap.raw);
-#endif
+	ts->ts_monotonic = ktime_to_timespec64(snap.monotonic);
 }
 
 /* Subtract known time delay from PPS event time(s) */
 static inline void pps_sub_ts(struct pps_event_time *ts, struct timespec64 delta)
 {
 	ts->ts_real = timespec64_sub(ts->ts_real, delta);
-#ifdef CONFIG_NTP_PPS
 	ts->ts_raw = timespec64_sub(ts->ts_raw, delta);
-#endif
+	ts->ts_monotonic = timespec64_sub(ts->ts_monotonic, delta);
 }
 
 #endif /* LINUX_PPS_KERNEL_H */

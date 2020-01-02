@@ -23,7 +23,7 @@ extern int mfc_debug_level;
 #define mfc_debug(level, fmt, args...)				\
 	do {							\
 		if (mfc_debug_level >= level)			\
-			printk(KERN_DEBUG "%s:%d: " fmt,	\
+			printk(KERN_INFO "%s:%d: " fmt,	\
 				__func__, __LINE__, ##args);	\
 	} while (0)
 #else

@@ -74,6 +74,10 @@ enum {
 	MCT_L5_IRQ,
 	MCT_L6_IRQ,
 	MCT_L7_IRQ,
+	MCT_L8_IRQ,
+	MCT_L9_IRQ,
+	MCT_L10_IRQ,
+	MCT_L11_IRQ,
 	MCT_NR_IRQS,
 };
 
@@ -85,7 +89,7 @@ static int mct_irqs[MCT_NR_IRQS];
 struct mct_clock_event_device {
 	struct clock_event_device evt;
 	unsigned long base;
-	char name[10];
+	char name[11];
 };
 
 static void exynos4_mct_write(unsigned int value, unsigned long offset)
@@ -211,7 +215,7 @@ static void exynos4_frc_resume(struct clocksource *cs)
 
 static struct clocksource mct_frc = {
 	.name		= "mct-frc",
-	.rating		= 400,
+	.rating		= 420,
 	.read		= exynos4_frc_read,
 	.mask		= CLOCKSOURCE_MASK(32),
 	.flags		= CLOCK_SOURCE_IS_CONTINUOUS,
@@ -314,7 +318,7 @@ static struct clock_event_device mct_comp_device = {
 	.name			= "mct-comp",
 	.features		= CLOCK_EVT_FEAT_PERIODIC |
 				  CLOCK_EVT_FEAT_ONESHOT,
-	.rating			= 250,
+	.rating			= 490,
 	.set_next_event		= exynos4_comp_set_next_event,
 	.set_state_periodic	= mct_set_state_periodic,
 	.set_state_shutdown	= mct_set_state_shutdown,
@@ -465,7 +469,7 @@ static int exynos4_mct_starting_cpu(unsigned int cpu)
 	evt->set_state_oneshot_stopped = set_state_shutdown;
 	evt->tick_resume = set_state_shutdown;
 	evt->features = CLOCK_EVT_FEAT_PERIODIC | CLOCK_EVT_FEAT_ONESHOT;
-	evt->rating = 450;
+	evt->rating = 491;
 
 	exynos4_mct_write(TICK_BASE_CNT, mevt->base + MCT_L_TCNTB_OFFSET);
 

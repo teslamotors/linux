@@ -321,6 +321,22 @@ static DEVICE_ATTR(emul_temp, S_IWUSR, NULL, emul_temp_store);
 #endif
 
 static ssize_t
+all_temp_show(struct device *dev, struct device_attribute *devattr,
+                       char *buf)
+{
+	int ret;
+	struct thermal_zone_device *tz = to_thermal_zone(dev);
+	if (tz->ops->get_all_temp)
+		ret = tz->ops->get_all_temp(tz);
+	else
+		ret = -EIO;
+
+	return ret;
+}
+
+static DEVICE_ATTR(all_temp, 0444, all_temp_show, NULL);
+
+static ssize_t
 sustainable_power_show(struct device *dev, struct device_attribute *devattr,
 		       char *buf)
 {
@@ -414,6 +430,7 @@ static struct attribute *thermal_zone_dev_attrs[] = {
 #if (IS_ENABLED(CONFIG_THERMAL_EMULATION))
 	&dev_attr_emul_temp.attr,
 #endif
+	&dev_attr_all_temp.attr,
 	&dev_attr_policy.attr,
 	&dev_attr_available_policies.attr,
 	&dev_attr_sustainable_power.attr,

@@ -1,0 +1,28 @@
+/*
+ * TURBO TRAV EVALUATION board device tree source
+ *
+ * Copyright (c) 2017 Samsung Electronics Co., Ltd.
+ *		http://www.samsung.com
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+
+/dts-v1/;
+#include "turbo-trav-board.dtsi"
+
+/ {
+	model = "Tesla DAS HW3.0";
+	compatible = "turbo,trav";
+};
+
+&ethernet_0 {
+	num-txq=<1>;
+	num-rxq=<1>;
+};
+
+&ethernet_1 {
+	num-txq=<1>;
+	num-rxq=<1>;
+};

@@ -948,6 +948,7 @@ time64_t __ktime_get_real_seconds(void)
 void ktime_get_snapshot(struct system_time_snapshot *systime_snapshot)
 {
 	struct timekeeper *tk = &tk_core.timekeeper;
+	struct timespec64 tomono;
 	unsigned long seq;
 	ktime_t base_raw;
 	ktime_t base_real;
@@ -965,6 +966,7 @@ void ktime_get_snapshot(struct system_time_snapshot *systime_snapshot)
 		base_real = ktime_add(tk->tkr_mono.base,
 				      tk_core.timekeeper.offs_real);
 		base_raw = tk->tkr_raw.base;
+		tomono = tk->wall_to_monotonic;
 		nsec_real = timekeeping_cycles_to_ns(&tk->tkr_mono, now);
 		nsec_raw  = timekeeping_cycles_to_ns(&tk->tkr_raw, now);
 	} while (read_seqcount_retry(&tk_core.seq, seq));
@@ -972,6 +974,8 @@ void ktime_get_snapshot(struct system_time_snapshot *systime_snapshot)
 	systime_snapshot->cycles = now;
 	systime_snapshot->real = ktime_add_ns(base_real, nsec_real);
 	systime_snapshot->raw = ktime_add_ns(base_raw, nsec_raw);
+	systime_snapshot->monotonic =
+		ktime_add_ns(systime_snapshot->real, timespec64_to_ns(&tomono));
 }
 EXPORT_SYMBOL_GPL(ktime_get_snapshot);
 
@@ -2326,8 +2330,10 @@ EXPORT_SYMBOL(hardpps);
  */
 void xtime_update(unsigned long ticks)
 {
-	write_seqlock(&jiffies_lock);
+	raw_spin_lock(&jiffies_lock);
+	write_seqcount_begin(&jiffies_seq);
 	do_timer(ticks);
-	write_sequnlock(&jiffies_lock);
+	write_seqcount_end(&jiffies_seq);
+	raw_spin_unlock(&jiffies_lock);
 	update_wall_time();
 }

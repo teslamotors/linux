@@ -131,4 +131,11 @@ struct ufs_dev_fix {
  */
 #define UFS_DEVICE_QUIRK_HOST_PA_SAVECONFIGTIME	(1 << 8)
 
+/*
+ * Some UFS devices contain a wrong OPTIMAL TRANSFER LENGTH in VPD B0 page,
+ * which leads to a slower performance than the device can support.
+ * Enable this quirk to override the optimal transfer length from VPD.
+ */
+#define UFS_DEVICE_QUIRK_OVERRIDE_OPT_XFER_LEN	(1 << 9)
+
 #endif /* UFS_QUIRKS_H_ */

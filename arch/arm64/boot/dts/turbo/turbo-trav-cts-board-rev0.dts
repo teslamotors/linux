@@ -1,0 +1,183 @@
+/*
+ * TURBO TRAV CTS EVALUATION board device tree source
+ *
+ * Copyright (c) 2017 Samsung Electronics Co., Ltd.
+ *		http://www.samsung.com
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+
+/dts-v1/;
+#include "turbo-trav.dtsi"
+#include <dt-bindings/gpio/gpio.h>
+
+/ {
+	model = "Trav CTS board based on TRAV SoC";
+	compatible = "turbo,trav-eval", "turbo,trav";
+
+	aliases {
+		serial1 = &serial_1;
+	};
+
+	chosen {
+		linux,initrd-start = <0xE0000000>;
+		linux,initrd-end = <0xE4F00000>;
+		bootargs = "console=ttySAC1,115200n8 clk_ignore_unused
+			earlycon=exynos4210,0x14190000 root=/dev/ram0 rw
+			init=/linuxrc max_loop=1";
+		stdout-path = &serial_1;
+	};
+
+	memory@80000000 {
+		device_type = "memory";
+		/* expose 2GB RAM to kernel */
+		reg = <0x0 0x80000000 0x1 0x00000000>;
+	};
+
+	usb30_vbus_reg: regulator-usb30 {
+		compatible = "regulator-fixed";
+		regulator-name = "VBUS_5V";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		gpio = <&gpf4 1 GPIO_ACTIVE_HIGH>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&usb30_vbus_en>;
+		enable-active-high;
+	};
+};
+
+&fin_pll {
+	clock-frequency = <24000000>;
+};
+
+&serial_1 {
+	status = "okay";
+};
+
+&clock_cmu {
+	status = "okay";
+};
+
+&clock_imem {
+	status = "okay";
+};
+
+&clock_cpucl {
+	status = "okay";
+};
+
+&clock_peric {
+	status = "okay";
+};
+
+&clock_fsys0 {
+	status = "okay";
+};
+
+&clock_mfc {
+	status = "okay";
+};
+
+&smmu_peric {
+	status = "okay";
+};
+
+&smmu_imem {
+	status = "okay";
+};
+
+&smmu_fsys0 {
+	status = "okay";
+};
+
+&mdma0 {
+	status = "okay";
+};
+
+&mdma1 {
+	status = "okay";
+};
+
+&pdma0 {
+	status = "okay";
+};
+
+&pdma1 {
+	status = "okay";
+};
+
+&spi_0 {
+	status = "okay";
+};
+
+&spi_1 {
+	status = "okay";
+};
+
+&spi_2 {
+	status = "okay";
+};
+
+&pwm_0 {
+	status = "okay";
+};
+
+&pwm_1 {
+	status = "okay";
+};
+
+&hsi2c_0 {
+	status = "okay";
+};
+
+&hsi2c_1 {
+	status = "okay";
+};
+
+&hsi2c_2 {
+	status = "okay";
+};
+
+&hsi2c_3 {
+	status = "okay";
+};
+
+&hsi2c_4 {
+	status = "okay";
+};
+
+&hsi2c_5 {
+	status = "okay";
+};
+
+&hsi2c_6 {
+	status = "okay";
+};
+
+&hsi2c_7 {
+	status = "okay";
+};
+
+&usbdrd_phy {
+	vbus-supply = <&usb30_vbus_reg>;
+	status = "okay";
+};
+
+&dwc3_0 {
+	dr_mode = "host";
+	status = "okay";
+};
+
+&mfc_0 {
+	status = "okay";
+};
+
+&clock_gpu {
+	status = "okay";
+};
+
+&mali {
+	status = "okay";
+};

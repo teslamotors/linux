@@ -68,6 +68,39 @@ struct devfreq_cooling_device {
 };
 
 /**
+ * _partition_enable_ops() - enable or disable one opp
+ * @dfc:	Pointer to devfreq we are operating on
+ * @idx:	freq_table index to operate on
+ * @cdev_state:	cooling device state we're setting
+ *
+ * Enable or disable a single opp with given index.
+ */
+static int _partition_enable_opp(struct devfreq_cooling_device *dfc,
+				 int idx, unsigned long cdev_state)
+{
+	struct device *dev = dfc->devfreq->dev.parent;
+	struct dev_pm_opp *opp;
+	int ret = 0;
+	unsigned int freq = dfc->freq_table[idx];
+	bool want_enable = (idx >= cdev_state) ? true : false;
+
+	opp = dev_pm_opp_find_freq_exact(dev, freq, !want_enable);
+	if (PTR_ERR(opp) == -ERANGE)
+		return 0;
+	else if (IS_ERR(opp))
+		return PTR_ERR(opp);
+
+	dev_pm_opp_put(opp);
+
+	if (want_enable)
+		ret = dev_pm_opp_enable(dev, freq);
+	else
+		ret = dev_pm_opp_disable(dev, freq);
+
+	return ret;
+}
+
+/**
  * partition_enable_opps() - disable all opps above a given state
  * @dfc:	Pointer to devfreq we are operating on
  * @cdev_state:	cooling device state we're setting
@@ -78,31 +111,21 @@ struct devfreq_cooling_device {
 static int partition_enable_opps(struct devfreq_cooling_device *dfc,
 				 unsigned long cdev_state)
 {
-	int i;
-	struct device *dev = dfc->devfreq->dev.parent;
+	int i, ret;
 
-	for (i = 0; i < dfc->freq_table_size; i++) {
-		struct dev_pm_opp *opp;
-		int ret = 0;
-		unsigned int freq = dfc->freq_table[i];
-		bool want_enable = i >= cdev_state ? true : false;
-
-		opp = dev_pm_opp_find_freq_exact(dev, freq, !want_enable);
-
-		if (PTR_ERR(opp) == -ERANGE)
-			continue;
-		else if (IS_ERR(opp))
-			return PTR_ERR(opp);
-
-		dev_pm_opp_put(opp);
-
-		if (want_enable)
-			ret = dev_pm_opp_enable(dev, freq);
-		else
-			ret = dev_pm_opp_disable(dev, freq);
-
-		if (ret)
-			return ret;
+	if (cdev_state > dfc->cooling_state) {
+		/* disable in reverse order to prevent extra hops */
+		for (i = dfc->freq_table_size - 1; i >= 0; i--) {
+			ret = _partition_enable_opp(dfc, i, cdev_state);
+			if (ret)
+				return ret;
+		}
+	} else {
+		for (i = 0; i < dfc->freq_table_size; i++) {
+			ret = _partition_enable_opp(dfc, i, cdev_state);
+			if (ret)
+				return ret;
+		}
 	}
 
 	return 0;

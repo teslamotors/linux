@@ -1,0 +1,36 @@
+config TESLA_TRIP
+	tristate "Tesla Trip driver"
+	select FRAME_VECTOR
+	select DMA_SHARED_BUFFER
+	select PM_DEVFREQ
+	select DEVFREQ_GOV_PERFORMANCE
+	select DEVFREQ_THERMAL
+	help
+	  This enables the driver for the Trip IP in the Turbo SoC,
+	  used for neural network processing.
+
+config TESLA_TRIP_FW
+	tristate "Tesla Trip driver firmware loading support"
+	depends on TESLA_TRIP
+	select FW_LOADER
+	select CRC32
+	default y
+	help
+	  This enables the driver for the Trip IP to load firmware from
+	  kernel space driver as part of initialization.
+
+config TESLA_TRIP_PROD_MODE_ALWAYS
+	tristate "Tesla Trip driver uses prod_mode always"
+	depends on TESLA_TRIP
+	depends on TESLA_TRIP_FW
+	default y
+	help
+	  This forces the driver to always run in production mode where
+	  writes to SRAM from userspace are disabled.
+
+config TESLA_TRIP_MEM
+	tristate "Tesla Trip memory driver"
+	select DMA_SHARED_BUFFER
+	help
+	  This enables the driver for the Trip memory driver, providing
+	  buffer management for buffers used in the vision pipeline.

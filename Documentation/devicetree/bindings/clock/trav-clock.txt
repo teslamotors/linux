@@ -1,0 +1,52 @@
+* Turbo TRAV Clock Controller
+
+TRAV clock controller has various blocks which are instantiated
+independently from the device-tree. These clock controllers
+generate and supply clocks to various hardware blocks within
+the SoC.
+
+Each clock is assigned an identifier and client nodes can use
+this identifier to specify the clock which they consume. All
+available clocks are defined as preprocessor macros in
+dt-bindings/clock/trav-clk.h header and can be used in
+device tree sources.
+
+External clocks:
+
+There are several clocks that are generated outside the SoC. It
+is expected that they are defined using standard clock bindings
+with following clock-output-names:
+
+ - "fin_pll" - PLL input clock from XXTI
+
+Required Properties for Clock Controller:
+
+ - compatible: clock controllers will use one of the following
+	compatible strings to indicate the clock controller
+	functionality.
+
+	- "turbo,trav-clock-cmu"
+	- "turbo,trav-clock-peric"
+
+ - reg: physical base address of the controller and the length of
+	memory mapped region.
+
+ - #clock-cells: should be 1.
+
+ - clocks: list of clock identifiers which are fed as the input to
+	the given clock controller. Please refer the next section to
+	find the input clocks for a given controller.
+
+- clock-names: list of names of clocks which are fed as the input
+	to the given clock controller.
+
+Input clocks for cmu clock controller:
+	- fin_pll
+
+Input clocks for peric clock controller:
+	- fin_pll
+	- dout_cmu_pll_shared0_div4
+	- dout_cmu_peric_shared1div36
+	- dout_cmu_peric_shared0div3_tbuclk
+	- dout_cmu_peric_shared0div20
+	- dout_cmu_peric_shared1div4_dmaclk

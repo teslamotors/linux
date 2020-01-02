@@ -1600,9 +1600,8 @@ static int xhci_urb_dequeue(struct usb_hcd *hcd, struct urb *urb, int status)
 			goto done;
 		}
 		ep->ep_state |= EP_STOP_CMD_PENDING;
-		ep->stop_cmd_timer.expires = jiffies +
-			XHCI_STOP_EP_CMD_TIMEOUT * HZ;
-		add_timer(&ep->stop_cmd_timer);
+		schedule_delayed_work(&ep->stop_cmd_work,
+							  XHCI_STOP_EP_CMD_TIMEOUT * HZ);
 		xhci_queue_stop_endpoint(xhci, command, urb->dev->slot_id,
 					 ep_index, 0);
 		xhci_ring_cmd_db(xhci);
@@ -3635,7 +3634,7 @@ static void xhci_free_dev(struct usb_hcd *hcd, struct usb_device *udev)
 	/* Stop any wayward timer functions (which may grab the lock) */
 	for (i = 0; i < 31; i++) {
 		virt_dev->eps[i].ep_state &= ~EP_STOP_CMD_PENDING;
-		del_timer_sync(&virt_dev->eps[i].stop_cmd_timer);
+		cancel_delayed_work_sync(&virt_dev->eps[i].stop_cmd_work);
 	}
 
 	virt_dev->udev = NULL;
@@ -4870,6 +4869,7 @@ int xhci_gen_setup(struct usb_hcd *hcd, xhci_get_quirks_t get_quirks)
 	struct device		*dev = hcd->self.sysdev;
 	unsigned int		minor_rev;
 	int			retval;
+	int			dma_mask;
 
 	/* Accept arbitrarily long scatter-gather lists */
 	hcd->self.sg_tablesize = ~0;
@@ -4901,7 +4901,7 @@ int xhci_gen_setup(struct usb_hcd *hcd, xhci_get_quirks_t get_quirks)
 		 * minor revision instead of sbrn
 		 */
 		minor_rev = xhci->usb3_rhub.min_rev;
-		if (minor_rev) {
+		if (minor_rev && !(xhci->quirks & XHCI_BROKEN_SS_PLUS)) {
 			hcd->speed = HCD_USB31;
 			hcd->self.root_hub->speed = USB_SPEED_SUPER_PLUS;
 		}
@@ -4955,6 +4955,7 @@ int xhci_gen_setup(struct usb_hcd *hcd, xhci_get_quirks_t get_quirks)
 		return retval;
 	xhci_dbg(xhci, "Reset complete\n");
 
+	xhci->quirks |= (XHCI_NO_64BIT_SUPPORT | XHCI_36BIT_SUPPORT);
 	/*
 	 * On some xHCI controllers (e.g. R-Car SoCs), the AC64 bit (bit 0)
 	 * of HCCPARAMS1 is set to 1. However, the xHCs don't support 64-bit
@@ -4969,18 +4970,23 @@ int xhci_gen_setup(struct usb_hcd *hcd, xhci_get_quirks_t get_quirks)
 	 * if xHC supports 64-bit addressing */
 	if (HCC_64BIT_ADDR(xhci->hcc_params) &&
 			!dma_set_mask(dev, DMA_BIT_MASK(64))) {
-		xhci_dbg(xhci, "Enabling 64-bit DMA addresses.\n");
+		xhci_err(xhci, "Enabling 64-bit DMA addresses.\n");
 		dma_set_coherent_mask(dev, DMA_BIT_MASK(64));
 	} else {
+		if (xhci->quirks & XHCI_36BIT_SUPPORT)
+			dma_mask = 36;
+		else
+			dma_mask = 32;
+
 		/*
 		 * This is to avoid error in cases where a 32-bit USB
 		 * controller is used on a 64-bit capable system.
 		 */
-		retval = dma_set_mask(dev, DMA_BIT_MASK(32));
+		retval = dma_set_mask(dev, DMA_BIT_MASK(dma_mask));
 		if (retval)
 			return retval;
-		xhci_dbg(xhci, "Enabling 32-bit DMA addresses.\n");
-		dma_set_coherent_mask(dev, DMA_BIT_MASK(32));
+		xhci_err(xhci, "Enabling %d-bit DMA addresses.\n", dma_mask);
+		dma_set_coherent_mask(dev, DMA_BIT_MASK(dma_mask));
 	}
 
 	xhci_dbg(xhci, "Calling HCD init\n");

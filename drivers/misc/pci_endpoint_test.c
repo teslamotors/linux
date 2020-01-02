@@ -47,6 +47,8 @@
 #define COMMAND_READ                    BIT(8)
 #define COMMAND_WRITE                   BIT(9)
 #define COMMAND_COPY                    BIT(10)
+#define COMMAND_DMAREAD                 BIT(11)
+#define COMMAND_DMAWRITE                BIT(12)
 
 #define PCI_ENDPOINT_TEST_STATUS	0x8
 #define STATUS_READ_SUCCESS             BIT(0)
@@ -297,7 +299,7 @@ err:
 	return ret;
 }
 
-static bool pci_endpoint_test_write(struct pci_endpoint_test *test, size_t size)
+static bool pci_endpoint_test_write(struct pci_endpoint_test *test, size_t size, bool dma)
 {
 	bool ret = false;
 	u32 reg;
@@ -310,6 +312,7 @@ static bool pci_endpoint_test_write(struct pci_endpoint_test *test, size_t size)
 	size_t offset;
 	size_t alignment = test->alignment;
 	u32 crc32;
+	u32 command = dma ? COMMAND_DMAREAD : COMMAND_READ;
 
 	orig_addr = dma_alloc_coherent(dev, size + alignment, &orig_phys_addr,
 				       GFP_KERNEL);
@@ -342,7 +345,7 @@ static bool pci_endpoint_test_write(struct pci_endpoint_test *test, size_t size)
 	pci_endpoint_test_writel(test, PCI_ENDPOINT_TEST_SIZE, size);
 
 	pci_endpoint_test_writel(test, PCI_ENDPOINT_TEST_COMMAND,
-				 1 << MSI_NUMBER_SHIFT | COMMAND_READ);
+				 1 << MSI_NUMBER_SHIFT | command);
 
 	wait_for_completion(&test->irq_raised);
 
@@ -356,7 +359,7 @@ err:
 	return ret;
 }
 
-static bool pci_endpoint_test_read(struct pci_endpoint_test *test, size_t size)
+static bool pci_endpoint_test_read(struct pci_endpoint_test *test, size_t size, bool dma)
 {
 	bool ret = false;
 	void *addr;
@@ -368,6 +371,7 @@ static bool pci_endpoint_test_read(struct pci_endpoint_test *test, size_t size)
 	size_t offset;
 	size_t alignment = test->alignment;
 	u32 crc32;
+	u32 command = dma ? COMMAND_DMAWRITE : COMMAND_WRITE;
 
 	orig_addr = dma_alloc_coherent(dev, size + alignment, &orig_phys_addr,
 				       GFP_KERNEL);
@@ -394,7 +398,7 @@ static bool pci_endpoint_test_read(struct pci_endpoint_test *test, size_t size)
 	pci_endpoint_test_writel(test, PCI_ENDPOINT_TEST_SIZE, size);
 
 	pci_endpoint_test_writel(test, PCI_ENDPOINT_TEST_COMMAND,
-				 1 << MSI_NUMBER_SHIFT | COMMAND_WRITE);
+				 1 << MSI_NUMBER_SHIFT | command);
 
 	wait_for_completion(&test->irq_raised);
 
@@ -429,13 +433,19 @@ static long pci_endpoint_test_ioctl(struct file *file, unsigned int cmd,
 		ret = pci_endpoint_test_msi_irq(test, arg);
 		break;
 	case PCITEST_WRITE:
-		ret = pci_endpoint_test_write(test, arg);
+		ret = pci_endpoint_test_write(test, arg, false);
 		break;
 	case PCITEST_READ:
-		ret = pci_endpoint_test_read(test, arg);
+		ret = pci_endpoint_test_read(test, arg, false);
 		break;
 	case PCITEST_COPY:
 		ret = pci_endpoint_test_copy(test, arg);
+		break;
+	case PCITEST_DMAWRITE:
+		ret = pci_endpoint_test_write(test, arg, true);
+		break;
+	case PCITEST_DMAREAD:
+		ret = pci_endpoint_test_read(test, arg, true);
 		break;
 	}
 

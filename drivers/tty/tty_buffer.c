@@ -64,14 +64,16 @@ EXPORT_SYMBOL_GPL(tty_buffer_lock_exclusive);
 void tty_buffer_unlock_exclusive(struct tty_port *port)
 {
 	struct tty_bufhead *buf = &port->buf;
+	struct workqueue_struct *wq;
 	int restart;
 
 	restart = buf->head->commit != buf->head->read;
+	wq = port->low_latency ?  system_unbound_rtpri_wq : system_unbound_wq;
 
 	atomic_dec(&buf->priority);
 	mutex_unlock(&buf->lock);
 	if (restart)
-		queue_work(system_unbound_wq, &buf->work);
+		queue_work(wq, &buf->work);
 }
 EXPORT_SYMBOL_GPL(tty_buffer_unlock_exclusive);
 
@@ -399,12 +401,14 @@ EXPORT_SYMBOL(__tty_insert_flip_char);
 void tty_schedule_flip(struct tty_port *port)
 {
 	struct tty_bufhead *buf = &port->buf;
+	struct workqueue_struct *wq;
 
 	/* paired w/ acquire in flush_to_ldisc(); ensures
 	 * flush_to_ldisc() sees buffer data.
 	 */
 	smp_store_release(&buf->tail->commit, buf->tail->used);
-	queue_work(system_unbound_wq, &buf->work);
+	wq = port->low_latency ?  system_unbound_rtpri_wq : system_unbound_wq;
+	queue_work(wq, &buf->work);
 }
 EXPORT_SYMBOL(tty_schedule_flip);
 
@@ -599,7 +603,9 @@ void tty_buffer_set_lock_subclass(struct tty_port *port)
 
 bool tty_buffer_restart_work(struct tty_port *port)
 {
-	return queue_work(system_unbound_wq, &port->buf.work);
+	struct workqueue_struct *wq;
+	wq = port->low_latency ?  system_unbound_rtpri_wq : system_unbound_wq;
+	return queue_work(wq, &port->buf.work);
 }
 
 bool tty_buffer_cancel_work(struct tty_port *port)

@@ -9,3 +9,5 @@ dwc-xlgmac-objs := dwc-xlgmac-net.o dwc-xlgmac-desc.o \
 		   dwc-xlgmac-ethtool.o
 
 dwc-xlgmac-$(CONFIG_DWC_XLGMAC_PCI) += dwc-xlgmac-pci.o
+
+obj-$(CONFIG_SYNOPSYS_DWC_QOS_4_21) += dwc_qos/

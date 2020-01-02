@@ -15,6 +15,7 @@
 #include <linux/init.h>
 #include <linux/kexec.h>
 #include <linux/profile.h>
+#include <linux/reboot.h>
 #include <linux/stat.h>
 #include <linux/sched.h>
 #include <linux/capability.h>
@@ -140,6 +141,15 @@ KERNEL_ATTR_RO(vmcoreinfo);
 
 #endif /* CONFIG_CRASH_CORE */
 
+#if defined(CONFIG_PREEMPT_RT_FULL)
+static ssize_t realtime_show(struct kobject *kobj,
+			     struct kobj_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", 1);
+}
+KERNEL_ATTR_RO(realtime);
+#endif
+
 /* whether file capabilities are enabled */
 static ssize_t fscaps_show(struct kobject *kobj,
 				  struct kobj_attribute *attr, char *buf)
@@ -207,6 +217,61 @@ static struct bin_attribute notes_attr __ro_after_init  = {
 	.read = &notes_read,
 };
 
+/* same as the char with reboot= boot command line */
+static ssize_t reboot_mode_show(struct kobject *kobj,
+			       struct kobj_attribute *attr, char *buf)
+{
+	char r = 'o';
+
+	switch (reboot_mode) {
+	case REBOOT_COLD:
+		r = 'c';
+		break;
+	case REBOOT_WARM:
+		r = 'w';
+		break;
+	case REBOOT_HARD:
+		r = 'h';
+		break;
+	case REBOOT_SOFT:
+		r = 's';
+		break;
+	case REBOOT_GPIO:
+		r = 'g';
+		break;
+	}
+
+	return sprintf(buf, "%c\n", r);
+}
+
+static ssize_t reboot_mode_store(struct kobject *kobj,
+				struct kobj_attribute *attr,
+				const char *buf, size_t count)
+{
+	switch (*buf) {
+	case 'c':
+		reboot_mode = REBOOT_COLD;
+		break;
+	case 'w':
+		reboot_mode = REBOOT_WARM;
+		break;
+	case 'h':
+		reboot_mode = REBOOT_HARD;
+		break;
+	case 's':
+		reboot_mode = REBOOT_SOFT;
+		break;
+	case 'g':
+		reboot_mode = REBOOT_GPIO;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return count;
+}
+KERNEL_ATTR_RW(reboot_mode);
+
 struct kobject *kernel_kobj;
 EXPORT_SYMBOL_GPL(kernel_kobj);
 
@@ -231,6 +296,10 @@ static struct attribute * kernel_attrs[] = {
 	&rcu_expedited_attr.attr,
 	&rcu_normal_attr.attr,
 #endif
+#ifdef CONFIG_PREEMPT_RT_FULL
+	&realtime_attr.attr,
+#endif
+	&reboot_mode_attr.attr,
 	NULL
 };
 

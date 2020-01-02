@@ -95,6 +95,8 @@ static const struct of_device_id whitelist[] __initconst = {
 	{ .compatible = "ti,omap4", },
 	{ .compatible = "ti,omap5", },
 
+	{ .compatible = "turbo,trav", },
+
 	{ .compatible = "xlnx,zynq-7000", },
 	{ .compatible = "xlnx,zynqmp", },
 

@@ -746,6 +746,31 @@ ssize_t device_show_ulong(struct device *dev,
 }
 EXPORT_SYMBOL_GPL(device_show_ulong);
 
+ssize_t device_store_uint(struct device *dev,
+			 struct device_attribute *attr,
+			 const char *buf, size_t size)
+{
+	struct dev_ext_attribute *ea = to_ext_attr(attr);
+	char *end;
+	long new = simple_strtol(buf, &end, 0);
+	if (end == buf)
+		return -EINVAL;
+	*(unsigned int *)(ea->var) = new;
+	/* Always return full write size even if we didn't consume all */
+	return size;
+}
+EXPORT_SYMBOL_GPL(device_store_uint);
+
+ssize_t device_show_uint(struct device *dev,
+			struct device_attribute *attr,
+			char *buf)
+{
+	struct dev_ext_attribute *ea = to_ext_attr(attr);
+
+	return snprintf(buf, PAGE_SIZE, "%08x\n", *(unsigned int *)(ea->var));
+}
+EXPORT_SYMBOL_GPL(device_show_uint);
+
 ssize_t device_store_int(struct device *dev,
 			 struct device_attribute *attr,
 			 const char *buf, size_t size)

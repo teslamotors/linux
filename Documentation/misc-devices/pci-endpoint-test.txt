@@ -13,6 +13,8 @@ The PCI driver for the test device performs the following tests
 	*) read data
 	*) write data
 	*) copy data
+	*) read data using dma
+	*) write data using dma
 
 This misc driver creates /dev/pci-endpoint-test.<num> for every
 *pci_epf_test* function connected to the root complex and "ioctls"
@@ -30,6 +32,10 @@ ioctl
  PCITEST_READ: Perform read tests. The size of the buffer should be passed
 	       as argument.
  PCITEST_COPY: Perform read tests. The size of the buffer should be passed
+	       as argument.
+ PCITEST_DMAWRITE: Perform dma write tests. The size of the buffer should be passed
+		as argument.
+ PCITEST_DMAREAD: Perform dma read tests. The size of the buffer should be passed
 	       as argument.
 
 [1] -> Documentation/PCI/endpoint/function/binding/pci-test.txt

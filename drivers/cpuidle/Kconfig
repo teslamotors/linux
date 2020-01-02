@@ -29,6 +29,15 @@ config DT_IDLE_STATES
 menu "ARM CPU Idle Drivers"
 depends on ARM || ARM64
 source "drivers/cpuidle/Kconfig.arm"
+
+config TRAV_CPUIDLE_PROFILER
+	bool "cpuidle profiler"
+	depends on ARM_CPUIDLE
+	help
+	  This enables cpuidle profiler for
+	  profiling cpu idle states.
+	default n
+
 endmenu
 
 menu "MIPS CPU Idle Drivers"

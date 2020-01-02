@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0
 #
 # PCI configuration
 #
@@ -125,6 +126,7 @@ config PCI_PASID
 
 config PCI_LABEL
 	def_bool y if (DMI || ACPI)
+	depends on PCI
 	select NLS
 
 config PCI_HYPERV

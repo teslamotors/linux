@@ -25,6 +25,8 @@
 #include <linux/platform_device.h>
 #include <linux/iopoll.h>
 #include <linux/can/dev.h>
+#include <linux/mfd/syscon.h>
+#include <linux/regmap.h>
 #include <linux/pinctrl/consumer.h>
 
 /* napi related */
@@ -340,10 +342,29 @@ enum m_can_mram_cfg {
 #define TX_EVENT_MM_SHIFT	TX_BUF_MM_SHIFT
 #define TX_EVENT_MM_MASK	(0xff << TX_EVENT_MM_SHIFT)
 
+/* PERIC_MCAN_REG */
+#define MRAM_CFG_VALID_SHIFT	5
+#define MRAM_CFG_VALID_MASK	BIT(MRAM_CFG_VALID_SHIFT)
+#define MRAM_DIS_MORD_SHIFT	4
+#define MRAM_DIS_MORD_MASK	BIT(MRAM_DIS_MORD_SHIFT)
+#define MRAM_ECC_ENABLE_SHIFT	3
+#define MRAM_ECC_ENABLE_MASK	BIT(MRAM_ECC_ENABLE_SHIFT)
+#define MRAM_SLVERR_ENABLE_SHIFT 2
+#define MRAM_SLVERR_ENABLE_MASK	BIT(MRAM_SLVERR_ENABLE_SHIFT)
+#define MRAM_INIT_ENABLE_SHIFT	1
+#define MRAM_INIT_ENABLE_MASK	BIT(MRAM_INIT_ENABLE_SHIFT)
+#define MRAM_INIT_DONE_SHIFT	0
+#define MRAM_INIT_DONE_MASK	BIT(MRAM_INIT_DONE_SHIFT)
+
 /* address offset and element number for each FIFO/Buffer in the Message RAM */
 struct mram_cfg {
 	u16 off;
 	u8  num;
+};
+
+struct m_can_mraminit {
+	struct regmap *syscon;	/* for mraminit ctrl. reg. access */
+	unsigned int reg;	/* register index within syscon */
 };
 
 /* m_can private data structure */
@@ -357,6 +378,9 @@ struct m_can_priv {
 	void __iomem *base;
 	u32 irqstatus;
 	int version;
+
+	struct m_can_mraminit mraminit_sys;	/* mraminit via syscon regmap */
+	int mraminit_required;
 
 	/* message ram configuration */
 	void __iomem *mram_base;
@@ -1287,6 +1311,43 @@ return_dev:
 	return dev;
 }
 
+int m_can_init_message_ram(const struct m_can_priv *priv, int enable)
+{
+	int val;
+	int delay_count = 50000;
+	int offset = 0;
+
+	regmap_read(priv->mraminit_sys.syscon, priv->mraminit_sys.reg, &val);
+	val &= ~((MRAM_ECC_ENABLE_MASK | MRAM_CFG_VALID_MASK |
+				MRAM_INIT_ENABLE_MASK) << offset);
+	regmap_write(priv->mraminit_sys.syscon, priv->mraminit_sys.reg, val);
+
+	if (enable) {
+		val |= (MRAM_ECC_ENABLE_MASK | MRAM_INIT_ENABLE_MASK) << offset;
+		regmap_write(priv->mraminit_sys.syscon,
+					priv->mraminit_sys.reg, val);
+	}
+
+	/* after enabel or disable valid flag need to be set*/
+	val |= (MRAM_CFG_VALID_MASK << offset);
+	regmap_write(priv->mraminit_sys.syscon, priv->mraminit_sys.reg, val);
+
+	if (enable) {
+		while (delay_count--) {
+			regmap_read(priv->mraminit_sys.syscon,
+					priv->mraminit_sys.reg, &val);
+
+			if (val & (MRAM_INIT_DONE_MASK << offset)) {
+				printk("[MCAN] Message RAM initialised\n");
+				return 0;
+			}
+			mdelay(1);
+		}
+		return -1;
+	}
+	return 0;
+}
+
 static int m_can_open(struct net_device *dev)
 {
 	struct m_can_priv *priv = netdev_priv(dev);
@@ -1311,6 +1372,15 @@ static int m_can_open(struct net_device *dev)
 		goto exit_irq_fail;
 	}
 
+	if (priv->mraminit_required) {
+		err = m_can_init_message_ram(priv, 1);
+
+		if (err < 0) {
+			netdev_err(dev, "Init Message RAM failed\n");
+			goto exit_mram_fail;
+		}
+	}
+
 	/* start the m_can controller */
 	m_can_start(dev);
 
@@ -1320,6 +1390,8 @@ static int m_can_open(struct net_device *dev)
 
 	return 0;
 
+exit_mram_fail:
+	free_irq(dev->irq, dev);
 exit_irq_fail:
 	close_candev(dev);
 exit_disable_clks:
@@ -1514,6 +1586,8 @@ static void m_can_init_ram(struct m_can_priv *priv)
 static void m_can_of_parse_mram(struct m_can_priv *priv,
 				const u32 *mram_config_vals)
 {
+	int i, start, end;
+
 	priv->mcfg[MRAM_SIDF].off = mram_config_vals[0];
 	priv->mcfg[MRAM_SIDF].num = mram_config_vals[1];
 	priv->mcfg[MRAM_XIDF].off = priv->mcfg[MRAM_SIDF].off +
@@ -1550,6 +1624,15 @@ static void m_can_of_parse_mram(struct m_can_priv *priv,
 		priv->mcfg[MRAM_TXB].off, priv->mcfg[MRAM_TXB].num);
 
 	m_can_init_ram(priv);
+
+	/* initialize the entire Message RAM in use to avoid possible
+	 * ECC/parity checksum errors when reading an uninitialized buffer
+	 */
+	start = priv->mcfg[MRAM_SIDF].off;
+	end = priv->mcfg[MRAM_TXB].off +
+		priv->mcfg[MRAM_TXB].num * TXB_ELEMENT_SIZE;
+	for (i = start; i < end; i += 4)
+		writel(0x0, priv->mram_base + i);
 }
 
 static int m_can_plat_probe(struct platform_device *pdev)
@@ -1588,11 +1671,24 @@ static int m_can_plat_probe(struct platform_device *pdev)
 		goto disable_cclk_ret;
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "m_can");
+	if (!res) {
+		ret = -ENODEV;
+		dev_err(&pdev->dev, "Could not find m_can base address.");
+		goto disable_cclk_ret;
+	}
+
 	addr = devm_ioremap_resource(&pdev->dev, res);
+	if (!addr) {
+		ret = -ENOMEM;
+		dev_err(&pdev->dev, "Could not get m_can base address.");
+		goto disable_cclk_ret;
+	}
+
 	irq = platform_get_irq_byname(pdev, "int0");
 
 	if (IS_ERR(addr) || irq < 0) {
 		ret = -EINVAL;
+		dev_err(&pdev->dev, "Could not get irq.");
 		goto disable_cclk_ret;
 	}
 
@@ -1600,12 +1696,14 @@ static int m_can_plat_probe(struct platform_device *pdev)
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "message_ram");
 	if (!res) {
 		ret = -ENODEV;
+		dev_err(&pdev->dev, "Could not find message ram address.");
 		goto disable_cclk_ret;
 	}
 
 	mram_addr = devm_ioremap(&pdev->dev, res->start, resource_size(res));
 	if (!mram_addr) {
 		ret = -ENOMEM;
+		dev_err(&pdev->dev, "Could not get message ram address.");
 		goto disable_cclk_ret;
 	}
 
@@ -1627,6 +1725,7 @@ static int m_can_plat_probe(struct platform_device *pdev)
 	dev = alloc_m_can_dev(pdev, addr, tx_fifo_size);
 	if (!dev) {
 		ret = -ENOMEM;
+		dev_err(&pdev->dev, "alloc_mcan_dev failed @ %s\n", __func__);
 		goto disable_cclk_ret;
 	}
 	priv = netdev_priv(dev);
@@ -1636,6 +1735,30 @@ static int m_can_plat_probe(struct platform_device *pdev)
 	priv->cclk = cclk;
 	priv->can.clock.freq = clk_get_rate(cclk);
 	priv->mram_base = mram_addr;
+
+	if (np && of_property_read_bool(np, "syscon-mraminit")) {
+		struct m_can_mraminit *mraminit = &priv->mraminit_sys;
+
+		ret = -EINVAL;
+		mraminit->syscon = syscon_regmap_lookup_by_phandle(np,
+						"syscon-mraminit");
+		if (IS_ERR(mraminit->syscon)) {
+			/* can fail with -EPROBE_DEFER */
+			ret = PTR_ERR(mraminit->syscon);
+			goto failed_free_dev;
+		}
+
+		if (of_property_read_u32_index(np, "syscon-mraminit", 1,
+						 &mraminit->reg)) {
+			dev_err(&pdev->dev,
+				"couldn't get the mraminit reg. offset!\n");
+			goto failed_free_dev;
+		}
+		priv->mraminit_required = 1;
+	} else
+		priv->mraminit_required = 0;
+
+	m_can_of_parse_mram(priv, mram_config_vals);
 
 	platform_set_drvdata(pdev, dev);
 	SET_NETDEV_DEV(dev, &pdev->dev);

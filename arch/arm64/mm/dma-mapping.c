@@ -29,6 +29,7 @@
 #include <linux/vmalloc.h>
 #include <linux/swiotlb.h>
 #include <linux/pci.h>
+#include <linux/cma.h>
 
 #include <asm/cacheflush.h>
 
@@ -299,8 +300,8 @@ static void __swiotlb_sync_sg_for_device(struct device *dev,
 				       sg->length, dir);
 }
 
-static int __swiotlb_mmap_pfn(struct vm_area_struct *vma,
-			      unsigned long pfn, size_t size)
+static int __swiotlb_mmap_pfn(struct device *dev, struct vm_area_struct *vma,
+							  unsigned long pfn, size_t size)
 {
 	int ret = -ENXIO;
 	unsigned long nr_vma_pages = (vma->vm_end - vma->vm_start) >>
@@ -308,13 +309,40 @@ static int __swiotlb_mmap_pfn(struct vm_area_struct *vma,
 	unsigned long nr_pages = PAGE_ALIGN(size) >> PAGE_SHIFT;
 	unsigned long off = vma->vm_pgoff;
 
-	if (off < nr_pages && nr_vma_pages <= (nr_pages - off)) {
-		ret = remap_pfn_range(vma, vma->vm_start,
-				      pfn + off,
-				      vma->vm_end - vma->vm_start,
-				      vma->vm_page_prot);
-	}
+	if (off >= nr_pages  || nr_vma_pages > (nr_pages - off))
+		return ret;
 
+#ifdef CONFIG_CMA
+	/*
+	 * If the dev has CMA area and the mmap'd PFN belongs to that region,
+	 * use vm_insert_page, as these area's are backed by struct page.
+	 * This allows us to direct IO to these regions.
+	 */
+	if (dev && dev->cma_area) {
+		phys_addr_t cma_base = cma_get_base(dev->cma_area);
+		phys_addr_t mmap_base = (pfn + off) << PAGE_SHIFT;
+		unsigned long cma_size = cma_get_size(dev->cma_area);
+		unsigned long mmap_size = nr_vma_pages << PAGE_SHIFT;
+
+		if ((cma_base <= mmap_base) &&
+			((cma_base + cma_size) >= (mmap_base + mmap_size))) {
+			int idx;
+
+			for (idx = 0; idx < nr_vma_pages; idx++) {
+				ret = vm_insert_page(vma, vma->vm_start + idx * PAGE_SIZE,
+									 pfn_to_page(pfn + off + idx));
+				if (ret)
+					break;
+			}
+
+			return ret;
+		}
+	}
+#endif
+	ret = remap_pfn_range(vma, vma->vm_start,
+						  pfn + off,
+						  vma->vm_end - vma->vm_start,
+						  vma->vm_page_prot);
 	return ret;
 }
 
@@ -332,7 +360,7 @@ static int __swiotlb_mmap(struct device *dev,
 	if (dma_mmap_from_dev_coherent(dev, vma, cpu_addr, size, &ret))
 		return ret;
 
-	return __swiotlb_mmap_pfn(vma, pfn, size);
+	return __swiotlb_mmap_pfn(dev, vma, pfn, size);
 }
 
 static int __swiotlb_get_sgtable_page(struct sg_table *sgt,
@@ -716,7 +744,7 @@ static int __iommu_mmap_attrs(struct device *dev, struct vm_area_struct *vma,
 		 * hence in the vmalloc space.
 		 */
 		unsigned long pfn = vmalloc_to_pfn(cpu_addr);
-		return __swiotlb_mmap_pfn(vma, pfn, size);
+		return __swiotlb_mmap_pfn(NULL, vma, pfn, size);
 	}
 
 	area = find_vm_area(cpu_addr);

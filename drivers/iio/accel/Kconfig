@@ -181,6 +181,25 @@ config IIO_ST_ACCEL_SPI_3AXIS
 	depends on IIO_ST_ACCEL_3AXIS
 	depends on IIO_ST_SENSORS_SPI
 
+config SMI130_ACCEL
+	tristate "Bosch SMI130 Accelerometer Driver"
+	select IIO_BUFFER
+	select IIO_TRIGGERED_BUFFER
+	select REGMAP
+	select SMI130_ACCEL_I2C if I2C
+	select SMI130_ACCEL_SPI if SPI
+	help
+	  Say yes here to build support for the following Bosch accelerometers:
+	  SMI130
+
+	  This is a combo module with both accelerometer and gyroscope.
+	  This driver is only implementing accelerometer part, which has
+	  its own address and register map.
+
+config SMI130_ACCEL_SPI
+	tristate
+	select REGMAP_SPI
+
 config KXSD9
 	tristate "Kionix KXSD9 Accelerometer Driver"
 	select IIO_BUFFER

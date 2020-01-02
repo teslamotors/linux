@@ -27,6 +27,43 @@
 
 #include "cpufreq-dt.h"
 
+/* mailbox to read ASV info */
+int __attribute__((weak)) mail_box_read_asv_cpu(void)
+{
+        return 0;
+}
+
+#define MAX_ASV_GROUP  5
+
+const static unsigned int ROGroup[MAX_ASV_GROUP + 1] = {
+	/*  0    1   2    3    4  */
+	85,  90,  102, 111, 116, 120,
+};
+
+static int get_asv_group(void)
+{
+	int asv_val;
+	int asv_group = 0;
+	int i;
+
+	asv_val = mail_box_read_asv_cpu();
+
+	for (i = 0; i < MAX_ASV_GROUP; i++) {
+		if ((asv_val >= ROGroup[i]) && (asv_val < ROGroup[i + 1])) {
+			asv_group = i;
+			break;
+		}
+	}
+
+	pr_info("asv: val: %d, group: %d\n", asv_val, asv_group);
+
+	return asv_group;
+}
+
+struct clk *cpucl_pll_clk;
+struct clk *cpucl_switch_clk;
+struct clk *cpucl_cluster_clk;
+
 struct private_data {
 	struct opp_table *opp_table;
 	struct device *cpu_dev;
@@ -44,9 +81,39 @@ static struct freq_attr *cpufreq_dt_attr[] = {
 static int set_target(struct cpufreq_policy *policy, unsigned int index)
 {
 	struct private_data *priv = policy->driver_data;
+	int ret = 0, ret_val = 0;
 
-	return dev_pm_opp_set_rate(priv->cpu_dev,
+	ret = clk_set_parent(cpucl_cluster_clk, cpucl_switch_clk);
+	if (ret) {
+		pr_err("cpu%d: failed to change parent to switching clock\n",
+		       policy->cpu);
+		WARN_ON(1);
+		return ret;
+	}
+
+	ret = dev_pm_opp_set_rate(priv->cpu_dev,
 				   policy->freq_table[index].frequency * 1000);
+	if (ret) {
+		pr_err("cpu%d: failed to scale cpu clock rate\n", policy->cpu);
+		ret_val = clk_set_parent(cpucl_cluster_clk, cpucl_pll_clk);
+		if (ret_val) {
+			pr_err("cpu%d: failed to re-parent to cpu pll clock\n",
+				policy->cpu);
+			WARN_ON(1);
+			return ret_val;
+		}
+		return ret;
+	}
+
+	ret = clk_set_parent(cpucl_cluster_clk, cpucl_pll_clk);
+	if (ret) {
+		pr_err("cpu%d: failed to re-parent to cpu pll clock\n",
+		       policy->cpu);
+		WARN_ON(1);
+		return ret;
+	}
+
+	return ret;
 }
 
 /*
@@ -142,6 +209,7 @@ static int resources_available(void)
 	return 0;
 }
 
+#define MAX_ASV_NAME_LEN 5
 static int cpufreq_init(struct cpufreq_policy *policy)
 {
 	struct cpufreq_frequency_table *freq_table;
@@ -149,10 +217,12 @@ static int cpufreq_init(struct cpufreq_policy *policy)
 	struct private_data *priv;
 	struct device *cpu_dev;
 	struct clk *cpu_clk;
+	struct device_node *np;
 	unsigned int transition_latency;
 	bool fallback = false;
 	const char *name;
 	int ret;
+	int asv_group;
 
 	cpu_dev = get_cpu_device(policy->cpu);
 	if (!cpu_dev) {
@@ -164,6 +234,28 @@ static int cpufreq_init(struct cpufreq_policy *policy)
 	if (IS_ERR(cpu_clk)) {
 		ret = PTR_ERR(cpu_clk);
 		dev_err(cpu_dev, "%s: failed to get clk: %d\n", __func__, ret);
+		return ret;
+	}
+
+	np = of_node_get(cpu_dev->of_node);
+	cpucl_pll_clk = of_clk_get_by_name(np, "mout_cpucl_pll");
+	if (IS_ERR(cpucl_pll_clk)) {
+		ret = PTR_ERR(cpucl_pll_clk);
+		dev_err(cpu_dev, "%s: failed to get cpucl clk: %d\n", __func__, ret);
+		return ret;
+	}
+
+	cpucl_switch_clk = of_clk_get_by_name(np, "mout_cpucl_switchclk_mux");
+	if (IS_ERR(cpucl_switch_clk)) {
+		ret = PTR_ERR(cpucl_switch_clk);
+		dev_err(cpu_dev, "%s: failed to get switch clk: %d\n", __func__, ret);
+		return ret;
+	}
+
+	cpucl_cluster_clk = of_clk_get_by_name(np, "mout_cpucl_clk_cluster_clk_mux");
+	if (IS_ERR(cpucl_cluster_clk)) {
+		ret = PTR_ERR(cpucl_cluster_clk);
+		dev_err(cpu_dev, "%s: failed to get cluster clk: %d\n", __func__, ret);
 		return ret;
 	}
 
@@ -194,6 +286,21 @@ static int cpufreq_init(struct cpufreq_policy *policy)
 			dev_err(cpu_dev, "Failed to set regulator for cpu%d: %d\n",
 				policy->cpu, ret);
 			goto out_put_clk;
+		}
+	}
+
+	/* set prop_name to asv1-4 */
+	asv_group = get_asv_group();
+	if (asv_group) {
+		char asv_name[MAX_ASV_NAME_LEN];
+
+		memset(asv_name, 0, MAX_ASV_NAME_LEN);
+		snprintf(asv_name, MAX_ASV_NAME_LEN, "asv%d", get_asv_group());
+
+		opp_table = dev_pm_opp_set_prop_name(cpu_dev, asv_name);
+		if (IS_ERR(opp_table)) {
+			dev_err(cpu_dev, "Failed to set prop name\n");
+			return PTR_ERR(opp_table);
 		}
 	}
 

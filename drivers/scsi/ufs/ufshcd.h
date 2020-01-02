@@ -227,6 +227,13 @@ struct ufs_desc_size {
 	int interc_desc;
 	int unit_desc;
 	int conf_desc;
+	int dev_health_desc;
+};
+
+struct ufs_health {
+	char eol_info;
+	char life_time_a;
+	char life_time_b;
 };
 
 /**
@@ -291,6 +298,9 @@ struct ufs_pwr_mode_info {
  *                  to set some things
  * @hibern8_notify: called around hibern8 enter/exit
  * @apply_dev_quirks: called to apply device specific quirks
+ * @specify_nexus_t_xfer_req:
+ * @specify_nexus_t_tm_req: called before command is issued to allow vendor
+ *			specific handling to be set for nexus type.
  * @suspend: called during host controller PM callback
  * @resume: called during host controller PM callback
  * @dbg_register_dump: used to dump controller debug information
@@ -319,9 +329,13 @@ struct ufs_hba_variant_ops {
 	void    (*hibern8_notify)(struct ufs_hba *, enum uic_cmd_dme,
 					enum ufs_notify_change_status);
 	int	(*apply_dev_quirks)(struct ufs_hba *);
+	void	(*specify_nexus_t_xfer_req)(struct ufs_hba *,
+					    int, struct scsi_cmnd *);
+	void	(*specify_nexus_t_tm_req)(struct ufs_hba *, int, u8);
 	int     (*suspend)(struct ufs_hba *, enum ufs_pm_op);
 	int     (*resume)(struct ufs_hba *, enum ufs_pm_op);
 	void	(*dbg_register_dump)(struct ufs_hba *hba);
+	int	(*set_dma_mask)(struct ufs_hba *hba);
 	int	(*phy_initialization)(struct ufs_hba *);
 };
 
@@ -589,6 +603,29 @@ struct ufs_hba {
 	 */
 	#define UFSHCD_QUIRK_PRDT_BYTE_GRAN			UFS_BIT(7)
 
+	/*
+	 * Cleaer handling for transfer/task request list is just opposite.
+	 */
+	#define UFSHCI_QUIRK_BROKEN_REQ_LIST_CLR		UFS_BIT(8)
+
+	/*
+	 * This quirk needs to be enabled if host controller doesn't allow
+	 * that the interrupt aggregation timer and counter are reset by s/w.
+	 */
+	#define UFSHCI_QUIRK_SKIP_RESET_INTR_AGGR		UFS_BIT(9)
+
+	/*
+	 * This quirks needs to be enabled if host controller cannot be
+	 * enabled via HCE register.
+	 */
+	#define UFSHCI_QUIRK_BROKEN_HCE				UFS_BIT(10)
+
+	/*
+	 * This quirk needs to be enabled if we need to map prdt entry
+	 * as per RX_TX_ENTRY_SIZE registter.
+	 */
+	#define UFSHCD_QUIRK_PRDT_ENTRY_MAPPING		UFS_BIT(11)
+
 	unsigned int quirks;	/* Deviations from standard UFSHCI spec. */
 
 	/* Device deviations from standard UFS device spec. */
@@ -677,6 +714,8 @@ struct ufs_hba {
 
 	struct rw_semaphore clk_scaling_lock;
 	struct ufs_desc_size desc_size;
+	u32 ufs_prdt_entry_size_bit;
+	struct ufs_health health_desc;
 };
 
 /* Returns true if clocks can be gated. Otherwise false */
@@ -783,6 +822,8 @@ extern int ufshcd_dme_set_attr(struct ufs_hba *hba, u32 attr_sel,
 			       u8 attr_set, u32 mib_val, u8 peer);
 extern int ufshcd_dme_get_attr(struct ufs_hba *hba, u32 attr_sel,
 			       u32 *mib_val, u8 peer);
+extern int ufshcd_config_pwr_mode(struct ufs_hba *hba,
+			struct ufs_pa_layer_attr *desired_pwr_mode);
 
 /* UIC command interfaces for DME primitives */
 #define DME_LOCAL	0
@@ -983,4 +1024,17 @@ static inline void ufshcd_vops_dbg_register_dump(struct ufs_hba *hba)
 		hba->vops->dbg_register_dump(hba);
 }
 
+static inline void ufshcd_vops_specify_nexus_t_xfer_req(struct ufs_hba *hba,
+					int tag, struct ufshcd_lrb *lrbp)
+{
+	if (hba->vops && hba->vops->specify_nexus_t_xfer_req)
+		hba->vops->specify_nexus_t_xfer_req(hba, tag, lrbp->cmd);
+}
+
+static inline void ufshcd_vops_specify_nexus_t_tm_req(struct ufs_hba *hba,
+						int free_slot, u8 tm_function)
+{
+	if (hba->vops && hba->vops->specify_nexus_t_tm_req)
+		hba->vops->specify_nexus_t_tm_req(hba, free_slot, tm_function);
+}
 #endif /* End of Header */

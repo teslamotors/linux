@@ -1231,6 +1231,14 @@ config RTC_DRV_ZYNQMP
 	  If you say yes here you get support for the RTC controller found on
 	  Xilinx Zynq Ultrascale+ MPSoC.
 
+config TRAV_SMS_MBOX_RTC
+	bool "Turbo Trav mailbox rtc"
+	depends on MFD_TRAV_SMS
+	depends on RTC_CLASS
+	default y
+	help
+		This driver supports trav rtc via sms mailbox.
+
 comment "on-CPU RTC drivers"
 
 config RTC_DRV_ASM9260

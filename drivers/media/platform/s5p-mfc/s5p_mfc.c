@@ -35,19 +35,166 @@
 #include "s5p_mfc_opr.h"
 #include "s5p_mfc_cmd.h"
 #include "s5p_mfc_pm.h"
+#include <linux/firmware.h>
+#include <linux/debugfs.h>
+#include <linux/kernel.h>
 
 #define S5P_MFC_DEC_NAME	"s5p-mfc-dec"
 #define S5P_MFC_ENC_NAME	"s5p-mfc-enc"
 
+static struct dentry *root_debugfs_dir;
 int mfc_debug_level;
 module_param_named(debug, mfc_debug_level, int, S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(debug, "Debug level - higher value produces more verbose messages");
+static unsigned long runtime_counter;
 
 static char *mfc_mem_size;
 module_param_named(mem, mfc_mem_size, charp, 0644);
 MODULE_PARM_DESC(mem, "Preallocated memory size for the firmware and context buffers");
 
 /* Helper functions for interrupt processing */
+#define MFC_SFR_AREA_COUNT      4
+
+void s5p_mfc_dump_regs(struct s5p_mfc_dev *dev)
+{
+        int i;
+        int addr[MFC_SFR_AREA_COUNT][2] = {
+                { 0x0, 0x80 },
+                { 0x1000, 0x200 },
+                { 0xF000, 0xE00 },
+                { 0x7000, 0x200 },
+        };
+
+        pr_err("-----------dumping MFC registers (SFR base = %p, dev = %p)\n",
+                                dev->mfc_regs, dev);
+        /* Enable all FW clock gating */
+        mfc_write(dev, 0x0, S5P_FIMV_MFC_CLOCK_OFF_V10);
+
+        for (i = 0; i < MFC_SFR_AREA_COUNT; i++) {
+                printk("[%04X .. %04X]\n", addr[i][0], addr[i][0] + addr[i][1]);
+                print_hex_dump(KERN_ERR, "", DUMP_PREFIX_ADDRESS, 32, 4, dev->regs_base + addr[i][0],
+                                addr[i][1], false);
+                printk("...\n");
+        }
+
+}
+
+int s5p_mfc_firmware_cmp(struct s5p_mfc_dev *dev)
+{
+        int i;
+        struct firmware *blob;
+        void *virt_addr;
+        int size = 697844;
+        int err = -EINVAL;
+        char *val1;
+        char *val2;
+        virt_addr = kzalloc(size, GFP_KERNEL);
+        if (!virt_addr) {
+                mfc_err("Virtual addr not allocted\n");
+                return -EINVAL;
+        }
+
+        for (i = MFC_FW_MAX_VERSIONS - 1; i >= 0; i--) {
+                if (!dev->variant->fw_name[i])
+                        continue;
+                err = request_firmware((const struct firmware **)&blob,
+                                dev->variant->fw_name[i], dev->v4l2_dev.dev);
+        }
+
+
+        if (err != 0) {
+                mfc_err("Firmware is not present in the /lib/firmware directory nor compiled in kernel\n");
+                return -EINVAL;
+        }
+        printk("blob size is %d and blob-data is %p and virt_add is %p\n",(unsigned int)blob->size,blob->data,virt_addr);
+        memcpy(virt_addr, blob->data, size);
+        val1 = virt_addr;
+        val2 = dev->fw_buf.virt;
+        for(i=0; i<600000; i++)
+        {
+                if(val1[i] ==  val2[i])
+                        continue;
+                else
+                        printk("!!!!!!!!!!!! Memcmp is  not correct val1 is %x and val2 is %x and i is %d\n",val1[i],val2[i],i);
+        }
+                printk("****** Firmware data is correct\n");
+        release_firmware(blob);
+        return 0;
+}
+
+static ssize_t mfc_test_message_write(struct file *filp,
+					const char __user *userbuf,
+					size_t count, loff_t *ppos)
+{
+	struct s5p_mfc_dev *dev = filp->private_data;
+	long data = 0;
+	int ret;
+
+	dev->message = kzalloc(128, GFP_KERNEL);
+	if (!dev->message)
+		return -ENOMEM;
+
+	ret = copy_from_user(dev->message, userbuf, count);
+	if (ret) {
+		ret = -EFAULT;
+		goto out;
+	}
+
+	if (kstrtol(dev->message, 10, &data)) {
+		mfc_err("Invalid Number received: %s\n", dev->message);
+		return -EINVAL;
+	}
+
+	mfc_debug_level = data;
+
+out:
+	kfree(dev->message);
+	return ret < 0 ? ret : count;
+}
+
+static ssize_t mfc_test_message_read(struct file *filp,
+					char __user *userbuf,
+					size_t count, loff_t *ppos)
+{
+	struct s5p_mfc_dev *dev = filp->private_data;
+	int size;
+
+	dev->message = kzalloc(128, GFP_KERNEL);
+	if (!dev->message)
+		return -ENOMEM;
+	sprintf(dev->message, "%lu\n", runtime_counter);
+	size = strlen(dev->message);
+	return simple_read_from_buffer(userbuf, count, ppos, dev->message, size);
+}
+
+static const struct file_operations mfc_test_message_ops = {
+	.write  = mfc_test_message_write,
+	.read  = mfc_test_message_read,
+	.open   = simple_open,
+	.llseek = generic_file_llseek,
+};
+
+static int mfc_test_add_debugfs(struct platform_device *pdev,
+				struct s5p_mfc_dev *dev)
+{
+	if (!debugfs_initialized())
+		return 0;
+
+	root_debugfs_dir = debugfs_create_dir("mfc", NULL);
+	if (!root_debugfs_dir) {
+		dev_err(&pdev->dev, "Failed to create MFC debugfs\n");
+		return -EINVAL;
+	}
+
+	debugfs_create_file("message", 0600, root_debugfs_dir,
+			dev, &mfc_test_message_ops);
+
+	debugfs_create_file("runtime_suspend_count", 0600, root_debugfs_dir,
+			dev, &mfc_test_message_ops);
+
+	return 0;
+}
+
 
 /* Remove from hw execution round robin */
 void clear_work_bit(struct s5p_mfc_ctx *ctx)
@@ -508,6 +655,7 @@ static void s5p_mfc_handle_seq_done(struct s5p_mfc_ctx *ctx,
 				 unsigned int reason, unsigned int err)
 {
 	struct s5p_mfc_dev *dev;
+	int chroma_info;
 
 	if (ctx == NULL)
 		return;
@@ -527,6 +675,33 @@ static void s5p_mfc_handle_seq_done(struct s5p_mfc_ctx *ctx,
 				dev);
 		ctx->mv_count = s5p_mfc_hw_call(dev->mfc_ops, get_mv_count,
 				dev);
+		ctx->scratch_buf_size = s5p_mfc_hw_call(dev->mfc_ops,
+						get_min_scratch_buf_size, dev);
+		chroma_info = s5p_mfc_hw_call(dev->mfc_ops,
+					get_hevc_422, dev);
+		if (CODEC_10BIT(ctx)) {
+			ctx->profile = s5p_mfc_hw_call(dev->mfc_ops,
+					get_picture_profile, dev);
+			if (s5p_mfc_hw_call(dev->mfc_ops,
+						get_luma_bit_depth_minus8, dev) ||
+					s5p_mfc_hw_call(dev->mfc_ops,
+						get_chroma_bit_depth_minus8, dev) ||
+					ctx->profile == S5P_FIMV_D_PROFILE_HEVC_MAIN_10) {
+ 					ctx->is_10bit = 1;
+					mfc_info("10bit contents, profile: %d, depth: %d/%d\n",
+							ctx->profile,
+							s5p_mfc_hw_call(dev->mfc_ops,
+								get_luma_bit_depth_minus8, dev) + 8,
+							s5p_mfc_hw_call(dev->mfc_ops,
+								get_chroma_bit_depth_minus8, dev) + 8);
+				}
+		}
+		if (CODEC_422FORMAT(ctx)) {
+			if (chroma_info == S5P_FIMV_D_CHROMA_422) {
+				ctx->is_422format = 1;
+				mfc_info("422 chroma format\n");
+ 			}
+ 		}
 		if (ctx->img_width == 0 || ctx->img_height == 0)
 			ctx->state = MFCINST_ERROR;
 		else
@@ -590,6 +765,8 @@ static void s5p_mfc_handle_init_buffers(struct s5p_mfc_ctx *ctx,
 		s5p_mfc_clock_off();
 
 		wake_up(&ctx->queue);
+		if (ctx->src_queue_cnt >= 1 && ctx->dst_queue_cnt >= 1)
+			set_work_bit_irqsave(ctx);
 		s5p_mfc_hw_call(dev->mfc_ops, try_run, dev);
 	} else {
 		WARN_ON(test_and_clear_bit(0, &dev->hw_lock) == 0);
@@ -644,6 +821,7 @@ static irqreturn_t s5p_mfc_irq(int irq, void *priv)
 	reason = s5p_mfc_hw_call(dev->mfc_ops, get_int_reason, dev);
 	err = s5p_mfc_hw_call(dev->mfc_ops, get_int_err, dev);
 	mfc_debug(1, "Int reason: %d (err: %08x)\n", reason, err);
+
 	switch (reason) {
 	case S5P_MFC_R2H_CMD_ERR_RET:
 		/* An error has occurred */
@@ -776,6 +954,8 @@ static int s5p_mfc_open(struct file *file)
 	INIT_LIST_HEAD(&ctx->dst_queue);
 	ctx->src_queue_cnt = 0;
 	ctx->dst_queue_cnt = 0;
+	ctx->is_422format = 0;
+	ctx->is_10bit = 0;
 	/* Get context number */
 	ctx->num = 0;
 	while (dev->ctx[ctx->num]) {
@@ -799,6 +979,7 @@ static int s5p_mfc_open(struct file *file)
 			mfc_err("Failed to setup mfc controls\n");
 			goto err_ctrls_setup;
 		}
+		ctx->profile = -1;
 	} else if (vdev == dev->vfd_enc) {
 		ctx->type = MFCINST_ENCODER;
 		ctx->c_ops = get_enc_codec_ops();
@@ -849,7 +1030,7 @@ static int s5p_mfc_open(struct file *file)
 		q->io_modes = VB2_MMAP;
 		q->ops = get_dec_queue_ops();
 	} else if (vdev == dev->vfd_enc) {
-		q->io_modes = VB2_MMAP | VB2_USERPTR;
+		q->io_modes = VB2_MMAP | VB2_USERPTR | VB2_DMABUF;
 		q->ops = get_enc_queue_ops();
 	} else {
 		ret = -ENOENT;
@@ -876,7 +1057,7 @@ static int s5p_mfc_open(struct file *file)
 		q->io_modes = VB2_MMAP;
 		q->ops = get_dec_queue_ops();
 	} else if (vdev == dev->vfd_enc) {
-		q->io_modes = VB2_MMAP | VB2_USERPTR;
+		q->io_modes = VB2_MMAP | VB2_USERPTR | VB2_DMABUF;
 		q->ops = get_enc_queue_ops();
 	} else {
 		ret = -ENOENT;
@@ -939,6 +1120,7 @@ static int s5p_mfc_release(struct file *file)
 	struct s5p_mfc_dev *dev = ctx->dev;
 
 	/* if dev is null, do cleanup that doesn't need dev */
+	runtime_counter++;
 	mfc_debug_enter();
 	if (dev)
 		mutex_lock(&dev->mfc_mutex);
@@ -1182,8 +1364,12 @@ static int s5p_mfc_configure_common_memory(struct s5p_mfc_dev *mfc_dev)
 	unsigned long mem_size = SZ_4M;
 	unsigned int bitmap_size;
 
+	mfc_dev->mem_dev[BANK_L_CTX] = mfc_dev->mem_dev[BANK_R_CTX] = dev;
+#ifdef CONFIG_ARM_SMMU
+        dma_set_mask_and_coherent(mfc_dev->mem_dev[BANK_L_CTX], MFC_FW_DMA_MASK);
+#endif
 	if (IS_ENABLED(CONFIG_DMA_CMA) || exynos_is_iommu_available(dev))
-		mem_size = SZ_8M;
+		mem_size = SZ_32M;
 
 	if (mfc_mem_size)
 		mem_size = memparse(mfc_mem_size, NULL);
@@ -1220,8 +1406,9 @@ static int s5p_mfc_configure_common_memory(struct s5p_mfc_dev *mfc_dev)
 
 	/* Firmware allocation cannot fail in this case */
 	s5p_mfc_alloc_firmware(mfc_dev);
-
-	mfc_dev->mem_dev[BANK_L_CTX] = mfc_dev->mem_dev[BANK_R_CTX] = dev;
+#ifdef CONFIG_ARM_SMMU
+        dma_set_mask_and_coherent(mfc_dev->mem_dev[BANK_L_CTX], MFC_DMA_MASK);
+#endif
 	vb2_dma_contig_set_max_seg_size(dev, DMA_BIT_MASK(32));
 
 	dev_info(dev, "preallocated %ld MiB buffer for the firmware and context buffers\n",
@@ -1391,7 +1578,9 @@ static int s5p_mfc_probe(struct platform_device *pdev)
 	}
 	v4l2_info(&dev->v4l2_dev,
 		  "encoder registered as /dev/video%d\n", dev->vfd_enc->num);
-
+	ret = mfc_test_add_debugfs(pdev, dev);
+	if (ret)
+		return ret;
 	pr_debug("%s--\n", __func__);
 	return 0;
 
@@ -1616,6 +1805,56 @@ static struct s5p_mfc_variant mfc_drvdata_v8_5433 = {
 	.num_clocks	= 3,
 };
 
+static struct s5p_mfc_buf_size_v6 mfc_buf_size_v10 = {
+	.dev_ctx        = MFC_CTX_BUF_SIZE_V10,
+	.h264_dec_ctx   = MFC_H264_DEC_CTX_BUF_SIZE_V10,
+	.other_dec_ctx  = MFC_OTHER_DEC_CTX_BUF_SIZE_V10,
+	.h264_enc_ctx   = MFC_H264_ENC_CTX_BUF_SIZE_V10,
+	.hevc_enc_ctx   = MFC_HEVC_ENC_CTX_BUF_SIZE_V10,
+	.other_enc_ctx  = MFC_OTHER_ENC_CTX_BUF_SIZE_V10,
+};
+
+static struct s5p_mfc_buf_size buf_size_v10 = {
+	.fw     = MAX_FW_SIZE_V10,
+	.cpb    = MAX_CPB_SIZE_V10,
+	.priv   = &mfc_buf_size_v10,
+};
+
+static struct s5p_mfc_variant mfc_drvdata_v10 = {
+	.version        = MFC_VERSION_V10,
+	.version_bit    = MFC_V10_BIT,
+	.port_num       = MFC_NUM_PORTS_V10,
+	.buf_size       = &buf_size_v10,
+	.fw_name[0]     = "s5p-mfc-v10.fw",
+	.clk_names	= {"mfc"},
+	.num_clocks	= 1,
+};
+
+static struct s5p_mfc_buf_size_v6 mfc_buf_size_v12 = {
+	.dev_ctx        = MFC_CTX_BUF_SIZE_V12,
+	.h264_dec_ctx   = MFC_H264_DEC_CTX_BUF_SIZE_V12,
+	.other_dec_ctx  = MFC_OTHER_DEC_CTX_BUF_SIZE_V12,
+	.h264_enc_ctx   = MFC_H264_ENC_CTX_BUF_SIZE_V12,
+	.hevc_enc_ctx   = MFC_HEVC_ENC_CTX_BUF_SIZE_V12,
+	.other_enc_ctx  = MFC_OTHER_ENC_CTX_BUF_SIZE_V12,
+};
+
+static struct s5p_mfc_buf_size buf_size_v12 = {
+	.fw     = MAX_FW_SIZE_V12,
+	.cpb    = MAX_CPB_SIZE_V12,
+	.priv   = &mfc_buf_size_v12,
+};
+
+static struct s5p_mfc_variant mfc_drvdata_v12 = {
+	.version        = MFC_VERSION_V12,
+	.version_bit    = MFC_V12_BIT,
+	.port_num       = MFC_NUM_PORTS_V12,
+	.buf_size       = &buf_size_v12,
+	.fw_name[0]     = "s5p-mfc-v12.fw",
+	.clk_names	= {"mfc"},
+	.num_clocks	= 1,
+};
+
 static const struct of_device_id exynos_mfc_match[] = {
 	{
 		.compatible = "samsung,mfc-v5",
@@ -1632,6 +1871,12 @@ static const struct of_device_id exynos_mfc_match[] = {
 	}, {
 		.compatible = "samsung,exynos5433-mfc",
 		.data = &mfc_drvdata_v8_5433,
+	},{
+		.compatible = "samsung,mfc-v10",
+		.data = &mfc_drvdata_v10,
+	}, {
+		.compatible = "samsung,mfc-v12",
+		.data = &mfc_drvdata_v12,
 	},
 	{},
 };

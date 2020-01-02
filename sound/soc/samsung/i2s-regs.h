@@ -159,4 +159,21 @@
 #define I2SSIZE_TRNMSK		(0xffff)
 #define I2SSIZE_SHIFT		(16)
 
+#define TDM_LRCLK_WIDTH_SHIFT   12
+#define TDM_LRCLK_WIDTH_MASK    0xFF
+#define TDM_RX_SLOTS_SHIFT      8
+#define TDM_RX_SLOTS_MASK       7
+#define TDM_TX_SLOTS_SHIFT      4
+#define TDM_TX_SLOTS_MASK       7
+#define TDM_MODE_MASK           (1 << 1)
+#define TDM_MODE_DSPA           (0 << 1)
+#define TDM_MODE_DSPB           (1 << 1)
+#define TDM_ENABLE              (1 << 0)
+
+#define TDM_RX_SLOTS_MAX        2
+#define TDM_TX_SLOTS_MAX        8
+
+/* stereo default */
+#define TDM_DEFAULT_SLOT_NUM_DIVIDER    2
+
 #endif /* __SND_SOC_SAMSUNG_I2S_REGS_H */

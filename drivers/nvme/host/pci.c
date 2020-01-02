@@ -1767,6 +1767,8 @@ static int nvme_setup_host_mem(struct nvme_dev *dev)
 	return ret;
 }
 
+#define MAX_IO_QUEUE 1
+
 static int nvme_setup_io_queues(struct nvme_dev *dev)
 {
 	struct nvme_queue *adminq = &dev->queues[0];
@@ -1774,7 +1776,8 @@ static int nvme_setup_io_queues(struct nvme_dev *dev)
 	int result, nr_io_queues;
 	unsigned long size;
 
-	nr_io_queues = num_possible_cpus();
+	nr_io_queues = MAX_IO_QUEUE;
+
 	result = nvme_set_queue_count(&dev->ctrl, &nr_io_queues);
 	if (result < 0)
 		return result;

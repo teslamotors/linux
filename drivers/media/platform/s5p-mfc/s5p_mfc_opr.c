@@ -58,18 +58,20 @@ int s5p_mfc_alloc_priv_buf(struct s5p_mfc_dev *dev, unsigned int mem_ctx,
 		b->dma = dev->mem_base + offset;
 	} else {
 		struct device *mem_dev = dev->mem_dev[mem_ctx];
-		dma_addr_t base = dev->dma_base[mem_ctx];
 
 		b->ctx = mem_ctx;
 		b->virt = dma_alloc_coherent(mem_dev, b->size, &b->dma, GFP_KERNEL);
 		if (!b->virt)
 			goto no_mem;
+#ifndef CONFIG_ARM_SMMU
+		dma_addr_t base = dev->dma_base[mem_ctx];
 		if (b->dma < base) {
 			mfc_err("Invalid memory configuration - buffer (%pad) is below base memory address(%pad)\n",
 				&b->dma, &base);
 			dma_free_coherent(mem_dev, b->size, b->virt, b->dma);
 			return -ENOMEM;
 		}
+#endif
 	}
 
 	mfc_debug(3, "Allocated addr %p %pad\n", b->virt, &b->dma);

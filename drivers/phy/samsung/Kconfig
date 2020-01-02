@@ -28,6 +28,14 @@ config PHY_EXYNOS_PCIE
 	  Enable PCIe PHY support for Exynos SoC series.
 	  This driver provides PHY interface for Exynos PCIe controller.
 
+config PHY_TRAV_PCIE
+	bool "TRAV PCIe PHY driver"
+	depends on OF && (ARCH_TRAV || COMPILE_TEST)
+	select GENERIC_PHY
+	help
+	  Enable PCIe PHY support for TRAV SoC series.
+	  This driver provides PHY interface for TRAV PCIe controller.
+
 config PHY_SAMSUNG_USB2
 	tristate "Samsung USB 2.0 PHY driver"
 	depends on HAS_IOMEM
@@ -79,6 +87,19 @@ config PHY_EXYNOS5_USBDRD
 	  This driver provides PHY interface for USB 3.0 DRD controller
 	  present on Exynos5 SoC series.
 
+config PHY_TRAV_USBDRD
+	tristate "Trav SoC series USB DRD PHY driver"
+	depends on ARCH_TRAV && OF
+	depends on HAS_IOMEM
+	depends on USB_DWC3_EXYNOS
+	select GENERIC_PHY
+	select MFD_SYSCON
+	default y
+	help
+	  Enable USB DRD PHY support for Trav SoC series.
+	  This driver provides PHY interface for USB 3.0 DRD controller
+	  present on Exynos5 SoC series.
+
 config PHY_EXYNOS5250_SATA
 	tristate "Exynos5250 Sata SerDes/PHY driver"
 	depends on SOC_EXYNOS5250
@@ -93,3 +114,10 @@ config PHY_EXYNOS5250_SATA
 	  Exynos5250 based SoCs.This SerDes/Phy supports SATA 1.5 Gb/s,
 	  SATA 3.0 Gb/s, SATA 6.0 Gb/s speeds. It supports one SATA host
 	  port to accept one SATA device.
+
+config PHY_EXYNOS_UFS
+	tristate "EXYNOS SoC series UFS PHY driver"
+	depends on OF && (ARCH_EXYNOS || COMPILE_TEST)
+	select GENERIC_PHY
+	help
+	  Support for UFS PHY on Samsung EXYNOS chipsets.

@@ -291,6 +291,7 @@ struct system_time_snapshot {
 	u64		cycles;
 	ktime_t		real;
 	ktime_t		raw;
+	ktime_t		monotonic;
 	unsigned int	clock_was_set_seq;
 	u8		cs_was_changed_seq;
 };

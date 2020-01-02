@@ -40,6 +40,14 @@
 #define BMG160_MODE_DEEP_SUSPEND	0x20
 #define BMG160_MODE_SUSPEND		0x80
 
+#define BMG160_REG_BIST			0x3C
+#define BMG160_BIST_TEST_RDY_MAX_RETRY 3
+#define BMG160_BIST_BIST_RDY 0x02
+#define BMG160_BIST_BIST_FAILED 0x04
+#define BMG160_BIST_RATE_OK 0x10
+#define BMG160_BIST_BIST_RDY_BIST_FAILED_MASK \
+	(BMG160_BIST_BIST_RDY | BMG160_BIST_BIST_FAILED)
+
 #define BMG160_REG_RANGE		0x0F
 
 #define BMG160_RANGE_2000DPS		0
@@ -800,9 +808,15 @@ static IIO_CONST_ATTR_SAMP_FREQ_AVAIL("100 200 400 1000 2000");
 static IIO_CONST_ATTR(in_anglvel_scale_available,
 		      "0.001065 0.000532 0.000266 0.000133 0.000066");
 
+static ssize_t bmg160_test_mode_show(struct device *dev,
+	struct device_attribute *attr, char *buf);
+
+static DEVICE_ATTR(test_mode, S_IRUGO, bmg160_test_mode_show, NULL);
+
 static struct attribute *bmg160_attributes[] = {
 	&iio_const_attr_sampling_frequency_available.dev_attr.attr,
 	&iio_const_attr_in_anglvel_scale_available.dev_attr.attr,
+	&dev_attr_test_mode.attr,
 	NULL,
 };
 
@@ -908,6 +922,87 @@ static int bmg160_trig_try_reen(struct iio_trigger *trig)
 	}
 
 	return 0;
+}
+
+static ssize_t bmg160_test_mode_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	int ret;
+	unsigned int val = 0, num_retry = 0;
+	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct bmg160_data *data = iio_priv(indio_dev);
+	/* Lock a mutex to prevent concurrent power state modifications */
+	mutex_lock(&data->mutex);
+	/* Turn the chip on */
+	ret = bmg160_set_power_state(data, true);
+	if (ret < 0) {
+		dev_err(dev, "Error setting power state to true.\n");
+		goto test_mode_show_failed;
+	}
+	/* Read the self-test register */
+	ret = regmap_read(data->regmap, BMG160_REG_BIST, &val);
+	if (ret < 0) {
+		dev_err(dev, "Error reading reg_bist\n");
+		goto test_mode_show_failed;
+	}
+	/* The rate_ok bit in the BIST register must always be set */
+	if (!(val & BMG160_BIST_RATE_OK)) {
+		dev_info(dev, "BIST register check failed; value = %d\n", val);
+		goto test_mode_show_failed;
+	}
+	/* Enable self-test mode */
+	ret = regmap_write(data->regmap, BMG160_REG_BIST, 1);
+	if (ret < 0) {
+		dev_err(dev, "Error writing reg_bist\n");
+		goto test_mode_show_failed;
+	}
+	/* Read the BIST register again */
+	ret = regmap_read(data->regmap, BMG160_REG_BIST, &val);
+	if (ret < 0) {
+		dev_err(dev, "Error reading reg_bist\n");
+		goto test_mode_show_failed;
+	}
+	/* Give a little bit of time for the self-test to be done
+	   (bist_rdy bit should be set) */
+	while (!(val & BMG160_BIST_BIST_RDY) &&
+	       (num_retry < BMG160_BIST_TEST_RDY_MAX_RETRY)) {
+		msleep(20);
+		++num_retry;
+		/* Re-read the BIST register */
+		ret = regmap_read(data->regmap, BMG160_REG_BIST, &val);
+		if (ret < 0) {
+			dev_err(dev, "Error reading reg_bist\n");
+			goto test_mode_show_failed;
+		}
+	}
+	/* If the test was successful, bist_failed bit should be 0 */
+	if ((val & BMG160_BIST_BIST_RDY_BIST_FAILED_MASK)
+	    != BMG160_BIST_BIST_RDY) {
+		dev_info(dev, "BIST register check failed; value = %d\n", val);
+		goto test_mode_show_failed;
+	}
+	/* Turn off the chip */
+	ret = bmg160_set_power_state(data, false);
+	if (ret < 0) {
+		dev_err(dev, "Error setting power state to false.\n");
+		goto test_mode_show_failed;
+	}
+	/* Free the mutex */
+	mutex_unlock(&data->mutex);
+	/* If we reached this point, the test was successful */
+	return sprintf(buf, "OK\n");
+
+test_mode_show_failed:
+	/* Test was not successful, make sure the mutex
+	   is freed and chip is off */
+	ret = bmg160_set_power_state(data, false);
+	if (ret < 0) {
+		dev_err(dev, "Error setting power state to false.\n");
+		mutex_unlock(&data->mutex);
+		return ret;
+	}
+	mutex_unlock(&data->mutex);
+	return sprintf(buf, "NOT OK\n");
 }
 
 static int bmg160_data_rdy_trigger_set_state(struct iio_trigger *trig,

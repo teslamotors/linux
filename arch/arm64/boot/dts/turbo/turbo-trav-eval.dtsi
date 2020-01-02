@@ -1,0 +1,44 @@
+/*
+ * TURBO TRAV EVALUATION board device tree source
+ *
+ * Copyright (c) 2017 Samsung Electronics Co., Ltd.
+ *		http://www.samsung.com
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+
+#include "turbo-trav.dtsi"
+
+/ {
+	model = "Trav Eval board based on TRAV SoC";
+	compatible = "turbo,trav-eval", "turbo,trav";
+
+	aliases {
+		serial0 = &serial_0;
+	};
+
+	chosen {
+		linux,stdout-path = &serial_0;
+		/* baudrate is for Zebu Emulator, should be change for board */
+		bootargs = "console=ttySAC0,230400n8 clk_ignore_unused
+			earlycon=exynos4210,0x14180000 root=/dev/ram0
+			ramdisk=16384 initrd=0x94000000,16M init=/linuxrc
+			max_loop=1";
+	};
+
+	memory@80000000 {
+		device_type = "memory";
+		/* expose 2GB RAM to kernel */
+		reg = <0x0 0x80000000 0x0 0x80000000>;
+	};
+};
+
+&fin_pll {
+	clock-frequency = <24000000>;
+};
+
+&serial_0 {
+	status = "okay";
+};

@@ -21,6 +21,7 @@ obj-$(CONFIG_VIDEO_VIM2M)		+= vim2m.o
 obj-$(CONFIG_VIDEO_TI_VPE)		+= ti-vpe/
 
 obj-$(CONFIG_VIDEO_TI_CAL)		+= ti-vpe/
+obj-$(CONFIG_VIDEO_TRAV_CAMERA)		+= trav/
 
 obj-$(CONFIG_VIDEO_MX2_EMMAPRP)		+= mx2_emmaprp.o
 obj-$(CONFIG_VIDEO_CODA) 		+= coda/
@@ -77,6 +78,8 @@ obj-$(CONFIG_VIDEO_ATMEL_ISI)		+= atmel/
 obj-$(CONFIG_VIDEO_STM32_DCMI)		+= stm32/
 
 ccflags-y += -I$(srctree)/drivers/media/i2c
+
+obj-$(CONFIG_VIDEO_MALI_C71)		+= mali-c71/
 
 obj-$(CONFIG_VIDEO_MEDIATEK_VPU)	+= mtk-vpu/
 

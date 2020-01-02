@@ -36,6 +36,7 @@
 #include <linux/mfd/syscon.h>
 #include <linux/regmap.h>
 #include <linux/delay.h>
+#include <linux/nmi.h>
 
 #define S3C2410_WTCON		0x00
 #define S3C2410_WTDAT		0x04
@@ -65,23 +66,30 @@
 #define EXYNOS5_RST_STAT_REG_OFFSET		0x0404
 #define EXYNOS5_WDT_DISABLE_REG_OFFSET		0x0408
 #define EXYNOS5_WDT_MASK_RESET_REG_OFFSET	0x040c
-#define QUIRK_HAS_PMU_CONFIG			(1 << 0)
-#define QUIRK_HAS_RST_STAT			(1 << 1)
-#define QUIRK_HAS_WTCLRINT_REG			(1 << 2)
+
+#define QUIRK_HAS_PMU_DISABLE_CONFIG		(1 << 0)
+#define QUIRK_HAS_PMU_MASK_RESET_CONFIG		(1 << 1)
+#define QUIRK_HAS_RST_STAT			(1 << 2)
+#define QUIRK_HAS_WTCLRINT_REG			(1 << 3)
 
 /* These quirks require that we have a PMU register map */
-#define QUIRKS_HAVE_PMUREG			(QUIRK_HAS_PMU_CONFIG | \
+#define QUIRKS_HAVE_PMUREG			(QUIRK_HAS_PMU_DISABLE_CONFIG | \
+						 QUIRK_HAS_PMU_MASK_RESET_CONFIG | \
 						 QUIRK_HAS_RST_STAT)
 
 static bool nowayout	= WATCHDOG_NOWAYOUT;
 static int tmr_margin;
 static int tmr_atboot	= S3C2410_WATCHDOG_ATBOOT;
 static int soft_noboot;
+static int reset_interrupt;
+static int keep_enabled_at_shutdown = 1;
 
-module_param(tmr_margin,  int, 0);
-module_param(tmr_atboot,  int, 0);
-module_param(nowayout,   bool, 0);
-module_param(soft_noboot, int, 0);
+module_param(tmr_margin, int, 0444);
+module_param(tmr_atboot, int, 0444);
+module_param(nowayout, bool, 0444);
+module_param(soft_noboot, int, 0644);
+module_param(reset_interrupt, int, 0644);
+module_param(keep_enabled_at_shutdown, int, 0644);
 
 MODULE_PARM_DESC(tmr_margin, "Watchdog tmr_margin in seconds. (default="
 		__MODULE_STRING(S3C2410_WATCHDOG_DEFAULT_TIME) ")");
@@ -91,6 +99,11 @@ MODULE_PARM_DESC(tmr_atboot,
 MODULE_PARM_DESC(nowayout, "Watchdog cannot be stopped once started (default="
 			__MODULE_STRING(WATCHDOG_NOWAYOUT) ")");
 MODULE_PARM_DESC(soft_noboot, "Watchdog action, set to 1 to ignore reboots, 0 to reboot (default 0)");
+MODULE_PARM_DESC(reset_interrupt,
+		 "Watchdog is enabled for Interrupt generation \
+			and Reset when set to 1 (default 0)");
+MODULE_PARM_DESC(keep_enabled_at_shutdown,
+		 "Watchdog is kept enabled at shutdown when set to 1 (default 1)");
 
 /**
  * struct s3c2410_wdt_variant - Per-variant config data
@@ -124,6 +137,7 @@ struct s3c2410_wdt {
 	spinlock_t		lock;
 	unsigned long		wtcon_save;
 	unsigned long		wtdat_save;
+	unsigned int		mask_bit_offset;
 	struct watchdog_device	wdt_device;
 	struct notifier_block	freq_transition;
 	const struct s3c2410_wdt_variant *drv_data;
@@ -145,8 +159,8 @@ static const struct s3c2410_wdt_variant drv_data_exynos5250  = {
 	.mask_bit = 20,
 	.rst_stat_reg = EXYNOS5_RST_STAT_REG_OFFSET,
 	.rst_stat_bit = 20,
-	.quirks = QUIRK_HAS_PMU_CONFIG | QUIRK_HAS_RST_STAT \
-		  | QUIRK_HAS_WTCLRINT_REG,
+	.quirks = QUIRK_HAS_PMU_DISABLE_CONFIG | QUIRK_HAS_PMU_MASK_RESET_CONFIG
+		  | QUIRK_HAS_RST_STAT | QUIRK_HAS_WTCLRINT_REG,
 };
 
 static const struct s3c2410_wdt_variant drv_data_exynos5420 = {
@@ -155,8 +169,8 @@ static const struct s3c2410_wdt_variant drv_data_exynos5420 = {
 	.mask_bit = 0,
 	.rst_stat_reg = EXYNOS5_RST_STAT_REG_OFFSET,
 	.rst_stat_bit = 9,
-	.quirks = QUIRK_HAS_PMU_CONFIG | QUIRK_HAS_RST_STAT \
-		  | QUIRK_HAS_WTCLRINT_REG,
+	.quirks = QUIRK_HAS_PMU_DISABLE_CONFIG | QUIRK_HAS_PMU_MASK_RESET_CONFIG
+		  | QUIRK_HAS_RST_STAT | QUIRK_HAS_WTCLRINT_REG,
 };
 
 static const struct s3c2410_wdt_variant drv_data_exynos7 = {
@@ -165,8 +179,14 @@ static const struct s3c2410_wdt_variant drv_data_exynos7 = {
 	.mask_bit = 23,
 	.rst_stat_reg = EXYNOS5_RST_STAT_REG_OFFSET,
 	.rst_stat_bit = 23,	/* A57 WDTRESET */
-	.quirks = QUIRK_HAS_PMU_CONFIG | QUIRK_HAS_RST_STAT \
-		  | QUIRK_HAS_WTCLRINT_REG,
+	.quirks = QUIRK_HAS_PMU_DISABLE_CONFIG | QUIRK_HAS_PMU_MASK_RESET_CONFIG
+		  | QUIRK_HAS_RST_STAT | QUIRK_HAS_WTCLRINT_REG,
+};
+
+static const struct s3c2410_wdt_variant drv_data_trav = {
+	.rst_stat_reg = EXYNOS5_RST_STAT_REG_OFFSET,
+	.rst_stat_bit = 23,	/* A72 WDTRESET */
+	.quirks = QUIRK_HAS_RST_STAT | QUIRK_HAS_WTCLRINT_REG,
 };
 
 static const struct of_device_id s3c2410_wdt_match[] = {
@@ -180,6 +200,8 @@ static const struct of_device_id s3c2410_wdt_match[] = {
 	  .data = &drv_data_exynos5420 },
 	{ .compatible = "samsung,exynos7-wdt",
 	  .data = &drv_data_exynos7 },
+	{ .compatible = "turbo,trav-wdt",
+	  .data = &drv_data_trav },
 	{},
 };
 MODULE_DEVICE_TABLE(of, s3c2410_wdt_match);
@@ -211,26 +233,23 @@ static inline struct s3c2410_wdt *freq_to_wdt(struct notifier_block *nb)
 
 static int s3c2410wdt_mask_and_disable_reset(struct s3c2410_wdt *wdt, bool mask)
 {
-	int ret;
-	u32 mask_val = 1 << wdt->drv_data->mask_bit;
-	u32 val = 0;
+	int ret = 0;
+	u32 mask_val = 1 << (wdt->drv_data->mask_bit + wdt->mask_bit_offset);
+	u32 val = mask ? mask_val : 0;
 
-	/* No need to do anything if no PMU CONFIG needed */
-	if (!(wdt->drv_data->quirks & QUIRK_HAS_PMU_CONFIG))
-		return 0;
+	if (wdt->drv_data->quirks & QUIRK_HAS_PMU_DISABLE_CONFIG) {
+		ret = regmap_update_bits(wdt->pmureg,
+				wdt->drv_data->disable_reg,
+				mask_val, val);
+		if (ret < 0)
+			goto error;
+	}
 
-	if (mask)
-		val = mask_val;
+	if (wdt->drv_data->quirks & QUIRK_HAS_PMU_MASK_RESET_CONFIG)
+		ret = regmap_update_bits(wdt->pmureg,
+				wdt->drv_data->mask_reset_reg,
+				mask_val, val);
 
-	ret = regmap_update_bits(wdt->pmureg,
-			wdt->drv_data->disable_reg,
-			mask_val, val);
-	if (ret < 0)
-		goto error;
-
-	ret = regmap_update_bits(wdt->pmureg,
-			wdt->drv_data->mask_reset_reg,
-			mask_val, val);
  error:
 	if (ret < 0)
 		dev_err(wdt->dev, "failed to update reg(%d)\n", ret);
@@ -281,7 +300,10 @@ static int s3c2410wdt_start(struct watchdog_device *wdd)
 	wtcon = readl(wdt->reg_base + S3C2410_WTCON);
 	wtcon |= S3C2410_WTCON_ENABLE | S3C2410_WTCON_DIV128;
 
-	if (soft_noboot) {
+	if (reset_interrupt) {
+		wtcon |= S3C2410_WTCON_INTEN;
+		wtcon |= S3C2410_WTCON_RSTEN;
+	} else if (soft_noboot) {
 		wtcon |= S3C2410_WTCON_INTEN;
 		wtcon &= ~S3C2410_WTCON_RSTEN;
 	} else {
@@ -410,11 +432,17 @@ static irqreturn_t s3c2410wdt_irq(int irqno, void *param)
 	struct s3c2410_wdt *wdt = platform_get_drvdata(param);
 
 	dev_info(wdt->dev, "watchdog timer expired (irq)\n");
-
+	if (reset_interrupt) {
+		writel(0x1, wdt->reg_base + S3C2410_WTCLRINT);
+	}
 	s3c2410wdt_keepalive(&wdt->wdt_device);
 
 	if (wdt->drv_data->quirks & QUIRK_HAS_WTCLRINT_REG)
 		writel(0x1, wdt->reg_base + S3C2410_WTCLRINT);
+
+	trigger_all_cpu_backtrace();
+
+	panic("watchdog timer: timeout");
 
 	return IRQ_HANDLED;
 }
@@ -497,7 +525,7 @@ static inline unsigned int s3c2410wdt_get_bootstatus(struct s3c2410_wdt *wdt)
 	ret = regmap_read(wdt->pmureg, wdt->drv_data->rst_stat_reg, &rst_stat);
 	if (ret)
 		dev_warn(wdt->dev, "Couldn't get RST_STAT register\n");
-	else if (rst_stat & BIT(wdt->drv_data->rst_stat_bit))
+	else if (rst_stat & BIT(wdt->drv_data->rst_stat_bit + wdt->mask_bit_offset))
 		return WDIOF_CARDRESET;
 
 	return 0;
@@ -544,6 +572,10 @@ static int s3c2410wdt_probe(struct platform_device *pdev)
 			dev_err(dev, "syscon regmap lookup failed.\n");
 			return PTR_ERR(wdt->pmureg);
 		}
+
+		/* read mask_bit offset */
+		wdt->mask_bit_offset = of_alias_get_id(dev->of_node, "watchdog");
+		dev_dbg(dev, "mask_bit_offset: %d\n", wdt->mask_bit_offset);
 	}
 
 	wdt_irq = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
@@ -622,6 +654,9 @@ static int s3c2410wdt_probe(struct platform_device *pdev)
 		goto err_cpufreq;
 	}
 
+	/* read dt node to determine whether a reboot or interrupt is needed */
+	of_property_read_u32(dev->of_node, "interrupt-mode", &reset_interrupt);
+
 	ret = s3c2410wdt_mask_and_disable_reset(wdt, false);
 	if (ret < 0)
 		goto err_unregister;
@@ -685,9 +720,25 @@ static void s3c2410wdt_shutdown(struct platform_device *dev)
 {
 	struct s3c2410_wdt *wdt = platform_get_drvdata(dev);
 
-	s3c2410wdt_mask_and_disable_reset(wdt, true);
+	if (keep_enabled_at_shutdown == 0) {
+		s3c2410wdt_mask_and_disable_reset(wdt, true);
 
-	s3c2410wdt_stop(&wdt->wdt_device);
+		s3c2410wdt_stop(&wdt->wdt_device);
+	} else if (wdt->wdt_device.id == 0 && !s3c2410wdt_is_running(wdt)) {
+		/*
+		 * If keep_enabled_at_shutdown is set, ensure that watchdog-0
+		 * is always running during reboot/shutdown.
+		 */
+		int ret;
+		ret = s3c2410wdt_set_heartbeat(&wdt->wdt_device,
+									   S3C2410_WATCHDOG_DEFAULT_TIME);
+		if (ret >= 0) {
+			dev_info(wdt->dev, "enforcing start of watchdog timer\n");
+			s3c2410wdt_start(&wdt->wdt_device);
+		} else {
+			dev_err(wdt->dev, "failed to enforce start of watchdog timer\n");
+		}
+	}
 }
 
 #ifdef CONFIG_PM_SLEEP

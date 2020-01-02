@@ -111,6 +111,8 @@ void disable_cpufreq(void)
 }
 static DEFINE_MUTEX(cpufreq_governor_mutex);
 
+static int powersave __read_mostly;
+
 bool have_governor_per_policy(void)
 {
 	return !!(cpufreq_driver->flags & CPUFREQ_HAVE_GOVERNOR_PER_POLICY);
@@ -1015,6 +1017,11 @@ __weak struct cpufreq_governor *cpufreq_default_governor(void)
 	return NULL;
 }
 
+__weak struct cpufreq_governor *cpufreq_powersave_governor(void)
+{
+	return NULL;
+}
+
 static int cpufreq_init_policy(struct cpufreq_policy *policy)
 {
 	struct cpufreq_governor *gov = NULL;
@@ -1028,7 +1035,10 @@ static int cpufreq_init_policy(struct cpufreq_policy *policy)
 		pr_debug("Restoring governor %s for cpu %d\n",
 				policy->governor->name, policy->cpu);
 	} else {
-		gov = cpufreq_default_governor();
+		if (powersave)
+			gov = cpufreq_powersave_governor();
+		if (!gov)
+			gov = cpufreq_default_governor();
 		if (!gov)
 			return -ENODATA;
 	}
@@ -2597,4 +2607,5 @@ static int __init cpufreq_core_init(void)
 	return 0;
 }
 module_param(off, int, 0444);
+module_param(powersave, int, 0444);
 core_initcall(cpufreq_core_init);

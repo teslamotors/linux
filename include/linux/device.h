@@ -565,6 +565,10 @@ ssize_t device_show_ulong(struct device *dev, struct device_attribute *attr,
 			  char *buf);
 ssize_t device_store_ulong(struct device *dev, struct device_attribute *attr,
 			   const char *buf, size_t count);
+ssize_t device_show_uint(struct device *dev, struct device_attribute *attr,
+			char *buf);
+ssize_t device_store_uint(struct device *dev, struct device_attribute *attr,
+			 const char *buf, size_t count);
 ssize_t device_show_int(struct device *dev, struct device_attribute *attr,
 			char *buf);
 ssize_t device_store_int(struct device *dev, struct device_attribute *attr,
@@ -585,6 +589,9 @@ ssize_t device_store_bool(struct device *dev, struct device_attribute *attr,
 #define DEVICE_ULONG_ATTR(_name, _mode, _var) \
 	struct dev_ext_attribute dev_attr_##_name = \
 		{ __ATTR(_name, _mode, device_show_ulong, device_store_ulong), &(_var) }
+#define DEVICE_UINT_ATTR(_name, _mode, _var) \
+	struct dev_ext_attribute dev_attr_##_name = \
+		{ __ATTR(_name, _mode, device_show_uint, device_store_uint), &(_var) }
 #define DEVICE_INT_ATTR(_name, _mode, _var) \
 	struct dev_ext_attribute dev_attr_##_name = \
 		{ __ATTR(_name, _mode, device_show_int, device_store_int), &(_var) }

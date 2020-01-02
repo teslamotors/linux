@@ -130,7 +130,11 @@ void machine_halt(void)
 void machine_power_off(void)
 {
 	local_irq_disable();
+#if IS_ENABLED(CONFIG_ARCH_TRAV)
+	disable_nonboot_cpus();
+#else
 	smp_send_stop();
+#endif
 	if (pm_power_off)
 		pm_power_off();
 }
@@ -148,7 +152,15 @@ void machine_restart(char *cmd)
 {
 	/* Disable interrupts first */
 	local_irq_disable();
+
+#if IS_ENABLED(CONFIG_ARCH_TRAV)
+	if (reboot_mode == REBOOT_WARM)
+		disable_nonboot_cpus();
+	else
+		smp_send_stop();
+#else
 	smp_send_stop();
+#endif
 
 	/*
 	 * UpdateCapsule() depends on the system being reset via

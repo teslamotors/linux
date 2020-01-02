@@ -11,6 +11,7 @@
 
 #define pr_fmt(fmt) "CPUidle arm: " fmt
 
+#include <asm/io.h>
 #include <linux/cpuidle.h>
 #include <linux/cpumask.h>
 #include <linux/cpu_pm.h>
@@ -23,6 +24,69 @@
 #include <asm/cpuidle.h>
 
 #include "dt_idle_states.h"
+#include "cpuidle_profiler.h"
+
+#ifdef CONFIG_TRAV_CPUIDLE_PROFILER
+
+void __iomem *vr_addr[12];
+
+unsigned int num_online_cpus_in_cluster(unsigned long cpu)
+{
+        int i;
+        uint32_t start, end, value, num_cpus = 0;
+
+        if (cpu < 4) {
+                start = 0;
+                end = 4;
+        } else if (cpu < 8) {
+                start = 4;
+                end = 8;
+        } else {
+                start = 8;
+                end = 12;
+        }
+
+        for (i = start; i < end; i++) {
+		value = ioread32(vr_addr[i]);
+                value &= PMU_CPU_ON_STATUS;
+                if (value != 0)
+                        num_cpus++;
+        }
+        return num_cpus;
+}
+#endif
+
+int cpu_pm_cpu_idle_enter(unsigned long cpu, int idx)
+{
+        int __ret;
+
+	if (!idx) {
+#ifdef CONFIG_TRAV_CPUIDLE_PROFILER
+		cpuidle_profile_start(cpu, 0, 0);
+#endif
+		cpu_do_idle();
+#ifdef CONFIG_TRAV_CPUIDLE_PROFILER
+		cpuidle_profile_finish(cpu, 0);
+#endif
+		return idx;
+	}
+
+	__ret = cpu_pm_enter();
+	if (!__ret) {
+#ifdef CONFIG_TRAV_CPUIDLE_PROFILER
+		if(num_online_cpus_in_cluster(cpu) == 1)
+			cpuidle_profile_start(cpu, idx, PSCI_CLUSTER_SLEEP);
+		else
+			cpuidle_profile_start(cpu, idx, idx);
+#endif
+		__ret = arm_cpuidle_suspend(idx);
+#ifdef CONFIG_TRAV_CPUIDLE_PROFILER
+		cpuidle_profile_finish(cpu, __ret);
+#endif
+		cpu_pm_exit();
+	}
+	return(__ret ? -1 : idx);
+}
 
 /*
  * arm_enter_idle_state - Programs CPU to enter the specified state
@@ -42,7 +106,11 @@ static int arm_enter_idle_state(struct cpuidle_device *dev,
 	 * will call the CPU ops suspend protocol with idle index as a
 	 * parameter.
 	 */
-	return CPU_PM_CPU_IDLE_ENTER(arm_cpuidle_suspend, idx);
+	unsigned long cpu = smp_processor_id();
+	if (cpu == 0)
+		return cpu_pm_cpu_idle_enter(cpu, 0);
+	else
+		return cpu_pm_cpu_idle_enter(cpu, idx);
 }
 
 static struct cpuidle_driver arm_idle_driver __initdata = {
@@ -146,7 +214,17 @@ static int __init arm_idle_init(void)
 			goto out_kfree_dev;
 		}
 	}
+#ifdef CONFIG_TRAV_CPUIDLE_PROFILER
+	{
+		int i;
 
+		cpuidle_profile_register(drv);
+		for (i = 0; i < 12; i++) {
+			vr_addr[i] = ioremap(PMU_CPU0_STATUS +
+						i * PMU_CPU_OFFSET , 4);
+		}
+	}
+#endif
 	return 0;
 
 out_kfree_dev:

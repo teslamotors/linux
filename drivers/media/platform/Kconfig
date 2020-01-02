@@ -33,6 +33,8 @@ source "drivers/media/platform/omap/Kconfig"
 
 source "drivers/media/platform/blackfin/Kconfig"
 
+source "drivers/media/platform/mali-c71/Kconfig"
+
 config VIDEO_SH_VOU
 	tristate "SuperH VOU video output driver"
 	depends on MEDIA_CAMERA_SUPPORT
@@ -146,6 +148,7 @@ config VIDEO_STM32_DCMI
 
 source "drivers/media/platform/soc_camera/Kconfig"
 source "drivers/media/platform/exynos4-is/Kconfig"
+source "drivers/media/platform/trav/Kconfig"
 source "drivers/media/platform/am437x/Kconfig"
 source "drivers/media/platform/xilinx/Kconfig"
 source "drivers/media/platform/rcar-vin/Kconfig"
@@ -164,6 +167,16 @@ config VIDEO_TI_CAL
 	  found on DRA72X SoC.
 	  In TI Technical Reference Manual this module is referred as
 	  Camera Interface Subsystem (CAMSS).
+
+config VIDEO_TRAV_CAMERA
+	tristate "TRAV camera driver"
+	depends on VIDEO_DEV && VIDEO_V4L2 && VIDEO_V4L2_SUBDEV_API
+	depends on ARCH_TRAV || COMPILE_TEST
+	depends on HAS_DMA
+	select VIDEOBUF2_DMA_CONTIG
+	default n
+	---help---
+	  Support for the TRAV camera subsystem.
 
 endif # V4L_PLATFORM_DRIVERS
 

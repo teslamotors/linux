@@ -1,20 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0
 /**
  * PCI Endpoint *Controller* Address Space Management
  *
  * Copyright (C) 2017 Texas Instruments
  * Author: Kishon Vijay Abraham I <kishon@ti.com>
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 of
- * the License as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <linux/io.h>
@@ -22,29 +11,6 @@
 #include <linux/slab.h>
 
 #include <linux/pci-epc.h>
-
-/**
- * pci_epc_mem_get_order() - determine the allocation order of a memory size
- * @mem: address space of the endpoint controller
- * @size: the size for which to get the order
- *
- * Reimplement get_order() for mem->page_size since the generic get_order
- * always gets order with a constant PAGE_SIZE.
- */
-static int pci_epc_mem_get_order(struct pci_epc_mem *mem, size_t size)
-{
-	int order;
-	unsigned int page_shift = ilog2(mem->page_size);
-
-	size--;
-	size >>= page_shift;
-#if BITS_PER_LONG == 32
-	order = fls(size);
-#else
-	order = fls64(size);
-#endif
-	return order;
-}
 
 /**
  * __pci_epc_mem_init() - initialize the pci_epc_mem structure
@@ -136,19 +102,19 @@ void __iomem *pci_epc_mem_alloc_addr(struct pci_epc *epc,
 	void __iomem *virt_addr;
 	struct pci_epc_mem *mem = epc->mem;
 	unsigned int page_shift = ilog2(mem->page_size);
-	int order;
 
 	size = ALIGN(size, mem->page_size);
-	order = pci_epc_mem_get_order(mem, size);
 
-	pageno = bitmap_find_free_region(mem->bitmap, mem->pages, order);
-	if (pageno < 0)
+	pageno = bitmap_find_next_zero_area(mem->bitmap, mem->pages, 0,
+										size >> page_shift, 0);
+	if (pageno >= mem->pages)
 		return NULL;
 
+	bitmap_set(mem->bitmap, pageno, size >> page_shift);
 	*phys_addr = mem->phys_base + (pageno << page_shift);
 	virt_addr = ioremap(*phys_addr, size);
 	if (!virt_addr)
-		bitmap_release_region(mem->bitmap, pageno, order);
+		bitmap_clear(mem->bitmap, pageno, size >> page_shift);
 
 	return virt_addr;
 }
@@ -169,13 +135,11 @@ void pci_epc_mem_free_addr(struct pci_epc *epc, phys_addr_t phys_addr,
 	int pageno;
 	struct pci_epc_mem *mem = epc->mem;
 	unsigned int page_shift = ilog2(mem->page_size);
-	int order;
 
 	iounmap(virt_addr);
 	pageno = (phys_addr - mem->phys_base) >> page_shift;
 	size = ALIGN(size, mem->page_size);
-	order = pci_epc_mem_get_order(mem, size);
-	bitmap_release_region(mem->bitmap, pageno, order);
+	bitmap_clear(mem->bitmap, pageno, size >> page_shift);
 }
 EXPORT_SYMBOL_GPL(pci_epc_mem_free_addr);
 
