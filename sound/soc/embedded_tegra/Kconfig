@@ -1,0 +1,29 @@
+config EMBEDDED_TEGRA_ALSA
+    tristate "Tegra ALSA SoC support for Embedded Platforms"
+    select EMBEDDED_TEGRA_PCM
+    select EMBEDDED_TEGRA_I2S
+    select EMBEDDED_TEGRA_TDM
+    select EMBEDDED_TEGRA_SPI_I2S
+    select EMBEDDED_TEGRA_ALSA_SPDIF
+    help
+       Say Y if you for ALSA SoC support
+
+config EMBEDDED_TEGRA_PCM
+    tristate "Tegra ALSA pcm callbacks for Embedded Platforms"
+
+config EMBEDDED_TEGRA_I2S
+    tristate "Tegra I2S for Embedded Platforms"
+
+config EMBEDDED_TEGRA_TDM
+    tristate "Tegra TDM for Embedded Platforms"
+
+config EMBEDDED_TEGRA_SPI_I2S
+        tristate "Embedded Tegra SPI-I2S"
+
+config EMBEDDED_TEGRA_ALSA_SPDIF
+	depends on EMBEDDED_TEGRA_PCM
+	default n
+	tristate "Tegra ALSA spidf callback for embedded platform"
+
+config TEGRA_DUMMY_CODEC
+    tristate "Dummy Codec Interface"

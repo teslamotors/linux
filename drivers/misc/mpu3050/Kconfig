@@ -1,0 +1,54 @@
+
+menu "Motion Sensors Support"
+
+config SENSORS_MPU3050
+    tristate "MPU3050 Gyroscope Driver"
+    depends on I2C
+    help
+      If you say yes here you get support for the MPU3050 Gyroscope driver
+      This driver can also be built as a module.  If so, the module
+      will be called mpu3050.
+
+config SENSORS_MPU3050_DEBUG
+    bool "MPU3050 debug"
+    depends on SENSORS_MPU3050
+    help
+      If you say yes here you get extra debug messages from the MPU3050
+      and other slave sensors.
+
+choice
+    prompt "Accelerometer Type"
+    depends on SENSORS_MPU3050
+    default SENSORS_KXTF9_MPU
+
+config SENSORS_ACCELEROMETER_NONE
+    bool "NONE"
+    help
+      This disables accelerometer support for the MPU3050
+
+config SENSORS_KXTF9_MPU
+    bool "Kionix KXTF9"
+    help
+      This enables support for the Kionix KXFT9 accelerometer
+
+endchoice
+
+choice
+    prompt "Compass Type"
+    depends on SENSORS_MPU3050
+    default SENSORS_AK8975_MPU
+
+config SENSORS_COMPASS_NONE
+    bool "NONE"
+    help
+      This disables compass support for the MPU3050
+
+config SENSORS_AK8975_MPU
+    bool "AKM ak8975"
+    help
+      This enables support for the AKM ak8975 compass
+
+endchoice
+
+endmenu
+

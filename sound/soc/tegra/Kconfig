@@ -1,0 +1,24 @@
+config TEGRA_ALSA
+    tristate "Tegra ALSA SoC support"
+    select TEGRA_PCM
+    select TEGRA_I2S
+    select TEGRA_IEC
+    select SND_SOC_WM8903
+    select TEGRA_ALSA_SPDIF
+    help
+       Say Y if you for ALSA SoC support
+
+config TEGRA_PCM
+    tristate "Tegra ALSA pcm callbacks"
+
+config TEGRA_I2S
+    tristate "Tegra I2S"
+
+config TEGRA_IEC
+    tristate "Tegra IEC"
+
+config TEGRA_ALSA_SPDIF
+	depends on TEGRA_PCM
+	default n
+	tristate "Tegra ALSA spidf callbacks"
+

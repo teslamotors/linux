@@ -1,0 +1,92 @@
+/*
+ * arch/arm/mach-tegra/include/mach/usb_phy.h
+ *
+ * Copyright (C) 2010 Google, Inc.
+ *
+ * This software is licensed under the terms of the GNU General Public
+ * License version 2, as published by the Free Software Foundation, and
+ * may be copied, distributed, and modified under those terms.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ */
+
+#ifndef __MACH_USB_PHY_H
+#define __MACH_USB_PHY_H
+
+#include <linux/platform_device.h>
+#include <linux/clk.h>
+
+#define USB_PHY_MAX_CONTEXT_REGS 10
+
+struct tegra_utmip_config {
+	u8 hssync_start_delay;
+	u8 elastic_limit;
+	u8 idle_wait_delay;
+	u8 term_range_adj;
+	u8 xcvr_setup;
+	u8 xcvr_lsfslew;
+	u8 xcvr_lsrslew;
+	u8 xcvr_lsbias_sel;
+	u8 squelch_level;
+	u8 hsdiscon_msb;
+	void (*enable_vbus)(int power_on);
+};
+
+struct tegra_ulpi_config {
+	int reset_gpio;
+	const char *clk;
+};
+
+enum tegra_usb_phy_port_speed {
+	TEGRA_USB_PHY_PORT_SPEED_FULL = 0,
+	TEGRA_USB_PHY_PORT_SPEED_LOW,
+	TEGRA_USB_PHY_PORT_HIGH,
+};
+
+struct tegra_utmip_context {
+	bool valid;
+	u32 regs[USB_PHY_MAX_CONTEXT_REGS];
+	int regs_count;
+	enum tegra_usb_phy_port_speed port_speed;
+};
+
+enum tegra_usb_phy_mode {
+	TEGRA_USB_PHY_MODE_DEVICE,
+	TEGRA_USB_PHY_MODE_HOST,
+};
+
+struct tegra_usb_phy {
+	int instance;
+	int freq_sel;
+	void __iomem *regs;
+	void __iomem *pad_regs;
+	struct clk *clk;
+	struct clk *pll_u;
+	struct clk *pad_clk;
+	enum tegra_usb_phy_mode mode;
+	void *config;
+	struct tegra_utmip_context context;
+};
+
+struct tegra_usb_phy *tegra_usb_phy_open(int instance, void __iomem *regs,
+			void *config, enum tegra_usb_phy_mode phy_mode);
+
+int tegra_usb_phy_power_on(struct tegra_usb_phy *phy);
+
+int tegra_usb_phy_clk_disable(struct tegra_usb_phy *phy);
+
+int tegra_usb_phy_clk_enable(struct tegra_usb_phy *phy);
+
+int tegra_usb_phy_power_off(struct tegra_usb_phy *phy);
+
+int tegra_usb_phy_preresume(struct tegra_usb_phy *phy);
+
+int tegra_usb_phy_postresume(struct tegra_usb_phy *phy);
+
+int tegra_usb_phy_close(struct tegra_usb_phy *phy);
+
+#endif //__MACH_USB_PHY_H

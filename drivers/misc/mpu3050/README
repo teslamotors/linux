@@ -1,0 +1,138 @@
+Kernel driver mpu3050
+=====================
+
+Supported chips:
+  * Invensense IMU3050
+    Prefix: 'mpu3050'
+    Datasheet:
+        PS-MPU-3000A-00.2.4b.pdf
+
+Author: Invensense <http://invensense.com>
+
+Description
+-----------
+The mpu3050 is a motion processor that controls the mpu3050 gyroscope, a slave
+accelerometer and compass.  This document describes how to install the driver
+into a linux kernel and a small note about how to set up the file permissions
+in an android file system.
+
+Sysfs entries
+-------------
+/dev/mpu
+/dev/mpuirq
+
+General Remarks
+---------------
+
+Valid addresses for the MPU3050 is 0x68.
+Accelerometer must be on the secondary I2C bus.
+
+Programming the chip using /dev/mpu
+----------------------------------
+Programming of the MPU3050 is done by first opening the /dev/mpu file and
+then performing a series of IOCTLS on the handle returned.  The IOCTL codes can
+be found in mpu3050.h.  Typically this is done by the mllite library in user
+space.
+
+Adding to a Kernel
+==================
+
+The mpu3050 driver is designed to be inserted in the drivers/misc part of the 
+kernel.  Copy the mpu3050 directory and the mpu3050 include file to:
+
+    <kernel root dir>/drivers/misc/mpu3050
+    <kernel root dir>/include/linux/mpu3050.h
+
+respectively.
+
+After this is done the drivers/misc/Kconfig must be edited to add the line:
+
+    source "drivers/misc/mpu3050/Kconfig"
+
+Similarly drivers/misc/Makefile must be edited to add the line:
+
+    obj-y += mpu3050/
+
+Configuration can then be done as normal.
+
+Board and Platform Data
+-----------------------
+
+In order for the driver to work, board and platform data specific to the device
+needs to be added to the board file.  A mpu3050_platform_data structure must
+be created and populatd and set in the i2c_board_info_structure.  For details of
+each structure member see mpu3050.h.  All values below are modified for the ventana
+platform. You should add these lines into the
+kernel/arch/arm/mach-tegra/board-generic.c file.
+
+#include <linux/mpu3050.h>
+
+static struct mpu3050_platform_data mpu3050_data = {
+    .int_config  = 0x10,
+    .orientation = { 0, -1, 0,
+                    -1, 0, 0,
+                    0, 0, -1 },  //Orientation matrix for MPU on ventana
+    .level_shifter = 0,
+    .accel = {
+        .get_slave_descr = kxtf9_get_slave_descr,
+        .adapt_num   = 0,
+        .bus         = EXT_SLAVE_BUS_SECONDARY,
+        .address     = 0x0F,
+    .orientation = { 0, -1, 0,
+                    -1, 0, 0,
+                    0, 0, -1 },  //Orientation matrix for Kionix on ventana
+    },
+
+ 
+    .compass = {
+        .get_slave_descr = ak8975_get_slave_descr,
+        .adapt_num   = 3,            //bus number 3 on ventana
+        .bus         = EXT_SLAVE_BUS_PRIMARY,
+        .address     = 0x0C,
+ 	.orientation = { 1, 0, 0,
+                	0, -1, 0,  
+                   	0, 0, -1 },  //Orientation matrix for AKM on ventana
+    },
+
+};
+
+static struct i2c_board_info __initdata mpu3050_i2c0_boardinfo[] = {
+    {
+        I2C_BOARD_INFO("mpu3050", 0x68),
+        /*.irq = 299,*/
+        .platform_data = &mpu3050_data,
+    },
+};
+
+Note: If you are unsure where to add this code, look for other instances of "i2c_board_info"
+and copy paste this code after one of them.
+
+After this is done, we must register the board upon initialization. This is done in the
+i2c_device_setup function in the board-generic.c file. Look for this function and add these
+lines of code:
+
+if (ARRAY_SIZE(mpu3050_i2c0_boardinfo)) 
+	i2c_register_board_info(0, mpu3050_i2c0_boardinfo, 
+		ARRAY_SIZE(mpu3050_i2c0_boardinfo));
+
+Before you can build the kernel, you will need to remove the existing NVidia AK8975 driver for the compass.
+In the board-generic.c file, rename the instance of CONFIG_SENSORS_AK8975 to NVIDIA_CONFIG_SENSORS_AK8975.
+In kernel/drivers/hwmon/Makefile, rename that instance of CONFIG_SENSORS_AK8975 to NVIDIA_CONFIG_SENSORS_AK8975 as well.
+This will prevent NVidia's driver for the compass from building.
+
+Now you can build the new kernel. First, we must configure the kernel. Take the tegra_ventana_android_defconfig
+file from this package and replace the existing one in the kernel/arch/arm/configs directory. In the root kernel
+directory, you can then run:
+
+export CCOMPILER=/<path to android environment>/prebuilt/linux-x86/toolchain/arm-eabi-4.4.0/bin/arm-eabi-
+make ARCH=arm CROSS_COMPILE=$CCOMPILER mrproper
+make ARCH=arm CROSS_COMPILE=$CCOMPILER tegra_ventana_android_defconfig
+make ARCH=arm CROSS_COMPILE=$CCOMPILER
+
+This should build your zImage, which you will find in kernel/arch/arm/boot/zImage. You can use the mkbootimg utility to then
+make a boot.img:
+
+ ./mkbootimg --kernel <path to android system>/kernel/arch/arm/boot/zImage --ramdisk <path to android system>/out/target/product/ventana/ramdisk.img --output boot.img
+
+You can then flash this boot.img using the nvflash utility. 
+

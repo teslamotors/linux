@@ -1,0 +1,67 @@
+config BCM4329
+	tristate "Broadcom 4329 wireless cards support"
+	depends on MMC
+	select WIRELESS_EXT
+	select WEXT_PRIV
+	---help---
+	  This module adds support for wireless adapters based on
+	  Broadcom 4329 chipset.
+
+	  This driver uses the kernel's wireless extensions subsystem.
+
+	  If you choose to build a module, it'll be called dhd. Say M if
+	  unsure.
+
+config BCM4329_FW_PATH
+	depends on BCM4329
+	string "Firmware path"
+	default "/system/etc/firmware/fw_bcm4329.bin"
+	---help---
+	  Path to the firmware file.
+
+config BCM4329_NVRAM_PATH
+	depends on BCM4329
+	string "NVRAM path"
+	default "/proc/calibration"
+	---help---
+	  Path to the calibration file.
+
+config BCM4329_WIFI_CONTROL_FUNC
+	bool "Use bcm4329_wlan device"
+	depends on BCM4329
+	default n
+	---help---
+	   Use this option to get various parameters from architecture specific
+	   bcm4329_wlan platform device. Say n if unsure.
+
+if BCM4329_WIFI_CONTROL_FUNC
+
+config BCM4329_DHD_USE_STATIC_BUF
+	bool "Use static buffer"
+	depends on BCM4329
+	default n
+	---help---
+	   Use static buffer from kernel heap allocated during bcm4329_wlan
+	   platform device creation.
+
+config BCM4329_HW_OOB
+	bool "Use out of band interrupt"
+	depends on BCM4329
+	default n
+	---help---
+	   Use out of band interrupt for wake on wireless.
+
+config BCM4329_OOB_INTR_ONLY
+	bool "Use out of band interrupt only"
+	depends on BCM4329
+	default n
+	---help---
+	   Use out of band interrupt for all interrupts(including SDIO interrupts).
+
+config BCM4329_GET_CUSTOM_MAC_ENABLE
+	bool "Use custom mac address"
+	depends on BCM4329
+	default n
+	---help---
+	   Use mac address provided by bcm4329_wlan platform device.
+endif
