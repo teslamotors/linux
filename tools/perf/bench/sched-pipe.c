@@ -81,10 +81,11 @@ int bench_sched_pipe(int argc, const char **argv)
 {
 	struct thread_data threads[2], *td;
 	int pipe_1[2], pipe_2[2];
-	struct timeval start, stop, diff;
+	struct timeval start, stop, diff, total;
 	unsigned long long result_usec = 0;
 	int nr_threads = 2;
 	int t;
+	unsigned j;
 
 	/*
 	 * why does "ret" exist?
@@ -94,73 +95,79 @@ int bench_sched_pipe(int argc, const char **argv)
 	int __maybe_unused ret, wait_stat;
 	pid_t pid, retpid __maybe_unused;
 
+	timerclear(&total);
+
 	argc = parse_options(argc, argv, options, bench_sched_pipe_usage, 0);
 
 	BUG_ON(pipe(pipe_1));
 	BUG_ON(pipe(pipe_2));
 
-	gettimeofday(&start, NULL);
-
-	for (t = 0; t < nr_threads; t++) {
-		td = threads + t;
-
-		td->nr = t;
-
-		if (t == 0) {
-			td->pipe_read = pipe_1[0];
-			td->pipe_write = pipe_2[1];
-		} else {
-			td->pipe_write = pipe_1[1];
-			td->pipe_read = pipe_2[0];
-		}
-	}
-
-
-	if (threaded) {
+	for (j = 0; j < bench_repeat; j++) {
+		gettimeofday(&start, NULL);
 
 		for (t = 0; t < nr_threads; t++) {
 			td = threads + t;
 
-			ret = pthread_create(&td->pthread, NULL, worker_thread, td);
-			BUG_ON(ret);
+			td->nr = t;
+
+			if (t == 0) {
+				td->pipe_read = pipe_1[0];
+				td->pipe_write = pipe_2[1];
+			} else {
+				td->pipe_write = pipe_1[1];
+				td->pipe_read = pipe_2[0];
+			}
 		}
 
-		for (t = 0; t < nr_threads; t++) {
-			td = threads + t;
 
-			ret = pthread_join(td->pthread, NULL);
-			BUG_ON(ret);
-		}
+		if (threaded) {
 
-	} else {
-		pid = fork();
-		assert(pid >= 0);
+			for (t = 0; t < nr_threads; t++) {
+				td = threads + t;
 
-		if (!pid) {
-			worker_thread(threads + 0);
-			exit(0);
+				ret = pthread_create(&td->pthread, NULL,
+						     worker_thread, td);
+				BUG_ON(ret);
+			}
+
+			for (t = 0; t < nr_threads; t++) {
+				td = threads + t;
+
+				ret = pthread_join(td->pthread, NULL);
+				BUG_ON(ret);
+			}
+
 		} else {
-			worker_thread(threads + 1);
+			pid = fork();
+			assert(pid >= 0);
+
+			if (!pid) {
+				worker_thread(threads + 0);
+				exit(0);
+			} else {
+				worker_thread(threads + 1);
+			}
+
+			retpid = waitpid(pid, &wait_stat, 0);
+			assert((retpid == pid) && WIFEXITED(wait_stat));
 		}
 
-		retpid = waitpid(pid, &wait_stat, 0);
-		assert((retpid == pid) && WIFEXITED(wait_stat));
+		gettimeofday(&stop, NULL);
+		timersub(&stop, &start, &diff);
+		timeradd(&diff, &total, &total);
 	}
-
-	gettimeofday(&stop, NULL);
-	timersub(&stop, &start, &diff);
 
 	switch (bench_format) {
 	case BENCH_FORMAT_DEFAULT:
 		printf("# Executed %d pipe operations between two %s\n\n",
 			loops, threaded ? "threads" : "processes");
 
-		result_usec = diff.tv_sec * USEC_PER_SEC;
-		result_usec += diff.tv_usec;
+		result_usec = total.tv_sec * USEC_PER_SEC;
+		result_usec += total.tv_usec;
 
 		printf(" %14s: %lu.%03lu [sec]\n\n", "Total time",
-		       diff.tv_sec,
-		       (unsigned long) (diff.tv_usec / USEC_PER_MSEC));
+		       total.tv_sec,
+		       (unsigned long) (total.tv_usec / USEC_PER_MSEC));
 
 		printf(" %14lf usecs/op\n",
 		       (double)result_usec / (double)loops);
@@ -171,8 +178,8 @@ int bench_sched_pipe(int argc, const char **argv)
 
 	case BENCH_FORMAT_SIMPLE:
 		printf("%lu.%03lu\n",
-		       diff.tv_sec,
-		       (unsigned long) (diff.tv_usec / USEC_PER_MSEC));
+		       total.tv_sec,
+		       (unsigned long) (total.tv_usec / USEC_PER_MSEC));
 		break;
 
 	default:

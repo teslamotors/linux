@@ -2228,7 +2228,7 @@ i915_gem_do_execbuffer(struct drm_device *dev,
 	eb.batch_flags = 0;
 	if (args->flags & I915_EXEC_SECURE) {
 		if (!drm_is_current_master(file) || !capable(CAP_SYS_ADMIN))
-		    return -EPERM;
+			return -EPERM;
 
 		eb.batch_flags |= I915_DISPATCH_SECURE;
 	}

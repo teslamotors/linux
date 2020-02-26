@@ -22,6 +22,9 @@ static const struct property_entry role_switch_props[] = {
 
 static void xhci_intel_unregister_pdev(void *arg)
 {
+	struct platform_device *pdev = (struct platform_device *)arg;
+
+	pdev->num_resources = 0;
 	platform_device_unregister(arg);
 }
 

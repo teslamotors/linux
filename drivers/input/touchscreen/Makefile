@@ -20,12 +20,6 @@ obj-$(CONFIG_TOUCHSCREEN_AUO_PIXCIR)	+= auo-pixcir-ts.o
 obj-$(CONFIG_TOUCHSCREEN_BU21013)	+= bu21013_ts.o
 obj-$(CONFIG_TOUCHSCREEN_CHIPONE_ICN8318)	+= chipone_icn8318.o
 obj-$(CONFIG_TOUCHSCREEN_CY8CTMG110)	+= cy8ctmg110_ts.o
-obj-$(CONFIG_TOUCHSCREEN_CYTTSP_CORE)	+= cyttsp_core.o
-obj-$(CONFIG_TOUCHSCREEN_CYTTSP_I2C)	+= cyttsp_i2c.o cyttsp_i2c_common.o
-obj-$(CONFIG_TOUCHSCREEN_CYTTSP_SPI)	+= cyttsp_spi.o
-obj-$(CONFIG_TOUCHSCREEN_CYTTSP4_CORE)	+= cyttsp4_core.o
-obj-$(CONFIG_TOUCHSCREEN_CYTTSP4_I2C)	+= cyttsp4_i2c.o cyttsp_i2c_common.o
-obj-$(CONFIG_TOUCHSCREEN_CYTTSP4_SPI)	+= cyttsp4_spi.o
 obj-$(CONFIG_TOUCHSCREEN_DA9034)	+= da9034-ts.o
 obj-$(CONFIG_TOUCHSCREEN_DA9052)	+= da9052_tsi.o
 obj-$(CONFIG_TOUCHSCREEN_DYNAPRO)	+= dynapro.o
@@ -104,3 +98,54 @@ obj-$(CONFIG_TOUCHSCREEN_ZET6223)	+= zet6223.o
 obj-$(CONFIG_TOUCHSCREEN_ZFORCE)	+= zforce_ts.o
 obj-$(CONFIG_TOUCHSCREEN_COLIBRI_VF50)	+= colibri-vf50-ts.o
 obj-$(CONFIG_TOUCHSCREEN_ROHM_BU21023)	+= rohm_bu21023.o
+
+obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_DSX) += synaptics_dsx/
+
+obj-$(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP6)       += cyttsp6.o
+cyttsp6-y := cyttsp6_core.o cyttsp6_mt_common.o cyttsp6_platform.o cyttsp6_i2c.o
+cyttsp6-$(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP6_MT_A)      += cyttsp6_mta.o
+cyttsp6-$(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP6_MT_B)      += cyttsp6_mtb.o
+cyttsp6-$(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP6_BUTTON)    += cyttsp6_btn.o
+cyttsp6-$(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP6_PROXIMITY) += cyttsp6_proximity.o
+obj-$(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP6_DEVICETREE_SUPPORT)    += cyttsp6_devtree.o
+obj-$(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP6_SPI)   += cyttsp6_spi.o
+obj-$(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP6_LOADER)        += cyttsp6_loader.o
+obj-$(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP6_DEBUG_MDL)     += cyttsp6_debug.o
+obj-$(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP6_DEVICE_ACCESS) += cyttsp6_device_access.o
+obj-$(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP6_TEST_DEVICE_ACCESS_API)        += cyttsp6_test_device_access_api.o
+
+ifeq ($(CONFIG_ACPI),y)
+cyttsp6-y += cyttsp6_acpi.o
+endif
+
+ifeq ($(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP6_DEBUG),y)
+CFLAGS_cyttsp6_core.o += -DDEBUG
+CFLAGS_cyttsp6_i2c.o += -DDEBUG
+CFLAGS_cyttsp6_spi.o += -DDEBUG
+CFLAGS_cyttsp6_mta.o += -DDEBUG
+CFLAGS_cyttsp6_mtb.o += -DDEBUG
+CFLAGS_cyttsp6_mt_common.o += -DDEBUG
+CFLAGS_cyttsp6_btn.o += -DDEBUG
+CFLAGS_cyttsp6_proximity.o += -DDEBUG
+CFLAGS_cyttsp6_device_access.o += -DDEBUG
+CFLAGS_cyttsp6_loader.o += -DDEBUG
+CFLAGS_cyttsp6_debug.o += -DDEBUG
+CFLAGS_cyttsp6_devtree.o += -DDEBUG
+CFLAGS_cyttsp6_platform.o += -DDEBUG
+endif
+
+ifeq ($(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP6_VDEBUG),y)
+CFLAGS_cyttsp6_core.o += -DVERBOSE_DEBUG
+CFLAGS_cyttsp6_i2c.o += -DVERBOSE_DEBUG
+CFLAGS_cyttsp6_spi.o += -DVERBOSE_DEBUG
+CFLAGS_cyttsp6_mta.o += -DVERBOSE_DEBUG
+CFLAGS_cyttsp6_mtb.o += -DVERBOSE_DEBUG
+CFLAGS_cyttsp6_mt_common.o += -DVERBOSE_DEBUG
+CFLAGS_cyttsp6_btn.o += -DVERBOSE_DEBUG
+CFLAGS_cyttsp6_proximity.o += -DVERBOSE_DEBUG
+CFLAGS_cyttsp6_device_access.o += -DVERBOSE_DEBUG
+CFLAGS_cyttsp6_loader.o += -DVERBOSE_DEBUG
+CFLAGS_cyttsp6_debug.o += -DVERBOSE_DEBUG
+CFLAGS_cyttsp6_devtree.o += -DVERBOSE_DEBUG
+CFLAGS_cyttsp6_platform.o += -DVERBOSE_DEBUG
+endif

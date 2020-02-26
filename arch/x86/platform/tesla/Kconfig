@@ -1,0 +1,17 @@
+
+config TESLA_INFO2
+	bool "Tesla Info-2"
+	---help---
+	  This adds the core support for the Tesla Info2 platform.
+
+config TESLA_MODEL3
+	bool "Tesla Model-3"
+	depends on REGULATOR_GPIO
+	---help---
+	  This adds the core support for the Tesla Model3 platform.
+
+config TESLA_MODEL3_DISPLAY_REGULATOR
+	bool "Tesla Model-3 Display Regulator"
+	depends on TESLA_MODEL3
+	---help---
+	  This adds regulator support for the Model 3 display power rails

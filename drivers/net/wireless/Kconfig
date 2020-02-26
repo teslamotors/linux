@@ -114,4 +114,6 @@ config USB_NET_RNDIS_WLAN
 
 	  If you choose to build a module, it'll be called rndis_wlan.
 
+source "drivers/net/wireless/bcmdhd-tesla/Kconfig"
+
 endif # WLAN

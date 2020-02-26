@@ -730,12 +730,13 @@ static int manifest_key_restrict_link_func(struct key *dest_keyring,
 static int __init manifest_init(void)
 {
 	int res = 0;
-	restriction = NULL;
 #ifndef CONFIG_MANIFEST_HARDCODE
 	struct manifest_offset moff;
 #endif
 	struct cred *cred;
 	struct key *keyring;
+
+	restriction = NULL;
 
 	manifest.size = 0;
 #ifndef CONFIG_MANIFEST_HARDCODE

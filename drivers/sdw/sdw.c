@@ -3377,7 +3377,7 @@ int sdw_mstr_deprep_after_clk_start(struct sdw_master *mstr)
 		if (clock_stop_mode == SDW_CLOCK_STOP_MODE_1)
 			continue;
 
-		if (slave->driver && slave->driver->post_clk_stop_prep)
+		if (slave->driver && slave->driver->post_clk_stop_prep) {
 			ret = slave->driver->post_clk_stop_prep(slave,
 							clock_stop_mode,
 							stop);
@@ -3388,6 +3388,7 @@ int sdw_mstr_deprep_after_clk_start(struct sdw_master *mstr)
 			if (ret)
 				dev_err(&mstr->dev, "Post de-prepare failed for Slave %d\n",
 					slave->slv_number);
+		}
 	}
 	return 0;
 }

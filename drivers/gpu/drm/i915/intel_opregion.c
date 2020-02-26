@@ -971,6 +971,9 @@ int intel_opregion_setup(struct drm_i915_private *dev_priv)
 	BUILD_BUG_ON(sizeof(struct opregion_asle) != 0x100);
 	BUILD_BUG_ON(sizeof(struct opregion_asle_ext) != 0x400);
 
+	if (intel_load_vbt_firmware(dev_priv) == 0)
+		goto out;
+
 	pci_read_config_dword(pdev, ASLS, &asls);
 	DRM_DEBUG_DRIVER("graphic opregion physical addr: 0x%x\n", asls);
 	if (asls == 0) {
@@ -1015,9 +1018,6 @@ int intel_opregion_setup(struct drm_i915_private *dev_priv)
 
 	if (mboxes & MBOX_ASLE_EXT)
 		DRM_DEBUG_DRIVER("ASLE extension supported\n");
-
-	if (intel_load_vbt_firmware(dev_priv) == 0)
-		goto out;
 
 	if (dmi_check_system(intel_no_opregion_vbt))
 		goto out;

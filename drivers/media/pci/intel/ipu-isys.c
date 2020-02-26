@@ -1164,7 +1164,7 @@ static int isys_probe(struct ipu_bus_device *adev)
 	trace_printk("B|%d|TMWK\n", current->pid);
 
 	/* Has the domain been attached? */
-	if (!mmu) {
+	if (!mmu || !isp->pkg_dir_dma_addr) {
 		trace_printk("E|TMWK\n");
 		return -EPROBE_DEFER;
 	}

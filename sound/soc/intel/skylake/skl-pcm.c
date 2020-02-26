@@ -1387,11 +1387,11 @@ static struct snd_soc_dai_driver skl_fe_dai[] = {
 			SNDRV_PCM_FMTBIT_S24_3LE,
 	},
 	.capture = {
-			.stream_name = "System Capture 5",
-			.channels_min = HDA_MONO,
-			.channels_max = HDA_8_CH,
-			.rates = SNDRV_PCM_RATE_8000_192000 | SNDRV_PCM_RATE_KNOT,
-			.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S20_3LE |
+		.stream_name = "System Capture 5",
+		.channels_min = HDA_MONO,
+		.channels_max = HDA_8_CH,
+		.rates = SNDRV_PCM_RATE_8000_192000 | SNDRV_PCM_RATE_KNOT,
+		.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S20_3LE |
 			SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S32_LE |
 			SNDRV_PCM_FMTBIT_S24_3LE,
 	},
@@ -1704,6 +1704,33 @@ static struct snd_soc_dai_driver skl_platform_dai[] = {
 			SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S32_LE,
 	},
 },
+#if IS_ENABLED(CONFIG_SND_SOC_INTEL_SKYLAKE_MODEL3) || \
+	IS_ENABLED(CONFIG_SND_SOC_INTEL_SKYLAKE_MODELSX_INFO2)
+{
+	.name = "SSP5 Pin",
+	.ops = &skl_be_ssp_dai_ops,
+	.playback = {
+		.stream_name = "ssp5 Tx",
+		.channels_min = HDA_MONO,
+		.channels_max = HDA_8_CH,
+		.rates = SNDRV_PCM_RATE_8000_192000 | SNDRV_PCM_RATE_KNOT,
+		.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_3LE |
+			SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S32_LE,
+	},
+},
+{
+	.name = "SSP5 Pin Loopback",
+	.ops = &skl_be_ssp_dai_ops,
+	.capture = {
+		.stream_name = "ssp5 Rx",
+		.channels_min = HDA_MONO,
+		.channels_max = HDA_8_CH,
+		.rates = SNDRV_PCM_RATE_8000_192000 | SNDRV_PCM_RATE_KNOT,
+		.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_3LE |
+			SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S32_LE,
+	},
+},
+#else
 {
 	.name = "SSP5 Pin",
 	.ops = &skl_be_ssp_dai_ops,
@@ -1724,6 +1751,7 @@ static struct snd_soc_dai_driver skl_platform_dai[] = {
 			SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S32_LE,
 	},
 },
+#endif
 {
 	.name = "iDisp1 Pin",
 	.ops = &skl_link_dai_ops,

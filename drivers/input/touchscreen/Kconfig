@@ -238,6 +238,233 @@ config TOUCHSCREEN_CYTTSP4_SPI
 	  To compile this driver as a module, choose M here: the
 	  module will be called cyttsp4_spi.
 
+config TOUCHSCREEN_CYPRESS_CYTTSP6
+        tristate "Cypress TrueTouch Gen6 Touchscreen Driver"
+        help
+          Core driver for Cypress TrueTouch(tm) Standard Product
+          Generation4 touchscreen controllers.
+
+          Say Y here if you have a Cypress Gen6 touchscreen.
+
+          If unsure, say N.
+
+          To compile this driver as a module, choose M here: the
+          module will be called cyttsp6.
+
+config TOUCHSCREEN_CYPRESS_CYTTSP6_DEVICETREE_SUPPORT
+        bool "Enable Device Tree support"
+        depends on TOUCHSCREEN_CYPRESS_CYTTSP6 && OF
+        help
+          Say Y here to enable support for device tree.
+
+          If unsure, say N.
+
+config TOUCHSCREEN_CYPRESS_CYTTSP6_DEBUG
+        bool "Enable debug output"
+        depends on TOUCHSCREEN_CYPRESS_CYTTSP6
+        help
+          Say Y here to enable debug output for Cypress TrueTouch(tm)
+          Standard Product Generation4 drivers set.
+
+          If unsure, say N.
+
+config TOUCHSCREEN_CYPRESS_CYTTSP6_VDEBUG
+        bool "Enable verbose debug output"
+        depends on TOUCHSCREEN_CYPRESS_CYTTSP6_DEBUG
+        help
+          Say Y here to enable verbose debug output for Cypress TrueTouch(tm)
+          Standard Product Generation4 drivers set.
+
+          If unsure, say N.
+
+config TOUCHSCREEN_CYPRESS_CYTTSP6_I2C
+        tristate "Cypress TrueTouch Gen6 I2C"
+        depends on TOUCHSCREEN_CYPRESS_CYTTSP6
+        help
+          Say Y here to enable I2C bus interface to Cypress TrueTouch(tm)
+          Standard Product Generation4 touchscreen controller.
+
+          If unsure, say Y.
+
+          To compile this driver as a module, choose M here: the
+          module will be called cyttsp6_i2c.
+
+config TOUCHSCREEN_CYPRESS_CYTTSP6_SPI
+        tristate "Cypress TrueTouch Gen6 SPI"
+        depends on TOUCHSCREEN_CYPRESS_CYTTSP6
+        help
+          Say Y here to enable SPI bus interface to Cypress TrueTouch(tm)
+          Standard Product Generation4 touchscreen controller.
+
+          If unsure, say N.
+
+          To compile this driver as a module, choose M here: the
+          module will be called cyttsp6_spi.
+
+choice
+        bool "Cypress TrueTouch Gen6 MultiTouch Protocol"
+        depends on TOUCHSCREEN_CYPRESS_CYTTSP6
+        default TOUCHSCREEN_CYPRESS_CYTTSP6_MT_B
+        help
+          This option controls which MultiTouch protocol will be used to
+          report the touch events.
+
+config TOUCHSCREEN_CYPRESS_CYTTSP6_MT_A
+        bool "Protocol A"
+        help
+          Select to enable MultiTouch touch reporting using protocol A
+          on Cypress TrueTouch(tm) Standard Product Generation4 touchscreen
+          controller.
+
+config TOUCHSCREEN_CYPRESS_CYTTSP6_MT_B
+        bool "Protocol B"
+        help
+          Select to enable MultiTouch touch reporting using protocol B
+          on Cypress TrueTouch(tm) Standard Product Generation4 touchscreen
+          controller.
+
+endchoice
+
+config TOUCHSCREEN_CYPRESS_CYTTSP6_BUTTON
+        bool "Cypress TrueTouch Gen6 MultiTouch CapSense Button"
+        depends on TOUCHSCREEN_CYPRESS_CYTTSP6
+        help
+          Say Y here to enable CapSense reporting on Cypress TrueTouch(tm)
+          Standard Product Generation4 touchscreen controller.
+
+          If unsure, say N.
+
+config TOUCHSCREEN_CYPRESS_CYTTSP6_PROXIMITY
+        bool "Cypress TrueTouch Gen6 Proximity"
+        depends on TOUCHSCREEN_CYPRESS_CYTTSP6
+        help
+          Say Y here to enable proximity reporting on Cypress TrueTouch(tm)
+          Standard Product Generation4 touchscreen controller.
+
+          If unsure, say N.
+
+config TOUCHSCREEN_CYPRESS_CYTTSP6_DEVICE_ACCESS
+        tristate "Cypress TrueTouch Gen6 MultiTouch Device Access"
+        depends on TOUCHSCREEN_CYPRESS_CYTTSP6
+        help
+          Say Y here to enable Cypress TrueTouch(tm) Standard Product
+          Generation4 touchscreen controller device access module.
+
+          This modules adds an interface to access touchscreen
+          controller using driver sysfs nodes.
+
+          If unsure, say N.
+
+          To compile this driver as a module, choose M here: the
+          module will be called cyttsp6_device_access.
+
+config TOUCHSCREEN_CYPRESS_CYTTSP6_DEVICE_ACCESS_API
+        bool "Enable Device Access kernel API"
+        depends on TOUCHSCREEN_CYPRESS_CYTTSP6_DEVICE_ACCESS
+        help
+          Say Y here to enable Device access kernel API which provides
+          access to Cypress TrueTouch(tm) Standard Product Generation4
+          touchscreen controller for other modules.
+
+          If unsure, say N.
+
+config TOUCHSCREEN_CYPRESS_CYTTSP6_TEST_DEVICE_ACCESS_API
+        tristate "Simple Test module for Device Access kernel API"
+        depends on TOUCHSCREEN_CYPRESS_CYTTSP6_DEVICE_ACCESS
+        depends on TOUCHSCREEN_CYPRESS_CYTTSP6_DEVICE_ACCESS_API
+        help
+          Say Y here to enable test module for Device access kernel API.
+
+          If unsure, say N.
+
+          To compile this driver as a module, choose M here: the
+          module will be called cyttsp6_test_device_access_api.
+
+config TOUCHSCREEN_CYPRESS_CYTTSP6_LOADER
+        tristate "Cypress TrueTouch Gen6 MultiTouch Loader"
+        depends on TOUCHSCREEN_CYPRESS_CYTTSP6
+        help
+          Say Y here to enable Cypress TrueTouch(tm) Standard Product
+          Generation4 touchscreen controller FW Loader module.
+
+          This module enables support for firmware upgrade.
+
+          If unsure, say N.
+
+          To compile this driver as a module, choose M here: the
+          module will be called cyttsp6_loader.
+
+config TOUCHSCREEN_CYPRESS_CYTTSP6_PLATFORM_FW_UPGRADE
+        bool "FW upgrade from header file"
+        depends on TOUCHSCREEN_CYPRESS_CYTTSP6_LOADER
+        help
+          Say Y here to include Cypress TrueTouch(tm) Standard Product
+          Generation4 device firmware into driver.
+
+          Need proper header file for this.
+
+          If unsure, say N.
+
+config TOUCHSCREEN_CYPRESS_CYTTSP6_BINARY_FW_UPGRADE
+        bool "FW upgrade from binary file"
+        depends on TOUCHSCREEN_CYPRESS_CYTTSP6_LOADER
+        help
+          Say Y here to include Cypress TrueTouch(tm) Standard Product
+          Generation4 device firmware into kernel as binary blob.
+
+          This should be enabled for manual FW upgrade support.
+
+          If unsure, say Y.
+
+config TOUCHSCREEN_CYPRESS_CYTTSP6_PLATFORM_TTCONFIG_UPGRADE
+        bool "TT Configuration upgrade from header file"
+        depends on TOUCHSCREEN_CYPRESS_CYTTSP6_LOADER
+        help
+          Say Y here to include Cypress TrueTouch(tm) Standard Product
+          Generation4 device TrueTouch Configuration into kernel itself.
+
+          Need proper header file for this.
+
+          If unsure, say N.
+
+config TOUCHSCREEN_CYPRESS_CYTTSP6_PLATFORM_TTCONFIG_UPGRADE
+        bool "TT Configuration upgrade from header file"
+        depends on TOUCHSCREEN_CYPRESS_CYTTSP6_LOADER
+        help
+          Say Y here to include Cypress TrueTouch(tm) Standard Product
+          Generation4 device TrueTouch Configuration into kernel itself.
+
+          Need proper header file for this.
+
+          If unsure, say N.
+
+config TOUCHSCREEN_CYPRESS_CYTTSP6_MANUAL_TTCONFIG_UPGRADE
+        bool "TT Configuration upgrade via SysFs"
+        depends on TOUCHSCREEN_CYPRESS_CYTTSP6_LOADER
+        help
+          Say Y here to provide a SysFs interface to upgrade TrueTouch
+          Configuration with a binary configuration file.
+
+          Need proper binary version of config file for this
+          feature.
+
+          If unsure, say Y.
+
+config TOUCHSCREEN_CYPRESS_CYTTSP6_DEBUG_MDL
+        tristate "Cypress TrueTouch Gen6 MultiTouch Debug Module"
+        depends on TOUCHSCREEN_CYPRESS_CYTTSP6
+        help
+          Say Y here to enable Cypress TrueTouch(tm) Standard Product
+          Generation4 Debug module.
+
+          This module adds support for verbose printing touch
+          information.
+
+          If unsure, say N.
+
+          To compile this driver as a module, choose M here: the
+          module will be called cyttsp6_debug.
+
 config TOUCHSCREEN_DA9034
 	tristate "Touchscreen support for Dialog Semiconductor DA9034"
 	depends on PMIC_DA903X
@@ -1173,6 +1400,8 @@ config TOUCHSCREEN_SURFACE3_SPI
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called surface3_spi.
+
+source "drivers/input/touchscreen/synaptics_dsx/Kconfig"
 
 config TOUCHSCREEN_SX8654
 	tristate "Semtech SX8654 touchscreen"

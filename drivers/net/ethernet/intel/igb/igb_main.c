@@ -2092,7 +2092,8 @@ static void igb_check_swap_media(struct igb_adapter *adapter)
 	if ((hw->phy.media_type == e1000_media_type_copper) &&
 	    (!(connsw & E1000_CONNSW_AUTOSENSE_EN))) {
 		swap_now = true;
-	} else if (!(connsw & E1000_CONNSW_SERDESD)) {
+	} else if ((hw->phy.media_type != e1000_media_type_copper) &&
+		   !(connsw & E1000_CONNSW_SERDESD)) {
 		/* copper signal takes time to appear */
 		if (adapter->copper_tries < 4) {
 			adapter->copper_tries++;
@@ -7698,6 +7699,7 @@ static int igb_poll(struct napi_struct *napi, int budget)
 	struct igb_q_vector *q_vector = container_of(napi,
 						     struct igb_q_vector,
 						     napi);
+	int cleaned;
 	bool clean_complete = true;
 	int work_done = 0;
 	struct igb_adapter *adapter = q_vector->adapter;
@@ -7721,7 +7723,7 @@ static int igb_poll(struct napi_struct *napi, int budget)
 
 	if (q_vector->rx.ring) {
 		pm_runtime_get_sync(&pdev->dev);
-		int cleaned = igb_clean_rx_irq(q_vector, budget);
+		cleaned = igb_clean_rx_irq(q_vector, budget);
 
 		work_done += cleaned;
 		if (cleaned >= budget)

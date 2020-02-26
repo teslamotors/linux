@@ -391,8 +391,8 @@ static ssize_t module_read(struct file *file, char __user *user_buf,
 			mconfig->homogenous_inputs ? "true" : "false",
 			mconfig->homogenous_outputs ? "true" : "false",
 			mconfig->in_queue_mask, mconfig->out_queue_mask,
-			mconfig->dma_id, mconfig->mem_pages, mconfig->m_state,
-			mconfig->m_type);
+			mconfig->dma_id, mconfig->mem_pages, mconfig->m_type,
+			mconfig->m_state);
 
 	ret = simple_read_from_buffer(user_buf, count, ppos, buf, ret);
 
@@ -436,7 +436,7 @@ static ssize_t fw_softreg_read(struct file *file, char __user *user_buf,
 	memset(d->fw_read_buff, 0, FW_REG_BUF);
 
 	if (w0_stat_sz > 0)
-		__iowrite32_copy(d->fw_read_buff, fw_reg_addr, w0_stat_sz >> 2);
+		__ioread32_copy(d->fw_read_buff, fw_reg_addr, w0_stat_sz >> 2);
 
 	for (offset = 0; offset < FW_REG_SIZE; offset += 16) {
 		ret += snprintf(tmp + ret, FW_REG_BUF - ret, "%#.4x: ", offset);

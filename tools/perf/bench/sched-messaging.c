@@ -263,12 +263,14 @@ static const char * const bench_sched_message_usage[] = {
 
 int bench_sched_messaging(int argc, const char **argv)
 {
-	unsigned int i, total_children;
-	struct timeval start, stop, diff;
+	unsigned int i, j, total_children;
+	struct timeval start, stop, diff, total;
 	unsigned int num_fds = 20;
 	int readyfds[2], wakefds[2];
 	char dummy;
 	pthread_t *pth_tab;
+
+	timerclear(&total);
 
 	argc = parse_options(argc, argv, options,
 			     bench_sched_message_usage, 0);
@@ -280,29 +282,32 @@ int bench_sched_messaging(int argc, const char **argv)
 	fdpair(readyfds);
 	fdpair(wakefds);
 
-	total_children = 0;
-	for (i = 0; i < num_groups; i++)
-		total_children += group(pth_tab+total_children, num_fds,
-					readyfds[1], wakefds[0]);
+	for (j = 0; j < bench_repeat; j++) {
+		total_children = 0;
+		for (i = 0; i < num_groups; i++)
+			total_children += group(pth_tab+total_children, num_fds,
+						readyfds[1], wakefds[0]);
 
-	/* Wait for everyone to be ready */
-	for (i = 0; i < total_children; i++)
-		if (read(readyfds[0], &dummy, 1) != 1)
-			err(EXIT_FAILURE, "Reading for readyfds");
+		/* Wait for everyone to be ready */
+		for (i = 0; i < total_children; i++)
+			if (read(readyfds[0], &dummy, 1) != 1)
+				err(EXIT_FAILURE, "Reading for readyfds");
 
-	gettimeofday(&start, NULL);
+		gettimeofday(&start, NULL);
 
-	/* Kick them off */
-	if (write(wakefds[1], &dummy, 1) != 1)
-		err(EXIT_FAILURE, "Writing to start them");
+		/* Kick them off */
+		if (write(wakefds[1], &dummy, 1) != 1)
+			err(EXIT_FAILURE, "Writing to start them");
 
-	/* Reap them all */
-	for (i = 0; i < total_children; i++)
-		reap_worker(pth_tab[i]);
+		/* Reap them all */
+		for (i = 0; i < total_children; i++)
+			reap_worker(pth_tab[i]);
 
-	gettimeofday(&stop, NULL);
+		gettimeofday(&stop, NULL);
 
-	timersub(&stop, &start, &diff);
+		timersub(&stop, &start, &diff);
+		timeradd(&diff, &total, &total);
+	}
 
 	switch (bench_format) {
 	case BENCH_FORMAT_DEFAULT:
@@ -312,12 +317,12 @@ int bench_sched_messaging(int argc, const char **argv)
 		       num_groups, num_groups * 2 * num_fds,
 		       thread_mode ? "threads" : "processes");
 		printf(" %14s: %lu.%03lu [sec]\n", "Total time",
-		       diff.tv_sec,
-		       (unsigned long) (diff.tv_usec / USEC_PER_MSEC));
+		       total.tv_sec,
+		       (unsigned long) (total.tv_usec / USEC_PER_MSEC));
 		break;
 	case BENCH_FORMAT_SIMPLE:
-		printf("%lu.%03lu\n", diff.tv_sec,
-		       (unsigned long) (diff.tv_usec / USEC_PER_MSEC));
+		printf("%lu.%03lu\n", total.tv_sec,
+		       (unsigned long) (total.tv_usec / USEC_PER_MSEC));
 		break;
 	default:
 		/* reaching here is something disaster */

@@ -649,6 +649,7 @@ static struct ipu_isys_subdev_info video_aggre_b_stub_sd = {
 #define MAGNA_LANES		4
 #define MAGNA_PHY_ADDR	0x60 /* 0x30 for 7bit addr */
 #define MAGNA_ADDRESS_A	0x61
+#define MAGNA_ADDRESS_B 0x62
 
 static struct crlmodule_platform_data magna_pdata = {
 	.lanes = MAGNA_LANES,
@@ -841,6 +842,17 @@ static struct ti964_subdev_info ti964_subdevs[] = {
 		.phy_i2c_addr = MAGNA_PHY_ADDR,
 		.suffix = 'a',
 	},
+	{
+		.board_info = {
+			  .type = CRLMODULE_NAME,
+			  .addr = MAGNA_ADDRESS_B,
+			  .platform_data = &magna_pdata,
+		},
+		.i2c_adapter_id = TI964_I2C_ADAPTER,
+		.rx_port = 1,
+		.phy_i2c_addr = MAGNA_PHY_ADDR,
+		.suffix = 'b',
+	},
 #endif
 };
 
@@ -1012,6 +1024,273 @@ static struct ipu_isys_subdev_info ov2775_crl_sd = {
 			.platform_data = &ov2775_pdata,
 		},
 		.i2c_adapter_id = OV2775_I2C_ADAPTER,
+	}
+};
+#endif
+
+#if IS_ENABLED(CONFIG_VIDEO_TI964) /* for AS_1140 */
+#define AS_1140_TI964_I2C_ADAPTER	2
+#define AS_1140_TI964_I2C_ADAPTER_2	4
+
+static struct ipu_isys_csi2_config as_1140_ti964_csi2_cfg = {
+	.nlanes = TI964_LANES,
+	.port = 0,
+};
+
+static struct ipu_isys_csi2_config as_1140_ti964_csi2_cfg_2 = {
+	.nlanes = TI964_LANES,
+	.port = 4,
+};
+
+static struct ti964_subdev_info as_1140_ti964_subdevs[] = {
+#ifdef CONFIG_INTEL_IPU4_OV10635
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = OV10635A_I2C_ADDRESS,
+			.platform_data = &ov10635_pdata,
+		},
+		.i2c_adapter_id = AS_1140_TI964_I2C_ADAPTER,
+		.rx_port = 0,
+		.phy_i2c_addr = OV10635_I2C_PHY_ADDR,
+		.suffix = 'a',
+	},
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = OV10635B_I2C_ADDRESS,
+			.platform_data = &ov10635_pdata,
+		},
+		.i2c_adapter_id = AS_1140_TI964_I2C_ADAPTER,
+		.rx_port = 1,
+		.phy_i2c_addr = OV10635_I2C_PHY_ADDR,
+		.suffix = 'b',
+	},
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = OV10635C_I2C_ADDRESS,
+			.platform_data = &ov10635_pdata,
+		},
+		.i2c_adapter_id = AS_1140_TI964_I2C_ADAPTER,
+		.rx_port = 2,
+		.phy_i2c_addr = OV10635_I2C_PHY_ADDR,
+		.suffix = 'c',
+	},
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = OV10635D_I2C_ADDRESS,
+			.platform_data = &ov10635_pdata,
+		},
+		.i2c_adapter_id = AS_1140_TI964_I2C_ADAPTER,
+		.rx_port = 3,
+		.phy_i2c_addr = OV10635_I2C_PHY_ADDR,
+		.suffix = 'd',
+	},
+#endif
+#ifdef CONFIG_INTEL_IPU4_OV10640
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = OV10640A_I2C_ADDRESS,
+			.platform_data = &ov10640_pdata,
+		},
+		.i2c_adapter_id = AS_1140_TI964_I2C_ADAPTER,
+		.rx_port = 0,
+		.phy_i2c_addr = OV10640_I2C_PHY_ADDR,
+		.suffix = 'a',
+	},
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = OV10640B_I2C_ADDRESS,
+			.platform_data = &ov10640_pdata,
+		},
+		.i2c_adapter_id = AS_1140_TI964_I2C_ADAPTER,
+		.rx_port = 1,
+		.phy_i2c_addr = OV10640_I2C_PHY_ADDR,
+		.suffix = 'b',
+	},
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = OV10640C_I2C_ADDRESS,
+			.platform_data = &ov10640_pdata,
+		},
+		.i2c_adapter_id = AS_1140_TI964_I2C_ADAPTER,
+		.rx_port = 2,
+		.phy_i2c_addr = OV10640_I2C_PHY_ADDR,
+		.suffix = 'c',
+	},
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = OV10640D_I2C_ADDRESS,
+			.platform_data = &ov10640_pdata,
+		},
+		.i2c_adapter_id = AS_1140_TI964_I2C_ADAPTER,
+		.rx_port = 3,
+		.phy_i2c_addr = OV10640_I2C_PHY_ADDR,
+		.suffix = 'd',
+	},
+#endif
+#ifdef CONFIG_INTEL_IPU4_MAGNA
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = MAGNA_ADDRESS_A,
+			.platform_data = &magna_pdata,
+		},
+		.i2c_adapter_id = AS_1140_TI964_I2C_ADAPTER,
+		.rx_port = 0,
+		.phy_i2c_addr = MAGNA_PHY_ADDR,
+		.suffix = 'a',
+	},
+	{
+		.board_info = {
+			  .type = CRLMODULE_NAME,
+			  .addr = MAGNA_ADDRESS_B,
+			  .platform_data = &magna_pdata,
+		},
+		.i2c_adapter_id = AS_1140_TI964_I2C_ADAPTER,
+		.rx_port = 1,
+		.phy_i2c_addr = MAGNA_PHY_ADDR,
+		.suffix = 'b',
+	},
+#endif
+};
+
+static struct ti964_subdev_info as_1140_ti964_subdevs_2[] = {
+#ifdef CONFIG_INTEL_IPU4_OV10635
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = OV10635A_I2C_ADDRESS,
+			.platform_data = &ov10635_pdata,
+		},
+		.i2c_adapter_id = AS_1140_TI964_I2C_ADAPTER_2,
+		.rx_port = 0,
+		.phy_i2c_addr = OV10635_I2C_PHY_ADDR,
+		.suffix = 'e',
+	},
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = OV10635B_I2C_ADDRESS,
+			.platform_data = &ov10635_pdata,
+		},
+		.i2c_adapter_id = AS_1140_TI964_I2C_ADAPTER_2,
+		.rx_port = 1,
+		.phy_i2c_addr = OV10635_I2C_PHY_ADDR,
+		.suffix = 'f',
+	},
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = OV10635C_I2C_ADDRESS,
+			.platform_data = &ov10635_pdata,
+		},
+		.i2c_adapter_id = AS_1140_TI964_I2C_ADAPTER_2,
+		.rx_port = 2,
+		.phy_i2c_addr = OV10635_I2C_PHY_ADDR,
+		.suffix = 'g',
+	},
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = OV10635D_I2C_ADDRESS,
+			.platform_data = &ov10635_pdata,
+		},
+		.i2c_adapter_id = AS_1140_TI964_I2C_ADAPTER_2,
+		.rx_port = 3,
+		.phy_i2c_addr = OV10635_I2C_PHY_ADDR,
+		.suffix = 'h',
+	},
+#endif
+#ifdef CONFIG_INTEL_IPU4_OV10640
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = OV10640A_I2C_ADDRESS,
+			.platform_data = &ov10640_pdata,
+		},
+		.i2c_adapter_id = AS_1140_TI964_I2C_ADAPTER_2,
+		.rx_port = 0,
+		.phy_i2c_addr = OV10640_I2C_PHY_ADDR,
+		.suffix = 'e',
+	},
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = OV10640B_I2C_ADDRESS,
+			.platform_data = &ov10640_pdata,
+		},
+		.i2c_adapter_id = AS_1140_TI964_I2C_ADAPTER_2,
+		.rx_port = 1,
+		.phy_i2c_addr = OV10640_I2C_PHY_ADDR,
+		.suffix = 'f',
+	},
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = OV10640C_I2C_ADDRESS,
+			.platform_data = &ov10640_pdata,
+		},
+		.i2c_adapter_id = AS_1140_TI964_I2C_ADAPTER_2,
+		.rx_port = 2,
+		.phy_i2c_addr = OV10640_I2C_PHY_ADDR,
+		.suffix = 'g',
+	},
+	{
+		.board_info = {
+			.type = CRLMODULE_NAME,
+			.addr = OV10640D_I2C_ADDRESS,
+			.platform_data = &ov10640_pdata,
+		},
+		.i2c_adapter_id = AS_1140_TI964_I2C_ADAPTER_2,
+		.rx_port = 3,
+		.phy_i2c_addr = OV10640_I2C_PHY_ADDR,
+		.suffix = 'h',
+	},
+#endif
+};
+
+static struct ti964_pdata as_1140_ti964_pdata = {
+	.subdev_info = as_1140_ti964_subdevs,
+	.subdev_num = ARRAY_SIZE(as_1140_ti964_subdevs),
+	.reset_gpio = GPIO_BASE + 62,
+	.suffix = 'a',
+};
+
+static struct ipu_isys_subdev_info as_1140_ti964_sd = {
+	.csi2 = &as_1140_ti964_csi2_cfg,
+	.i2c = {
+		.board_info = {
+			 .type = "ti964",
+			 .addr = TI964_I2C_ADDRESS,
+			 .platform_data = &as_1140_ti964_pdata,
+		},
+		.i2c_adapter_id = AS_1140_TI964_I2C_ADAPTER,
+	}
+};
+
+static struct ti964_pdata as_1140_ti964_pdata_2 = {
+	.subdev_info = as_1140_ti964_subdevs_2,
+	.subdev_num = ARRAY_SIZE(as_1140_ti964_subdevs_2),
+	.reset_gpio = GPIO_BASE + 69,
+	.suffix = 'b',
+};
+
+static struct ipu_isys_subdev_info as_1140_ti964_sd_2 = {
+	.csi2 = &as_1140_ti964_csi2_cfg_2,
+	.i2c = {
+		.board_info = {
+			 .type = "ti964",
+			 .addr = TI964_I2C_ADDRESS,
+			 .platform_data = &as_1140_ti964_pdata_2,
+		},
+		.i2c_adapter_id = AS_1140_TI964_I2C_ADAPTER_2,
 	}
 };
 #endif
@@ -1524,6 +1803,8 @@ static struct ipu_isys_subdev_pdata pdata = {
 #if IS_ENABLED(CONFIG_VIDEO_TI964)
 		&ti964_sd,
 		&ti964_sd_2,
+		&as_1140_ti964_sd,
+		&as_1140_ti964_sd_2,
 #endif
 #if IS_ENABLED(CONFIG_VIDEO_TI960)
 		&ti960_sd,

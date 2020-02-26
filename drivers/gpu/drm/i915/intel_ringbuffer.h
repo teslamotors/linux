@@ -8,6 +8,8 @@
 #include "i915_gem_timeline.h"
 #include "i915_selftest.h"
 
+struct drm_printer;
+
 #define I915_CMD_HASH_ORDER 9
 
 /* Early gen2 devices have a cacheline of just 32 bytes, using 64 is overkill,
@@ -256,6 +258,16 @@ struct intel_engine_execlists {
 	 * @port_mask: number of execlist ports - 1
 	 */
 	unsigned int port_mask;
+
+	/**
+	 * @queue_priority: Highest pending priority.
+	 *
+	 * When we add requests into the queue, or adjust the priority of
+	 * executing requests, we compute the maximum priority of those
+	 * pending requests. We can then use this value to determine if
+	 * we need to preempt the executing requests to service the queue.
+	 */
+	int queue_priority;
 
 	/**
 	 * @queue: queue of requests, in priority lists
@@ -885,5 +897,7 @@ void intel_engines_mark_idle(struct drm_i915_private *i915);
 void intel_engines_reset_default_submission(struct drm_i915_private *i915);
 
 bool intel_engine_can_store_dword(struct intel_engine_cs *engine);
+
+void intel_engine_dump(struct intel_engine_cs *engine, struct drm_printer *p);
 
 #endif /* _INTEL_RINGBUFFER_H_ */

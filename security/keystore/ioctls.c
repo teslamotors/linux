@@ -167,8 +167,6 @@ static int version_op(struct ias_keystore_version *user_data)
 
 static int register_op(struct ias_keystore_register *user_data)
 {
-	int res = 0;
-
 	if (!user_data)
 		return -EFAULT;
 	return keystore_register(user_data->seed_type,

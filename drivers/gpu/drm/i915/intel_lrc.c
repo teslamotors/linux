@@ -219,6 +219,23 @@ static void execlists_init_reg_state(u32 *reg_state,
 				     struct intel_engine_cs *engine,
 				     struct intel_ring *ring);
 
+static inline struct i915_priolist *to_priolist(struct rb_node *rb)
+{
+	return rb_entry(rb, struct i915_priolist, node);
+}
+
+static inline int rq_prio(const struct i915_request *rq)
+{
+	return rq->priotree.priority;
+}
+
+static inline bool need_preempt(const struct intel_engine_cs *engine,
+				const struct i915_request *last,
+				int prio)
+{
+	return engine->i915->preempt_context && prio > max(rq_prio(last), -1);
+}
+
 /**
  * intel_sanitize_enable_execlists() - sanitize i915_modparams.enable_execlists
  * @dev_priv: i915 device private
@@ -306,7 +323,7 @@ find_priolist:
 	parent = &execlists->queue.rb_node;
 	while (*parent) {
 		rb = *parent;
-		p = rb_entry(rb, typeof(*p), node);
+		p = to_priolist(rb);
 		if (prio > p->priority) {
 			parent = &rb->rb_left;
 		} else if (prio < p->priority) {
@@ -346,7 +363,7 @@ find_priolist:
 	if (first)
 		execlists->first = &p->node;
 
-	return ptr_pack_bits(p, first, 1);
+	return p;
 }
 
 static void unwind_wa_tail(struct i915_request *rq)
@@ -372,14 +389,10 @@ static void unwind_incomplete_requests(struct intel_engine_cs *engine)
 		__i915_request_unsubmit(rq);
 		unwind_wa_tail(rq);
 
-		GEM_BUG_ON(rq->priotree.priority == I915_PRIORITY_INVALID);
-		if (rq->priotree.priority != last_prio) {
-			p = lookup_priolist(engine,
-					    &rq->priotree,
-					    rq->priotree.priority);
-			p = ptr_mask_bits(p, 1);
-
-			last_prio = rq->priotree.priority;
+		GEM_BUG_ON(rq_prio(rq) == I915_PRIORITY_INVALID);
+		if (rq_prio(rq) != last_prio) {
+			last_prio = rq_prio(rq);
+			p = lookup_priolist(engine, &rq->priotree, last_prio);
 		}
 
 		list_add(&rq->priotree.link, &p->requests);
@@ -563,6 +576,7 @@ static void inject_preempt_context(struct intel_engine_cs *engine)
 		elsp_write(0, elsp);
 
 	elsp_write(ce->lrc_desc, elsp);
+	execlists_set_active(&engine->execlists, EXECLISTS_ACTIVE_PREEMPT);
 
 	if (i915_modparams.fpreempt_timeout)
 		hrtimer_start(&engine->fpreempt_timer,
@@ -610,8 +624,6 @@ static void execlists_dequeue(struct intel_engine_cs *engine)
 	spin_lock_irq(&engine->timeline->lock);
 	rb = execlists->first;
 	GEM_BUG_ON(rb_first(&execlists->queue) != rb);
-	if (!rb)
-		goto unlock;
 
 	if (last) {
 		/*
@@ -623,9 +635,7 @@ static void execlists_dequeue(struct intel_engine_cs *engine)
 		if (port_count(&port[0]) > 1)
 			goto unlock;
 
-		if (can_preempt(engine) &&
-		    rb_entry(rb, struct i915_priolist, node)->priority >
-		    max(last->priotree.priority, -1)) {
+		if (need_preempt(engine, last, execlists->queue_priority)) {
 			/*
 			 * Switch to our empty preempt context so
 			 * the state of the GPU is known (idle).
@@ -634,43 +644,45 @@ static void execlists_dequeue(struct intel_engine_cs *engine)
 			execlists_set_active(execlists,
 					     EXECLISTS_ACTIVE_PREEMPT);
 			goto unlock;
-		} else {
-			/*
-			 * In theory, we could coalesce more requests onto
-			 * the second port (the first port is active, with
-			 * no preemptions pending). However, that means we
-			 * then have to deal with the possible lite-restore
-			 * of the second port (as we submit the ELSP, there
-			 * may be a context-switch) but also we may complete
-			 * the resubmission before the context-switch. Ergo,
-			 * coalescing onto the second port will cause a
-			 * preemption event, but we cannot predict whether
-			 * that will affect port[0] or port[1].
-			 *
-			 * If the second port is already active, we can wait
-			 * until the next context-switch before contemplating
-			 * new requests. The GPU will be busy and we should be
-			 * able to resubmit the new ELSP before it idles,
-			 * avoiding pipeline bubbles (momentary pauses where
-			 * the driver is unable to keep up the supply of new
-			 * work).
-			 */
-			if (port_count(&port[1]))
-				goto unlock;
-
-			/* WaIdleLiteRestore:bdw,skl
-			 * Apply the wa NOOPs to prevent
-			 * ring:HEAD == rq:TAIL as we resubmit the
-			 * request. See gen8_emit_breadcrumb() for
-			 * where we prepare the padding after the
-			 * end of the request.
-			 */
-			last->tail = last->wa_tail;
 		}
+
+		/*
+		 * In theory, we could coalesce more requests onto
+		 * the second port (the first port is active, with
+		 * no preemptions pending). However, that means we
+		 * then have to deal with the possible lite-restore
+		 * of the second port (as we submit the ELSP, there
+		 * may be a context-switch) but also we may complete
+		 * the resubmission before the context-switch. Ergo,
+		 * coalescing onto the second port will cause a
+		 * preemption event, but we cannot predict whether
+		 * that will affect port[0] or port[1].
+		 *
+		 * If the second port is already active, we can wait
+		 * until the next context-switch before contemplating
+		 * new requests. The GPU will be busy and we should be
+		 * able to resubmit the new ELSP before it idles,
+		 * avoiding pipeline bubbles (momentary pauses where
+		 * the driver is unable to keep up the supply of new
+		 * work). However, we have to double check that the
+		 * priorities of the ports haven't been switch.
+		 */
+		if (port_count(&port[1]))
+			goto unlock;
+
+		/*
+		 * WaIdleLiteRestore:bdw,skl
+		 * Apply the wa NOOPs to prevent
+		 * ring:HEAD == rq:TAIL as we resubmit the
+		 * request. See gen8_emit_breadcrumb() for
+		 * where we prepare the padding after the
+		 * end of the request.
+		 */
+		last->tail = last->wa_tail;
 	}
 
-	do {
-		struct i915_priolist *p = rb_entry(rb, typeof(*p), node);
+	while (rb) {
+		struct i915_priolist *p = to_priolist(rb);
 		struct i915_request *rq, *rn;
 
 		list_for_each_entry_safe(rq, rn, &p->requests, priotree.link) {
@@ -732,8 +744,9 @@ static void execlists_dequeue(struct intel_engine_cs *engine)
 		INIT_LIST_HEAD(&p->requests);
 		if (p->priority != I915_PRIORITY_NORMAL)
 			kmem_cache_free(engine->i915->priorities, p);
-	} while (rb);
+	}
 done:
+	execlists->queue_priority = rb ? to_priolist(rb)->priority : INT_MIN;
 	execlists->first = rb;
 	if (submit)
 		port_assign(port, last);
@@ -791,7 +804,7 @@ static void execlists_cancel_requests(struct intel_engine_cs *engine)
 	/* Flush the queued requests to the timeline list (for retiring). */
 	rb = execlists->first;
 	while (rb) {
-		struct i915_priolist *p = rb_entry(rb, typeof(*p), node);
+		struct i915_priolist *p = to_priolist(rb);
 
 		list_for_each_entry_safe(rq, rn, &p->requests, priotree.link) {
 			INIT_LIST_HEAD(&rq->priotree.link);
@@ -809,7 +822,7 @@ static void execlists_cancel_requests(struct intel_engine_cs *engine)
 
 	/* Remaining _unready_ requests will be nop'ed when submitted */
 
-
+	execlists->queue_priority = INT_MIN;
 	execlists->queue = RB_ROOT;
 	execlists->first = NULL;
 	GEM_BUG_ON(port_isset(execlists->port));
@@ -992,15 +1005,19 @@ static void intel_lrc_irq_handler(unsigned long data)
 	intel_uncore_forcewake_put(dev_priv, execlists->fw_domains);
 }
 
-static void insert_request(struct intel_engine_cs *engine,
-			   struct i915_priotree *pt,
-			   int prio)
+static void queue_request(struct intel_engine_cs *engine,
+			  struct i915_priotree *pt,
+			  int prio)
 {
-	struct i915_priolist *p = lookup_priolist(engine, pt, prio);
+	list_add_tail(&pt->link, &lookup_priolist(engine, pt, prio)->requests);
+}
 
-	list_add_tail(&pt->link, &ptr_mask_bits(p, 1)->requests);
-	if (ptr_unmask_bits(p, 1))
+static void submit_queue(struct intel_engine_cs *engine, int prio)
+{
+	if (prio > engine->execlists.queue_priority) {
+		engine->execlists.queue_priority = prio;
 		tasklet_hi_schedule(&engine->execlists.irq_tasklet);
+	}
 }
 
 static void execlists_submit_request(struct i915_request *request)
@@ -1011,7 +1028,8 @@ static void execlists_submit_request(struct i915_request *request)
 	/* Will be called from irq-context when using foreign fences. */
 	spin_lock_irqsave(&engine->timeline->lock, flags);
 
-	insert_request(engine, &request->priotree, request->priotree.priority);
+	queue_request(engine, &request->priotree, rq_prio(request));
+	submit_queue(engine, rq_prio(request));
 
 	GEM_BUG_ON(!engine->execlists.first);
 	GEM_BUG_ON(list_empty(&request->priotree.link));
@@ -1048,6 +1066,9 @@ static void execlists_schedule(struct i915_request *request, int prio)
 
 	GEM_BUG_ON(prio == I915_PRIORITY_INVALID);
 
+	if (i915_request_completed(request))
+		return;
+
 	if (prio <= READ_ONCE(request->priotree.priority))
 		return;
 
@@ -1063,7 +1084,7 @@ static void execlists_schedule(struct i915_request *request, int prio)
 	 * static void update_priorities(struct i915_priotree *pt, prio) {
 	 *	list_for_each_entry(dep, &pt->signalers_list, signal_link)
 	 *		update_priorities(dep->signal, prio)
-	 *	insert_request(pt);
+	 *	queue_request(pt);
 	 * }
 	 * but that may have unlimited recursion depth and so runs a very
 	 * real risk of overunning the kernel stack. Instead, we build
@@ -1124,8 +1145,9 @@ static void execlists_schedule(struct i915_request *request, int prio)
 		pt->priority = prio;
 		if (!list_empty(&pt->link)) {
 			__list_del_entry(&pt->link);
-			insert_request(engine, pt, prio);
+			queue_request(engine, pt, prio);
 		}
+		submit_queue(engine, prio);
 	}
 
 	spin_unlock_irq(&engine->timeline->lock);
@@ -1409,13 +1431,6 @@ static u32 *gen9_init_indirectctx_bb(struct intel_engine_cs *engine, u32 *batch)
 	return batch;
 }
 
-static u32 *gen9_init_perctx_bb(struct intel_engine_cs *engine, u32 *batch)
-{
-	*batch++ = MI_BATCH_BUFFER_END;
-
-	return batch;
-}
-
 #define CTX_WA_BB_OBJ_SIZE (PAGE_SIZE)
 
 static int lrc_setup_wa_ctx(struct intel_engine_cs *engine)
@@ -1472,7 +1487,7 @@ static int intel_init_workaround_bb(struct intel_engine_cs *engine)
 		return 0;
 	case 9:
 		wa_bb_fn[0] = gen9_init_indirectctx_bb;
-		wa_bb_fn[1] = gen9_init_perctx_bb;
+		wa_bb_fn[1] = NULL;
 		break;
 	case 8:
 		wa_bb_fn[0] = gen8_init_indirectctx_bb;
@@ -1503,7 +1518,8 @@ static int intel_init_workaround_bb(struct intel_engine_cs *engine)
 			ret = -EINVAL;
 			break;
 		}
-		batch_ptr = wa_bb_fn[i](engine, batch_ptr);
+		if (wa_bb_fn[i])
+			batch_ptr = wa_bb_fn[i](engine, batch_ptr);
 		wa_bb[i]->size = batch_ptr - (batch + wa_bb[i]->offset);
 	}
 
@@ -2416,13 +2432,12 @@ static void execlists_init_reg_state(u32 *regs,
 	CTX_REG(regs, CTX_SECOND_BB_HEAD_L, RING_SBBADDR(base), 0);
 	CTX_REG(regs, CTX_SECOND_BB_STATE, RING_SBBSTATE(base), 0);
 	if (rcs) {
-		CTX_REG(regs, CTX_BB_PER_CTX_PTR, RING_BB_PER_CTX_PTR(base), 0);
+		struct i915_ctx_workarounds *wa_ctx = &engine->wa_ctx;
+
 		CTX_REG(regs, CTX_RCS_INDIRECT_CTX, RING_INDIRECT_CTX(base), 0);
 		CTX_REG(regs, CTX_RCS_INDIRECT_CTX_OFFSET,
 			RING_INDIRECT_CTX_OFFSET(base), 0);
-
-		if (engine->wa_ctx.vma) {
-			struct i915_ctx_workarounds *wa_ctx = &engine->wa_ctx;
+		if (wa_ctx->indirect_ctx.size) {
 			u32 ggtt_offset = i915_ggtt_offset(wa_ctx->vma);
 
 			regs[CTX_RCS_INDIRECT_CTX + 1] =
@@ -2431,6 +2446,11 @@ static void execlists_init_reg_state(u32 *regs,
 
 			regs[CTX_RCS_INDIRECT_CTX_OFFSET + 1] =
 				intel_lr_indirect_ctx_offset(engine) << 6;
+		}
+
+		CTX_REG(regs, CTX_BB_PER_CTX_PTR, RING_BB_PER_CTX_PTR(base), 0);
+		if (wa_ctx->per_ctx.size) {
+			u32 ggtt_offset = i915_ggtt_offset(wa_ctx->vma);
 
 			regs[CTX_BB_PER_CTX_PTR + 1] =
 				(ggtt_offset + wa_ctx->per_ctx.offset) | 0x01;

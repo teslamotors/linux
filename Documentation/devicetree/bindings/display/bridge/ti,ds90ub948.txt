@@ -1,0 +1,46 @@
+TI DS90UB948-Q1 2K FPD-Link III to OpenLDI Deserializer
+=======================================================
+
+This is the binding for Texas Instruments DS90UB948-Q1 bridge deserializer.
+
+This device supports I2C only.
+
+Required properties:
+
+- compatible: "ti,ds90ub948"
+
+Optional properties:
+
+- regulators: List of regulator name strings to enable for operation of device.
+- config: List of <register address>,<value> pairs to be set to configure
+  device on powerup.  The register addresses and values are 8bit.
+
+Example
+-------
+
+ti948: ds90ub948@0 {
+	compatible = "ti,ds90ub948";
+	reg = <0x2c>;
+
+	regulators: "vcc",
+	            "vcc_disp";
+	config:
+	        /* set error count to max */
+	        <0x41>, <0x1f>,
+	        /* sets output mode, no change noticed */
+	        <0x49>, <0xe0>,
+	        /* speed up I2C, 0xE is around 480KHz */
+	        <0x26>, <0x0e>,
+	        /* speed up I2C, 0xE is around 480KHz */
+	        <0x27>, <0x0e>,
+	        /* sets GPIO0 as an input */
+	        <0x1D>, <0x13>,
+	        /* set GPIO2 high, backlight PWM (set to 0x50 for normal use) */
+	        <0x1E>, <0x50>,
+	        /* sets GPIO3 as an output with remote control for touch XRES */
+	        <0x1F>, <0x05>,
+	        /* set GPIO5 high, backlight enable on new display */
+	        <0x20>, <0x09>,
+	        /* set GPIO7 and GPIO8 high to enable touch power and prox sense */
+	        <0x21>, <0x91>;
+};

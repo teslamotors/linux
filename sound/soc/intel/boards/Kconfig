@@ -398,6 +398,85 @@ config SND_SOC_INTEL_BXT_GPMRB_MACH
 	   Say Y if you have such a device
 	   If unsure select "N".
 
+config SND_SOC_INTEL_SKYLAKE_MODEL3
+	bool "Enable Skylake Model3 platform driver"
+	default n
+	help
+	   This enables Model3 support in the Skylake platform driver.
+	   Say "Y" if you are using a Model3 board.
+	   Otherwise choose "N".
+
+config SND_SOC_INTEL_MODEL3_MACH
+	tristate "ASoC Audio driver for Model3"
+	select SND_SOC_INTEL_SST
+	select SND_SOC_INTEL_SKYLAKE_MODEL3
+	select SND_SOC_COMPRESS
+	select DW_DMAC
+	default n
+	help
+	   This adds support for ASoC machine driver for Model3 platform
+	   Say Y if you have such a device
+	   If unsure select "N".
+
+config SND_SOC_INTEL_MODEL3_MACH_TDF8532_CODEC
+	bool "Enable TDF8532 codec for Model3"
+	depends on SND_SOC_INTEL_MODEL3_MACH
+	select SND_SOC_TDF8532
+	default n
+	help
+	   This adds support for TDF8532 codec to BE DAI link.
+
+config SND_SOC_INTEL_MODEL3_MACH_TDA7802_CODEC
+	bool "Enable TDA7802 codec for Model3"
+	depends on SND_SOC_INTEL_MODEL3_MACH
+	select SND_SOC_TDA7802
+	default y
+	help
+	   This adds support for TDA7802 codec to BE DAI link.
+	   Say "Y" if you are using Model3 board.
+	   Otherwise choose "N".
+
+config SND_SOC_INTEL_SKYLAKE_MODELSX_INFO2
+	bool "Enable Skylake ModelSX Infotainment 2 platform driver"
+	default n
+	help
+	   This enables ModelSX Infotainment 2 support in the Skylake platform driver.
+	   Say "Y" if you are using a ModelSX_info2 board.
+	   Otherwise choose "N".
+
+config SND_SOC_INTEL_MODELSX_INFO2_MACH
+	tristate "ASoC Audio driver for ModelSX Infotainment 2"
+	select SND_SOC_INTEL_SST
+	select SND_SOC_INTEL_SKYLAKE_MODELSX_INFO2
+	select SND_SOC_COMPRESS
+	select DW_DMAC
+	default n
+	help
+	   This adds support for ASoC machine driver for ModelSX_info2 platform
+	   Say Y if you have such a device
+	   If unsure select "N".
+
+config SND_SOC_INTEL_MODELSX_INFO2_MACH_TDA7802_CODEC
+	bool "Enable TDA7802 codec for ModelSX Infotainment 2"
+	depends on SND_SOC_INTEL_MODELSX_INFO2_MACH
+	select SND_SOC_TDA7802
+	default y
+	help
+	   This adds support for TDA7802 codec to BE DAI link.
+	   Say "Y" if you are using ModelSX_info2 board.
+	   Otherwise choose "N".
+
+config SND_SOC_INTEL_BXT_HSBOARD_MACH
+	tristate "ASoC Audio driver for BXT IVI HSBOARD"
+	select SND_SOC_INTEL_SST
+	select SND_SOC_COMPRESS
+	select HSBOARD_BRD
+	default n
+	help
+	   This adds support for ASoC machine driver for Broxton IVI HSBOARD platform
+	   Say Y if you have such a device
+	   If unsure select "N".
+
 config SND_SOC_INTEL_BXT_ULL_MACH
 	tristate "ASoC ULL reference driver with dummy codec"
 	select SND_SOC_INTEL_SST

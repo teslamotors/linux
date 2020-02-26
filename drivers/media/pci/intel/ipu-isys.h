@@ -113,7 +113,6 @@ struct ipu_isys {
 	bool csi2_cse_ipc_not_supported;
 	unsigned int video_opened;
 	unsigned int stream_opened;
-	unsigned int csi2_in_error_state;
 	struct dentry *debugfsdir;
 	struct mutex mutex;	/* Serialise isys video open/release related */
 	struct mutex stream_mutex;	/* Stream start, stop, queueing reqs */

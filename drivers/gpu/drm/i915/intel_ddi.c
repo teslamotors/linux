@@ -25,6 +25,9 @@
  *
  */
 
+#ifdef CONFIG_TESLA_INFO2
+#include <drm/bridge/anx1122.h>
+#endif
 #include "i915_drv.h"
 #include "intel_drv.h"
 
@@ -2785,6 +2788,12 @@ void intel_ddi_init(struct drm_i915_private *dev_priv, enum port port)
 	intel_encoder->port = port;
 	intel_encoder->crtc_mask = (1 << 0) | (1 << 1) | (1 << 2);
 	intel_encoder->cloneable = 0;
+
+#ifdef CONFIG_TESLA_INFO2
+	if (IS_BROXTON(dev_priv) && port == PORT_A)
+		if (anx1122_bridge_init(encoder) < 0)
+			goto err;
+#endif
 
 	if (init_dp) {
 		if (!intel_ddi_init_dp_connector(intel_dig_port))

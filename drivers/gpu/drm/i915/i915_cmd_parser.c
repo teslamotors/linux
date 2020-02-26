@@ -1044,7 +1044,7 @@ find_reg(const struct intel_engine_cs *engine, bool is_master, u32 addr)
 
 			reg = __find_reg(table->regs, table->num_regs, addr);
 			if (reg != NULL)
-				return reg;
+	return reg;
 		}
 	} while (table++, --count);
 

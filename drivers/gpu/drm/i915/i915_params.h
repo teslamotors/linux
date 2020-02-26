@@ -84,7 +84,8 @@
 	func(bool, enable_initial_modeset); \
 	func(bool, gvt_emulate_hdmi); \
 	func(bool, enable_guc_critical_logging); \
-	func(int, domain_scaler_owner);
+	func(int, domain_scaler_owner); \
+        func(bool, force_hdmi_sink);
 
 #define MEMBER(T, member) T member
 struct i915_params {

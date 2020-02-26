@@ -392,7 +392,7 @@ static void tpm_relinquish_locality(struct tpm_chip *chip, unsigned int flags)
 	int rc;
 
 	if (flags & TPM_TRANSMIT_RAW)
-		return 0;
+		return;
 
 	if (!chip->ops->relinquish_locality)
 		return;

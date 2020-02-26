@@ -116,6 +116,26 @@ static int __init tipc_init(void)
 	sysctl_tipc_rmem[1] = RCVBUF_DEF;
 	sysctl_tipc_rmem[2] = RCVBUF_MAX;
 
+	err = tipc_register_sysctl();
+	if (err)
+		goto out_sysctl;
+
+	err = register_pernet_device(&tipc_net_ops);
+	if (err)
+		goto out_pernet;
+
+	err = tipc_socket_init();
+	if (err)
+		goto out_socket;
+
+	err = register_pernet_device(&tipc_topsrv_net_ops);
+	if (err)
+		goto out_pernet_topsrv;
+
+	err = tipc_bearer_setup();
+	if (err)
+		goto out_bearer;
+
 	err = tipc_netlink_start();
 	if (err)
 		goto out_netlink;
@@ -124,53 +144,34 @@ static int __init tipc_init(void)
 	if (err)
 		goto out_netlink_compat;
 
-	err = tipc_register_sysctl();
-	if (err)
-		goto out_sysctl;
-
-	err = register_pernet_subsys(&tipc_net_ops);
-	if (err)
-		goto out_pernet;
-
-	err = tipc_socket_init();
-	if (err)
-		goto out_socket;
-
-	err = register_pernet_subsys(&tipc_topsrv_net_ops);
-	if (err)
-		goto out_pernet_topsrv;
-
-	err = tipc_bearer_setup();
-	if (err)
-		goto out_bearer;
-
 	pr_info("Started in single node mode\n");
 	return 0;
-out_bearer:
-	unregister_pernet_subsys(&tipc_topsrv_net_ops);
-out_pernet_topsrv:
-	tipc_socket_stop();
-out_socket:
-	unregister_pernet_subsys(&tipc_net_ops);
-out_pernet:
-	tipc_unregister_sysctl();
-out_sysctl:
-	tipc_netlink_compat_stop();
+
 out_netlink_compat:
 	tipc_netlink_stop();
 out_netlink:
+	tipc_bearer_cleanup();
+out_bearer:
+	unregister_pernet_device(&tipc_topsrv_net_ops);
+out_pernet_topsrv:
+	tipc_socket_stop();
+out_socket:
+	unregister_pernet_device(&tipc_net_ops);
+out_pernet:
+	tipc_unregister_sysctl();
+out_sysctl:
 	pr_err("Unable to start in single node mode\n");
 	return err;
 }
 
 static void __exit tipc_exit(void)
 {
-	tipc_bearer_cleanup();
-	unregister_pernet_subsys(&tipc_topsrv_net_ops);
-	tipc_socket_stop();
-	unregister_pernet_subsys(&tipc_net_ops);
-	tipc_netlink_stop();
 	tipc_netlink_compat_stop();
+	tipc_netlink_stop();
+	tipc_bearer_cleanup();
+	unregister_pernet_device(&tipc_topsrv_net_ops);
+	tipc_socket_stop();
+	unregister_pernet_device(&tipc_net_ops);
 	tipc_unregister_sysctl();
 
 	pr_info("Deactivated\n");

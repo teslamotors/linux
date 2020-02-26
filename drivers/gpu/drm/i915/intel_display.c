@@ -31,6 +31,7 @@
 #include <linux/kernel.h>
 #include <linux/slab.h>
 #include <linux/vgaarb.h>
+#include <drm/drm_bridge.h>
 #include <drm/drm_edid.h>
 #include <drm/drmP.h>
 #include "intel_drv.h"
@@ -5565,6 +5566,8 @@ static void intel_encoders_pre_enable(struct drm_crtc *crtc,
 		if (conn_state->crtc != crtc)
 			continue;
 
+		drm_bridge_pre_enable(encoder->base.bridge);
+
 		if (encoder->pre_enable)
 			encoder->pre_enable(encoder, crtc_state, conn_state);
 	}
@@ -5584,6 +5587,8 @@ static void intel_encoders_enable(struct drm_crtc *crtc,
 
 		if (conn_state->crtc != crtc)
 			continue;
+
+		drm_bridge_enable(encoder->base.bridge);
 
 		encoder->enable(encoder, crtc_state, conn_state);
 		intel_opregion_notify_encoder(encoder, true);
@@ -5607,6 +5612,8 @@ static void intel_encoders_disable(struct drm_crtc *crtc,
 
 		intel_opregion_notify_encoder(encoder, false);
 		encoder->disable(encoder, old_crtc_state, old_conn_state);
+
+		drm_bridge_disable(encoder->base.bridge);
 	}
 }
 
@@ -5627,6 +5634,8 @@ static void intel_encoders_post_disable(struct drm_crtc *crtc,
 
 		if (encoder->post_disable)
 			encoder->post_disable(encoder, old_crtc_state, old_conn_state);
+
+		drm_bridge_post_disable(encoder->base.bridge);
 	}
 }
 

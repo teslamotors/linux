@@ -342,7 +342,10 @@ static int aic3107M_resume(struct snd_soc_card *card){
 	u32 gpio_value;
 
 	gpio_addr = (void *)ioremap_nocache(I2S_1_BASE + I2S_1, 0x30);
+
 	gpio_value = I2S_1_VALUE;
+	if (gpio_addr == NULL)
+		return(-EIO);
 
 	pr_err("%p has %#x\n", gpio_addr, *(u32 *)gpio_addr);
 

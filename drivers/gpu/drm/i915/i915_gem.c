@@ -461,7 +461,7 @@ static void __fence_set_priority(struct dma_fence *fence, int prio)
 	struct i915_request *rq;
 	struct intel_engine_cs *engine;
 
-	if (!dma_fence_is_i915(fence))
+	if (dma_fence_is_signaled(fence) || !dma_fence_is_i915(fence))
 		return;
 
 	rq = to_request(fence);
@@ -3375,7 +3375,17 @@ static int wait_for_timeline(struct i915_gem_timeline *tl, unsigned int flags)
 static int wait_for_engines(struct drm_i915_private *i915)
 {
 	if (wait_for(intel_engines_are_idle(i915), 50)) {
+		struct intel_engine_cs *engine;
+		enum intel_engine_id id;
+		struct drm_printer p = drm_info_printer(i915->drm.dev);
+
 		DRM_ERROR("Failed to idle engines, declaring wedged!\n");
+
+		/* We're in bad shape.  Dump some additional debug info. */
+		for_each_engine(engine, i915, id)
+			intel_engine_dump(engine, &p);
+		dump_stack();
+
 		i915_gem_set_wedged(i915);
 		return -EIO;
 	}

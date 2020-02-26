@@ -123,14 +123,20 @@ struct apparmor_audit_data {
 			struct aa_label *peer;
 			union {
 				struct {
-					const char *target;
 					kuid_t ouid;
+					const char *target;
 				} fs;
+				struct {
+					int type, protocol;
+					struct sock *peer_sk;
+					void *addr;
+					int addrlen;
+				} net;
+				int signal;
 				struct {
 					int rlim;
 					unsigned long max;
 				} rlim;
-				int signal;
 			};
 		};
 		struct {

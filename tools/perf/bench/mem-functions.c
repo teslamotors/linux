@@ -178,6 +178,9 @@ static int bench_mem_common(int argc, const char **argv, struct bench_mem_info *
 	size_t size;
 	double size_total;
 
+	/* honour bench_repeat unless nr_loops is specified */
+	nr_loops = bench_repeat;
+
 	argc = parse_options(argc, argv, options, info->usage, 0);
 
 	if (use_cycles) {

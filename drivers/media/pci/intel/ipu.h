@@ -13,6 +13,8 @@
 #include "ipu-buttress.h"
 #include "ipu-trace.h"
 
+#include "tesla-rm-trace-printk.h"
+
 #if defined(CONFIG_VIDEO_INTEL_IPU4)
 #define IPU_PCI_ID	0x5a88
 #elif defined(CONFIG_VIDEO_INTEL_IPU4P)

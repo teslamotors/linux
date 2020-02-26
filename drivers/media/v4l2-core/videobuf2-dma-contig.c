@@ -22,6 +22,9 @@
 #include <media/videobuf2-dma-contig.h>
 #include <media/videobuf2-memops.h>
 
+#define DC_BUF_ALLOCED(buf)	((buf)->size > 0)
+#define MAX_KEEP_BUFS		64
+
 struct vb2_dc_buf {
 	struct device			*dev;
 	void				*vaddr;
@@ -40,7 +43,95 @@ struct vb2_dc_buf {
 
 	/* DMABUF related */
 	struct dma_buf_attachment	*db_attach;
+
+	int keep;
 };
+
+/* Number of DMA buffer regions to keep around while module is loaded */
+static int keep_bufs = 0;
+module_param(keep_bufs, int, 0644);
+
+static struct vb2_dc_buf *vb2_kept_dc_bufs = NULL;
+static DEFINE_MUTEX(kept_lock);
+
+/*
+ * Return true if given @buf is populated with fields matching given
+ * @dev, @attrs, @size, @dma_dir and has an associated DMA region
+ * allocated but unused.
+ */
+static int vb2_dc_buf_matches(struct vb2_dc_buf *buf, struct device *dev,
+			      unsigned long attrs, unsigned long size,
+			      enum dma_data_direction dma_dir)
+{
+	return (buf->dev == dev && buf->attrs == attrs && buf->size == size &&
+		buf->dma_dir == dma_dir && buf->cookie != NULL &&
+		refcount_read(&buf->refcount) == 0);
+}
+
+/*
+ * Get an unused pre-allocated vb2_dc_buf or allocate a new one if
+ * they are all in use.  Return NULL on error.
+ */
+static struct vb2_dc_buf *vb2_dc_buf_get(struct device *dev,
+					 unsigned long attrs,
+					 unsigned long size,
+					 enum dma_data_direction dma_dir)
+{
+	struct vb2_dc_buf *buf;
+	int i;
+	int first_free = -1;
+	int slot_used = -1;
+
+	if (keep_bufs <= 1 || vb2_kept_dc_bufs == NULL)
+		goto alloc_fallback;
+
+	mutex_lock(&kept_lock);
+	for (i = 0; i < keep_bufs; i++) {
+		buf = &(vb2_kept_dc_bufs[i]);
+
+		if (DC_BUF_ALLOCED(buf)) {
+			/* see if slot is a match and available */
+			if (vb2_dc_buf_matches(buf, dev, attrs, size,
+					       dma_dir)) {
+				slot_used = i;
+				goto unlock_done;
+			}
+		} else {
+			/* remember first free slot */
+			if (first_free == -1)
+				first_free = i;
+		}
+	}
+
+	/*
+	 * No pre-allocated matches found, use a free slot or fall back
+	 * to dynamic allocation if needed
+	 */
+	if (first_free != -1) {
+		slot_used = first_free;
+		buf = &(vb2_kept_dc_bufs[slot_used]);
+	} else {
+		mutex_unlock(&kept_lock);
+		goto alloc_fallback;
+	}
+
+
+unlock_done:
+	buf->keep = 1;
+	mutex_unlock(&kept_lock);
+
+	/* Log first usage of DMA buffer */
+	if (!DC_BUF_ALLOCED(buf))
+		dev_info(dev, "Using pre-allocated slot %d\n", slot_used);
+
+	return buf;
+
+alloc_fallback:
+	dev_warn(dev, "No pre-allocated DMA buffers available, falling back\n");
+	/* keep = 0 for this case */
+	return kzalloc(sizeof *buf, GFP_KERNEL);
+}
+
 
 /*********************************************/
 /*        scatterlist table functions        */
@@ -130,10 +221,12 @@ static void vb2_dc_put(void *buf_priv)
 		sg_free_table(buf->sgt_base);
 		kfree(buf->sgt_base);
 	}
-	dma_free_attrs(buf->dev, buf->size, buf->cookie, buf->dma_addr,
-		       buf->attrs);
+	if (!buf->keep)
+		dma_free_attrs(buf->dev, buf->size, buf->cookie, buf->dma_addr,
+			       buf->attrs);
 	put_device(buf->dev);
-	kfree(buf);
+	if (!buf->keep)
+		kfree(buf);
 }
 
 static void *vb2_dc_alloc(struct device *dev, unsigned long attrs,
@@ -145,19 +238,25 @@ static void *vb2_dc_alloc(struct device *dev, unsigned long attrs,
 	if (WARN_ON(!dev))
 		return ERR_PTR(-EINVAL);
 
-	buf = kzalloc(sizeof *buf, GFP_KERNEL);
-	if (!buf)
+
+	buf = vb2_dc_buf_get(dev, attrs, size, dma_dir);
+	if (buf == NULL)
 		return ERR_PTR(-ENOMEM);
+
+	if (!DC_BUF_ALLOCED(buf)) {
+		buf->cookie = dma_alloc_attrs(dev, size, &buf->dma_addr,
+					      GFP_KERNEL | gfp_flags, attrs);
+		if (!buf->cookie) {
+			dev_err(dev, "dma_alloc_coherent of size %ld failed\n",
+				size);
+			if (!buf->keep)
+				kfree(buf);
+			return ERR_PTR(-ENOMEM);
+		}
+	}
 
 	if (attrs)
 		buf->attrs = attrs;
-	buf->cookie = dma_alloc_attrs(dev, size, &buf->dma_addr,
-					GFP_KERNEL | gfp_flags, buf->attrs);
-	if (!buf->cookie) {
-		dev_err(dev, "dma_alloc_coherent of size %ld failed\n", size);
-		kfree(buf);
-		return ERR_PTR(-ENOMEM);
-	}
 
 	if ((buf->attrs & DMA_ATTR_NO_KERNEL_MAPPING) == 0)
 		buf->vaddr = buf->cookie;
@@ -779,6 +878,50 @@ void vb2_dma_contig_clear_max_seg_size(struct device *dev)
 	dev->dma_parms = NULL;
 }
 EXPORT_SYMBOL_GPL(vb2_dma_contig_clear_max_seg_size);
+
+static int vb2_dma_contig_init(void)
+{
+	if (keep_bufs > MAX_KEEP_BUFS) {
+		keep_bufs = MAX_KEEP_BUFS;
+		pr_warning("vb2_dma_contig: Limiting keep_bufs to %d max\n",
+			   MAX_KEEP_BUFS);
+	}
+
+	if (keep_bufs > 0) {
+		vb2_kept_dc_bufs = (struct vb2_dc_buf *)
+			kzalloc(sizeof(struct vb2_dc_buf) * keep_bufs,
+				GFP_KERNEL);
+		if (!vb2_kept_dc_bufs)
+			return -ENOMEM;
+		pr_info("vb2_dma_contig: Keeping %d DMA buffers around\n",
+			keep_bufs);
+	}
+
+	return 0;
+}
+
+static void vb2_dma_contig_exit(void)
+{
+	struct vb2_dc_buf *buf;
+	int i;
+
+	if (vb2_kept_dc_bufs == NULL)
+		return;
+
+	mutex_lock(&kept_lock);
+	for (i = 0; i < keep_bufs; i++) {
+		buf = &(vb2_kept_dc_bufs[i]);
+		if (DC_BUF_ALLOCED(buf))
+			dma_free_attrs(buf->dev, buf->size, buf->cookie,
+				       buf->dma_addr, buf->attrs);
+	}
+
+	kfree(vb2_kept_dc_bufs);
+	mutex_unlock(&kept_lock);
+}
+
+module_init(vb2_dma_contig_init);
+module_exit(vb2_dma_contig_exit);
 
 MODULE_DESCRIPTION("DMA-contig memory handling routines for videobuf2");
 MODULE_AUTHOR("Pawel Osciak <pawel@osciak.com>");

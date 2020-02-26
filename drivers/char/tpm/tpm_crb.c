@@ -126,14 +126,13 @@ static bool crb_wait_for_reg_32(u32 __iomem *reg, u32 mask, u32 value,
 	start = ktime_get();
 	stop = ktime_add(start, ms_to_ktime(timeout));
 
-	do {
-		if ((ioread32(reg) & mask) == value)
-			return true;
-
+	while ((ioread32(reg) & mask) != value) {
+		if (ktime_after(ktime_get(), stop))
+			return false;
 		usleep_range(50, 100);
-	} while (ktime_before(ktime_get(), stop));
+	}
 
-	return ((ioread32(reg) & mask) == value);
+	return true;
 }
 
 /**

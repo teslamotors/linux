@@ -1,0 +1,38 @@
+TI DS90UB949-Q1 1080p HDMI to FPD-Link III bridge serializer
+============================================================
+
+This is the binding for Texas Instruments DS90UB949-Q1 bridge serializer.
+
+This device supports I2C only.
+
+Required properties:
+
+- compatible: "ti,ds90ub949"
+
+Optional properties:
+
+- regulators: List of regulator name strings to enable for operation of device.
+- config: List of <register address>,<value> pairs to be set to configure
+  device on powerup.  The register addresses and values are 8bit.
+
+Example
+-------
+
+ti949: ds90ub949@0 {
+	compatible = "ti,ds90ub949";
+	reg = <0x18>;
+
+	regulators: "vcc",
+	            "vcc_hdmi";
+	config:
+	        /* GPIO0 is an output with remote value */
+	        <0x0D>, <0x25>,
+	        /* GPIO3 is an input for XRES */
+	        <0x0F>, <0x03>,
+	        /* GPIO2 is an input for backlight PWM */
+	        <0x0E>, <0x30>,
+	        /* Enables forward channel I2C pass through */
+	        <0x17>, <0x9e>,
+	        /* Enables PORT1 registers I2C access */
+	        <0x1E>, <0x04>;
+};

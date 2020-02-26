@@ -1540,7 +1540,7 @@ static int cnl_sdw_bra_verify_footer(u8 *rx_buf, int offset)
 	 * 0 -> Good. Target completed read operation successfully
 	 * 1 -> Bad. Target failed to complete read operation successfully
 	 */
-	ftr_result = (ftr_response > SDW_BRA_FTR_RESP_RES_SHIFT) >
+	ftr_result = (ftr_response >> SDW_BRA_FTR_RESP_RES_SHIFT) &
 						SDW_BRA_FTR_RESP_RES_MASK;
 	if (ftr_result == SDW_BRA_FTR_RESULT_BAD) {
 		pr_info("BRA: Read/Write operation failed on target side\n");
@@ -1600,7 +1600,7 @@ static int cnl_sdw_bra_verify_hdr(u8 *rx_buf, int offset, bool *chk_footer,
 	}
 
 	/* BRA not ready check */
-	not_ready = (hdr_response > SDW_BRA_HDR_RESP_NRDY_SHIFT) >
+	not_ready = (hdr_response >> SDW_BRA_HDR_RESP_NRDY_SHIFT) &
 						SDW_BRA_HDR_RESP_NRDY_MASK;
 	if (not_ready == SDW_BRA_TARGET_NOT_READY) {
 		pr_info("BRA: Target not ready for read/write operation rolling_id:%d\n",

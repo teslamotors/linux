@@ -89,6 +89,7 @@ struct i915_params i915_modparams __read_mostly = {
 	.domain_scaler_owner = 0x11100,
 	.enable_guc_critical_logging = false,
 	.tsd_delay = 2000,
+	.force_hdmi_sink = false,
 };
 
 i915_param_named(modeset, int, 0400,
@@ -366,3 +367,9 @@ MODULE_PARM_DESC(tsd_init,
 
 module_param_named_unsafe(tsd_delay, i915_modparams.tsd_delay, int, 0400);
 MODULE_PARM_DESC(tsd_delay, "Delay in ms to wait before finishing initialization.");
+
+module_param_named_unsafe(force_hdmi_sink, i915_modparams.force_hdmi_sink, bool, 0400);
+MODULE_PARM_DESC(force_hdmi_sink,
+		 "Override hmdi/dvi sink detection "
+		 "(false=dynamic sink detection [default], "
+		 "true=sink is hdmi)");

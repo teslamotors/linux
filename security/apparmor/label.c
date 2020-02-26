@@ -80,7 +80,7 @@ void __aa_proxy_redirect(struct aa_label *orig, struct aa_label *new)
 
 	AA_BUG(!orig);
 	AA_BUG(!new);
-	AA_BUG(!write_is_locked(&labels_set(orig)->lock));
+	lockdep_assert_held_exclusive(&labels_set(orig)->lock);
 
 	tmp = rcu_dereference_protected(orig->proxy->label,
 					&labels_ns(orig)->lock);
@@ -571,7 +571,7 @@ static bool __label_remove(struct aa_label *label, struct aa_label *new)
 
 	AA_BUG(!ls);
 	AA_BUG(!label);
-	AA_BUG(!write_is_locked(&ls->lock));
+	lockdep_assert_held_exclusive(&ls->lock);
 
 	if (new)
 		__aa_proxy_redirect(label, new);
@@ -608,7 +608,7 @@ static bool __label_replace(struct aa_label *old, struct aa_label *new)
 	AA_BUG(!ls);
 	AA_BUG(!old);
 	AA_BUG(!new);
-	AA_BUG(!write_is_locked(&ls->lock));
+	lockdep_assert_held_exclusive(&ls->lock);
 	AA_BUG(new->flags & FLAG_IN_TREE);
 
 	if (!label_is_stale(old))
@@ -645,7 +645,7 @@ static struct aa_label *__label_insert(struct aa_labelset *ls,
 	AA_BUG(!ls);
 	AA_BUG(!label);
 	AA_BUG(labels_set(label) != ls);
-	AA_BUG(!write_is_locked(&ls->lock));
+	lockdep_assert_held_exclusive(&ls->lock);
 	AA_BUG(label->flags & FLAG_IN_TREE);
 
 	/* Figure out where to put new node */
@@ -1463,11 +1463,13 @@ static inline bool use_label_hname(struct aa_ns *ns, struct aa_label *label,
 /* helper macro for snprint routines */
 #define update_for_len(total, len, size, str)	\
 do {					\
+	size_t ulen = len;		\
+					\
 	AA_BUG(len < 0);		\
-	total += len;			\
-	len = min(len, size);		\
-	size -= len;			\
-	str += len;			\
+	total += ulen;			\
+	ulen = min(ulen, size);		\
+	size -= ulen;			\
+	str += ulen;			\
 } while (0)
 
 /**
@@ -1602,7 +1604,7 @@ int aa_label_snxprint(char *str, size_t size, struct aa_ns *ns,
 	struct aa_ns *prev_ns = NULL;
 	struct label_it i;
 	int count = 0, total = 0;
-	size_t len;
+	ssize_t len;
 
 	AA_BUG(!str && size != 0);
 	AA_BUG(!label);
@@ -2115,7 +2117,7 @@ void __aa_labelset_update_subtree(struct aa_ns *ns)
 	__labelset_update(ns);
 
 	list_for_each_entry(child, &ns->sub_ns, base.list) {
-		mutex_lock(&child->lock);
+		mutex_lock_nested(&child->lock, child->level);
 		__aa_labelset_update_subtree(child);
 		mutex_unlock(&child->lock);
 	}

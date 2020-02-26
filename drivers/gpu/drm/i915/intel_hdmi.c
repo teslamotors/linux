@@ -1832,7 +1832,21 @@ intel_hdmi_set_edid(struct drm_connector *connector)
 			drm_rgb_quant_range_selectable(edid);
 
 		intel_hdmi->has_audio = drm_detect_monitor_audio(edid);
-		intel_hdmi->has_hdmi_sink = drm_detect_hdmi_monitor(edid);
+
+		/*
+		 * Allow forcing HDMI sink detection so clock rates above
+		 * DVI speeds are allowed during the modeline checks for
+		 * cases where we want to bypass EDID.
+		 */
+		if (i915_modparams.force_hdmi_sink) {
+			DRM_INFO("overriding hdmi sink detection: ");
+			intel_hdmi->has_hdmi_sink = 1;
+		} else {
+			DRM_INFO("detecting hdmi sink: ");
+			intel_hdmi->has_hdmi_sink =
+				drm_detect_hdmi_monitor(edid);
+		}
+		DRM_INFO("has_hdmi_sink=%d\n", intel_hdmi->has_hdmi_sink);
 
 		connected = true;
 	}

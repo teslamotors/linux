@@ -25,6 +25,12 @@ config DRM_ANALOGIX_ANX78XX
 	  the HDMI output of an application processor to MyDP
 	  or DisplayPort.
 
+config DRM_ANX1122
+	tristate "Analogix ANX1122 (e)DP/LVDS bridge"
+	select DRM_KMS_HELPER
+	---help---
+	  Analogix anx1122 (e)DP-LVDS bridge chip driver.
+
 config DRM_DUMB_VGA_DAC
 	tristate "Dumb VGA DAC Bridge support"
 	depends on OF
@@ -35,6 +41,7 @@ config DRM_DUMB_VGA_DAC
 config DRM_LVDS_ENCODER
 	tristate "Transparent parallel to LVDS encoder support"
 	depends on OF
+	select DRM_KMS_HELPER
 	select DRM_PANEL_BRIDGE
 	help
 	  Support for transparent parallel to LVDS encoders that don't require
@@ -68,6 +75,22 @@ config DRM_PARADE_PS8622
 	select BACKLIGHT_CLASS_DEVICE
 	---help---
 	  Parade eDP-LVDS bridge chip driver.
+
+config DRM_TI948
+	tristate "TI DS90UB948-Q1 FPD-Link III to OpenLDI Deserializer"
+	select DRM_KMS_HELPER
+	select REGMAP_I2C
+	help
+	  This is a driver for the TI DS90UB948-Q1 device.
+	  It converts video signals from FPD-Link III to OpenLDI.
+
+config DRM_TI949
+	tristate "TI DS90UB949-Q1 1080p HDMI to FPD-Link III bridge serializer"
+	select DRM_KMS_HELPER
+	select REGMAP_I2C
+	help
+	  This is a driver for the TI DS90UB949-Q1 device.
+	  It converts video signals from HDMI to FPD-Link III.
 
 config DRM_SIL_SII8620
 	tristate "Silicon Image SII8620 HDMI/MHL bridge"

@@ -1179,9 +1179,7 @@ void ipu_isys_queue_buf_done(struct ipu_isys_buffer *ib)
 		 */
 		atomic_set(&ib->str2mmio_flag, 0);
 	} else {
-		vb2_buffer_done(vb, vb->vb2_queue->error ?
-				VB2_BUF_STATE_ERROR :
-				VB2_BUF_STATE_DONE);
+		vb2_buffer_done(vb, VB2_BUF_STATE_DONE);
 	}
 }
 

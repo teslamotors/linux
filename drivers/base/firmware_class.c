@@ -68,27 +68,11 @@ static bool fw_get_builtin_firmware(struct firmware *fw, const char *name,
 	return false;
 }
 
-static bool fw_is_builtin_firmware(const struct firmware *fw)
-{
-	struct builtin_fw *b_fw;
-
-	for (b_fw = __start_builtin_fw; b_fw != __end_builtin_fw; b_fw++)
-		if (fw->data == b_fw->data)
-			return true;
-
-	return false;
-}
-
 #else /* Module case - no builtin firmware support */
 
 static inline bool fw_get_builtin_firmware(struct firmware *fw,
 					   const char *name, void *buf,
 					   size_t size)
-{
-	return false;
-}
-
-static inline bool fw_is_builtin_firmware(const struct firmware *fw)
 {
 	return false;
 }
@@ -102,7 +86,7 @@ static bool fw_search_cmdline(const char *name, size_t *size, phys_addr_t *addr)
 {
 	char str[20];	/* "0x" + 16 numerals + '\0'. Rounded to 20 */
 	char *p = saved_command_line;
-	char *p2 = NULL, *end;
+	char *p2 = NULL, *p3, *end;
 	size_t len;
 
 	/* search for FW name */
@@ -124,11 +108,13 @@ static bool fw_search_cmdline(const char *name, size_t *size, phys_addr_t *addr)
 		end = p + strlen(p);
 
 	/* calc size */
-	p = strnchr(p, (end - p), '@');		/* goto end of size */
-	if (!p)
-		p = strnchr(p, (end - p), ',');
-		if (!p)
+	p3 = strnchr(p, (end - p), '@');		/* goto end of size */
+	if (!p3) {
+		p3 = strnchr(p, (end - p), ',');
+		if (!p3)
 			return false;
+	}
+	p = p3;
 	len = p - p2 + 1;
 	strlcpy(str, p2, len);
 	str[len] = '\0';

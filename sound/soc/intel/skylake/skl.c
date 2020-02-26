@@ -908,10 +908,10 @@ static int skl_probe(struct pci_dev *pci,
 	if (err < 0)
 		goto out_nhlt_free;
 
-		if (!tplg_name || strlen(tplg_name) >= sizeof(skl->tplg_name))
-			skl_nhlt_update_topology_bin(skl);
-		else
-			snprintf(skl->tplg_name, sizeof(skl->tplg_name), "%s", tplg_name);
+	if (!tplg_name || strlen(tplg_name) >= sizeof(skl->tplg_name))
+		skl_nhlt_update_topology_bin(skl);
+	else
+		snprintf(skl->tplg_name, sizeof(skl->tplg_name), "%s", tplg_name);
 
 #else
 	if (request_firmware(&nhlt_fw, "intel/nhlt_blob.bin", bus->dev)) {

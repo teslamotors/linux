@@ -570,7 +570,7 @@ config DEBUG_KMEMLEAK_EARLY_LOG_SIZE
 	int "Maximum kmemleak early log entries"
 	depends on DEBUG_KMEMLEAK
 	range 200 40000
-	default 400
+	default 16000
 	help
 	  Kmemleak must track all the memory allocations to avoid
 	  reporting false positives. Since memory may be allocated or
@@ -1982,5 +1982,16 @@ config IO_STRICT_DEVMEM
 	  userspace access to *idle* io-memory ranges (see /proc/iomem) This
 	  may break traditional users of /dev/mem (dosemu, legacy X, etc...)
 	  if the driver using a given range cannot be disabled.
+
+	  If in doubt, say Y.
+
+config DISABLE_ON_PROD_DEVMEM
+	bool "Disable /dev/mem access on production system"
+	depends on DEVMEM && X86
+	select MANUF_MODE
+	help
+	  Disable /dev/mem on a production system.
+	  Many systems disables /dev/mem for security reasons, but devices requires
+	  non standard hw access during manufacturing process.
 
 	  If in doubt, say Y.

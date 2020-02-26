@@ -90,7 +90,7 @@ static int serialize_cipher(const ecc_cipher_t *cipher,
 			!cipher->mac || !cipher->text)
 		return -EFAULT;
 
-		len = get_serialized_cipher_size(cipher);
+	len = get_serialized_cipher_size(cipher);
 	ks_info(KBUILD_MODNAME ": serialize_cipher: new len: %u, available len: %u\n",
 		len, size);
 

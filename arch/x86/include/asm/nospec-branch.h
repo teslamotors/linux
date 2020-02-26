@@ -202,7 +202,7 @@
 	"    	lfence;\n"					\
 	"       jmp    902b;\n"					\
 	"       .align 16\n"					\
-	"903:	addl   $4, %%esp;\n"				\
+	"903:	lea    4(%%esp), %%esp;\n"			\
 	"       pushl  %[thunk_target];\n"			\
 	"       ret;\n"						\
 	"       .align 16\n"					\
@@ -323,7 +323,7 @@ DECLARE_STATIC_KEY_FALSE(mds_idle_clear);
 #include <asm/segment.h>
 
 /**
- * mds_clear_cpu_buffers - Mitigation for MDS vulnerability
+ * mds_clear_cpu_buffers - Mitigation for MDS and TAA vulnerability
  *
  * This uses the otherwise unused and obsolete VERW instruction in
  * combination with microcode which triggers a CPU buffer flush when the
@@ -346,7 +346,7 @@ static inline void mds_clear_cpu_buffers(void)
 }
 
 /**
- * mds_user_clear_cpu_buffers - Mitigation for MDS vulnerability
+ * mds_user_clear_cpu_buffers - Mitigation for MDS and TAA vulnerability
  *
  * Clear CPU buffers if the corresponding static key is enabled
  */

@@ -16,6 +16,15 @@ static struct snd_soc_acpi_codecs bxt_codecs = {
 
 struct snd_soc_acpi_mach snd_soc_acpi_intel_bxt_machines[] = {
 	{
+		.id = "TDA7802",
+#if IS_ENABLED(CONFIG_SND_SOC_INTEL_MODELSX_INFO2_MACH)
+		.drv_name = "modelsx_info2",
+#else
+		.drv_name = "model3",
+#endif
+		.fw_filename = "dsp_fw_release.bin",
+	},
+	{
 		.id = "INT343A",
 #if IS_ENABLED(CONFIG_SND_SOC_INTEL_BXTP_IVI_RSE_MACH)
 		.drv_name = "bxt_ivi_rse_i2s",

@@ -21,3 +21,4 @@ obj-$(CONFIG_VIDEO_INTEL_IPU)   += ipu4-acpi.o
 obj-$(CONFIG_INTEL_IPU4_BXT_P_PDATA)   += ipu4-bxt-p-pdata.o
 obj-$(CONFIG_INTEL_IPU4_BXT_GP_PDATA)   += ipu4-bxt-gp-pdata.o
 obj-$(CONFIG_INTEL_IPU4P_CNL_RVP_PDATA)   += ipu4p-cnl-rvp-pdata.o
+obj-$(CONFIG_INTEL_IPU4_BXT_TESLA_PDATA)   += intel-ipu4-bxt-tesla-pdata.o

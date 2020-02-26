@@ -6,9 +6,6 @@
 
 #include <media/media-entity.h>
 #include <media/v4l2-device.h>
-#include <linux/workqueue.h>
-#include <linux/mutex.h>
-#include <linux/timer.h>
 
 #include "ipu-isys-queue.h"
 #include "ipu-isys-subdev.h"
@@ -114,12 +111,6 @@ struct ipu_isys_csi2 {
 	unsigned int stream_count;
 
 	struct v4l2_ctrl *store_csi2_header;
-
-	struct timer_list eof_timer;
-	struct work_struct wdt_work;
-	struct workqueue_struct *wdt_wq;
-	unsigned long eof_wdt_timeout;
-	int wdt_enable;
 };
 
 struct ipu_isys_csi2_timing {
@@ -188,8 +179,5 @@ void ipu_isys_csi2_isr(struct ipu_isys_csi2 *csi2);
 void ipu_isys_csi2_error(struct ipu_isys_csi2 *csi2);
 bool ipu_isys_csi2_skew_cal_required(struct ipu_isys_csi2 *csi2);
 int ipu_isys_csi2_set_skew_cal(struct ipu_isys_csi2 *csi2, int enable);
-void ipu_isys_csi2_start_wdt(struct ipu_isys_csi2 *csi2,
-			     unsigned int timeout);
-void ipu_isys_csi2_stop_wdt(struct ipu_isys_csi2 *csi2);
 
 #endif /* IPU_ISYS_CSI2_H */

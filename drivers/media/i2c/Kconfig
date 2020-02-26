@@ -354,6 +354,15 @@ config VIDEO_TC358743
 	  To compile this driver as a module, choose M here: the
 	  module will be called tc358743.
 
+config VIDEO_TC3587_TI940
+	tristate "Toshiba TC3587 video decoder (Intel TI940 based)"
+	depends on VIDEO_V4L2 && I2C
+	---help---
+	  This is a driver for the Toshiba TC3587 based on the minimal
+	  TI940 driver provided by Intel for their IPU4. It only does the
+	  necessary initialization to get the TC3587 running, there is no
+	  support for changing video modes or other parameters at run time.
+
 config VIDEO_TVP514X
 	tristate "Texas Instruments TVP514x video decoder"
 	depends on VIDEO_V4L2 && I2C
@@ -944,6 +953,13 @@ config VIDEO_TI960
 	depends on I2C && VIDEO_V4L2
 	---help---
 	This is a driver for TI960 Deserializer.
+
+config VIDEO_TI940
+	tristate "TI940 deserializer"
+	depends on VIDEO_V4L2 && I2C
+	select REGMAP_I2C
+	---help---
+	TI940 deserializer driver
 
 config VIDEO_AS3638
 	tristate "AS3638 flash driver support"

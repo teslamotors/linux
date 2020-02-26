@@ -23,6 +23,8 @@
 #include <linux/pwm.h>
 #include <linux/pinctrl/machine.h>
 #include <linux/pinctrl/pinconf-generic.h>
+#include <linux/kernel.h>
+#include <linux/reboot.h>
 
 /* Ideally, pin mappings should be provided by ACPI */
 static const struct pinctrl_map uart2_mappings[] __initconst = {
@@ -115,9 +117,32 @@ static int apl_spi_board_setup(void)
 	return ret;
 }
 
+/* WARM reset hook */
+static int warm_reset_hook_panic_notifier_call(struct notifier_block *notifier,
+		unsigned long what, void *data)
+{
+	(void) notifier;
+	(void) what;
+	(void) data;
+
+	// WARM reset with PCI type
+	reboot_mode = REBOOT_WARM;
+	reboot_type = BOOT_CF9_FORCE;
+
+	return NOTIFY_DONE;
+}
+
+static struct notifier_block warm_reset_hook_panic_notifier = {
+	.notifier_call = warm_reset_hook_panic_notifier_call,
+};
+
 static int __init apl_board_init(void)
 {
 	int ret;
+
+	/* Register WARM reset hook for ramoops with ABL */
+	atomic_notifier_chain_register(&panic_notifier_list,
+			&warm_reset_hook_panic_notifier);
 
 	pr_debug(DRVNAME ": registering APL SPI devices...\n");
 	ret = apl_spi_board_setup();

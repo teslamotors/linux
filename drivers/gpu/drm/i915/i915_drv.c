@@ -1295,41 +1295,6 @@ static void i915_driver_register(struct drm_i915_private *dev_priv)
 		intel_fbdev_initial_config_async(dev);
 }
 
-/*
- * Do delayed driver initialization.
- *
- * What's delayed is controlled by the tsd_init module parameter bitmask
- * with the following bits defined:
- *
- * Delay global gtt non-preallocated init        - 0x01
- * Delay driver registration (acpi_video_driver) - 0x02
- * Skip registering the GMBUS MISC pin           - 0x04
- * Delay ddi port A initialization               - 0x10
- * Delay ddi port B initialization               - 0x20
- * Delay ddi port C initialization               - 0x40
- * Delay mipip dsi initialization                - 0x80
- */
-static void tsd_delayed_init(struct work_struct *work)
-{
-	struct drm_i915_private *dev_priv =
-		container_of(work, typeof(*dev_priv), tsd_init.work);
-
-	if (i915_modparams.tsd_init & TSD_INIT_DELAY_REGISTER)
-		i915_driver_register(dev_priv);
-
-	if (i915_modparams.tsd_init & TSD_INIT_DELAY_DDI_A)
-		intel_ddi_init(dev_priv, PORT_A);
-	if (i915_modparams.tsd_init & TSD_INIT_DELAY_DDI_B)
-		intel_ddi_init(dev_priv, PORT_B);
-	if (i915_modparams.tsd_init & TSD_INIT_DELAY_DDI_C)
-		intel_ddi_init(dev_priv, PORT_C);
-	if (i915_modparams.tsd_init & TSD_INIT_DELAY_DSI)
-		intel_dsi_init(dev_priv);
-
-	/* We'd like to never get called again can we just do */
-	i915_modparams.tsd_init = 0;
-}
-
 /**
  * i915_driver_unregister - cleanup the registration done in i915_driver_regiser()
  * @dev_priv: device private
@@ -1466,8 +1431,8 @@ int i915_driver_load(struct pci_dev *pdev, const struct pci_device_id *ent)
 
 	intel_runtime_pm_put(dev_priv);
 
-	printk(KERN_INFO "IOTG i915 driver 2019y-04m-08d-14h-22m-09s -0700\n");
-	printk(KERN_INFO "45 patches carried on top of PK commit a0999967\n");
+	printk(KERN_INFO "IOTG i915 driver 2019y-05m-22d-16h-58m-07s -0700\n");
+	printk(KERN_INFO "49 patches carried on top of PK commit 0aea68ae\n");
 
 	return 0;
 

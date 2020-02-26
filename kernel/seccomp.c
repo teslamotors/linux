@@ -33,6 +33,7 @@
 #endif
 
 #ifdef CONFIG_SECCOMP_FILTER
+#include <linux/file.h>
 #include <linux/filter.h>
 #include <linux/pid.h>
 #include <linux/ptrace.h>
@@ -92,6 +93,73 @@ static void populate_seccomp_data(struct seccomp_data *sd)
 	sd->args[5] = args[5];
 	sd->instruction_pointer = KSTK_EIP(task);
 }
+
+/**
+ *  seccomp_log_violation - log detailed information when a seccomp violation occurs
+ *  @action: the action that triggered the seccomp violation, e.g. kill
+ *  @sd: the seccomp data at the time of the violation, i.e. regs, arch, ip
+ */
+
+static void seccomp_log_violation(const char *action,
+				  const struct seccomp_data *sd)
+{
+	char name[sizeof(current->comm)];
+	const struct cred *cred;
+	struct file *exe_file;
+	struct seccomp_data sd_local;
+	char *exe_path = NULL;
+	const char *path = "(null)";
+	const size_t epath_len = PATH_MAX + strlen(" (deleted)") + 1;
+
+	get_task_comm(name, current);
+	cred = current_cred();
+
+	if (unlikely(sd == NULL)) {
+		populate_seccomp_data(&sd_local);
+		sd = &sd_local;
+	}
+
+	if (unlikely(current->mm == NULL)) {
+		goto logit;
+	}
+
+	exe_path = kmalloc(epath_len, GFP_KERNEL);
+	if (unlikely(exe_path == NULL)) {
+		goto logit;
+	}
+
+	exe_file = get_mm_exe_file(current->mm);
+	if (unlikely(exe_file == NULL)) {
+		goto logit;
+	}
+
+	path = (const char *)d_path(&exe_file->f_path, exe_path, epath_len);
+	if (unlikely(IS_ERR(path))) {
+		path = "(null)";
+	}
+
+	fput(exe_file);
+
+logit:
+	pr_err_ratelimited("seccomp: %s: uid=%d gid=%d pid=%d comm=\"%s\" exe=\"%s\" syscall=%d "
+	    "arg0=%zu arg1=%zu arg2=%zu arg3=%zu arg4=%zu arg5=%zu",
+	    action,
+	    from_kuid(&init_user_ns, cred->uid),
+	    from_kgid(&init_user_ns, cred->gid),
+	    task_pid_nr(current),
+	    name,
+	    path,
+	    sd->nr,
+	    (size_t)sd->args[0],
+	    (size_t)sd->args[1],
+	    (size_t)sd->args[2],
+	    (size_t)sd->args[3],
+	    (size_t)sd->args[4],
+	    (size_t)sd->args[5]);
+
+	kfree(exe_path);
+}
+
 
 /**
  *	seccomp_check_filter - verify seccomp filter code
@@ -673,6 +741,9 @@ static int __seccomp_filter(int this_syscall, const struct seccomp_data *sd,
 	action = filter_ret & SECCOMP_RET_ACTION_FULL;
 
 	switch (action) {
+	case SECCOMP_RET_ERRNO_LOG:
+		seccomp_log_violation("errno", sd);
+		/* Fall through. */
 	case SECCOMP_RET_ERRNO:
 		/* Set low-order bits as an errno, capped at MAX_ERRNO. */
 		if (data > MAX_ERRNO)
@@ -681,6 +752,9 @@ static int __seccomp_filter(int this_syscall, const struct seccomp_data *sd,
 					 -data, 0);
 		goto skip;
 
+	case SECCOMP_RET_TRAP_LOG:
+		seccomp_log_violation("trap", sd);
+		/* Fall through. */
 	case SECCOMP_RET_TRAP:
 		/* Show the handler the original registers. */
 		syscall_rollback(current, task_pt_regs(current));
@@ -689,6 +763,7 @@ static int __seccomp_filter(int this_syscall, const struct seccomp_data *sd,
 		goto skip;
 
 	case SECCOMP_RET_TRACE:
+		seccomp_log_violation("trace", sd);
 		/* We've been put in this state by the ptracer already. */
 		if (recheck_after_trace)
 			return 0;
@@ -732,6 +807,7 @@ static int __seccomp_filter(int this_syscall, const struct seccomp_data *sd,
 		return 0;
 
 	case SECCOMP_RET_LOG:
+		seccomp_log_violation("trace", sd);
 		seccomp_log(this_syscall, 0, action, true);
 		return 0;
 
@@ -746,6 +822,7 @@ static int __seccomp_filter(int this_syscall, const struct seccomp_data *sd,
 	case SECCOMP_RET_KILL_THREAD:
 	case SECCOMP_RET_KILL_PROCESS:
 	default:
+		seccomp_log_violation("kill", sd);
 		seccomp_log(this_syscall, SIGSYS, action, true);
 		/* Dump core only if this is the last remaining thread. */
 		if (action == SECCOMP_RET_KILL_PROCESS ||

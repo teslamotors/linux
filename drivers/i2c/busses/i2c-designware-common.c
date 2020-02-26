@@ -93,6 +93,14 @@ void dw_writel(struct dw_i2c_dev *dev, u32 b, int offset)
 	}
 }
 
+void __i2c_dw_force_reset(struct dw_i2c_dev *dev)
+{
+	dw_writel(dev, 0, 0x204);
+	udelay(10);
+	dw_writel(dev, 7, 0x204);
+	udelay(10);
+}
+
 u32 i2c_dw_scl_hcnt(u32 ic_clk, u32 tSYMBOL, u32 tf, int cond, int offset)
 {
 	/*
@@ -217,6 +225,7 @@ int i2c_dw_wait_bus_not_busy(struct dw_i2c_dev *dev)
 	while (dw_readl(dev, DW_IC_STATUS) & DW_IC_STATUS_ACTIVITY) {
 		if (timeout <= 0) {
 			dev_warn(dev->dev, "timeout waiting for bus ready\n");
+			__i2c_dw_force_reset(dev);
 			return -ETIMEDOUT;
 		}
 		timeout--;

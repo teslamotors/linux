@@ -83,6 +83,8 @@ obj-$(CONFIG_VIDEO_MEDIATEK_VPU)	+= mtk-vpu/
 
 obj-$(CONFIG_VIDEO_MEDIATEK_VCODEC)	+= mtk-vcodec/
 
+obj-$(CONFIG_INTEL_IPU4_BXT_TESLA_PDATA)	+= intel/
+
 obj-$(CONFIG_VIDEO_SENSOR_STUB) += video-sensor-stub.o
 obj-$(CONFIG_VIDEO_SENSOR_STUB_PDATA) += video-sensor-stub-pdata.o
 obj-$(CONFIG_I2C_ADAPTER_STUB) += i2c-adapter-stub.o
