@@ -1122,8 +1122,7 @@ static void wmi_free_devices(struct acpi_device *device)
 	}
 }
 
-static bool guid_already_parsed(struct acpi_device *device,
-				const u8 *guid)
+static bool guid_already_parsed(struct acpi_device *device, const u8 *guid)
 {
 	struct wmi_block *wblock;
 
@@ -1333,10 +1332,8 @@ static void acpi_wmi_notify_handler(acpi_handle handle, u32 event,
 		wblock->handler(event, wblock->handler_data);
 	}
 
-	if (debug_event) {
-		pr_info("DEBUG Event GUID: %pUL\n",
-			wblock->gblock.guid);
-	}
+	if (debug_event)
+		pr_info("DEBUG Event GUID: %pUL\n", wblock->gblock.guid);
 
 	acpi_bus_generate_netlink_event(
 		wblock->acpi_device->pnp.device_class,
