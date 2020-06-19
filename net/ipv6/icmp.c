@@ -421,8 +421,8 @@ static int icmp6_iif(const struct sk_buff *skb)
 /*
  *	Send an ICMP message in response to a packet in error
  */
-static void icmp6_send(struct sk_buff *skb, u8 type, u8 code, __u32 info,
-		       const struct in6_addr *force_saddr)
+void icmp6_send(struct sk_buff *skb, u8 type, u8 code, __u32 info,
+		const struct in6_addr *force_saddr)
 {
 	struct net *net = dev_net(skb->dev);
 	struct inet6_dev *idev = NULL;
@@ -596,6 +596,7 @@ out:
 out_bh_enable:
 	local_bh_enable();
 }
+EXPORT_SYMBOL(icmp6_send);
 
 /* Slightly more convenient version of icmp6_send.
  */
