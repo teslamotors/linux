@@ -39,7 +39,7 @@ static void pvc_display(unsigned long data)
 		pvc_write_string(pvc_lines[i], 0, i);
 }
 
-static DECLARE_TASKLET(pvc_display_tasklet, &pvc_display, 0);
+static DECLARE_TASKLET_OLD(pvc_display_tasklet, &pvc_display);
 
 static int pvc_line_proc_show(struct seq_file *m, void *v)
 {
