@@ -156,7 +156,6 @@ struct sas_port {
 
 	struct mutex		phy_list_mutex;
 	struct list_head	phy_list;
-	struct list_head	del_list; /* libsas only */
 };
 
 #define dev_to_sas_port(d) \

@@ -730,6 +730,7 @@ int sas_discover_sata(struct domain_device *dev)
 	if (res)
 		return res;
 
+	sas_discover_event(dev->port, DISCE_PROBE);
 	return 0;
 }
 
