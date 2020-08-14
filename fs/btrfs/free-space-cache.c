@@ -1169,7 +1169,6 @@ static int __btrfs_wait_cache_io(struct btrfs_root *root,
 	ret = update_cache_item(trans, root, inode, path, offset,
 				io_ctl->entries, io_ctl->bitmaps);
 out:
-	io_ctl_free(io_ctl);
 	if (ret) {
 		invalidate_inode_pages2(inode->i_mapping);
 		BTRFS_I(inode)->generation = 0;
@@ -1334,6 +1333,7 @@ static int __btrfs_write_out_cache(struct btrfs_root *root, struct inode *inode,
 	 * them out later
 	 */
 	io_ctl_drop_pages(io_ctl);
+	io_ctl_free(io_ctl);
 
 	unlock_extent_cached(&BTRFS_I(inode)->io_tree, 0,
 			     i_size_read(inode) - 1, &cached_state, GFP_NOFS);
