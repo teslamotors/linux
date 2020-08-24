@@ -771,12 +771,6 @@ static int bnxt_re_destroy_gsi_sqp(struct bnxt_re_qp *qp)
 	gsi_sqp = rdev->gsi_ctx.gsi_sqp;
 	gsi_sah = rdev->gsi_ctx.gsi_sah;
 
-	/* remove from active qp list */
-	mutex_lock(&rdev->qp_lock);
-	list_del(&gsi_sqp->list);
-	mutex_unlock(&rdev->qp_lock);
-	atomic_dec(&rdev->qp_count);
-
 	dev_dbg(rdev_to_dev(rdev), "Destroy the shadow AH\n");
 	bnxt_qplib_destroy_ah(&rdev->qplib_res,
 			      &gsi_sah->qplib_ah,
@@ -790,6 +784,12 @@ static int bnxt_re_destroy_gsi_sqp(struct bnxt_re_qp *qp)
 		goto fail;
 	}
 	bnxt_qplib_free_qp_res(&rdev->qplib_res, &gsi_sqp->qplib_qp);
+
+	/* remove from active qp list */
+	mutex_lock(&rdev->qp_lock);
+	list_del(&gsi_sqp->list);
+	mutex_unlock(&rdev->qp_lock);
+	atomic_dec(&rdev->qp_count);
 
 	kfree(rdev->gsi_ctx.sqp_tbl);
 	kfree(gsi_sah);
@@ -810,11 +810,6 @@ int bnxt_re_destroy_qp(struct ib_qp *ib_qp, struct ib_udata *udata)
 	struct bnxt_re_dev *rdev = qp->rdev;
 	unsigned int flags;
 	int rc;
-
-	mutex_lock(&rdev->qp_lock);
-	list_del(&qp->list);
-	mutex_unlock(&rdev->qp_lock);
-	atomic_dec(&rdev->qp_count);
 
 	bnxt_qplib_flush_cqn_wq(&qp->qplib_qp);
 
@@ -837,6 +832,11 @@ int bnxt_re_destroy_qp(struct ib_qp *ib_qp, struct ib_udata *udata)
 		if (rc)
 			goto sh_fail;
 	}
+
+	mutex_lock(&rdev->qp_lock);
+	list_del(&qp->list);
+	mutex_unlock(&rdev->qp_lock);
+	atomic_dec(&rdev->qp_count);
 
 	ib_umem_release(qp->rumem);
 	ib_umem_release(qp->sumem);
