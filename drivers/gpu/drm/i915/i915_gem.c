@@ -1836,6 +1836,10 @@ int i915_gem_fault(struct vm_fault *vmf)
 	unsigned int flags;
 	int ret;
 
+	/* Sanity check that we allow writing into this object */
+	if (i915_gem_object_is_readonly(obj) && write)
+		return VM_FAULT_SIGBUS;
+
 	/* We don't use vmf->pgoff since that has the fake offset */
 	page_offset = (vmf->address - area->vm_start) >> PAGE_SHIFT;
 
@@ -3230,6 +3234,12 @@ i915_gem_idle_work_handler(struct work_struct *work)
 
 	if (INTEL_GEN(dev_priv) >= 6)
 		gen6_rps_idle(dev_priv);
+
+	if (NEEDS_RC6_CTX_CORRUPTION_WA(dev_priv)) {
+		i915_rc6_ctx_wa_check(dev_priv);
+		intel_uncore_forcewake_put(dev_priv, FORCEWAKE_ALL);
+	}
+
 	intel_runtime_pm_put(dev_priv);
 out_unlock:
 	mutex_unlock(&dev->struct_mutex);
@@ -3998,6 +4008,20 @@ i915_gem_object_ggtt_pin(struct drm_i915_gem_object *obj,
 {
 	struct drm_i915_private *dev_priv = to_i915(obj->base.dev);
 	struct i915_address_space *vm = &dev_priv->ggtt.vm;
+
+	return i915_gem_object_pin(obj, vm, view, size, alignment,
+				   flags | PIN_GLOBAL);
+}
+
+struct i915_vma *
+i915_gem_object_pin(struct drm_i915_gem_object *obj,
+		    struct i915_address_space *vm,
+		    const struct i915_ggtt_view *view,
+		    u64 size,
+		    u64 alignment,
+		    u64 flags)
+{
+	struct drm_i915_private *dev_priv = to_i915(obj->base.dev);
 	struct i915_vma *vma;
 	int ret;
 
@@ -4055,7 +4079,7 @@ i915_gem_object_ggtt_pin(struct drm_i915_gem_object *obj,
 			return ERR_PTR(ret);
 	}
 
-	ret = i915_vma_pin(vma, size, alignment, flags | PIN_GLOBAL);
+	ret = i915_vma_pin(vma, size, alignment, flags);
 	if (ret)
 		return ERR_PTR(ret);
 
@@ -4211,9 +4235,15 @@ i915_gem_madvise_ioctl(struct drm_device *dev, void *data,
 	    return -EINVAL;
 	}
 
+        err = mutex_lock_interruptible(&dev_priv->drm.struct_mutex);
+        if (err)
+                return err;
+
 	obj = i915_gem_object_lookup(file_priv, args->handle);
-	if (!obj)
-		return -ENOENT;
+	if (!obj) {
+		err = -ENOENT;
+		goto out_obj_lookup;
+	}
 
 	err = mutex_lock_interruptible(&obj->mm.lock);
 	if (err)
@@ -4247,6 +4277,8 @@ i915_gem_madvise_ioctl(struct drm_device *dev, void *data,
 
 out:
 	i915_gem_object_put(obj);
+out_obj_lookup:
+	mutex_unlock(&dev_priv->drm.struct_mutex);
 	return err;
 }
 

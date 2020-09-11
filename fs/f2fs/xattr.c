@@ -201,12 +201,17 @@ static inline const struct xattr_handler *f2fs_xattr_handler(int index)
 	return handler;
 }
 
-static struct f2fs_xattr_entry *__find_xattr(void *base_addr, int index,
-					size_t len, const char *name)
+static struct f2fs_xattr_entry *__find_xattr(void *base_addr,
+				void *last_base_addr, int index,
+				size_t len, const char *name)
 {
 	struct f2fs_xattr_entry *entry;
 
 	list_for_each_xattr(entry, base_addr) {
+		if ((void *)(entry) + sizeof(__u32) > last_base_addr ||
+			(void *)XATTR_NEXT_ENTRY(entry) > last_base_addr)
+			return NULL;
+
 		if (entry->e_name_index != index)
 			continue;
 		if (entry->e_name_len != len)
@@ -241,65 +246,89 @@ static struct f2fs_xattr_entry *__find_inline_xattr(void *base_addr,
 	return entry;
 }
 
+static int read_inline_xattr(struct inode *inode, struct page *ipage,
+							void *txattr_addr)
+{
+	struct f2fs_sb_info *sbi = F2FS_I_SB(inode);
+	unsigned int inline_size = inline_xattr_size(inode);
+	struct page *page = NULL;
+	void *inline_addr;
+
+	if (ipage) {
+		inline_addr = inline_xattr_addr(ipage);
+	} else {
+		page = get_node_page(sbi, inode->i_ino);
+		if (IS_ERR(page))
+			return PTR_ERR(page);
+
+		inline_addr = inline_xattr_addr(page);
+	}
+	memcpy(txattr_addr, inline_addr, inline_size);
+	f2fs_put_page(page, 1);
+
+	return 0;
+}
+
+static int read_xattr_block(struct inode *inode, void *txattr_addr)
+{
+	struct f2fs_sb_info *sbi = F2FS_I_SB(inode);
+	nid_t xnid = F2FS_I(inode)->i_xattr_nid;
+	unsigned int inline_size = inline_xattr_size(inode);
+	struct page *xpage;
+	void *xattr_addr;
+
+	/* The inode already has an extended attribute block. */
+	xpage = get_node_page(sbi, xnid);
+	if (IS_ERR(xpage))
+		return PTR_ERR(xpage);
+
+	xattr_addr = page_address(xpage);
+	memcpy(txattr_addr + inline_size, xattr_addr, VALID_XATTR_BLOCK_SIZE);
+	f2fs_put_page(xpage, 1);
+
+	return 0;
+}
+
 static int lookup_all_xattrs(struct inode *inode, struct page *ipage,
 				unsigned int index, unsigned int len,
 				const char *name, struct f2fs_xattr_entry **xe,
-				void **base_addr)
+				void **base_addr, int *base_size)
 {
-	struct f2fs_sb_info *sbi = F2FS_I_SB(inode);
-	void *cur_addr, *txattr_addr, *last_addr = NULL;
+	void *cur_addr, *txattr_addr, *last_txattr_addr;
+	void *last_addr = NULL;
 	nid_t xnid = F2FS_I(inode)->i_xattr_nid;
-	unsigned int size = xnid ? VALID_XATTR_BLOCK_SIZE : 0;
 	unsigned int inline_size = inline_xattr_size(inode);
 	int err = 0;
 
-	if (!size && !inline_size)
+	if (!xnid && !inline_size)
 		return -ENODATA;
 
-	txattr_addr = kzalloc(inline_size + size + XATTR_PADDING_SIZE,
-							GFP_F2FS_ZERO);
+	*base_size = XATTR_SIZE(xnid, inode) + XATTR_PADDING_SIZE;
+	txattr_addr = kzalloc(*base_size, GFP_F2FS_ZERO);
 	if (!txattr_addr)
 		return -ENOMEM;
 
+	last_txattr_addr = (void *)txattr_addr + XATTR_SIZE(xnid, inode);
+
 	/* read from inline xattr */
 	if (inline_size) {
-		struct page *page = NULL;
-		void *inline_addr;
-
-		if (ipage) {
-			inline_addr = inline_xattr_addr(ipage);
-		} else {
-			page = get_node_page(sbi, inode->i_ino);
-			if (IS_ERR(page)) {
-				err = PTR_ERR(page);
-				goto out;
-			}
-			inline_addr = inline_xattr_addr(page);
-		}
-		memcpy(txattr_addr, inline_addr, inline_size);
-		f2fs_put_page(page, 1);
+		err = read_inline_xattr(inode, ipage, txattr_addr);
+		if (err)
+			goto out;
 
 		*xe = __find_inline_xattr(txattr_addr, &last_addr,
 						index, len, name);
-		if (*xe)
+		if (*xe) {
+			*base_size = inline_size;
 			goto check;
+		}
 	}
 
 	/* read from xattr node block */
 	if (xnid) {
-		struct page *xpage;
-		void *xattr_addr;
-
-		/* The inode already has an extended attribute block. */
-		xpage = get_node_page(sbi, xnid);
-		if (IS_ERR(xpage)) {
-			err = PTR_ERR(xpage);
+		err = read_xattr_block(inode, txattr_addr);
+		if (err)
 			goto out;
-		}
-
-		xattr_addr = page_address(xpage);
-		memcpy(txattr_addr + inline_size, xattr_addr, size);
-		f2fs_put_page(xpage, 1);
 	}
 
 	if (last_addr)
@@ -307,7 +336,11 @@ static int lookup_all_xattrs(struct inode *inode, struct page *ipage,
 	else
 		cur_addr = txattr_addr;
 
-	*xe = __find_xattr(cur_addr, index, len, name);
+	*xe = __find_xattr(cur_addr, last_txattr_addr, index, len, name);
+	if (!*xe) {
+		err = -EFAULT;
+		goto out;
+	}
 check:
 	if (IS_XATTR_LAST_ENTRY(*xe)) {
 		err = -ENODATA;
@@ -324,7 +357,6 @@ out:
 static int read_all_xattrs(struct inode *inode, struct page *ipage,
 							void **base_addr)
 {
-	struct f2fs_sb_info *sbi = F2FS_I_SB(inode);
 	struct f2fs_xattr_header *header;
 	nid_t xnid = F2FS_I(inode)->i_xattr_nid;
 	unsigned int size = VALID_XATTR_BLOCK_SIZE;
@@ -339,38 +371,16 @@ static int read_all_xattrs(struct inode *inode, struct page *ipage,
 
 	/* read from inline xattr */
 	if (inline_size) {
-		struct page *page = NULL;
-		void *inline_addr;
-
-		if (ipage) {
-			inline_addr = inline_xattr_addr(ipage);
-		} else {
-			page = get_node_page(sbi, inode->i_ino);
-			if (IS_ERR(page)) {
-				err = PTR_ERR(page);
-				goto fail;
-			}
-			inline_addr = inline_xattr_addr(page);
-		}
-		memcpy(txattr_addr, inline_addr, inline_size);
-		f2fs_put_page(page, 1);
+		err = read_inline_xattr(inode, ipage, txattr_addr);
+		if (err)
+			goto fail;
 	}
 
 	/* read from xattr node block */
 	if (xnid) {
-		struct page *xpage;
-		void *xattr_addr;
-
-		/* The inode already has an extended attribute block. */
-		xpage = get_node_page(sbi, xnid);
-		if (IS_ERR(xpage)) {
-			err = PTR_ERR(xpage);
+		err = read_xattr_block(inode, txattr_addr);
+		if (err)
 			goto fail;
-		}
-
-		xattr_addr = page_address(xpage);
-		memcpy(txattr_addr + inline_size, xattr_addr, size);
-		f2fs_put_page(xpage, 1);
 	}
 
 	header = XATTR_HDR(txattr_addr);
@@ -465,6 +475,7 @@ int f2fs_getxattr(struct inode *inode, int index, const char *name,
 	int error = 0;
 	unsigned int size, len;
 	void *base_addr = NULL;
+	int base_size;
 
 	if (name == NULL)
 		return -EINVAL;
@@ -475,7 +486,7 @@ int f2fs_getxattr(struct inode *inode, int index, const char *name,
 
 	down_read(&F2FS_I(inode)->i_xattr_sem);
 	error = lookup_all_xattrs(inode, ipage, index, len, name,
-				&entry, &base_addr);
+				&entry, &base_addr, &base_size);
 	up_read(&F2FS_I(inode)->i_xattr_sem);
 	if (error)
 		return error;
@@ -489,6 +500,11 @@ int f2fs_getxattr(struct inode *inode, int index, const char *name,
 
 	if (buffer) {
 		char *pval = entry->e_name + entry->e_name_len;
+
+		if (base_size - (pval - (char *)base_addr) < size) {
+			error = -ERANGE;
+			goto out;
+		}
 		memcpy(buffer, pval, size);
 	}
 	error = size;
@@ -500,8 +516,9 @@ out:
 ssize_t f2fs_listxattr(struct dentry *dentry, char *buffer, size_t buffer_size)
 {
 	struct inode *inode = d_inode(dentry);
+	nid_t xnid = F2FS_I(inode)->i_xattr_nid;
 	struct f2fs_xattr_entry *entry;
-	void *base_addr;
+	void *base_addr, *last_base_addr;
 	int error = 0;
 	size_t rest = buffer_size;
 
@@ -511,12 +528,24 @@ ssize_t f2fs_listxattr(struct dentry *dentry, char *buffer, size_t buffer_size)
 	if (error)
 		return error;
 
+	last_base_addr = (void *)base_addr + XATTR_SIZE(xnid, inode);
+
 	list_for_each_xattr(entry, base_addr) {
 		const struct xattr_handler *handler =
 			f2fs_xattr_handler(entry->e_name_index);
 		const char *prefix;
 		size_t prefix_len;
 		size_t size;
+
+		if ((void *)(entry) + sizeof(__u32) > last_base_addr ||
+			(void *)XATTR_NEXT_ENTRY(entry) > last_base_addr) {
+			f2fs_msg(dentry->d_sb, KERN_ERR,
+				 "inode (%lu) has corrupted xattr",
+				 inode->i_ino);
+			set_sbi_flag(F2FS_I_SB(inode), SBI_NEED_FSCK);
+			error = -EFSCORRUPTED;
+			goto cleanup;
+		}
 
 		if (!handler || (handler->list && !handler->list(dentry)))
 			continue;
@@ -557,7 +586,8 @@ static int __f2fs_setxattr(struct inode *inode, int index,
 			struct page *ipage, int flags)
 {
 	struct f2fs_xattr_entry *here, *last;
-	void *base_addr;
+	void *base_addr, *last_base_addr;
+	nid_t xnid = F2FS_I(inode)->i_xattr_nid;
 	int found, newsize;
 	size_t len;
 	__u32 new_hsize;
@@ -581,8 +611,14 @@ static int __f2fs_setxattr(struct inode *inode, int index,
 	if (error)
 		return error;
 
+	last_base_addr = (void *)base_addr + XATTR_SIZE(xnid, inode);
+
 	/* find entry with wanted name. */
-	here = __find_xattr(base_addr, index, len, name);
+	here = __find_xattr(base_addr, last_base_addr, index, len, name);
+	if (!here) {
+		error = -EFAULT;
+		goto exit;
+	}
 
 	found = IS_XATTR_LAST_ENTRY(here) ? 0 : 1;
 

@@ -86,7 +86,7 @@ static bool fw_search_cmdline(const char *name, size_t *size, phys_addr_t *addr)
 {
 	char str[20];	/* "0x" + 16 numerals + '\0'. Rounded to 20 */
 	char *p = saved_command_line;
-	char *p2 = NULL, *p3, *end;
+	char *p2 = NULL, *end;
 	size_t len;
 
 	/* search for FW name */
@@ -108,13 +108,10 @@ static bool fw_search_cmdline(const char *name, size_t *size, phys_addr_t *addr)
 		end = p + strlen(p);
 
 	/* calc size */
-	p3 = strnchr(p, (end - p), '@');		/* goto end of size */
-	if (!p3) {
-		p3 = strnchr(p, (end - p), ',');
-		if (!p3)
-			return false;
-	}
-	p = p3;
+	p = strnchr(p, (end - p), '@');		/* goto end of size */
+	if (!p)
+		return false;
+
 	len = p - p2 + 1;
 	strlcpy(str, p2, len);
 	str[len] = '\0';

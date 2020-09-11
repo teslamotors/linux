@@ -52,6 +52,7 @@
 
 /* Includes */
 #include <linux/acpi.h>			/* For ACPI support */
+#include <linux/delay.h>		/* For msleep() */
 #include <linux/module.h>		/* For module specific items */
 #include <linux/moduleparam.h>		/* For new moduleparam's */
 #include <linux/types.h>		/* For standard types (like size_t) */
@@ -66,8 +67,8 @@
 #include <linux/spinlock.h>		/* For spin_lock/spin_unlock/... */
 #include <linux/uaccess.h>		/* For copy_to_user/put_user/... */
 #include <linux/io.h>			/* For inb/outb/... */
+#include <linux/nmi.h>			/* For trigger_allbutself_cpu_backtrace */
 #include <linux/platform_data/itco_wdt.h>
-
 #include "iTCO_vendor.h"
 
 /* Address definitions for the TCO */
@@ -110,7 +111,15 @@ struct iTCO_wdt_private {
 	void *no_reboot_priv;
 	/* no reboot update function pointer */
 	int (*update_no_reboot_bit)(void *p, bool set);
+	/*
+	 * Add support for a soft pretimeout timer, since the iTCO doesn't natively
+	 * support a pretimeout interrupt.
+	 */
+	struct hrtimer pretimeout_timer;
+	/* Add the option to start the pretimeout timer on resume() only */
+	bool pretimeout_on_resume_only;
 };
+
 
 /* module parameters */
 #define WATCHDOG_TIMEOUT 30	/* 30 sec default heartbeat */
@@ -130,6 +139,16 @@ static int turn_SMI_watchdog_clear_off = 1;
 module_param(turn_SMI_watchdog_clear_off, int, 0);
 MODULE_PARM_DESC(turn_SMI_watchdog_clear_off,
 	"Turn off SMI clearing watchdog (depends on TCO-version)(default=1)");
+
+static int soft_pretimeout = 0;
+module_param(soft_pretimeout, int, 0);
+MODULE_PARM_DESC(soft_pretimeout,
+	"Enable the soft pretimeout timer (default=0)");
+
+static bool resume_pretimeout = 1;
+module_param(resume_pretimeout, bool, S_IRUSR | S_IWUSR);
+MODULE_PARM_DESC(resume_pretimeout,
+	"Enable the pretimeout timer only on S3 resume(default=1)");
 
 /*
  * Some TCO specific functions
@@ -219,6 +238,22 @@ static int update_no_reboot_bit_mem(void *priv, bool set)
 	return 0;
 }
 
+static void start_pretimeout_timer(struct watchdog_device *wd_dev)
+{
+	struct iTCO_wdt_private *p = watchdog_get_drvdata(wd_dev);
+
+	hrtimer_start(&p->pretimeout_timer,
+		      ktime_set(wd_dev->timeout - wd_dev->pretimeout, 0),
+		      HRTIMER_MODE_REL);
+}
+
+static void cancel_pretimeout_timer(struct watchdog_device *wd_dev)
+{
+	struct iTCO_wdt_private *p = watchdog_get_drvdata(wd_dev);
+
+	hrtimer_cancel(&p->pretimeout_timer);
+}
+
 static void iTCO_wdt_no_reboot_bit_setup(struct iTCO_wdt_private *p,
 		struct itco_wdt_platform_data *pdata)
 {
@@ -293,6 +328,9 @@ static int iTCO_wdt_stop(struct watchdog_device *wd_dev)
 
 	spin_unlock(&p->io_lock);
 
+	if (wd_dev->pretimeout > 0)
+		cancel_pretimeout_timer(wd_dev);
+
 	if ((val & 0x0800) == 0)
 		return -1;
 	return 0;
@@ -315,6 +353,13 @@ static int iTCO_wdt_ping(struct watchdog_device *wd_dev)
 		outw(0x0008, TCO1_STS(p));	/* write 1 to clear bit */
 
 		outb(0x01, TCO_RLD(p));
+	}
+
+	/* Cancel pretimeout on first valid ping */
+	if (wd_dev->pretimeout > 0 && !p->pretimeout_on_resume_only) {
+		start_pretimeout_timer(wd_dev);
+	} else {
+		cancel_pretimeout_timer(wd_dev);
 	}
 
 	spin_unlock(&p->io_lock);
@@ -370,6 +415,13 @@ static int iTCO_wdt_set_timeout(struct watchdog_device *wd_dev, unsigned int t)
 	}
 
 	wd_dev->timeout = t;
+
+	/* Disable pretimeout if it doesn't fit the new timeout */
+	if (wd_dev->pretimeout >= wd_dev->timeout) {
+		wd_dev->pretimeout = 0;
+		pr_warn("Disabling pretimeout timer to %ds\n",
+			wd_dev->timeout);
+	}
 	return 0;
 }
 
@@ -401,6 +453,19 @@ static unsigned int iTCO_wdt_get_timeleft(struct watchdog_device *wd_dev)
 	return time_left;
 }
 
+static enum hrtimer_restart iTCO_wdt_pretimeout(struct hrtimer *timer)
+{
+	struct iTCO_wdt_private *p = container_of(timer,
+						 struct iTCO_wdt_private,
+						 pretimeout_timer);
+
+	/* Send NMI to other cores to dump their backtrace before panic'ing */
+	trigger_all_cpu_backtrace();
+
+	watchdog_notify_pretimeout(&p->wddev);
+
+	return HRTIMER_NORESTART;
+}
 /*
  *	Kernel Interfaces
  */
@@ -408,7 +473,8 @@ static unsigned int iTCO_wdt_get_timeleft(struct watchdog_device *wd_dev)
 static const struct watchdog_info ident = {
 	.options =		WDIOF_SETTIMEOUT |
 				WDIOF_KEEPALIVEPING |
-				WDIOF_MAGICCLOSE,
+				WDIOF_MAGICCLOSE |
+				WDIOF_PRETIMEOUT,
 	.firmware_version =	0,
 	.identity =		DRV_NAME,
 };
@@ -531,8 +597,16 @@ static int iTCO_wdt_probe(struct platform_device *pdev)
 	p->wddev.ops = &iTCO_wdt_ops,
 	p->wddev.bootstatus = 0;
 	p->wddev.timeout = WATCHDOG_TIMEOUT;
+	p->wddev.pretimeout = soft_pretimeout;
 	watchdog_set_nowayout(&p->wddev, nowayout);
 	p->wddev.parent = dev;
+
+	/* Add soft support for pretimeout functionality */
+	hrtimer_init(&p->pretimeout_timer, CLOCK_MONOTONIC,
+		     HRTIMER_MODE_REL);
+	pr_info("pretimeout enabled, initialized hr_timer");
+	p->pretimeout_timer.function = iTCO_wdt_pretimeout;
+	p->pretimeout_on_resume_only = resume_pretimeout;
 
 	watchdog_set_drvdata(&p->wddev, p);
 	platform_set_drvdata(pdev, p);
@@ -599,6 +673,10 @@ static int iTCO_wdt_suspend_noirq(struct device *dev)
 		if (!ret)
 			p->suspended = true;
 	}
+
+	dev_info(dev, "Cancelling pretimeout tiemr");
+	cancel_pretimeout_timer(&p->wddev);
+
 	return ret;
 }
 
@@ -608,6 +686,13 @@ static int iTCO_wdt_resume_noirq(struct device *dev)
 
 	if (p->suspended)
 		iTCO_wdt_start(&p->wddev);
+
+	/* Start the pretimeout timer on resume */
+	if (p->wddev.pretimeout > 0) {
+		dev_info(dev, "Restarting pretimeout timer. T-%ds",
+			 p->wddev.pretimeout);
+		start_pretimeout_timer(&p->wddev);
+	}
 
 	return 0;
 }

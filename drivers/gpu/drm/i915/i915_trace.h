@@ -672,7 +672,7 @@ TRACE_EVENT(i915_gem_ring_flush,
 		      __entry->invalidate, __entry->flush)
 );
 
-TRACE_EVENT(i915_gem_multi_domains,
+TRACE_EVENT(i915_multi_domains,
 	    TP_PROTO(struct i915_request *rq),
 	    TP_ARGS(rq),
 
@@ -714,7 +714,7 @@ TRACE_EVENT(i915_gem_multi_domains,
 		      __entry->hw_id, __entry->vgt_id, __entry->pid)
 );
 
-DEFINE_EVENT(i915_gem_multi_domains, i915_gem_request_add_domain,
+DEFINE_EVENT(i915_multi_domains, i915_request_add_domain,
 	    TP_PROTO(struct i915_request *rq),
 	    TP_ARGS(rq)
 );

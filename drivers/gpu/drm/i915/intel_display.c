@@ -9676,26 +9676,6 @@ out:
 	return active;
 }
 
-/*
- * Cursor state for platforms that use a universal plane to satisfy "cursor"
- * requests.  Pipes have 'numsprites+1' total planes which are exposed to
- * userspace as:
- *  - Plane 0: "primary"
- *  - Planes 1 to numsprites-1: "overlay"
- *  - Plane numsprites: "cursor"
- */
-static bool
-universal_cursor_state(struct drm_i915_private *dev_priv,
-		       enum pipe pipe)
-{
-	unsigned int planenum = INTEL_INFO(dev_priv)->num_sprites[pipe];
-	u32 val;
-
-	val = I915_READ(PLANE_CTL(pipe, planenum));
-
-	return val & PLANE_CTL_ENABLE;
-}
-
 static u32 intel_cursor_base(const struct intel_plane_state *plane_state)
 {
 	struct drm_i915_private *dev_priv =

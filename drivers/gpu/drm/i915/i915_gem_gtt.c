@@ -163,7 +163,8 @@ int intel_sanitize_enable_ppgtt(struct drm_i915_private *dev_priv,
 	if (enable_ppgtt == 0 && INTEL_GEN(dev_priv) < 9)
 		return 0;
 
-	if (enable_ppgtt == 1)
+	/* Full PPGTT is required by the Gen9 cmdparser */
+	if (enable_ppgtt == 1 && INTEL_GEN(dev_priv) != 9)
 		return 1;
 
 	if (enable_ppgtt == 2 && has_full_ppgtt)
@@ -211,9 +212,9 @@ static int ppgtt_bind_vma(struct i915_vma *vma,
 
 	vma->pages = vma->obj->mm.pages;
 
-	/* Currently applicable only to VLV */
+	/* Applicable to VLV, and gen8+ */
 	pte_flags = 0;
-	if (vma->obj->gt_ro)
+	if (i915_gem_object_is_readonly(vma->obj))
 		pte_flags |= PTE_READ_ONLY;
 
 	vma->vm->insert_entries(vma->vm, vma, cache_level, pte_flags);
@@ -227,10 +228,13 @@ static void ppgtt_unbind_vma(struct i915_vma *vma)
 }
 
 static gen8_pte_t gen8_pte_encode(dma_addr_t addr,
-				  enum i915_cache_level level)
+				  enum i915_cache_level level,
+				  u32 flags)
 {
-	gen8_pte_t pte = _PAGE_PRESENT | _PAGE_RW;
-	pte |= addr;
+	gen8_pte_t pte = addr | _PAGE_PRESENT | _PAGE_RW;
+
+	if (unlikely(flags & PTE_READ_ONLY))
+		pte &= ~_PAGE_RW;
 
 	switch (level) {
 	case I915_CACHE_NONE:
@@ -491,7 +495,7 @@ static void gen8_initialize_pt(struct i915_address_space *vm,
 			       struct i915_page_table *pt)
 {
 	fill_px(vm, pt,
-		gen8_pte_encode(vm->scratch_page.daddr, I915_CACHE_LLC));
+		gen8_pte_encode(vm->scratch_page.daddr, I915_CACHE_LLC, 0));
 }
 
 static void gen6_initialize_pt(struct i915_address_space *vm,
@@ -695,7 +699,7 @@ static bool gen8_ppgtt_clear_pt(struct i915_address_space *vm,
 	unsigned int pte = gen8_pte_index(start);
 	unsigned int pte_end = pte + num_entries;
 	const gen8_pte_t scratch_pte =
-		gen8_pte_encode(vm->scratch_page.daddr, I915_CACHE_LLC);
+		gen8_pte_encode(vm->scratch_page.daddr, I915_CACHE_LLC, 0);
 	gen8_pte_t *vaddr;
 
 	GEM_BUG_ON(num_entries > pt->used_ptes);
@@ -880,10 +884,11 @@ gen8_ppgtt_insert_pte_entries(struct i915_hw_ppgtt *ppgtt,
 			      struct i915_page_directory_pointer *pdp,
 			      struct sgt_dma *iter,
 			      struct gen8_insert_pte *idx,
-			      enum i915_cache_level cache_level)
+			      enum i915_cache_level cache_level,
+			      u32 flags)
 {
 	struct i915_page_directory *pd;
-	const gen8_pte_t pte_encode = gen8_pte_encode(0, cache_level);
+	const gen8_pte_t pte_encode = gen8_pte_encode(0, cache_level, flags);
 	gen8_pte_t *vaddr;
 	bool ret;
 
@@ -934,20 +939,20 @@ gen8_ppgtt_insert_pte_entries(struct i915_hw_ppgtt *ppgtt,
 static void gen8_ppgtt_insert_3lvl(struct i915_address_space *vm,
 				   struct i915_vma *vma,
 				   enum i915_cache_level cache_level,
-				   u32 unused)
+				   u32 flags)
 {
 	struct i915_hw_ppgtt *ppgtt = i915_vm_to_ppgtt(vm);
 	struct sgt_dma iter = sgt_dma(vma);
 	struct gen8_insert_pte idx = gen8_insert_pte(vma->node.start);
 
 	gen8_ppgtt_insert_pte_entries(ppgtt, &ppgtt->pdp, &iter, &idx,
-				      cache_level);
+				      cache_level, flags);
 }
 
 static void gen8_ppgtt_insert_4lvl(struct i915_address_space *vm,
 				   struct i915_vma *vma,
 				   enum i915_cache_level cache_level,
-				   u32 unused)
+				   u32 flags)
 {
 	struct i915_hw_ppgtt *ppgtt = i915_vm_to_ppgtt(vm);
 	struct sgt_dma iter = sgt_dma(vma);
@@ -955,7 +960,7 @@ static void gen8_ppgtt_insert_4lvl(struct i915_address_space *vm,
 	struct gen8_insert_pte idx = gen8_insert_pte(vma->node.start);
 
 	while (gen8_ppgtt_insert_pte_entries(ppgtt, pdps[idx.pml4e++], &iter,
-					     &idx, cache_level))
+					     &idx, cache_level, flags))
 		GEM_BUG_ON(idx.pml4e >= GEN8_PML4ES_PER_PML4);
 
 	if (PVMMIO_LEVEL_ENABLE(vm->i915, PVMMIO_PPGTT_UPDATE)) {
@@ -1314,7 +1319,7 @@ static void gen8_dump_ppgtt(struct i915_hw_ppgtt *ppgtt, struct seq_file *m)
 {
 	struct i915_address_space *vm = &ppgtt->vm;
 	const gen8_pte_t scratch_pte =
-		gen8_pte_encode(vm->scratch_page.daddr, I915_CACHE_LLC);
+		gen8_pte_encode(vm->scratch_page.daddr, I915_CACHE_LLC, 0);
 	u64 start = 0, length = ppgtt->vm.total;
 
 	if (use_4lvl(vm)) {
@@ -1388,6 +1393,13 @@ static int gen8_ppgtt_init(struct i915_hw_ppgtt *ppgtt)
 		ppgtt->vm.total = 0;
 		return ret;
 	}
+
+	/*
+	 * From bdw, there is support for read-only pages in the PPGTT.
+	 *
+	 * XXX GVT is not honouring the lack of RW in the PTE bits.
+	 */
+	ppgtt->vm.has_read_only = !intel_vgpu_active(dev_priv);
 
 	/* There are only few exceptions for gen >=6. chv and bxt.
 	 * And we are not sure about the latter so play safe for now.
@@ -2149,7 +2161,7 @@ static void gen8_ggtt_insert_page(struct i915_address_space *vm,
 	gen8_pte_t __iomem *pte =
 		(gen8_pte_t __iomem *)ggtt->gsm + (offset >> PAGE_SHIFT);
 
-	gen8_set_pte(pte, gen8_pte_encode(addr, level));
+	gen8_set_pte(pte, gen8_pte_encode(addr, level, 0));
 
 	if (PVMMIO_LEVEL_ENABLE(vm->i915, PVMMIO_GGTT_UPDATE)) {
 		vgpu_ggtt_insert(vm->i915, offset, 1, level);
@@ -2162,13 +2174,18 @@ static void gen8_ggtt_insert_page(struct i915_address_space *vm,
 static void gen8_ggtt_insert_entries(struct i915_address_space *vm,
 				     struct i915_vma *vma,
 				     enum i915_cache_level level,
-				     u32 unused)
+				     u32 flags)
 {
 	struct i915_ggtt *ggtt = i915_vm_to_ggtt(vm);
 	struct sgt_iter sgt_iter;
 	gen8_pte_t __iomem *gtt_entries;
-	const gen8_pte_t pte_encode = gen8_pte_encode(0, level);
+	const gen8_pte_t pte_encode = gen8_pte_encode(0, level, 0);
 	dma_addr_t addr;
+
+	/*
+	 * Note that we ignore PTE_READ_ONLY here. The caller must be careful
+	 * not to allow the user to override access to a read only page.
+	 */
 
 	gtt_entries = (gen8_pte_t __iomem *)ggtt->gsm;
 	gtt_entries += vma->node.start >> PAGE_SHIFT;
@@ -2251,7 +2268,7 @@ static void gen8_ggtt_clear_range(struct i915_address_space *vm,
 	unsigned first_entry = start >> PAGE_SHIFT;
 	unsigned num_entries = length >> PAGE_SHIFT;
 	const gen8_pte_t scratch_pte =
-		gen8_pte_encode(vm->scratch_page.daddr, I915_CACHE_LLC);
+		gen8_pte_encode(vm->scratch_page.daddr, I915_CACHE_LLC, 0);
 	gen8_pte_t __iomem *gtt_base =
 		(gen8_pte_t __iomem *)ggtt->gsm + first_entry;
 	const int max_entries = ggtt_total_entries(ggtt) - first_entry;
@@ -2330,6 +2347,7 @@ struct insert_entries {
 	struct i915_address_space *vm;
 	struct i915_vma *vma;
 	enum i915_cache_level level;
+	u32 flags;
 };
 
 static int bxt_vtd_ggtt_insert_entries__cb(void *_arg)
@@ -2340,7 +2358,7 @@ static int bxt_vtd_ggtt_insert_entries__cb(void *_arg)
 	if (intel_gvt_active(arg->vm->i915))
 		gvt_pause_user_domains(arg->vm->i915);
 #endif
-	gen8_ggtt_insert_entries(arg->vm, arg->vma, arg->level, 0);
+	gen8_ggtt_insert_entries(arg->vm, arg->vma, arg->level, arg->flags);
 #if IS_ENABLED(CONFIG_DRM_I915_GVT)
 	if (intel_gvt_active(arg->vm->i915))
 		gvt_unpause_user_domains(arg->vm->i915);
@@ -2353,9 +2371,9 @@ static int bxt_vtd_ggtt_insert_entries__cb(void *_arg)
 static void bxt_vtd_ggtt_insert_entries__BKL(struct i915_address_space *vm,
 					     struct i915_vma *vma,
 					     enum i915_cache_level level,
-					     u32 unused)
+					     u32 flags)
 {
-	struct insert_entries arg = { vm, vma, level };
+	struct insert_entries arg = { vm, vma, level, flags };
 
 	stop_machine(bxt_vtd_ggtt_insert_entries__cb, &arg, NULL);
 }
@@ -2460,9 +2478,9 @@ static int ggtt_bind_vma(struct i915_vma *vma,
 			return ret;
 	}
 
-	/* Currently applicable only to VLV */
+	/* Applicable to VLV (gen8+ do not support RO in the GGTT) */
 	pte_flags = 0;
-	if (obj->gt_ro)
+	if (i915_gem_object_is_readonly(obj))
 		pte_flags |= PTE_READ_ONLY;
 
 	intel_runtime_pm_get(i915);
@@ -2504,7 +2522,7 @@ static int aliasing_gtt_bind_vma(struct i915_vma *vma,
 
 	/* Currently applicable only to VLV */
 	pte_flags = 0;
-	if (vma->obj->gt_ro)
+	if (i915_gem_object_is_readonly(vma->obj))
 		pte_flags |= PTE_READ_ONLY;
 
 	if (flags & I915_VMA_LOCAL_BIND) {
@@ -3189,6 +3207,10 @@ int i915_ggtt_init_hw(struct drm_i915_private *dev_priv)
 	 */
 	mutex_lock(&dev_priv->drm.struct_mutex);
 	i915_address_space_init(&ggtt->vm, dev_priv, "[global]");
+
+	/* Only VLV supports read-only GGTT mappings */
+	ggtt->vm.has_read_only = IS_VALLEYVIEW(dev_priv);
+
 	if (!HAS_LLC(dev_priv) && !USES_PPGTT(dev_priv))
 		ggtt->vm.mm.color_adjust = i915_gtt_color_adjust;
 	mutex_unlock(&dev_priv->drm.struct_mutex);
@@ -3221,7 +3243,6 @@ int i915_ggtt_enable_hw(struct drm_i915_private *dev_priv)
 {
 	if (INTEL_GEN(dev_priv) < 6 && !intel_enable_gtt())
 		return -EIO;
-
 	return 0;
 }
 

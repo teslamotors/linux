@@ -853,6 +853,7 @@ extern int disable_proptx;
 
 
 extern int passive_channel_skip;
+extern char clm_version[];
 
 static s32
 wl_ap_start_ind(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
@@ -9979,6 +9980,8 @@ s32 wl_mode_to_nl80211_iftype(s32 mode)
 	return err;
 }
 
+static char eu_alpha2s[] = "AD,AT,BE,BG,CH,CZ,DE,DK,ES,EE,FI,FR,GB,GI,GR,HR,HU,IE,IS,IT,LI,LT,LU,LV,MC,MT,NL,NO,PL,PT,RO,SK,SE";
+
 #ifdef CONFIG_CFG80211_INTERNAL_REGDB
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 9, 0))
 static int
@@ -9992,11 +9995,22 @@ wl_cfg80211_reg_notifier(
 	struct bcm_cfg80211 *cfg = (struct bcm_cfg80211 *)wiphy_priv(wiphy);
 	int ret = 0;
 	int revinfo = -1;
+	char alpha2_str[3];
+
 
 	if (!request || !cfg) {
 		WL_ERR(("Invalid arg\n"));
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 9, 0))
 		return -EINVAL;
+#else
+		return;
+#endif /* kernel version < 3.9.0 */
+	}
+
+	if(!strlen(clm_version)) {
+		WL_ERR(("clm not ready yet\n"));
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 9, 0))
+		return -EBUSY;
 #else
 		return;
 #endif /* kernel version < 3.9.0 */
@@ -10018,6 +10032,20 @@ wl_cfg80211_reg_notifier(
 	WL_ERR(("Set country code %c%c from %s\n",
 		request->alpha2[0], request->alpha2[1],
 		((request->initiator == NL80211_REGDOM_SET_BY_COUNTRY_IE) ? " 11d AP" : "User")));
+
+	/* In LGIT regulatory tables all EU countries are mapped to France "FR".
+	 * If provided Alpha2 code is matching one from this list we set WiFi regulatory domain to "FR"
+	 */
+	alpha2_str[0] = request->alpha2[0];
+	alpha2_str[1] = request->alpha2[1];
+	alpha2_str[2] = 0;
+	if(bcmstrstr(eu_alpha2s, alpha2_str)) {
+		request->alpha2[0] = 'F';
+		request->alpha2[1] = 'R';
+		WL_ERR(("Override  country code %c%c from %s\n",
+				request->alpha2[0], request->alpha2[1],
+				((request->initiator == NL80211_REGDOM_SET_BY_COUNTRY_IE) ? " 11d AP" : "User")));
+	}
 
 	if ((ret = wldev_set_country(bcmcfg_to_prmry_ndev(cfg), request->alpha2,
 		false, (request->initiator == NL80211_REGDOM_SET_BY_USER ? true : false),

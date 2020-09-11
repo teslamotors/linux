@@ -132,7 +132,7 @@ ipu_buttress_ipc_send_bulk(struct ipu_device *isp,
 			   struct ipu_ipc_buttress_bulk_msg *msgs, u32 size);
 int ipu_buttress_psys_freq_get(void *data, u64 *val);
 int ipu_buttress_isys_freq_get(void *data, u64 *val);
-#ifdef I2C_WA
+#ifdef I2C_DYNAMIC
 int ipu_get_i2c_bus_id(int adapter_id);
-#endif /* I2C_WA */
+#endif /* I2C_DYNAMIC */
 #endif /* IPU_BUTTRESS_H */

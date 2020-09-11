@@ -42,5 +42,7 @@ static const struct ti940_register_write ti940_tp_settings[] = {
 
 #define TI940_DEVID		0x0
 #define TI940_RESET		0x1
+#define TI940_7BIT_ADDR	0x30
+#define TI940_8BIT_ADDR	0x60
 
 #endif

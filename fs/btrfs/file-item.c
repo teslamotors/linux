@@ -288,7 +288,8 @@ found:
 		csum += count * csum_size;
 		nblocks -= count;
 next:
-		while (count--) {
+		while (count > 0) {
+			count--;
 			disk_bytenr += fs_info->sectorsize;
 			offset += fs_info->sectorsize;
 			page_bytes_left -= fs_info->sectorsize;
@@ -794,10 +795,12 @@ again:
 		nritems = btrfs_header_nritems(path->nodes[0]);
 		if (!nritems || (path->slots[0] >= nritems - 1)) {
 			ret = btrfs_next_leaf(root, path);
-			if (ret == 1)
+			if (ret < 0) {
+				goto out;
+			} else if (ret > 0) {
 				found_next = 1;
-			if (ret != 0)
 				goto insert;
+			}
 			slot = path->slots[0];
 		}
 		btrfs_item_key_to_cpu(path->nodes[0], &found_key, slot);
@@ -955,7 +958,7 @@ void btrfs_extent_item_to_extent_map(struct btrfs_inode *inode,
 			btrfs_file_extent_num_bytes(leaf, fi);
 	} else if (type == BTRFS_FILE_EXTENT_INLINE) {
 		size_t size;
-		size = btrfs_file_extent_inline_len(leaf, slot, fi);
+		size = btrfs_file_extent_ram_bytes(leaf, fi);
 		extent_end = ALIGN(extent_start + size,
 				   fs_info->sectorsize);
 	}

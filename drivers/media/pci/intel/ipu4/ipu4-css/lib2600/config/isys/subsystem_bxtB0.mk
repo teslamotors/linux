@@ -46,6 +46,14 @@ WA_HSD1209062354		 = 1
 # WA to disable clock gating for the devices in the CSI receivers needed for using the mipi_pkt_gen device
 WA_HSD1805168877		 = 0
 
+# WA to match the NofSOF & NofEOF when resuming a stream to prevent fps drop
+WA_HSD1507026600         = 1
+
+# WA related to HSD1507026600 which disables prequeuing commands to IBufCtrl (i.e. only one capture command
+# queued to HW at a time). This prevents a rare hang that can occur and is essentially a
+# better solution than the "5 extra lines" workaround that was used to fix HW bug referenced in HSD1303898875
+WA_DISABLE_IBUF_PREQUEUE = 1
+
 # Support IBUF soft-reset at stream start
 SOFT_RESET_IBUF_STREAM_START_SUPPORT = 1
 
@@ -55,6 +63,6 @@ SOFT_RESET_IBUF_STREAM_START_SUPPORT = 1
 
 # TODO: This define should be entirely removed.
 # Used in mipi_capture
-ISYS_DISABLE_VERIFY_RECEIVED_SOF_EOF     = 0
+ISYS_DISABLE_VERIFY_RECEIVED_SOF_EOF     = 1
 
 ISYS_ACCESS_BLOCKER_VERSION      = v1

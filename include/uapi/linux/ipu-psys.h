@@ -4,7 +4,11 @@
 #ifndef _UAPI_IPU_PSYS_H
 #define _UAPI_IPU_PSYS_H
 
+#ifdef __KERNEL__
 #include <linux/types.h>
+#else
+#include <stdint.h>
+#endif
 
 struct ipu_psys_capability {
 	uint32_t version;

@@ -30,6 +30,7 @@
 #include "ecies.h"
 #include "kdf_x963.h"
 #include "utils.h"
+#include "keystore_rand.h"
 
 int ecies_encrypt(ecc_cipher_t *cipher, EccPoint *pubKey,
 		  const uint8_t *msg, uint32_t msglen)
@@ -55,7 +56,7 @@ int ecies_encrypt(ecc_cipher_t *cipher, EccPoint *pubKey,
 		return -1;
 
 	/* Generate random ECDH keypair and session key z */
-	getRandomBytes((uint8_t *) k, NUM_ECC_BYTES);
+	keystore_get_rdrand((uint8_t *) k, NUM_ECC_BYTES);
 	if (!ecc_make_key(&R, k, k)) /* R=k^2? Is this correct? */
 		return -2;
 

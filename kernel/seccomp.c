@@ -807,7 +807,7 @@ static int __seccomp_filter(int this_syscall, const struct seccomp_data *sd,
 		return 0;
 
 	case SECCOMP_RET_LOG:
-		seccomp_log_violation("trace", sd);
+		seccomp_log_violation("log", sd);
 		seccomp_log(this_syscall, 0, action, true);
 		return 0;
 

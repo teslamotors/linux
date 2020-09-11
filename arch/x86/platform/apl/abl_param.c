@@ -28,7 +28,7 @@ static unsigned int num_params;
 /* device and user seed */
 #define ABL_SEED		"seed"
 #define ABL_SEED_LIST		"seed_list"
-#define ABL_SEED_FORMAT         "%x,%x"
+#define ABL_SEED_FORMAT		"%x,%x"
 #define ABL_RET_DSEED_USEED	2
 
 #define ABL_MANIFEST		"oemkm"
@@ -59,6 +59,12 @@ static int get_apl_offsets(const char* tag, struct seed_offset *ksoff)
 				res = 0;
 			break;
 		}
+	}
+	if ( (0 == strcmp(tag,ABL_SEED_LIST) && (res == -ENODATA) ) )
+	{
+		ksoff->device_seed = 0;
+		ksoff->user_seed = 0;
+		res = 0;
 	}
 
 	return res;

@@ -4,6 +4,12 @@
 #ifndef __AS3638_H__
 #define __AS3638_H__
 
+#ifdef __KERNEL__
+#include <linux/types.h>
+#else
+#include <stdint.h>
+#endif
+
 #define AS3638_NAME			"as3638"
 #define AS3638_I2C_ADDR			0x30
 

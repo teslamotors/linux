@@ -253,6 +253,10 @@ static void mark_busy(struct drm_i915_private *i915)
 	GEM_BUG_ON(!i915->gt.active_requests);
 
 	intel_runtime_pm_get_noresume(i915);
+
+	if (NEEDS_RC6_CTX_CORRUPTION_WA(i915))
+		intel_uncore_forcewake_get(i915, FORCEWAKE_ALL);
+
 	i915->gt.awake = true;
 
 	intel_enable_gt_powersave(i915);
@@ -914,6 +918,7 @@ void __i915_request_add(struct i915_request *request, bool flush_caches)
 
 	lockdep_assert_held(&request->i915->drm.struct_mutex);
 	trace_i915_request_add(request);
+	trace_i915_request_add_domain(request);
 
 	/* Make sure that no request gazumped us - if it was allocated after
 	 * our i915_request_alloc() and called __i915_request_add() before

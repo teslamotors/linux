@@ -550,6 +550,7 @@ static int ti940_init(struct ti940 *va)
 {
 	int i, rval;
 	unsigned int val;
+	struct i2c_client *client = v4l2_get_subdevdata(&va->sd);
 
 	rval = regmap_read(va->regmap8, TI940_DEVID, &val);
 	if (rval) {
@@ -557,6 +558,12 @@ static int ti940_init(struct ti940 *va)
 		return rval;
 	}
 	dev_info(va->sd.dev, "TI940 device ID: 0x%X\n", val);
+
+	if (client->addr == TI940_7BIT_ADDR && val != TI940_8BIT_ADDR) {
+		dev_err(va->sd.dev, "Device ID 0x%X for addr 0x%X does not match expected TI940 device ID 0x%X\n",
+			val, TI940_7BIT_ADDR, TI940_8BIT_ADDR);
+		return -ENODEV;
+	}
 
 	for (i = 0; i < ARRAY_SIZE(ti940_init_settings); i++) {
 		rval = regmap_write(va->regmap8,

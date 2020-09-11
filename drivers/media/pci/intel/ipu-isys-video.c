@@ -1826,7 +1826,11 @@ static const struct v4l2_ioctl_ops ioctl_ops_splane = {
 
 static const struct v4l2_ioctl_ops ioctl_ops_mplane = {
 	.vidioc_querycap = ipu_isys_vidioc_querycap,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 3, 0)
+	.vidioc_enum_fmt_vid_cap = ipu_isys_vidioc_enum_fmt,
+#else
 	.vidioc_enum_fmt_vid_cap_mplane = ipu_isys_vidioc_enum_fmt,
+#endif
 	.vidioc_g_fmt_vid_cap_mplane = vidioc_g_fmt_vid_cap_mplane,
 	.vidioc_s_fmt_vid_cap_mplane = vidioc_s_fmt_vid_cap_mplane,
 	.vidioc_try_fmt_vid_cap_mplane = vidioc_try_fmt_vid_cap_mplane,

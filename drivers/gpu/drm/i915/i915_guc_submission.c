@@ -1288,6 +1288,9 @@ int intel_guc_suspend(struct drm_i915_private *dev_priv)
 	struct intel_guc *guc = &dev_priv->guc;
 	u32 data[3];
 
+	if (!(i915_modparams.enable_guc_submission))
+		return 0;
+
 	if (guc->fw.load_status != INTEL_UC_FIRMWARE_SUCCESS)
 		return 0;
 
@@ -1310,6 +1313,9 @@ int intel_guc_resume(struct drm_i915_private *dev_priv)
 {
 	struct intel_guc *guc = &dev_priv->guc;
 	u32 data[3];
+	
+	if (!(i915_modparams.enable_guc_submission))
+		return 0;
 
 	if (guc->fw.load_status != INTEL_UC_FIRMWARE_SUCCESS)
 		return 0;

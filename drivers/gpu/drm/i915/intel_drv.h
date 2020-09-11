@@ -264,7 +264,6 @@ struct intel_encoder {
 
 struct intel_panel {
 	struct drm_display_mode *fixed_mode;
-	struct drm_display_mode *alt_fixed_mode;
 	struct drm_display_mode *downclock_mode;
 
 	/* backlight */
@@ -1809,7 +1808,6 @@ void intel_overlay_reset(struct drm_i915_private *dev_priv);
 /* intel_panel.c */
 int intel_panel_init(struct intel_panel *panel,
 		     struct drm_display_mode *fixed_mode,
-		     struct drm_display_mode *alt_fixed_mode,
 		     struct drm_display_mode *downclock_mode);
 void intel_panel_fini(struct intel_panel *panel);
 void intel_fixed_panel_mode(const struct drm_display_mode *fixed_mode,
@@ -1982,6 +1980,9 @@ void intel_enable_gt_powersave(struct drm_i915_private *dev_priv);
 void intel_autoenable_gt_powersave(struct drm_i915_private *dev_priv);
 void intel_disable_gt_powersave(struct drm_i915_private *dev_priv);
 void intel_suspend_gt_powersave(struct drm_i915_private *dev_priv);
+bool i915_rc6_ctx_wa_check(struct drm_i915_private *i915);
+void i915_rc6_ctx_wa_suspend(struct drm_i915_private *i915);
+void i915_rc6_ctx_wa_resume(struct drm_i915_private *i915);
 void gen6_rps_busy(struct drm_i915_private *dev_priv);
 void gen6_rps_reset_ei(struct drm_i915_private *dev_priv);
 void gen6_rps_idle(struct drm_i915_private *dev_priv);

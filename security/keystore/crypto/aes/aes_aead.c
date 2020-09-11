@@ -114,7 +114,10 @@ static int keystore_aes_aead_crypt(int enc, const char *algo,
 				authsize);
 		goto err_setkey;
 	}
-
+	if (!ivlen) {
+		ks_err(KBUILD_MODNAME ": invalid initialization vector size");
+		return -EINVAL;
+	}
 	memcpy(ivbuf, iv, ivlen);
 	memset(ivbuf + ivlen, 0, sizeof(ivbuf) - ivlen);
 
