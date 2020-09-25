@@ -1404,6 +1404,15 @@ asmlinkage __visible void __init xen_start_kernel(void)
 		x86_init.mpparse.get_smp_config = x86_init_uint_noop;
 
 		xen_boot_params_init_edd();
+
+#ifdef CONFIG_ACPI
+		/*
+		 * Disable selecting "Firmware First mode" for correctable
+		 * memory errors, as this is the duty of the hypervisor to
+		 * decide.
+		 */
+		acpi_disable_cmcff = 1;
+#endif
 	}
 #ifdef CONFIG_PCI
 	/* PCI BIOS service won't work from a PV guest. */
