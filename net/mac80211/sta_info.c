@@ -2004,6 +2004,10 @@ static void sta_stats_decode_rate(struct ieee80211_local *local, u16 rate,
 
 		rinfo->flags = 0;
 		sband = local->hw.wiphy->bands[band];
+
+		if (WARN_ON_ONCE(!sband->bitrates))
+			break;
+
 		brate = sband->bitrates[rate_idx].bitrate;
 		if (rinfo->bw == RATE_INFO_BW_5)
 			shift = 2;
