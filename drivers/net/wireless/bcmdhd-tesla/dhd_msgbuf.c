@@ -3741,7 +3741,7 @@ dhd_prot_ioctcmplt_process(dhd_pub_t *dhd, void *msg)
 	DHD_CTL(("IOCTL_COMPLETE: req_id %x transid %d status %x resplen %d\n",
 		pkt_id, xt_id, prot->ioctl_status, prot->ioctl_resplen));
 
-	if (prot->ioctl_resplen > 0) {
+	if ((0 < prot->ioctl_resplen) && (prot->ioctl_resplen < IOCT_RETBUF_SIZE)) {
 #ifndef IOCTLRESP_USE_CONSTMEM
 		bcopy(PKTDATA(dhd->osh, pkt), prot->retbuf.va, prot->ioctl_resplen);
 #else
