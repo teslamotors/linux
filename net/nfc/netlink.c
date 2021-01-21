@@ -884,6 +884,7 @@ static int nfc_genl_stop_poll(struct sk_buff *skb, struct genl_info *info)
 
 	if (!dev->polling) {
 		device_unlock(&dev->dev);
+		nfc_put_device(dev);
 		return -EINVAL;
 	}
 
