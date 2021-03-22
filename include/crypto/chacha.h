@@ -51,4 +51,12 @@ int crypto_chacha12_setkey(struct crypto_skcipher *tfm, const u8 *key,
 int crypto_chacha_crypt(struct skcipher_request *req);
 int crypto_xchacha_crypt(struct skcipher_request *req);
 
+static inline void chacha_init_consts(u32 *state)
+{
+	state[0]  = 0x61707865; /* "expa" */
+	state[1]  = 0x3320646e; /* "nd 3" */
+	state[2]  = 0x79622d32; /* "2-by" */
+	state[3]  = 0x6b206574; /* "te k" */
+}
+
 #endif /* _CRYPTO_CHACHA_H */
