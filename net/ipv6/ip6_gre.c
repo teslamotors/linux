@@ -350,7 +350,6 @@ static struct ip6_tnl *ip6gre_tunnel_locate(struct net *net,
 	if (!(nt->parms.o_flags & TUNNEL_SEQ))
 		dev->features |= NETIF_F_LLTX;
 
-	dev_hold(dev);
 	ip6gre_tunnel_link(ign, nt);
 	return nt;
 
@@ -1124,8 +1123,6 @@ static void ip6gre_fb_tunnel_init(struct net_device *dev)
 	strcpy(tunnel->parms.name, dev->name);
 
 	tunnel->hlen		= sizeof(struct ipv6hdr) + 4;
-
-	dev_hold(dev);
 }
 
 
