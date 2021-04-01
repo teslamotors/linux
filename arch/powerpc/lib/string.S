@@ -88,7 +88,7 @@ _GLOBAL(memchr)
 EXPORT_SYMBOL(memchr)
 
 #ifdef CONFIG_PPC32
-_GLOBAL(__clear_user)
+_GLOBAL(__arch_clear_user)
 	addi	r6,r3,-4
 	li	r3,0
 	li	r5,0
@@ -128,5 +128,5 @@ _GLOBAL(__clear_user)
 	EX_TABLE(1b, 91b)
 	EX_TABLE(8b, 92b)
 
-EXPORT_SYMBOL(__clear_user)
+EXPORT_SYMBOL(__arch_clear_user)
 #endif

@@ -1425,7 +1425,7 @@ static int wm8998_probe(struct platform_device *pdev)
 
 	ret = arizona_init_spk_irqs(arizona);
 	if (ret < 0)
-		return ret;
+		goto err_pm_disable;
 
 	ret = snd_soc_register_codec(&pdev->dev, &soc_codec_dev_wm8998,
 				     wm8998_dai, ARRAY_SIZE(wm8998_dai));
@@ -1438,6 +1438,8 @@ static int wm8998_probe(struct platform_device *pdev)
 
 err_spk_irqs:
 	arizona_free_spk_irqs(arizona);
+err_pm_disable:
+	pm_runtime_disable(&pdev->dev);
 
 	return ret;
 }

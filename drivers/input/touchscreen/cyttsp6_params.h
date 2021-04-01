@@ -1,18 +1,6 @@
-//*****************************************************************************
-//*****************************************************************************
-//  FILENAME: Driver.h
-//  TrueTouch Host Emulator Version Information: 3.3, b1021
-//  TrueTouch Firmware Version Information: 1.2.935791
-//
-//  DESCRIPTION: This file contains configuration values.
-//-----------------------------------------------------------------------------
-//  Copyright (c) Cypress Semiconductor 2009 - 2016. All Rights Reserved.
-//*****************************************************************************
-//*****************************************************************************
-//-----------------------------------------------------------------------------
 /* Touchscreen Version Information */
 static u8 ttconfig_fw_ver[] = {
-	0x00, 0x00, 0x01, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0E, 0x47, 0x6F, 0x16, 0x20, 0x11, 0xA6, 0x00, 0x0F
+	0x00, 0x00, 0x01, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0E, 0x47, 0x6F, 0x16, 0x20, 0x11, 0xA6, 0x00, 0x10
 };
 
 /* Touchscreen Parameters Endianess (Endianess: 0:Little; 1:Big)*/
@@ -660,7 +648,7 @@ static const uint8_t cyttsp6_param_regs[] = {
 	0x00, 0x00,  /* Reserved1306 */
 	0xA4, 0x9D, 0x04, 0x00,  /* MAX_VELOCITY_SQR */
 	0x00, 0x71, 0x02, 0x00,  /* FINGER_ID_MAX_FINGER_ACCELERATION2 */
-	0x03,  /* FINGER_LIFTOFF_DEBOUNCE */
+	0x00,  /* FINGER_LIFTOFF_DEBOUNCE */
 	0x05,  /* GLOVE_LIFTOFF_DEBOUNCE */
 	0x00, 0x00,  /* Reserved1318 */
 	0x64, 0x00,  /* TOUCHMODE_LFT_SELF_THRSH */
@@ -687,7 +675,7 @@ static const uint8_t cyttsp6_param_regs[] = {
 	0xE8, 0x03,  /* TCH_TMOUT0 */
 	0x00,  /* POST_CFG */
 	0x00,  /* Reserved1353 */
-	0x0F, 0x00,  /* CONFIG_VER */
+	0x10, 0x00,  /* CONFIG_VER */
 	0x00,  /* SEND_REPORT_AFTER_ACTIVE_INTERVAL_CFG */
 	0x00,  /* Reserved1357 */
 	0x00, 0x00,  /* INTERRUPT_PIN_OVERRIDE */
@@ -695,7 +683,7 @@ static const uint8_t cyttsp6_param_regs[] = {
 	0x64,  /* INTERRUPT_PULSE_WIDTH */
 	0x00,  /* XY_AXES_FLIP_ROTATE_CFG */
 	0x00,  /* Reserved1363 */
-	0x47, 0x63,  /* CONFIG_CRC */
+	0x62, 0x8E,  /* CONFIG_CRC */
 };
 
 /* Touchscreen Parameters Field Sizes (Writable: 0:Readonly; 1:Writable) */
