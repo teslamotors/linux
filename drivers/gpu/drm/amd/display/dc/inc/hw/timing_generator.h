@@ -98,9 +98,19 @@ enum crc_selection {
 	INTERSECT_WINDOW_NOT_A_NOT_B,
 };
 
+#ifdef CONFIG_DRM_AMD_DC_DCN3_0
+enum otg_out_mux_dest {
+	OUT_MUX_DIO = 0,
+};
+#endif
+
 enum h_timing_div_mode {
 	H_TIMING_NO_DIV,
 	H_TIMING_DIV_BY2,
+#if defined(CONFIG_DRM_AMD_DC_DCN3_0)
+	H_TIMING_RESERVED,
+	H_TIMING_DIV_BY4,
+#endif
 };
 
 struct crc_params {
@@ -116,6 +126,11 @@ struct crc_params {
 	uint16_t windowb_y_end;
 
 	enum crc_selection selection;
+
+#ifdef CONFIG_DRM_AMD_DC_DSC_SUPPORT
+	uint8_t dsc_mode;
+#endif
+	uint8_t odm_mode;
 
 	bool continuous_mode;
 	bool enable;
@@ -210,7 +225,8 @@ struct timing_generator_funcs {
 					bool enable, const struct dc_crtc_timing *timing);
 	void (*set_drr)(struct timing_generator *tg, const struct drr_params *params);
 	void (*set_static_screen_control)(struct timing_generator *tg,
-							uint32_t value);
+						uint32_t event_triggers,
+						uint32_t num_frames);
 	void (*set_test_pattern)(
 		struct timing_generator *tg,
 		enum controller_dp_test_pattern test_pattern,
@@ -261,6 +277,8 @@ struct timing_generator_funcs {
 
 	void (*program_manual_trigger)(struct timing_generator *optc);
 	void (*setup_manual_trigger)(struct timing_generator *optc);
+	bool (*get_hw_timing)(struct timing_generator *optc,
+			struct dc_crtc_timing *hw_crtc_timing);
 
 	void (*set_vtg_params)(struct timing_generator *optc,
 			const struct dc_crtc_timing *dc_crtc_timing);
@@ -279,6 +297,15 @@ struct timing_generator_funcs {
 	void (*set_gsl_source_select)(struct timing_generator *optc,
 			int group_idx,
 			uint32_t gsl_ready_signal);
+#endif
+#if defined(CONFIG_DRM_AMD_DC_DCN3_0)
+	void (*set_out_mux)(struct timing_generator *tg, enum otg_out_mux_dest dest);
+	void (*set_vrr_m_const)(struct timing_generator *optc,
+			double vtotal_avg);
+	void (*set_drr_trigger_window)(struct timing_generator *optc,
+			uint32_t window_start, uint32_t window_end);
+	void (*set_vtotal_change_limit)(struct timing_generator *optc,
+			uint32_t limit);
 #endif
 };
 

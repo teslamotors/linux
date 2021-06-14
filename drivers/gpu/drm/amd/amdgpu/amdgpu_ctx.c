@@ -26,6 +26,7 @@
 #include "amdgpu.h"
 #include "amdgpu_sched.h"
 #include "amdgpu_ras.h"
+#include <linux/nospec.h>
 
 #define to_amdgpu_ctx_entity(e)	\
 	container_of((e), struct amdgpu_ctx_entity, entity)
@@ -87,24 +88,26 @@ static int amdgpu_ctx_init(struct amdgpu_device *adev,
 	memset(ctx, 0, sizeof(*ctx));
 	ctx->adev = adev;
 
-	ctx->fences = kcalloc(amdgpu_sched_jobs * num_entities,
-			      sizeof(struct dma_fence*), GFP_KERNEL);
-	if (!ctx->fences)
-		return -ENOMEM;
 
 	ctx->entities[0] = kcalloc(num_entities,
 				   sizeof(struct amdgpu_ctx_entity),
 				   GFP_KERNEL);
-	if (!ctx->entities[0]) {
-		r = -ENOMEM;
-		goto error_free_fences;
-	}
+	if (!ctx->entities[0])
+		return -ENOMEM;
+
 
 	for (i = 0; i < num_entities; ++i) {
 		struct amdgpu_ctx_entity *entity = &ctx->entities[0][i];
 
 		entity->sequence = 1;
-		entity->fences = &ctx->fences[amdgpu_sched_jobs * i];
+		entity->fences = kcalloc(amdgpu_sched_jobs,
+					 sizeof(struct dma_fence*), GFP_KERNEL);
+		if (!entity->fences) {
+			r = -ENOMEM;
+			goto error_cleanup_memory;
+		}
+		INIT_LIST_HEAD(&entity->sem_dep_list);
+		mutex_init(&entity->sem_lock);
 	}
 	for (i = 1; i < AMDGPU_HW_IP_NUM; ++i)
 		ctx->entities[i] = ctx->entities[i - 1] +
@@ -122,7 +125,7 @@ static int amdgpu_ctx_init(struct amdgpu_device *adev,
 
 	for (i = 0; i < AMDGPU_HW_IP_NUM; ++i) {
 		struct amdgpu_ring *rings[AMDGPU_MAX_RINGS];
-		struct drm_sched_rq *rqs[AMDGPU_MAX_RINGS];
+		struct drm_gpu_scheduler *sched_list[AMDGPU_MAX_RINGS];
 		unsigned num_rings = 0;
 		unsigned num_rqs = 0;
 
@@ -169,10 +172,10 @@ static int amdgpu_ctx_init(struct amdgpu_device *adev,
 			}
 			break;
 		case AMDGPU_HW_IP_VCN_JPEG:
-			for (j = 0; j < adev->vcn.num_vcn_inst; ++j) {
-				if (adev->vcn.harvest_config & (1 << j))
+			for (j = 0; j < adev->jpeg.num_jpeg_inst; ++j) {
+				if (adev->jpeg.harvest_config & (1 << j))
 					continue;
-				rings[num_rings++] = &adev->vcn.inst[j].ring_jpeg;
+				rings[num_rings++] = &adev->jpeg.inst[j].ring_dec;
 			}
 			break;
 		}
@@ -181,12 +184,13 @@ static int amdgpu_ctx_init(struct amdgpu_device *adev,
 			if (!rings[j]->adev)
 				continue;
 
-			rqs[num_rqs++] = &rings[j]->sched.sched_rq[priority];
+			sched_list[num_rqs++] = &rings[j]->sched;
 		}
 
 		for (j = 0; j < amdgpu_ctx_num_entities[i]; ++j)
 			r = drm_sched_entity_init(&ctx->entities[i][j].entity,
-						  rqs, num_rqs, &ctx->guilty);
+						  priority, sched_list,
+						  num_rqs, &ctx->guilty);
 		if (r)
 			goto error_cleanup_entities;
 	}
@@ -196,11 +200,17 @@ static int amdgpu_ctx_init(struct amdgpu_device *adev,
 error_cleanup_entities:
 	for (i = 0; i < num_entities; ++i)
 		drm_sched_entity_destroy(&ctx->entities[0][i].entity);
-	kfree(ctx->entities[0]);
 
-error_free_fences:
-	kfree(ctx->fences);
-	ctx->fences = NULL;
+error_cleanup_memory:
+	for (i = 0; i < num_entities; ++i) {
+		struct amdgpu_ctx_entity *entity = &ctx->entities[0][i];
+
+		kfree(entity->fences);
+		entity->fences = NULL;
+	}
+
+	kfree(ctx->entities[0]);
+	ctx->entities[0] = NULL;
 	return r;
 }
 
@@ -214,12 +224,16 @@ static void amdgpu_ctx_fini(struct kref *ref)
 	if (!adev)
 		return;
 
-	for (i = 0; i < num_entities; ++i)
-		for (j = 0; j < amdgpu_sched_jobs; ++j)
-			dma_fence_put(ctx->entities[0][i].fences[j]);
-	kfree(ctx->fences);
-	kfree(ctx->entities[0]);
+	for (i = 0; i < num_entities; ++i) {
+		struct amdgpu_ctx_entity *entity = &ctx->entities[0][i];
 
+		for (j = 0; j < amdgpu_sched_jobs; ++j)
+			dma_fence_put(entity->fences[j]);
+
+		kfree(entity->fences);
+	}
+
+	kfree(ctx->entities[0]);
 	mutex_destroy(&ctx->lock);
 
 	kfree(ctx);
@@ -403,7 +417,7 @@ int amdgpu_ctx_ioctl(struct drm_device *dev, void *data,
 	enum drm_sched_priority priority;
 
 	union drm_amdgpu_ctx *args = data;
-	struct amdgpu_device *adev = dev->dev_private;
+	struct amdgpu_device *adev = drm_to_adev(dev);
 	struct amdgpu_fpriv *fpriv = filp->driver_priv;
 
 	r = 0;
@@ -465,7 +479,7 @@ int amdgpu_ctx_put(struct amdgpu_ctx *ctx)
 
 void amdgpu_ctx_add_fence(struct amdgpu_ctx *ctx,
 			  struct drm_sched_entity *entity,
-			  struct dma_fence *fence, uint64_t* handle)
+			  struct dma_fence *fence, uint64_t *handle)
 {
 	struct amdgpu_ctx_entity *centity = to_amdgpu_ctx_entity(entity);
 	uint64_t seq = centity->sequence;
@@ -604,11 +618,8 @@ void amdgpu_ctx_mgr_entity_fini(struct amdgpu_ctx_mgr *mgr)
 			continue;
 		}
 
-		for (i = 0; i < num_entities; i++) {
-			mutex_lock(&ctx->adev->lock_reset);
+		for (i = 0; i < num_entities; i++)
 			drm_sched_entity_fini(&ctx->entities[0][i].entity);
-			mutex_unlock(&ctx->adev->lock_reset);
-		}
 	}
 }
 

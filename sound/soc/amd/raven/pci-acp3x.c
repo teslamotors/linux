@@ -16,7 +16,7 @@ struct acp3x_dev_data {
 	void __iomem *acp3x_base;
 	bool acp3x_audio_mode;
 	struct resource *res;
-	struct platform_device *pdev;
+	struct platform_device *pdev[3];
 };
 
 static int snd_acp3x_probe(struct pci_dev *pci,
@@ -46,14 +46,7 @@ static int snd_acp3x_probe(struct pci_dev *pci,
 		goto release_regions;
 	}
 
-	/* check for msi interrupt support */
-	ret = pci_enable_msi(pci);
-	if (ret)
-		/* msi is not enabled */
-		irqflags = IRQF_SHARED;
-	else
-		/* msi is enabled */
-		irqflags = 0;
+	irqflags = IRQF_SHARED;
 
 	addr = pci_resource_start(pci, 0);
 	adata->acp3x_base = ioremap(addr, pci_resource_len(pci, 0));
@@ -61,7 +54,10 @@ static int snd_acp3x_probe(struct pci_dev *pci,
 		ret = -ENOMEM;
 		goto release_regions;
 	}
+
+	/* set pci bus-mastering */
 	pci_set_master(pci);
+
 	pci_set_drvdata(pci, adata);
 
 	val = rv_readl(adata->acp3x_base + mmACP_I2S_PIN_CONFIG);
@@ -96,12 +92,30 @@ static int snd_acp3x_probe(struct pci_dev *pci,
 		pdevinfo.data = &irqflags;
 		pdevinfo.size_data = sizeof(irqflags);
 
-		adata->pdev = platform_device_register_full(&pdevinfo);
-		if (IS_ERR(adata->pdev)) {
+		adata->pdev[0] = platform_device_register_full(&pdevinfo);
+		if (IS_ERR(adata->pdev[0])) {
 			dev_err(&pci->dev, "cannot register %s device\n",
 				pdevinfo.name);
-			ret = PTR_ERR(adata->pdev);
+			ret = PTR_ERR(adata->pdev[0]);
 			goto unmap_mmio;
+		}
+
+		/* create dummy codec device */
+		adata->pdev[1] = platform_device_register_simple("dummy_w5102",
+								 0, NULL, 0);
+		if (IS_ERR(adata->pdev[1])) {
+			dev_err(&pci->dev, "Cannot register dummy_w5102\n");
+			ret = PTR_ERR(adata->pdev[1]);
+			goto unregister_pdev0;
+		}
+		/* create dummy mach device */
+		adata->pdev[2] =
+			platform_device_register_simple("acp3x_w5102_mach", 0,
+							NULL, 0);
+		if (IS_ERR(adata->pdev[2])) {
+			dev_err(&pci->dev, "Can't register acp3x_w5102_mach\n");
+			ret = PTR_ERR(adata->pdev[2]);
+			goto unregister_pdev1;
 		}
 		break;
 	default:
@@ -111,8 +125,11 @@ static int snd_acp3x_probe(struct pci_dev *pci,
 	}
 	return 0;
 
+unregister_pdev1:
+	platform_device_unregister(adata->pdev[1]);
+unregister_pdev0:
+	platform_device_unregister(adata->pdev[0]);
 unmap_mmio:
-	pci_disable_msi(pci);
 	iounmap(adata->acp3x_base);
 release_regions:
 	pci_release_regions(pci);
@@ -125,11 +142,14 @@ disable_pci:
 static void snd_acp3x_remove(struct pci_dev *pci)
 {
 	struct acp3x_dev_data *adata = pci_get_drvdata(pci);
+	int i;
 
-	platform_device_unregister(adata->pdev);
+	if (adata->acp3x_audio_mode == ACP3x_I2S_MODE) {
+		for (i = 2; i >= 0; i--)
+			platform_device_unregister(adata->pdev[i]);
+	}
 	iounmap(adata->acp3x_base);
 
-	pci_disable_msi(pci);
 	pci_release_regions(pci);
 	pci_disable_device(pci);
 }

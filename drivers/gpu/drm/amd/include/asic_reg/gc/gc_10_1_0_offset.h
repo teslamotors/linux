@@ -21,7 +21,10 @@
 #ifndef _gc_10_1_0_OFFSET_HEADER
 #define _gc_10_1_0_OFFSET_HEADER
 
-
+#define mmSQ_DEBUG_STS_GLOBAL                                                                          0x10A9
+#define mmSQ_DEBUG_STS_GLOBAL_BASE_IDX                                                                 0
+#define mmSQ_DEBUG_STS_GLOBAL2                                                                         0x10B0
+#define mmSQ_DEBUG_STS_GLOBAL2_BASE_IDX                                                                0
 
 // addressBlock: gc_sdma0_sdma0dec
 // base address: 0x4980
@@ -5187,6 +5190,20 @@
 #define mmSPI_WCL_PIPE_PERCENT_CS6_BASE_IDX                                                            0
 #define mmSPI_WCL_PIPE_PERCENT_CS7                                                                     0x1f70
 #define mmSPI_WCL_PIPE_PERCENT_CS7_BASE_IDX                                                            0
+#define mmSPI_GDBG_WAVE_CNTL                                                                           0x1f71
+#define mmSPI_GDBG_WAVE_CNTL_BASE_IDX                                                                  0
+#define mmSPI_GDBG_TRAP_CONFIG                                                                         0x1f72
+#define mmSPI_GDBG_TRAP_CONFIG_BASE_IDX                                                                0
+#define mmSPI_GDBG_TRAP_MASK                                                                           0x1f73
+#define mmSPI_GDBG_TRAP_MASK_BASE_IDX                                                                  0
+#define mmSPI_GDBG_WAVE_CNTL2                                                                          0x1f74
+#define mmSPI_GDBG_WAVE_CNTL2_BASE_IDX                                                                 0
+#define mmSPI_GDBG_WAVE_CNTL3                                                                          0x1f75
+#define mmSPI_GDBG_WAVE_CNTL3_BASE_IDX                                                                 0
+#define mmSPI_GDBG_TRAP_DATA0                                                                          0x1f78
+#define mmSPI_GDBG_TRAP_DATA0_BASE_IDX                                                                 0
+#define mmSPI_GDBG_TRAP_DATA1                                                                          0x1f79
+#define mmSPI_GDBG_TRAP_DATA1_BASE_IDX                                                                 0
 #define mmSPI_COMPUTE_QUEUE_RESET                                                                      0x1f7b
 #define mmSPI_COMPUTE_QUEUE_RESET_BASE_IDX                                                             0
 #define mmSPI_RESOURCE_RESERVE_CU_0                                                                    0x1f7c
@@ -11151,6 +11168,7 @@
 
 // addressBlock: sqind
 // base address: 0x0
+#define ixSQ_DEBUG_STS_LOCAL                                                                           0x0008
 #define ixSQ_WAVE_MODE                                                                                 0x0101
 #define ixSQ_WAVE_STATUS                                                                               0x0102
 #define ixSQ_WAVE_TRAPSTS                                                                              0x0103

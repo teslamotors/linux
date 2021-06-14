@@ -32,6 +32,9 @@
 #include "kfd_mqd_manager.h"
 
 
+#define USE_DEFAULT_GRACE_PERIOD 0xffffffff
+#define VMID_NUM 16
+
 struct device_process_node {
 	struct qcm_process_device *qpd;
 	struct list_head list;
@@ -102,6 +105,7 @@ struct device_queue_manager_ops {
 	int	(*initialize)(struct device_queue_manager *dqm);
 	int	(*start)(struct device_queue_manager *dqm);
 	int	(*stop)(struct device_queue_manager *dqm);
+	void	(*pre_reset)(struct device_queue_manager *dqm);
 	void	(*uninitialize)(struct device_queue_manager *dqm);
 	int	(*create_kernel_queue)(struct device_queue_manager *dqm,
 					struct kernel_queue *kq,
@@ -177,27 +181,34 @@ struct device_queue_manager {
 	struct list_head	queues;
 	unsigned int		saved_flags;
 	unsigned int		processes_count;
-	unsigned int		queue_count;
-	unsigned int		sdma_queue_count;
-	unsigned int		xgmi_sdma_queue_count;
+	unsigned int		active_queue_count;
+	unsigned int		active_cp_queue_count;
+	unsigned int		gws_queue_count;
 	unsigned int		total_queue_count;
 	unsigned int		next_pipe_to_allocate;
 	unsigned int		*allocated_queues;
 	uint64_t		sdma_bitmap;
 	uint64_t		xgmi_sdma_bitmap;
-	unsigned int		vmid_bitmap;
+	/* the pasid mapping for each kfd vmid */
+	uint16_t		vmid_pasid[VMID_NUM];
 	uint64_t		pipelines_addr;
-	struct kfd_mem_obj	*pipeline_mem;
 	uint64_t		fence_gpu_addr;
 	unsigned int		*fence_addr;
 	struct kfd_mem_obj	*fence_mem;
 	bool			active_runlist;
 	int			sched_policy;
+	uint32_t		trap_debug_vmid;
 
 	/* hw exception  */
 	bool			is_hws_hang;
+	bool                    is_resetting;
 	struct work_struct	hw_exception_work;
 	struct kfd_mem_obj	hiq_sdma_mqd;
+	uint32_t		wait_times;
+	bool			sched_running;
+
+	/* sync destroy and suspend  */
+	wait_queue_head_t destroy_wait;
 };
 
 void device_queue_manager_init_cik(
@@ -214,11 +225,29 @@ void device_queue_manager_init_v10_navi10(
 		struct device_queue_manager_asic_ops *asic_ops);
 void program_sh_mem_settings(struct device_queue_manager *dqm,
 					struct qcm_process_device *qpd);
-unsigned int get_queues_num(struct device_queue_manager *dqm);
+unsigned int get_cp_queues_num(struct device_queue_manager *dqm);
 unsigned int get_queues_per_pipe(struct device_queue_manager *dqm);
 unsigned int get_pipes_per_mec(struct device_queue_manager *dqm);
 unsigned int get_num_sdma_queues(struct device_queue_manager *dqm);
 unsigned int get_num_xgmi_sdma_queues(struct device_queue_manager *dqm);
+bool check_if_queues_active(struct device_queue_manager *dqm,
+		struct qcm_process_device *qpd);
+int reserve_debug_trap_vmid(struct device_queue_manager *dqm);
+int release_debug_trap_vmid(struct device_queue_manager *dqm);
+int suspend_queues(struct kfd_process *p,
+			uint32_t num_queues,
+			uint32_t grace_period,
+			uint32_t flags,
+			uint32_t *queue_ids);
+int resume_queues(struct kfd_process *p,
+		uint32_t num_queues,
+		uint32_t flags,
+		uint32_t *queue_ids);
+
+void set_queue_snapshot_entry(struct device_queue_manager *dqm,
+			      struct queue *q,
+			      int flags,
+			      struct kfd_queue_snapshot_entry *qss_entry);
 
 static inline unsigned int get_sh_mem_bases_32(struct kfd_process_device *pdd)
 {
@@ -246,4 +275,11 @@ static inline void dqm_unlock(struct device_queue_manager *dqm)
 	mutex_unlock(&dqm->lock_hidden);
 }
 
+static inline int read_sdma_queue_counter(uint64_t __user *q_rptr, uint64_t *val)
+{
+        /*
+         * SDMA activity counter is stored at queue's RPTR + 0x8 location.
+         */
+	return get_user(*val, q_rptr + 1);
+}
 #endif /* KFD_DEVICE_QUEUE_MANAGER_H_ */

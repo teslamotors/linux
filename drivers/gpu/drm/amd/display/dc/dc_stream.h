@@ -45,6 +45,7 @@ struct dc_stream_status {
 	int audio_inst;
 	struct timing_sync_info timing_sync_info;
 	struct dc_plane_state *plane_states[MAX_SURFACE_NUM];
+	bool is_abm_supported;
 };
 
 // TODO: References to this needs to be removed..
@@ -90,6 +91,13 @@ struct dc_writeback_info {
 	int dwb_pipe_inst;
 	struct dc_dwb_params dwb_params;
 	struct mcif_buf_params mcif_buf_params;
+#if defined(CONFIG_DRM_AMD_DC_DCN3_0)
+	struct mcif_warmup_params mcif_warmup_params;
+	/* the plane that is the input to TOP_MUX for MPCC that is the DWB source */
+	struct dc_plane_state *writeback_source_plane;
+	/* source MPCC instance.  for use by internally by dc */
+	int mpcc_inst;
+#endif
 };
 
 struct dc_writeback_update {
@@ -113,6 +121,22 @@ struct periodic_interrupt_config {
 	int lines_offset;
 };
 
+union stream_update_flags {
+	struct {
+		uint32_t scaling:1;
+		uint32_t out_tf:1;
+		uint32_t out_csc:1;
+		uint32_t abm_level:1;
+		uint32_t dpms_off:1;
+		uint32_t gamut_remap:1;
+#if defined(CONFIG_DRM_AMD_DC_DCN2_0)
+		uint32_t wb_update:1;
+#endif
+		uint32_t dsc_changed : 1;
+	} bits;
+
+	uint32_t raw;
+};
 
 struct dc_stream_state {
 	// sink is deprecated, new code should not reference
@@ -149,6 +173,7 @@ struct dc_stream_state {
 
 	enum view_3d_format view_format;
 
+	bool use_vsc_sdp_for_colorimetry;
 	bool ignore_msa_timing_param;
 	bool converter_disable_audio;
 	uint8_t qs_bit;
@@ -156,8 +181,6 @@ struct dc_stream_state {
 
 	/* TODO: custom INFO packets */
 	/* TODO: ABM info (DMCU) */
-	/* PSR info */
-	unsigned char psr_version;
 	/* TODO: CEA VIC */
 
 	/* DMCU info */
@@ -193,6 +216,10 @@ struct dc_stream_state {
 	unsigned int num_wb_info;
 	struct dc_writeback_info writeback_info[MAX_DWB_PIPES];
 #endif
+#if defined(CONFIG_DRM_AMD_DC_DCN3_0)
+	const struct dc_transfer_func *func_shaper;
+	const struct dc_3dlut *lut3d_func;
+#endif
 	/* Computed state bits */
 	bool mode_changed : 1;
 
@@ -214,9 +241,14 @@ struct dc_stream_state {
 #ifdef CONFIG_DRM_AMD_DC_DSC_SUPPORT
 	bool is_dsc_enabled;
 #endif
+	union stream_update_flags update_flags;
 };
 
+#define ABM_LEVEL_IMMEDIATE_DISABLE 255
+
 struct dc_stream_update {
+	struct dc_stream_state *stream;
+
 	struct rect src;
 	struct rect dst;
 	struct dc_transfer_func *out_transfer_func;
@@ -231,6 +263,7 @@ struct dc_stream_update {
 	struct dc_info_packet *vsp_infopacket;
 
 	bool *dpms_off;
+	bool integer_scaling_update;
 
 	struct colorspace_transform *gamut_remap;
 	enum dc_color_space *output_color_space;
@@ -243,6 +276,10 @@ struct dc_stream_update {
 #endif
 #if defined(CONFIG_DRM_AMD_DC_DSC_SUPPORT)
 	struct dc_dsc_config *dsc_config;
+#endif
+#if defined(CONFIG_DRM_AMD_DC_DCN3_0)
+	struct dc_transfer_func *func_shaper;
+	struct dc_3dlut *lut3d_func;
 #endif
 };
 
@@ -275,6 +312,7 @@ void dc_stream_log(const struct dc *dc, const struct dc_stream_state *stream);
 
 uint8_t dc_get_current_stream_count(struct dc *dc);
 struct dc_stream_state *dc_get_stream_at_index(struct dc *dc, uint8_t i);
+struct dc_stream_state *dc_stream_find_from_link(const struct dc_link *link);
 
 /*
  * Return the current frame counter.
@@ -337,10 +375,23 @@ bool dc_add_all_planes_for_stream(
 bool dc_stream_add_writeback(struct dc *dc,
 		struct dc_stream_state *stream,
 		struct dc_writeback_info *wb_info);
+
 bool dc_stream_remove_writeback(struct dc *dc,
 		struct dc_stream_state *stream,
 		uint32_t dwb_pipe_inst);
+
+#ifdef CONFIG_DRM_AMD_DC_DSC_SUPPORT
+enum dc_status dc_stream_add_dsc_to_resource(struct dc *dc,
+		struct dc_state *state,
+		struct dc_stream_state *stream);
+#endif
+
+bool dc_stream_warmup_writeback(struct dc *dc,
+		int num_dwb,
+		struct dc_writeback_info *wb_info);
+
 bool dc_stream_dmdata_status_done(struct dc *dc, struct dc_stream_state *stream);
+
 bool dc_stream_set_dynamic_metadata(struct dc *dc,
 		struct dc_stream_state *stream,
 		struct dc_dmdata_attributes *dmdata_attr);
@@ -360,12 +411,14 @@ enum dc_status dc_validate_stream(struct dc *dc, struct dc_stream_state *stream)
  * Enable stereo when commit_streams is not required,
  * for example, frame alternate.
  */
-bool dc_enable_stereo(
+void dc_enable_stereo(
 	struct dc *dc,
 	struct dc_state *context,
 	struct dc_stream_state *streams[],
 	uint8_t stream_count);
 
+/* Triggers multi-stream synchronization. */
+void dc_trigger_sync(struct dc *dc, struct dc_state *context);
 
 enum surface_update_type dc_check_update_surfaces_for_stream(
 		struct dc *dc,
@@ -392,6 +445,12 @@ struct dc_stream_status *dc_stream_get_status_from_state(
 struct dc_stream_status *dc_stream_get_status(
 	struct dc_stream_state *dc_stream);
 
+#ifndef TRIM_FSFT
+bool dc_optimize_timing_for_fsft(
+	struct dc_stream_state *pStream,
+	unsigned int max_input_rate_in_khz);
+#endif
+
 /*******************************************************************************
  * Cursor interfaces - To manages the cursor within a stream
  ******************************************************************************/
@@ -417,6 +476,7 @@ bool dc_stream_get_crtc_position(struct dc *dc,
 
 bool dc_stream_configure_crc(struct dc *dc,
 			     struct dc_stream_state *stream,
+			     struct crc_params *crc_window,
 			     bool enable,
 			     bool continuous);
 
@@ -426,10 +486,13 @@ bool dc_stream_get_crc(struct dc *dc,
 		       uint32_t *g_y,
 		       uint32_t *b_cb);
 
-void dc_stream_set_static_screen_events(struct dc *dc,
+void dc_stream_set_static_screen_params(struct dc *dc,
 					struct dc_stream_state **stream,
 					int num_streams,
-					const struct dc_static_screen_events *events);
+					const struct dc_static_screen_params *params);
+
+void dc_stream_set_dyn_expansion(struct dc *dc, struct dc_stream_state *stream,
+		enum dc_dynamic_expansion option);
 
 void dc_stream_set_dither_option(struct dc_stream_state *stream,
 				 enum dc_dither_option option);

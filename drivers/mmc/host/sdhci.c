@@ -2125,6 +2125,14 @@ static void sdhci_hw_reset(struct mmc_host *mmc)
 		host->ops->hw_reset(host);
 }
 
+static void sdhci_set_hs400_dll(struct mmc_host *mmc)
+{
+	struct sdhci_host *host = mmc_priv(mmc);
+
+	if (host->ops && host->ops->set_hs400_dll)
+		host->ops->set_hs400_dll(host);
+}
+
 static void sdhci_enable_sdio_irq_nolock(struct sdhci_host *host, int enable)
 {
 	if (!(host->flags & SDHCI_DEVICE_DEAD)) {
@@ -2613,6 +2621,7 @@ static const struct mmc_host_ops sdhci_ops = {
 	.get_cd		= sdhci_get_cd,
 	.get_ro		= sdhci_get_ro,
 	.hw_reset	= sdhci_hw_reset,
+	.set_hs400_dll = sdhci_set_hs400_dll,
 	.enable_sdio_irq = sdhci_enable_sdio_irq,
 	.ack_sdio_irq    = sdhci_ack_sdio_irq,
 	.start_signal_voltage_switch	= sdhci_start_signal_voltage_switch,

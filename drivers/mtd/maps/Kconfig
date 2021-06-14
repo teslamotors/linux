@@ -153,6 +153,13 @@ config MTD_NETSC520
 	  demonstration board. If you have one of these boards and would like
 	  to use the flash chips on it, say 'Y'.
 
+config MTD_TESLA_INFOZ
+	tristate "SPI Flash mapped on Tesla InfoZ platform"
+	depends on MTD_SPI_NOR && DMI
+	help
+	  This provides a driver for the SPI boot flash on Tesla InfoZ
+	  boards.
+
 config MTD_TS5500
 	tristate "JEDEC Flash device mapped on Technologic Systems TS-5500"
 	depends on TS5500 || COMPILE_TEST

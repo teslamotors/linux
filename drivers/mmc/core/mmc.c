@@ -1161,7 +1161,9 @@ static int mmc_select_hs400(struct mmc_card *card)
 			mmc_hostname(host), err);
 		return err;
 	}
+	/*In AMD Platform due to hardware ip issue this fails*/
 
+	if (!host->ops->set_hs400_dll) {
 	/* Set host controller to HS timing */
 	mmc_set_timing(card->host, MMC_TIMING_MMC_HS);
 
@@ -1172,7 +1174,7 @@ static int mmc_select_hs400(struct mmc_card *card)
 	/* Reduce frequency to HS frequency */
 	max_dtr = card->ext_csd.hs_max_dtr;
 	mmc_set_clock(host, max_dtr);
-
+	}
 	err = mmc_switch_status(card);
 	if (err)
 		goto out_err;
@@ -1215,6 +1217,8 @@ static int mmc_select_hs400(struct mmc_card *card)
 	if (err)
 		goto out_err;
 
+	if (host->ops->set_hs400_dll)
+		host->ops->set_hs400_dll(host);
 	return 0;
 
 out_err:
@@ -1237,6 +1241,7 @@ int mmc_hs400_to_hs200(struct mmc_card *card)
 
 	/* Reduce frequency to HS */
 	max_dtr = card->ext_csd.hs_max_dtr;
+	if (!host->ops->set_hs400_dll)
 	mmc_set_clock(host, max_dtr);
 
 	/* Switch HS400 to HS DDR */
@@ -1246,12 +1251,15 @@ int mmc_hs400_to_hs200(struct mmc_card *card)
 			   true, false, true);
 	if (err)
 		goto out_err;
-
+       /*In AMD Platform due to hardware ip issue this fails*/
+	if (!host->ops->set_hs400_dll)
+	{
 	mmc_set_timing(host, MMC_TIMING_MMC_DDR52);
 
 	err = mmc_switch_status(card);
 	if (err)
 		goto out_err;
+	}
 
 	/* Switch HS DDR to HS */
 	err = __mmc_switch(card, EXT_CSD_CMD_SET_NORMAL, EXT_CSD_BUS_WIDTH,

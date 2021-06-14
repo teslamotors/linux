@@ -274,7 +274,7 @@ static vm_fault_t ttm_bo_vm_fault(struct vm_fault *vmf)
 
 		if (vma->vm_flags & VM_MIXEDMAP)
 			ret = vmf_insert_mixed(&cvma, address,
-					__pfn_to_pfn_t(pfn, PFN_DEV));
+					__pfn_to_pfn_t(pfn, PFN_DEV | (bo->ssg_can_map ? PFN_MAP : 0)));
 		else
 			ret = vmf_insert_pfn(&cvma, address, pfn);
 
@@ -409,16 +409,16 @@ static struct ttm_buffer_object *ttm_bo_vm_lookup(struct ttm_bo_device *bdev,
 	struct drm_vma_offset_node *node;
 	struct ttm_buffer_object *bo = NULL;
 
-	drm_vma_offset_lock_lookup(&bdev->vma_manager);
+	drm_vma_offset_lock_lookup(bdev->vma_manager);
 
-	node = drm_vma_offset_lookup_locked(&bdev->vma_manager, offset, pages);
+	node = drm_vma_offset_lookup_locked(bdev->vma_manager, offset, pages);
 	if (likely(node)) {
 		bo = container_of(node, struct ttm_buffer_object,
 				  base.vma_node);
 		bo = ttm_bo_get_unless_zero(bo);
 	}
 
-	drm_vma_offset_unlock_lookup(&bdev->vma_manager);
+	drm_vma_offset_unlock_lookup(bdev->vma_manager);
 
 	if (!bo)
 		pr_err("Could not find buffer object to map\n");
@@ -466,7 +466,7 @@ int ttm_bo_mmap(struct file *filp, struct vm_area_struct *vma,
 	 * VM_MIXEDMAP on all mappings. See freedesktop.org bug #75719
 	 */
 	vma->vm_flags |= VM_MIXEDMAP;
-	vma->vm_flags |= VM_IO | VM_DONTEXPAND | VM_DONTDUMP;
+	vma->vm_flags |= (bo->ssg_can_map ? 0 : VM_IO) | VM_DONTEXPAND | VM_DONTDUMP;
 	return 0;
 out_unref:
 	ttm_bo_put(bo);

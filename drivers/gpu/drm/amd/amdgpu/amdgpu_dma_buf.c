@@ -321,7 +321,6 @@ const struct dma_buf_ops amdgpu_dmabuf_ops = {
 
 /**
  * amdgpu_gem_prime_export - &drm_driver.gem_prime_export implementation
- * @dev: DRM device
  * @gobj: GEM BO
  * @flags: Flags such as DRM_CLOEXEC and DRM_RDWR.
  *
@@ -368,7 +367,7 @@ amdgpu_gem_prime_import_sg_table(struct drm_device *dev,
 				 struct sg_table *sg)
 {
 	struct dma_resv *resv = attach->dmabuf->resv;
-	struct amdgpu_device *adev = dev->dev_private;
+	struct amdgpu_device *adev = drm_to_adev(dev);
 	struct amdgpu_bo *bo;
 	struct amdgpu_bo_param bp;
 	int ret;

@@ -416,6 +416,45 @@ static bool nvme_state_terminal(struct nvme_ctrl *ctrl)
 }
 
 /*
+ * Quiesce I/O to all namespaces.
+ */
+static void nvme_do_freeze_and_wait(struct nvme_ctrl *ctrl)
+{
+	mutex_lock(&ctrl->blocking_cmd_lock);
+
+	if (ctrl->user_cmd_frozen)
+		goto done;
+
+	nvme_mpath_start_freeze(ctrl->subsys);
+	nvme_mpath_wait_freeze(ctrl->subsys);
+	nvme_start_freeze(ctrl);
+	nvme_wait_freeze(ctrl);
+
+	ctrl->user_cmd_frozen = true;
+done:
+	mutex_unlock(&ctrl->blocking_cmd_lock);
+}
+
+/*
+ * Allow I/O to namespaces again after a previous call to
+ * nvme_do_freeze_and_wait().
+ */
+static void nvme_do_unfreeze(struct nvme_ctrl *ctrl)
+{
+	mutex_lock(&ctrl->blocking_cmd_lock);
+
+	if (!ctrl->user_cmd_frozen)
+		goto done;
+
+	nvme_unfreeze(ctrl);
+	nvme_mpath_unfreeze(ctrl->subsys);
+
+	ctrl->user_cmd_frozen = false;
+done:
+	mutex_unlock(&ctrl->blocking_cmd_lock);
+}
+
+/*
  * Waits for the controller state to be resetting, or returns false if it is
  * not possible to ever transition to that state.
  */
@@ -1343,6 +1382,7 @@ static u32 nvme_known_admin_effects(u8 opcode)
 		return NVME_CMD_EFFECTS_CSUPP | NVME_CMD_EFFECTS_LBCC |
 					NVME_CMD_EFFECTS_CSE_MASK;
 	case nvme_admin_sanitize_nvm:
+	case nvme_admin_download_fw:
 		return NVME_CMD_EFFECTS_CSE_MASK;
 	default:
 		break;
@@ -1376,10 +1416,7 @@ static u32 nvme_passthru_start(struct nvme_ctrl *ctrl, struct nvme_ns *ns,
 	if (effects & (NVME_CMD_EFFECTS_LBCC | NVME_CMD_EFFECTS_CSE_MASK)) {
 		mutex_lock(&ctrl->scan_lock);
 		mutex_lock(&ctrl->subsys->lock);
-		nvme_mpath_start_freeze(ctrl->subsys);
-		nvme_mpath_wait_freeze(ctrl->subsys);
-		nvme_start_freeze(ctrl);
-		nvme_wait_freeze(ctrl);
+		nvme_do_freeze_and_wait(ctrl);
 	}
 	return effects;
 }
@@ -1397,6 +1434,8 @@ static void nvme_update_formats(struct nvme_ctrl *ctrl)
 
 static void nvme_passthru_end(struct nvme_ctrl *ctrl, u32 effects)
 {
+	int blocking_cmd_timeout;
+
 	/*
 	 * Revalidate LBA changes prior to unfreezing. This is necessary to
 	 * prevent memory corruption if a logical block size was changed by
@@ -1405,8 +1444,22 @@ static void nvme_passthru_end(struct nvme_ctrl *ctrl, u32 effects)
 	if (effects & NVME_CMD_EFFECTS_LBCC)
 		nvme_update_formats(ctrl);
 	if (effects & (NVME_CMD_EFFECTS_LBCC | NVME_CMD_EFFECTS_CSE_MASK)) {
-		nvme_unfreeze(ctrl);
-		nvme_mpath_unfreeze(ctrl->subsys);
+		mutex_lock(&ctrl->blocking_cmd_lock);
+		blocking_cmd_timeout = ctrl->blocking_cmd_timeout;
+		mutex_unlock(&ctrl->blocking_cmd_lock);
+
+		if (blocking_cmd_timeout > 0) {
+			/*
+			 * Unfreeze later to give time for subsequent commands
+			 * of the same type.
+			 */
+			cancel_delayed_work_sync(&ctrl->unfreeze_work);
+			queue_delayed_work(nvme_wq, &ctrl->unfreeze_work,
+					   blocking_cmd_timeout * HZ);
+		} else {
+			nvme_do_unfreeze(ctrl);
+		}
+
 		mutex_unlock(&ctrl->subsys->lock);
 		nvme_remove_invalid_namespaces(ctrl, NVME_NSID_ALL);
 		mutex_unlock(&ctrl->scan_lock);
@@ -2102,7 +2155,7 @@ static int nvme_wait_ready(struct nvme_ctrl *ctrl, u64 cap, bool enabled)
 		if ((csts & NVME_CSTS_RDY) == bit)
 			break;
 
-		msleep(100);
+		usleep_range(1000, 2000);
 		if (fatal_signal_pending(current))
 			return -EINTR;
 		if (time_after(jiffies, timeout)) {
@@ -2823,6 +2876,9 @@ int nvme_init_identify(struct nvme_ctrl *ctrl)
 	ctrl->oncs = le16_to_cpu(id->oncs);
 	ctrl->mtfa = le16_to_cpu(id->mtfa);
 	ctrl->oaes = le32_to_cpu(id->oaes);
+	ctrl->wctemp = le16_to_cpu(id->wctemp);
+	ctrl->cctemp = le16_to_cpu(id->cctemp);
+
 	atomic_set(&ctrl->abort_limit, id->acl + 1);
 	ctrl->vwc = id->vwc;
 	if (id->mdts)
@@ -2921,6 +2977,9 @@ int nvme_init_identify(struct nvme_ctrl *ctrl)
 	ret = nvme_configure_acre(ctrl);
 	if (ret < 0)
 		return ret;
+
+	if (!ctrl->identified)
+		nvme_hwmon_init(ctrl);
 
 	ctrl->identified = true;
 
@@ -3268,6 +3327,36 @@ static ssize_t nvme_sysfs_show_state(struct device *dev,
 
 static DEVICE_ATTR(state, S_IRUGO, nvme_sysfs_show_state, NULL);
 
+static ssize_t nvme_sysfs_show_blocking_cmd_timeout(struct device *dev,
+					 struct device_attribute *attr,
+					 char *buf)
+{
+	struct nvme_ctrl *ctrl = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%d\n", ctrl->blocking_cmd_timeout);
+}
+
+static ssize_t nvme_sysfs_store_blocking_cmd_timeout(struct device *dev,
+					 struct device_attribute *attr,
+					 const char *buf, size_t count)
+{
+	unsigned int val;
+
+	struct nvme_ctrl *ctrl = dev_get_drvdata(dev);
+
+	if (kstrtouint(buf, 10, &val))
+		return -EINVAL;
+
+	mutex_lock(&ctrl->blocking_cmd_lock);
+	ctrl->blocking_cmd_timeout = val;
+	mutex_unlock(&ctrl->blocking_cmd_lock);
+
+	return count;
+}
+static DEVICE_ATTR(blocking_cmd_timeout, 0644,
+			nvme_sysfs_show_blocking_cmd_timeout,
+			nvme_sysfs_store_blocking_cmd_timeout);
+
 static ssize_t nvme_sysfs_show_subsysnqn(struct device *dev,
 					 struct device_attribute *attr,
 					 char *buf)
@@ -3294,6 +3383,7 @@ static struct attribute *nvme_dev_attrs[] = {
 	&dev_attr_model.attr,
 	&dev_attr_serial.attr,
 	&dev_attr_firmware_rev.attr,
+	&dev_attr_blocking_cmd_timeout.attr,
 	&dev_attr_cntlid.attr,
 	&dev_attr_delete_controller.attr,
 	&dev_attr_transport.attr,
@@ -3942,6 +4032,14 @@ static void nvme_fw_act_work(struct work_struct *work)
 	nvme_get_fw_slot_info(ctrl);
 }
 
+static void nvme_unfreeze_work(struct work_struct *work)
+{
+	struct nvme_ctrl *ctrl = container_of(to_delayed_work(work),
+			struct nvme_ctrl, unfreeze_work);
+
+	nvme_do_unfreeze(ctrl);
+}
+
 static void nvme_handle_aen_notice(struct nvme_ctrl *ctrl, u32 result)
 {
 	u32 aer_notice_type = (result & 0xff00) >> 8;
@@ -4075,6 +4173,7 @@ int nvme_init_ctrl(struct nvme_ctrl *ctrl, struct device *dev,
 	ctrl->state = NVME_CTRL_NEW;
 	spin_lock_init(&ctrl->lock);
 	mutex_init(&ctrl->scan_lock);
+	mutex_init(&ctrl->blocking_cmd_lock);
 	INIT_LIST_HEAD(&ctrl->namespaces);
 	init_rwsem(&ctrl->namespaces_rwsem);
 	ctrl->dev = dev;
@@ -4084,6 +4183,7 @@ int nvme_init_ctrl(struct nvme_ctrl *ctrl, struct device *dev,
 	INIT_WORK(&ctrl->async_event_work, nvme_async_event_work);
 	INIT_WORK(&ctrl->fw_act_work, nvme_fw_act_work);
 	INIT_WORK(&ctrl->delete_work, nvme_delete_ctrl_work);
+	INIT_DELAYED_WORK(&ctrl->unfreeze_work, nvme_unfreeze_work);
 	init_waitqueue_head(&ctrl->state_wq);
 
 	INIT_DELAYED_WORK(&ctrl->ka_work, nvme_keep_alive_work);

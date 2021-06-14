@@ -2616,6 +2616,13 @@
 #define mmSPI_WCL_PIPE_PERCENT_CS5_DEFAULT                                       0x0000007f
 #define mmSPI_WCL_PIPE_PERCENT_CS6_DEFAULT                                       0x0000007f
 #define mmSPI_WCL_PIPE_PERCENT_CS7_DEFAULT                                       0x0000007f
+#define mmSPI_GDBG_WAVE_CNTL_DEFAULT                                             0x00000000
+#define mmSPI_GDBG_TRAP_CONFIG_DEFAULT                                           0x00000000
+#define mmSPI_GDBG_TRAP_MASK_DEFAULT                                             0x00000000
+#define mmSPI_GDBG_WAVE_CNTL2_DEFAULT                                            0x00000000
+#define mmSPI_GDBG_WAVE_CNTL3_DEFAULT                                            0x00000000
+#define mmSPI_GDBG_TRAP_DATA0_DEFAULT                                            0x00000000
+#define mmSPI_GDBG_TRAP_DATA1_DEFAULT                                            0x00000000
 #define mmSPI_COMPUTE_QUEUE_RESET_DEFAULT                                        0x00000000
 #define mmSPI_RESOURCE_RESERVE_CU_0_DEFAULT                                      0x00000000
 #define mmSPI_RESOURCE_RESERVE_CU_1_DEFAULT                                      0x00000000

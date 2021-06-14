@@ -52,9 +52,15 @@ static int kfd_init(void)
 	if (err < 0)
 		goto err_topology;
 
+	err = kfd_ipc_init();
+	if (err < 0)
+		goto err_ipc;
+
 	err = kfd_process_create_wq();
 	if (err < 0)
 		goto err_create_wq;
+
+	kfd_init_peer_direct();
 
 	/* Ignore the return value, so that we can continue
 	 * to init the KFD, even if procfs isn't craated
@@ -66,23 +72,26 @@ static int kfd_init(void)
 	return 0;
 
 err_create_wq:
+err_ipc:
 	kfd_topology_shutdown();
 err_topology:
 	kfd_chardev_exit();
 err_ioctl:
+	pr_err("KFD is disabled due to module initialization failure\n");
 	return err;
 }
 
 static void kfd_exit(void)
 {
 	kfd_debugfs_fini();
+	kfd_close_peer_direct();
 	kfd_process_destroy_wq();
 	kfd_procfs_shutdown();
 	kfd_topology_shutdown();
 	kfd_chardev_exit();
 }
 
-int kgd2kfd_init()
+int kgd2kfd_init(void)
 {
 	return kfd_init();
 }

@@ -880,14 +880,23 @@ static int spi_nor_lock_and_prep(struct spi_nor *nor, enum spi_nor_ops ops)
 
 	mutex_lock(&nor->lock);
 
+	if (nor->spimem) {
+		ret = spi_mem_prepare(nor->spimem);
+		if (ret)
+			goto err;
+	}
+
 	if (nor->prepare) {
 		ret = nor->prepare(nor, ops);
-		if (ret) {
-			dev_err(nor->dev, "failed in the preparation.\n");
-			mutex_unlock(&nor->lock);
-			return ret;
-		}
+		if (ret)
+			goto err;
 	}
+
+	return 0;
+
+err:
+	dev_err(nor->dev, "failed in the preparation.\n");
+	mutex_unlock(&nor->lock);
 	return ret;
 }
 
@@ -895,6 +904,10 @@ static void spi_nor_unlock_and_unprep(struct spi_nor *nor, enum spi_nor_ops ops)
 {
 	if (nor->unprepare)
 		nor->unprepare(nor, ops);
+
+	if (nor->spimem)
+		spi_mem_unprepare(nor->spimem);
+
 	mutex_unlock(&nor->lock);
 }
 

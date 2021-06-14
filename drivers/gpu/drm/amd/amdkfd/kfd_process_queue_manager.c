@@ -53,7 +53,7 @@ static int find_available_queue_slot(struct process_queue_manager *pqm,
 	pr_debug("The new slot id %lu\n", found);
 
 	if (found >= KFD_MAX_NUM_OF_QUEUES_PER_PROCESS) {
-		pr_info("Cannot open more queues for process with pasid %d\n",
+		pr_info("Cannot open more queues for process with pasid 0x%x\n",
 				pqm->process->pasid);
 		return -ENOMEM;
 	}
@@ -162,7 +162,7 @@ void pqm_uninit(struct process_queue_manager *pqm)
 	pqm->queue_slot_bitmap = NULL;
 }
 
-static int create_cp_queue(struct process_queue_manager *pqm,
+static int init_user_queue(struct process_queue_manager *pqm,
 				struct kfd_dev *dev, struct queue **q,
 				struct queue_properties *q_properties,
 				struct file *f, unsigned int qid)
@@ -171,6 +171,7 @@ static int create_cp_queue(struct process_queue_manager *pqm,
 
 	/* Doorbell initialized in user space*/
 	q_properties->doorbell_ptr = NULL;
+	q_properties->is_new = true;
 
 	/* let DQM handle it*/
 	q_properties->vmid = 0;
@@ -192,7 +193,8 @@ int pqm_create_queue(struct process_queue_manager *pqm,
 			    struct kfd_dev *dev,
 			    struct file *f,
 			    struct queue_properties *properties,
-			    unsigned int *qid)
+			    unsigned int *qid,
+			    uint32_t *p_doorbell_offset_in_process)
 {
 	int retval;
 	struct kfd_process_device *pdd;
@@ -240,23 +242,18 @@ int pqm_create_queue(struct process_queue_manager *pqm,
 	switch (type) {
 	case KFD_QUEUE_TYPE_SDMA:
 	case KFD_QUEUE_TYPE_SDMA_XGMI:
-		if ((type == KFD_QUEUE_TYPE_SDMA && dev->dqm->sdma_queue_count
-			>= get_num_sdma_queues(dev->dqm)) ||
-			(type == KFD_QUEUE_TYPE_SDMA_XGMI &&
-			dev->dqm->xgmi_sdma_queue_count
-			>= get_num_xgmi_sdma_queues(dev->dqm))) {
-			pr_debug("Over-subscription is not allowed for SDMA.\n");
-			retval = -EPERM;
-			goto err_create_queue;
-		}
-
-		retval = create_cp_queue(pqm, dev, &q, properties, f, *qid);
+		/* SDMA queues are always allocated statically no matter
+		 * which scheduler mode is used. We also do not need to
+		 * check whether a SDMA queue can be allocated here, because
+		 * allocate_sdma_queue() in create_queue() has the
+		 * corresponding check logic.
+		 */
+		retval = init_user_queue(pqm, dev, &q, properties, f, *qid);
 		if (retval != 0)
 			goto err_create_queue;
 		pqn->q = q;
 		pqn->kq = NULL;
 		retval = dev->dqm->ops.create_queue(dev->dqm, q, &pdd->qpd);
-		pr_debug("DQM returned %d for create_queue\n", retval);
 		print_queue(q);
 		break;
 
@@ -265,19 +262,18 @@ int pqm_create_queue(struct process_queue_manager *pqm,
 		if ((dev->dqm->sched_policy ==
 		     KFD_SCHED_POLICY_HWS_NO_OVERSUBSCRIPTION) &&
 		((dev->dqm->processes_count >= dev->vm_info.vmid_num_kfd) ||
-		(dev->dqm->queue_count >= get_queues_num(dev->dqm)))) {
+		(dev->dqm->active_queue_count >= get_cp_queues_num(dev->dqm)))) {
 			pr_debug("Over-subscription is not allowed when amdkfd.sched_policy == 1\n");
 			retval = -EPERM;
 			goto err_create_queue;
 		}
 
-		retval = create_cp_queue(pqm, dev, &q, properties, f, *qid);
+		retval = init_user_queue(pqm, dev, &q, properties, f, *qid);
 		if (retval != 0)
 			goto err_create_queue;
 		pqn->q = q;
 		pqn->kq = NULL;
 		retval = dev->dqm->ops.create_queue(dev->dqm, q, &pdd->qpd);
-		pr_debug("DQM returned %d for create_queue\n", retval);
 		print_queue(q);
 		break;
 	case KFD_QUEUE_TYPE_DIQ:
@@ -298,17 +294,20 @@ int pqm_create_queue(struct process_queue_manager *pqm,
 	}
 
 	if (retval != 0) {
-		pr_err("Pasid %d DQM create queue %d failed. ret %d\n",
+		pr_err("Pasid 0x%x DQM create queue type %d failed. ret %d\n",
 			pqm->process->pasid, type, retval);
 		goto err_create_queue;
 	}
 
-	if (q)
+	if (q && p_doorbell_offset_in_process)
 		/* Return the doorbell offset within the doorbell page
 		 * to the caller so it can be passed up to user mode
 		 * (in bytes).
+		 * There are always 1024 doorbells per process, so in case
+		 * of 8-byte doorbells, there are two doorbell pages per
+		 * process.
 		 */
-		properties->doorbell_off =
+		*p_doorbell_offset_in_process =
 			(q->properties.doorbell_off * sizeof(uint32_t)) &
 			(kfd_doorbell_process_slice(dev) - 1);
 
@@ -318,12 +317,16 @@ int pqm_create_queue(struct process_queue_manager *pqm,
 
 	if (q) {
 		pr_debug("PQM done creating queue\n");
+		kfd_procfs_add_queue(q);
 		print_queue_properties(&q->properties);
 	}
 
 	return retval;
 
 err_create_queue:
+	uninit_queue(q);
+	if (kq)
+		kernel_queue_uninit(kq, false);
 	kfree(pqn);
 err_allocate_pqn:
 	/* check if queues list is empty unregister process from device */
@@ -370,14 +373,19 @@ int pqm_destroy_queue(struct process_queue_manager *pqm, unsigned int qid)
 		/* destroy kernel queue (DIQ) */
 		dqm = pqn->kq->dev->dqm;
 		dqm->ops.destroy_kernel_queue(dqm, pqn->kq, &pdd->qpd);
-		kernel_queue_uninit(pqn->kq);
+		kernel_queue_uninit(pqn->kq, false);
 	}
 
 	if (pqn->q) {
 		dqm = pqn->q->device->dqm;
 		retval = dqm->ops.destroy_queue(dqm, &pdd->qpd, pqn->q);
+
+		if (retval == -ERESTARTSYS)
+			return retval;
+
+		kfd_procfs_del_queue(pqn->q);
 		if (retval) {
-			pr_err("Pasid %d destroy queue %d failed, ret %d\n",
+			pr_err("Pasid 0x%x destroy queue %d failed, ret %d\n",
 				pqm->process->pasid,
 				pqn->q->properties.queue_id, retval);
 			if (retval != -ETIME)
@@ -473,6 +481,15 @@ struct kernel_queue *pqm_get_kernel_queue(
 	return NULL;
 }
 
+struct queue *pqm_get_user_queue(struct process_queue_manager *pqm,
+					unsigned int qid)
+{
+	struct process_queue_node *pqn;
+
+	pqn = get_queue_by_qid(pqm, qid);
+	return pqn ? pqn->q : NULL;
+}
+
 int pqm_get_wave_state(struct process_queue_manager *pqm,
 		       unsigned int qid,
 		       void __user *ctl_stack,
@@ -493,6 +510,42 @@ int pqm_get_wave_state(struct process_queue_manager *pqm,
 						       ctl_stack,
 						       ctl_stack_used_size,
 						       save_area_used_size);
+}
+
+int pqm_get_queue_snapshot(struct process_queue_manager *pqm,
+			   int flags,
+			   struct kfd_queue_snapshot_entry __user *buf,
+			   int num_qss_entries)
+{
+	struct process_queue_node *pqn;
+	int r, qss_entry_count = 0;
+
+	mutex_lock(&pqm->process->event_mutex);
+
+	list_for_each_entry(pqn, &pqm->queues, process_queue_list) {
+		if (!pqn->q)
+			continue;
+
+		if (qss_entry_count < num_qss_entries) {
+
+			struct kfd_queue_snapshot_entry src = {0};
+
+			set_queue_snapshot_entry(pqn->q->device->dqm,
+						 pqn->q, flags, &src);
+
+			r = copy_to_user(buf++, &src, sizeof(src));
+
+			if (r) {
+				qss_entry_count = -EFAULT;
+				goto unlock;
+			}
+		}
+
+		qss_entry_count++;
+	}
+unlock:
+	mutex_unlock(&pqm->process->event_mutex);
+	return qss_entry_count;
 }
 
 #if defined(CONFIG_DEBUG_FS)

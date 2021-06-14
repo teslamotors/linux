@@ -29,7 +29,7 @@
 #include <linux/mutex.h>
 #include <linux/device.h>
 
-#include "kfd_pm4_headers.h"
+#include "kfd_pm4_headers_vi.h"
 #include "kfd_pm4_headers_diq.h"
 #include "kfd_kernel_queue.h"
 #include "kfd_priv.h"
@@ -46,9 +46,10 @@ static void dbgdev_address_watch_disable_nodiq(struct kfd_dev *dev)
 
 static int dbgdev_diq_submit_ib(struct kfd_dbgdev *dbgdev,
 				unsigned int pasid, uint64_t vmid0_address,
-				uint32_t *packet_buff, size_t size_in_bytes)
+				uint32_t *packet_buff, size_t size_in_bytes,
+				bool sync)
 {
-	struct pm4__release_mem *rm_packet;
+	struct pm4_mec_release_mem *rm_packet;
 	struct pm4__indirect_buffer_pasid *ib_packet;
 	struct kfd_mem_obj *mem_obj;
 	size_t pq_packets_size_in_bytes;
@@ -64,19 +65,20 @@ static int dbgdev_diq_submit_ib(struct kfd_dbgdev *dbgdev,
 
 	kq = dbgdev->kq;
 
-	pq_packets_size_in_bytes = sizeof(struct pm4__release_mem) +
-				sizeof(struct pm4__indirect_buffer_pasid);
+	pq_packets_size_in_bytes = sizeof(struct pm4__indirect_buffer_pasid);
+	if (sync)
+		pq_packets_size_in_bytes += sizeof(struct pm4_mec_release_mem);
 
 	/*
 	 * We acquire a buffer from DIQ
 	 * The receive packet buff will be sitting on the Indirect Buffer
 	 * and in the PQ we put the IB packet + sync packet(s).
 	 */
-	status = kq->ops.acquire_packet_buffer(kq,
+	status = kq_acquire_packet_buffer(kq,
 				pq_packets_size_in_bytes / sizeof(uint32_t),
 				&ib_packet_buff);
 	if (status) {
-		pr_err("acquire_packet_buffer failed\n");
+		pr_err("kq_acquire_packet_buffer failed\n");
 		return status;
 	}
 
@@ -98,6 +100,11 @@ static int dbgdev_diq_submit_ib(struct kfd_dbgdev *dbgdev,
 
 	ib_packet->bitfields5.pasid = pasid;
 
+	if (!sync) {
+		kq_submit_packet(kq);
+		return status;
+	}
+
 	/*
 	 * for now we use release mem for GPU-CPU synchronization
 	 * Consider WaitRegMem + WriteData as a better alternative
@@ -106,7 +113,7 @@ static int dbgdev_diq_submit_ib(struct kfd_dbgdev *dbgdev,
 	 * (a) Sync with HW
 	 * (b) Sync var is written by CP to mem.
 	 */
-	rm_packet = (struct pm4__release_mem *) (ib_packet_buff +
+	rm_packet = (struct pm4_mec_release_mem *) (ib_packet_buff +
 			(sizeof(struct pm4__indirect_buffer_pasid) /
 					sizeof(unsigned int)));
 
@@ -115,7 +122,7 @@ static int dbgdev_diq_submit_ib(struct kfd_dbgdev *dbgdev,
 
 	if (status) {
 		pr_err("Failed to allocate GART memory\n");
-		kq->ops.rollback_packet(kq);
+		kq_rollback_packet(kq);
 		return status;
 	}
 
@@ -125,7 +132,7 @@ static int dbgdev_diq_submit_ib(struct kfd_dbgdev *dbgdev,
 
 	rm_packet->header.opcode = IT_RELEASE_MEM;
 	rm_packet->header.type = PM4_TYPE_3;
-	rm_packet->header.count = sizeof(struct pm4__release_mem) / 4 - 2;
+	rm_packet->header.count = sizeof(struct pm4_mec_release_mem) / 4 - 2;
 
 	rm_packet->bitfields2.event_type = CACHE_FLUSH_AND_INV_TS_EVENT;
 	rm_packet->bitfields2.event_index =
@@ -151,7 +158,7 @@ static int dbgdev_diq_submit_ib(struct kfd_dbgdev *dbgdev,
 
 	rm_packet->data_lo = QUEUESTATE__ACTIVE;
 
-	kq->ops.submit_packet(kq);
+	kq_submit_packet(kq);
 
 	/* Wait till CP writes sync code: */
 	status = amdkfd_fence_wait_timeout(
@@ -185,7 +192,7 @@ static int dbgdev_register_diq(struct kfd_dbgdev *dbgdev)
 	properties.type = KFD_QUEUE_TYPE_DIQ;
 
 	status = pqm_create_queue(dbgdev->pqm, dbgdev->dev, NULL,
-				&properties, &qid);
+				&properties, &qid, NULL);
 
 	if (status) {
 		pr_err("Failed to create DIQ\n");
@@ -231,7 +238,8 @@ static void dbgdev_address_watch_set_registers(
 			union TCP_WATCH_ADDR_H_BITS *addrHi,
 			union TCP_WATCH_ADDR_L_BITS *addrLo,
 			union TCP_WATCH_CNTL_BITS *cntl,
-			unsigned int index, unsigned int vmid)
+			unsigned int index, unsigned int vmid,
+			bool is_apu)
 {
 	union ULARGE_INTEGER addr;
 
@@ -256,9 +264,9 @@ static void dbgdev_address_watch_set_registers(
 
 	cntl->bitfields.mode = adw_info->watch_mode[index];
 	cntl->bitfields.vmid = (uint32_t) vmid;
-	/* for now assume it is an ATC address */
-	cntl->u32All |= ADDRESS_WATCH_REG_CNTL_ATC_BIT;
-
+	/* for APU assume it is an ATC address */
+	if (is_apu)
+		cntl->u32All |= ADDRESS_WATCH_REG_CNTL_ATC_BIT;
 	pr_debug("\t\t%20s %08x\n", "set reg mask :", cntl->bitfields.mask);
 	pr_debug("\t\t%20s %08x\n", "set reg add high :",
 			addrHi->bitfields.addr);
@@ -300,7 +308,8 @@ static int dbgdev_address_watch_nodiq(struct kfd_dbgdev *dbgdev,
 
 	for (i = 0; i < adw_info->num_watch_points; i++) {
 		dbgdev_address_watch_set_registers(adw_info, &addrHi, &addrLo,
-						&cntl, i, pdd->qpd.vmid);
+				&cntl, i, pdd->qpd.vmid,
+				dbgdev->dev->device_info->needs_iommu_device);
 
 		pr_debug("\t\t%30s\n", "* * * * * * * * * * * * * * * * * *");
 		pr_debug("\t\t%20s %08x\n", "register index :", i);
@@ -339,9 +348,9 @@ static int dbgdev_address_watch_diq(struct kfd_dbgdev *dbgdev,
 	union TCP_WATCH_ADDR_H_BITS addrHi;
 	union TCP_WATCH_ADDR_L_BITS addrLo;
 	union TCP_WATCH_CNTL_BITS cntl;
-	struct kfd_mem_obj *mem_obj;
 	unsigned int aw_reg_add_dword;
 	uint32_t *packet_buff_uint;
+	uint64_t packet_buff_gpu_addr;
 	unsigned int i;
 	int status;
 	size_t ib_size = sizeof(struct pm4__set_config_reg) * 4;
@@ -363,15 +372,13 @@ static int dbgdev_address_watch_diq(struct kfd_dbgdev *dbgdev,
 		return -EINVAL;
 	}
 
-	status = kfd_gtt_sa_allocate(dbgdev->dev, ib_size, &mem_obj);
-
+	status = kq_acquire_inline_ib(dbgdev->kq,
+			ib_size/sizeof(uint32_t),
+			&packet_buff_uint, &packet_buff_gpu_addr);
 	if (status) {
-		pr_err("Failed to allocate GART memory\n");
+		pr_err("Failed to allocate IB from DIQ ring\n");
 		return status;
 	}
-
-	packet_buff_uint = mem_obj->cpu_ptr;
-
 	memset(packet_buff_uint, 0, ib_size);
 
 	packets_vec = (struct pm4__set_config_reg *) (packet_buff_uint);
@@ -390,12 +397,9 @@ static int dbgdev_address_watch_diq(struct kfd_dbgdev *dbgdev,
 	packets_vec[3].bitfields2.insert_vmid = 1;
 
 	for (i = 0; i < adw_info->num_watch_points; i++) {
-		dbgdev_address_watch_set_registers(adw_info,
-						&addrHi,
-						&addrLo,
-						&cntl,
-						i,
-						vmid);
+		dbgdev_address_watch_set_registers(adw_info, &addrHi, &addrLo,
+				&cntl, i, vmid,
+				dbgdev->dev->device_info->needs_iommu_device);
 
 		pr_debug("\t\t%30s\n", "* * * * * * * * * * * * * * * * * *");
 		pr_debug("\t\t%20s %08x\n", "register index :", i);
@@ -468,24 +472,24 @@ static int dbgdev_address_watch_diq(struct kfd_dbgdev *dbgdev,
 		status = dbgdev_diq_submit_ib(
 					dbgdev,
 					adw_info->process->pasid,
-					mem_obj->gpu_addr,
+					packet_buff_gpu_addr,
 					packet_buff_uint,
-					ib_size);
+					ib_size, true);
 
 		if (status) {
 			pr_err("Failed to submit IB to DIQ\n");
-			break;
+			return status;
 		}
 	}
 
-	kfd_gtt_sa_free(dbgdev->dev, mem_obj);
 	return status;
 }
 
 static int dbgdev_wave_control_set_registers(
 				struct dbg_wave_control_info *wac_info,
 				union SQ_CMD_BITS *in_reg_sq_cmd,
-				union GRBM_GFX_INDEX_BITS *in_reg_gfx_index)
+				union GRBM_GFX_INDEX_BITS *in_reg_gfx_index,
+				unsigned int asic_family)
 {
 	int status = 0;
 	union SQ_CMD_BITS reg_sq_cmd;
@@ -543,11 +547,25 @@ static int dbgdev_wave_control_set_registers(
 
 	switch (wac_info->operand) {
 	case HSA_DBG_WAVEOP_HALT:
-		reg_sq_cmd.bits.cmd = SQ_IND_CMD_CMD_HALT;
+		if (asic_family == CHIP_KAVERI) {
+			reg_sq_cmd.bits.cmd = SQ_IND_CMD_CMD_HALT;
+			pr_debug("Halting KV\n");
+		} else {
+			reg_sq_cmd.bits_sethalt.cmd  = SQ_IND_CMD_NEW_SETHALT;
+			reg_sq_cmd.bits_sethalt.data = SQ_IND_CMD_DATA_HALT;
+			pr_debug("Halting CZ\n");
+		}
 		break;
 
 	case HSA_DBG_WAVEOP_RESUME:
-		reg_sq_cmd.bits.cmd = SQ_IND_CMD_CMD_RESUME;
+		if (asic_family == CHIP_KAVERI) {
+			reg_sq_cmd.bits.cmd = SQ_IND_CMD_CMD_RESUME;
+			pr_debug("Resuming KV\n");
+		} else {
+			reg_sq_cmd.bits_sethalt.cmd  = SQ_IND_CMD_NEW_SETHALT;
+			reg_sq_cmd.bits_sethalt.data = SQ_IND_CMD_DATA_RESUME;
+			pr_debug("Resuming CZ\n");
+		}
 		break;
 
 	case HSA_DBG_WAVEOP_KILL:
@@ -587,15 +605,15 @@ static int dbgdev_wave_control_diq(struct kfd_dbgdev *dbgdev,
 	int status;
 	union SQ_CMD_BITS reg_sq_cmd;
 	union GRBM_GFX_INDEX_BITS reg_gfx_index;
-	struct kfd_mem_obj *mem_obj;
 	uint32_t *packet_buff_uint;
+	uint64_t packet_buff_gpu_addr;
 	struct pm4__set_config_reg *packets_vec;
 	size_t ib_size = sizeof(struct pm4__set_config_reg) * 3;
 
 	reg_sq_cmd.u32All = 0;
 
 	status = dbgdev_wave_control_set_registers(wac_info, &reg_sq_cmd,
-							&reg_gfx_index);
+			&reg_gfx_index,	dbgdev->dev->device_info->asic_family);
 	if (status) {
 		pr_err("Failed to set wave control registers\n");
 		return status;
@@ -634,15 +652,13 @@ static int dbgdev_wave_control_diq(struct kfd_dbgdev *dbgdev,
 
 	pr_debug("\t\t %30s\n", "* * * * * * * * * * * * * * * * * *");
 
-	status = kfd_gtt_sa_allocate(dbgdev->dev, ib_size, &mem_obj);
-
-	if (status != 0) {
-		pr_err("Failed to allocate GART memory\n");
+	status = kq_acquire_inline_ib(dbgdev->kq,
+			ib_size / sizeof(uint32_t),
+			&packet_buff_uint, &packet_buff_gpu_addr);
+	if (status) {
+		pr_err("Failed to allocate IB from DIQ ring\n");
 		return status;
 	}
-
-	packet_buff_uint = mem_obj->cpu_ptr;
-
 	memset(packet_buff_uint, 0, ib_size);
 
 	packets_vec =  (struct pm4__set_config_reg *) packet_buff_uint;
@@ -682,14 +698,12 @@ static int dbgdev_wave_control_diq(struct kfd_dbgdev *dbgdev,
 	status = dbgdev_diq_submit_ib(
 			dbgdev,
 			wac_info->process->pasid,
-			mem_obj->gpu_addr,
+			packet_buff_gpu_addr,
 			packet_buff_uint,
-			ib_size);
+			ib_size, false);
 
 	if (status)
 		pr_err("Failed to submit IB to DIQ\n");
-
-	kfd_gtt_sa_free(dbgdev->dev, mem_obj);
 
 	return status;
 }
@@ -712,7 +726,7 @@ static int dbgdev_wave_control_nodiq(struct kfd_dbgdev *dbgdev,
 		return -EFAULT;
 	}
 	status = dbgdev_wave_control_set_registers(wac_info, &reg_sq_cmd,
-							&reg_gfx_index);
+			&reg_gfx_index,	dbgdev->dev->device_info->asic_family);
 	if (status) {
 		pr_err("Failed to set wave control registers\n");
 		return status;
@@ -761,6 +775,7 @@ int dbgdev_wave_reset_wavefronts(struct kfd_dev *dev, struct kfd_process *p)
 {
 	int status = 0;
 	unsigned int vmid;
+	uint16_t queried_pasid;
 	union SQ_CMD_BITS reg_sq_cmd;
 	union GRBM_GFX_INDEX_BITS reg_gfx_index;
 	struct kfd_process_device *pdd;
@@ -782,19 +797,18 @@ int dbgdev_wave_reset_wavefronts(struct kfd_dev *dev, struct kfd_process *p)
 	 */
 
 	for (vmid = first_vmid_to_scan; vmid <= last_vmid_to_scan; vmid++) {
-		if (dev->kfd2kgd->get_atc_vmid_pasid_mapping_valid
-				(dev->kgd, vmid)) {
-			if (dev->kfd2kgd->get_atc_vmid_pasid_mapping_pasid
-					(dev->kgd, vmid) == p->pasid) {
-				pr_debug("Killing wave fronts of vmid %d and pasid %d\n",
-						vmid, p->pasid);
-				break;
-			}
+		status = dev->kfd2kgd->get_atc_vmid_pasid_mapping_info
+				(dev->kgd, vmid, &queried_pasid);
+
+		if (status && queried_pasid == p->pasid) {
+			pr_debug("Killing wave fronts of vmid %d and pasid 0x%x\n",
+					vmid, p->pasid);
+			break;
 		}
 	}
 
 	if (vmid > last_vmid_to_scan) {
-		pr_err("Didn't find vmid for pasid %d\n", p->pasid);
+		pr_err("Didn't find vmid for pasid 0x%x\n", p->pasid);
 		return -EFAULT;
 	}
 
@@ -804,7 +818,7 @@ int dbgdev_wave_reset_wavefronts(struct kfd_dev *dev, struct kfd_process *p)
 		return -EFAULT;
 
 	status = dbgdev_wave_control_set_registers(&wac_info, &reg_sq_cmd,
-			&reg_gfx_index);
+			&reg_gfx_index, dev->device_info->asic_family);
 	if (status != 0)
 		return -EINVAL;
 

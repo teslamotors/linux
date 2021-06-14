@@ -135,18 +135,14 @@ struct ttm_tt;
  * @num_pages: Actual number of pages.
  * @acc_size: Accounted size for this object.
  * @kref: Reference count of this buffer object. When this refcount reaches
- * zero, the object is put on the delayed delete list.
- * @list_kref: List reference count of this buffer object. This member is
- * used to avoid destruction while the buffer object is still on a list.
- * Lru lists may keep one refcount, the delayed delete list, and kref != 0
- * keeps one refcount. When this refcount reaches zero,
- * the object is destroyed.
+ * zero, the object is destroyed or put on the delayed delete list.
  * @mem: structure describing current placement.
  * @persistent_swap_storage: Usually the swap storage is deleted for buffers
  * pinned in physical memory. If this behaviour is not desired, this member
  * holds a pointer to a persistent shmem object.
  * @ttm: TTM structure holding system pages.
  * @evicted: Whether the object was evicted without user-space knowing.
+ * @deleted: True if the object is only a zombie and already deleted.
  * @cpu_writes: For synchronization. Number of cpu writers.
  * @lru: List head for the lru list.
  * @ddestroy: List head for the delayed destroy list.
@@ -181,13 +177,12 @@ struct ttm_buffer_object {
 	void (*destroy) (struct ttm_buffer_object *);
 	unsigned long num_pages;
 	size_t acc_size;
+	bool ssg_can_map;
 
 	/**
 	* Members not needing protection.
 	*/
-
 	struct kref kref;
-	struct kref list_kref;
 
 	/**
 	 * Members protected by the bo::resv::reserved lock.
@@ -197,6 +192,7 @@ struct ttm_buffer_object {
 	struct file *persistent_swap_storage;
 	struct ttm_tt *ttm;
 	bool evicted;
+	bool deleted;
 
 	/**
 	 * Members protected by the bo::reserved lock only when written to.

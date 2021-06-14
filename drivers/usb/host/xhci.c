@@ -1039,12 +1039,12 @@ int xhci_suspend(struct xhci_hcd *xhci, bool do_wakeup)
 	 * to see if the xHC clears BIT(8) which never happens
 	 * and driver assumes that controller is not responding
 	 * and times out. To workaround this, its good to check
-	 * if SRE and HCE bits are not set (as per xhci
+	 * if SRE or HCE bits are not set (as per xhci
 	 * Section 5.4.2) and bypass the timeout.
 	 */
 		res = readl(&xhci->op_regs->status);
 		if ((xhci->quirks & XHCI_SNPS_BROKEN_SUSPEND) &&
-		    (((res & STS_SRE) == 0) &&
+		    (((res & STS_SRE) == 0) ||
 				((res & STS_HCE) == 0))) {
 			xhci->broken_suspend = 1;
 		} else {

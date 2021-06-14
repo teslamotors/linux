@@ -66,7 +66,6 @@ int amdgpu_ih_ring_init(struct amdgpu_device *adev, struct amdgpu_ih_ring *ih,
 		if (ih->ring == NULL)
 			return -ENOMEM;
 
-		memset((void *)ih->ring, 0, ih->ring_size + 8);
 		ih->gpu_addr = dma_addr;
 		ih->wptr_addr = dma_addr + ih->ring_size;
 		ih->wptr_cpu = &ih->ring[ih->ring_size / 4];
@@ -129,6 +128,35 @@ void amdgpu_ih_ring_fini(struct amdgpu_device *adev, struct amdgpu_ih_ring *ih)
 				      (void **)&ih->ring);
 		amdgpu_device_wb_free(adev, (ih->wptr_addr - ih->gpu_addr) / 4);
 		amdgpu_device_wb_free(adev, (ih->rptr_addr - ih->gpu_addr) / 4);
+	}
+}
+
+/**
+ * amdgpu_ih_ring_write - write IV to the ring buffer
+ *
+ * @ih: ih ring to write to
+ * @iv: the iv to write
+ * @num_dw: size of the iv in dw
+ *
+ * Writes an IV to the ring buffer using the CPU and increment the wptr.
+ * Used for testing and delegating IVs to a software ring.
+ */
+void amdgpu_ih_ring_write(struct amdgpu_ih_ring *ih, const uint32_t *iv,
+			  unsigned int num_dw)
+{
+	uint32_t wptr = le32_to_cpu(*ih->wptr_cpu) >> 2;
+	unsigned int i;
+
+	for (i = 0; i < num_dw; ++i)
+	        ih->ring[wptr++] = cpu_to_le32(iv[i]);
+
+	wptr <<= 2;
+	wptr &= ih->ptr_mask;
+
+	/* Only commit the new wptr if we don't overflow */
+	if (wptr != READ_ONCE(ih->rptr)) {
+		wmb();
+		WRITE_ONCE(*ih->wptr_cpu, cpu_to_le32(wptr));
 	}
 }
 

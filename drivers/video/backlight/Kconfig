@@ -261,6 +261,12 @@ config BACKLIGHT_DA9052
 	help
 	  Enable the Backlight Driver for DA9052-BC and DA9053-AA/Bx PMICs.
 
+config BACKLIGHT_MAX20444
+	tristate "Backlight driver for MAX20444"
+	help
+	  If you have a MAX20444 Backlight say Y to enable a driver for its
+	  backlight
+
 config BACKLIGHT_MAX8925
 	tristate "Backlight driver for MAX8925"
 	depends on MFD_MAX8925
@@ -385,6 +391,11 @@ config BACKLIGHT_LP8788
 	depends on MFD_LP8788 && PWM
 	help
 	  This supports TI LP8788 backlight driver.
+
+config BACKLIGHT_LP8863
+	tristate "Backlight driver for TI LP8863"
+	help
+	  This supports TI LP8863 backlight driver.
 
 config BACKLIGHT_OT200
 	tristate "Backlight driver for ot200 visualisation device"

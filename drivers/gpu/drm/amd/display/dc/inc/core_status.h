@@ -52,7 +52,12 @@ enum dc_status {
 	DC_FAIL_CLK_BELOW_MIN = 22, /*THIS IS MIN PER IP*/
 	DC_FAIL_CLK_BELOW_CFG_REQUIRED = 23, /*THIS IS hard_min in PPLIB*/
 
+	DC_NOT_SUPPORTED = 24,
+	DC_UNSUPPORTED_VALUE = 25,
+
 	DC_ERROR_UNEXPECTED = -1
 };
+
+char *dc_status_to_str(enum dc_status status);
 
 #endif /* _CORE_STATUS_H_ */

@@ -41,27 +41,40 @@
 #define HSA_CAP_WATCH_POINTS_TOTALBITS_SHIFT	8
 #define HSA_CAP_DOORBELL_TYPE_TOTALBITS_MASK	0x00003000
 #define HSA_CAP_DOORBELL_TYPE_TOTALBITS_SHIFT	12
-#define HSA_CAP_RESERVED			0xffffc000
 
 #define HSA_CAP_DOORBELL_TYPE_PRE_1_0		0x0
 #define HSA_CAP_DOORBELL_TYPE_1_0		0x1
 #define HSA_CAP_DOORBELL_TYPE_2_0		0x2
 #define HSA_CAP_AQL_QUEUE_DOUBLE_MAP		0x00004000
+#define HSA_CAP_TRAP_DEBUG_SUPPORT				0x00008000
+#define HSA_CAP_TRAP_DEBUG_WAVE_LAUNCH_TRAP_OVERRIDE_SUPPORTED	0x00010000
+#define HSA_CAP_TRAP_DEBUG_WAVE_LAUNCH_MODE_SUPPORTED		0x00020000
+
+#define HSA_DBG_TRAP_DEBUG_TRAP_DATA_COUNT			0x00008000
+#define HSA_DBG_TRAP_DEBUG_WATCH_MASK_LO_BIT			0x00000004
+#define HSA_DBG_TRAP_DEBUG_WATCH_MASK_HI_BIT			(29 << 4)
 
 #define HSA_CAP_SRAM_EDCSUPPORTED		0x00080000
 #define HSA_CAP_MEM_EDCSUPPORTED		0x00100000
 #define HSA_CAP_RASEVENTNOTIFY			0x00200000
+#define HSA_CAP_ASIC_REVISION_MASK		0x03c00000
+#define HSA_CAP_ASIC_REVISION_SHIFT		22
+
+#define HSA_CAP_RESERVED			0xfc078000
 
 struct kfd_node_properties {
 	uint64_t hive_id;
+	uint64_t unique_id;
 	uint32_t cpu_cores_count;
 	uint32_t simd_count;
 	uint32_t mem_banks_count;
 	uint32_t caches_count;
 	uint32_t io_links_count;
+	uint32_t p2p_links_count;
 	uint32_t cpu_core_id_base;
 	uint32_t simd_id_base;
 	uint32_t capability;
+	uint64_t debug_prop;
 	uint32_t max_waves_per_simd;
 	uint32_t lds_size_in_kb;
 	uint32_t gds_size_in_kb;
@@ -76,11 +89,14 @@ struct kfd_node_properties {
 	uint32_t vendor_id;
 	uint32_t device_id;
 	uint32_t location_id;
+	uint32_t domain;
 	uint32_t max_engine_clk_fcompute;
 	uint32_t max_engine_clk_ccompute;
 	int32_t  drm_render_minor;
 	uint32_t num_sdma_engines;
 	uint32_t num_sdma_xgmi_engines;
+	uint32_t num_sdma_queues_per_engine;
+	uint32_t num_cp_queues;
 	char name[KFD_TOPOLOGY_PUBLIC_NAME_SIZE];
 };
 
@@ -103,7 +119,9 @@ struct kfd_mem_properties {
 	uint32_t		width;
 	uint32_t		mem_clk_max;
 	struct kobject		*kobj;
-	struct attribute	attr;
+	struct kfd_dev		*gpu;
+	struct attribute	attr_props;
+	struct attribute	attr_used;
 };
 
 #define HSA_CACHE_TYPE_DATA		0x00000001
@@ -124,6 +142,7 @@ struct kfd_cache_properties {
 	uint32_t		cache_type;
 	uint8_t			sibling_map[CRAT_SIBLINGMAP_SIZE];
 	struct kobject		*kobj;
+	struct kfd_dev		*gpu;
 	struct attribute	attr;
 };
 
@@ -142,6 +161,7 @@ struct kfd_iolink_properties {
 	uint32_t		rec_transfer_size;
 	uint32_t		flags;
 	struct kobject		*kobj;
+	struct kfd_dev		*gpu;
 	struct attribute	attr;
 };
 
@@ -162,12 +182,14 @@ struct kfd_topology_device {
 	struct list_head		cache_props;
 	uint32_t			io_link_count;
 	struct list_head		io_link_props;
+	struct list_head		p2p_link_props;
 	struct list_head		perf_props;
 	struct kfd_dev			*gpu;
 	struct kobject			*kobj_node;
 	struct kobject			*kobj_mem;
 	struct kobject			*kobj_cache;
 	struct kobject			*kobj_iolink;
+	struct kobject			*kobj_p2plink;
 	struct kobject			*kobj_perf;
 	struct attribute		attr_gpuid;
 	struct attribute		attr_name;

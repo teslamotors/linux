@@ -19,6 +19,7 @@
 #include <linux/slab.h>
 #include <linux/acpi.h>
 #include <linux/dmi.h>
+#include <linux/reboot.h>
 #include <acpi/button.h>
 
 #define PREFIX "ACPI: "
@@ -363,6 +364,48 @@ static int acpi_button_remove_fs(struct acpi_device *device)
 }
 
 /* --------------------------------------------------------------------------
+               Kernel emergency shutdown support for power button
+
+   Most systems won't use this and rely on userspace to perform OS shutdown.
+   Handling in the kernel may be beneficial for certain embedded applications
+   if we want increased availability of the button handler and faster
+   shutdown times.
+   -------------------------------------------------------------------------- */
+
+static int shutdown_ms = -1;	/* disabled */
+module_param(shutdown_ms, int, 0644);
+MODULE_PARM_DESC(shutdown_ms, "Power button invokes emergency shutdown in kernel after N msecs (-1: disabled)");
+
+static void acpi_emergency_shutdown_func(struct work_struct *work)
+{
+	kernel_power_off();
+}
+
+static DECLARE_DELAYED_WORK(acpi_emergency_shutdown_work,
+			    acpi_emergency_shutdown_func);
+
+static void acpi_emergency_shutdown(void)
+{
+	if (shutdown_ms < 0)
+		return;
+
+	pr_emerg("Kernel shutdown triggered by power button\n");
+	emergency_sync();
+	emergency_remount();
+
+	/*
+	 * Can't do kernel_power_off() directly here since we're coming
+	 * from an ACPI notify handler, and kernel_power_off() blocks
+	 * on completion of ACPI notify handlers.
+	 */
+	schedule_delayed_work(&acpi_emergency_shutdown_work,
+			      msecs_to_jiffies(shutdown_ms));
+
+	/* Only allow this once */
+	shutdown_ms = -1;
+}
+
+/* --------------------------------------------------------------------------
                                 Driver Interface
    -------------------------------------------------------------------------- */
 int acpi_lid_notifier_register(struct notifier_block *nb)
@@ -452,6 +495,9 @@ static void acpi_button_notify(struct acpi_device *device, u32 event)
 					device->pnp.device_class,
 					dev_name(&device->dev),
 					event, ++button->pushed);
+
+			if (shutdown_ms >= 0)
+				acpi_emergency_shutdown();
 		}
 		break;
 	default:

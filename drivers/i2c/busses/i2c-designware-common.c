@@ -82,6 +82,23 @@ void dw_writel(struct dw_i2c_dev *dev, u32 b, int offset)
 	}
 }
 
+
+static void userspace_failure_notifier(struct dw_i2c_dev *dev, int failure)
+{
+	char *envp[2] = { NULL, NULL };
+
+	switch (failure) {
+	case ARB_LOST:
+		envp[0] = "ABORT=ARB_LOST";
+		break;
+	default:
+		envp[0] = "ABORT=I2C_GENERIC";
+		break;
+	}
+	kobject_uevent_env(&dev->dev->kobj, KOBJ_CHANGE, envp);
+}
+
+
 /**
  * i2c_dw_set_reg_access() - Set register access flags
  * @dev: device private data
@@ -335,6 +352,11 @@ int i2c_dw_handle_tx_abort(struct dw_i2c_dev *dev)
 
 	for_each_set_bit(i, &abort_source, ARRAY_SIZE(abort_sources))
 		dev_err(dev->dev, "%s: %s\n", __func__, abort_sources[i]);
+
+	if (abort_source & DW_IC_TX_ARB_LOST)
+		userspace_failure_notifier(dev, ARB_LOST);
+	else
+		userspace_failure_notifier(dev, 0);
 
 	if (abort_source & DW_IC_TX_ARB_LOST)
 		return -EAGAIN;

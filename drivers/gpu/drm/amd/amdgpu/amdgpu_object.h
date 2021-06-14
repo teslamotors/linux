@@ -41,6 +41,7 @@ struct amdgpu_bo_param {
 	u32				preferred_domain;
 	u64				flags;
 	enum ttm_bo_type		type;
+	bool                            no_wait_gpu;
 	struct dma_resv	*resv;
 };
 
@@ -94,6 +95,7 @@ struct amdgpu_bo {
 	/* per VM structure for page tables and with virtual addresses */
 	struct amdgpu_vm_bo_base	*vm_bo;
 	/* Constant after initialization */
+	struct drm_gem_object           gem_base;
 	struct amdgpu_bo		*parent;
 	struct amdgpu_bo		*shadow;
 
@@ -134,6 +136,10 @@ static inline unsigned amdgpu_mem_type_to_domain(u32 mem_type)
 		return AMDGPU_GEM_DOMAIN_GWS;
 	case AMDGPU_PL_OA:
 		return AMDGPU_GEM_DOMAIN_OA;
+	case AMDGPU_PL_DGMA:
+		return AMDGPU_GEM_DOMAIN_DGMA;
+	case AMDGPU_PL_DGMA_IMPORT:
+		return AMDGPU_GEM_DOMAIN_DGMA_IMPORT;
 	default:
 		break;
 	}
@@ -223,6 +229,17 @@ static inline bool amdgpu_bo_explicit_sync(struct amdgpu_bo *bo)
 	return bo->flags & AMDGPU_GEM_CREATE_EXPLICIT_SYNC;
 }
 
+/**
+ * amdgpu_bo_encrypted - test if the BO is encrypted
+ * @bo: pointer to a buffer object
+ *
+ * Return true if the buffer object is encrypted, false otherwise.
+ */
+static inline bool amdgpu_bo_encrypted(struct amdgpu_bo *bo)
+{
+	return bo->flags & AMDGPU_GEM_CREATE_ENCRYPTED;
+}
+
 bool amdgpu_bo_is_amdgpu_bo(struct ttm_buffer_object *bo);
 void amdgpu_bo_placement_from_domain(struct amdgpu_bo *abo, u32 domain);
 
@@ -271,6 +288,9 @@ void amdgpu_bo_release_notify(struct ttm_buffer_object *bo);
 int amdgpu_bo_fault_reserve_notify(struct ttm_buffer_object *bo);
 void amdgpu_bo_fence(struct amdgpu_bo *bo, struct dma_fence *fence,
 		     bool shared);
+int amdgpu_bo_sync_wait_resv(struct amdgpu_device *adev, struct dma_resv *resv,
+			     enum amdgpu_sync_mode sync_mode, void *owner,
+			     bool intr);
 int amdgpu_bo_sync_wait(struct amdgpu_bo *bo, void *owner, bool intr);
 u64 amdgpu_bo_gpu_offset(struct amdgpu_bo *bo);
 int amdgpu_bo_validate(struct amdgpu_bo *bo);
@@ -309,7 +329,9 @@ void amdgpu_sa_bo_free(struct amdgpu_device *adev,
 #if defined(CONFIG_DEBUG_FS)
 void amdgpu_sa_bo_dump_debug_info(struct amdgpu_sa_manager *sa_manager,
 					 struct seq_file *m);
+u64 amdgpu_bo_print_info(int id, struct amdgpu_bo *bo, struct seq_file *m);
 #endif
+int amdgpu_debugfs_sa_init(struct amdgpu_device *adev);
 
 bool amdgpu_bo_support_uswc(u64 bo_flags);
 

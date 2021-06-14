@@ -65,6 +65,23 @@ enum tpm2_const {
 	TPM2_PCR_SELECT_MIN     = ((TPM2_PLATFORM_PCR + 7) / 8),
 };
 
+#ifdef CONFIG_TPM2_RELAXED_TIMEOUTS
+enum tpm2_timeouts {
+	TPM2_TIMEOUT_A          =  20000,
+	TPM2_TIMEOUT_B          =  20000,
+	TPM2_TIMEOUT_C          =  20000,
+	TPM2_TIMEOUT_D          =  20000,
+	/*
+	 * Leave this one short as it's used for actual delays
+	 * instead of timeout periods
+	 */
+	TPM2_DURATION_SHORT     =     20,
+	TPM2_DURATION_MEDIUM    =  20000,
+	TPM2_DURATION_LONG      =  20000,
+	TPM2_DURATION_LONG_LONG = 300000,
+	TPM2_DURATION_DEFAULT   = 120000,
+};
+#else
 enum tpm2_timeouts {
 	TPM2_TIMEOUT_A          =    750,
 	TPM2_TIMEOUT_B          =   2000,
@@ -76,6 +93,7 @@ enum tpm2_timeouts {
 	TPM2_DURATION_LONG_LONG = 300000,
 	TPM2_DURATION_DEFAULT   = 120000,
 };
+#endif
 
 enum tpm2_structures {
 	TPM2_ST_NO_SESSIONS	= 0x8001,

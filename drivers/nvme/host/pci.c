@@ -9,7 +9,9 @@
 #include <linux/blkdev.h>
 #include <linux/blk-mq.h>
 #include <linux/blk-mq-pci.h>
+#include <linux/delay.h>
 #include <linux/dmi.h>
+#include <linux/gpio.h>
 #include <linux/init.h>
 #include <linux/interrupt.h>
 #include <linux/io.h>
@@ -78,11 +80,34 @@ static unsigned int poll_queues;
 module_param(poll_queues, uint, 0644);
 MODULE_PARM_DESC(poll_queues, "Number of queues to use for polled IO.");
 
+static int panic_on_death = 0;
+module_param(panic_on_death, int, 0644);
+MODULE_PARM_DESC(panic_on_death, "Panic on NVMe controller reset failure: 0=off 1=on");
+
 struct nvme_dev;
 struct nvme_queue;
 
 static void nvme_dev_disable(struct nvme_dev *dev, bool shutdown);
 static bool __nvme_disable_io_queues(struct nvme_dev *dev, u8 opcode);
+
+/*
+ * Data needed to perform a hardware reset and recover.
+ */
+struct nvme_hw_reset_recv {
+	unsigned int enabled;
+	unsigned int hw_reset_gpio;
+	unsigned int reset_off_time;
+	unsigned int reset_on_time;
+	uint32_t bar0_config;
+};
+
+/* TODO: Derive from PCI ACPI data*/
+static struct nvme_hw_reset_recv infoz_platform = {
+	.enabled = 1,
+	.hw_reset_gpio = 264,
+	.reset_off_time = 1000,
+	.reset_on_time = 100,
+};
 
 /*
  * Represents an NVM Express device.  Each nvme_dev is a PCI function.
@@ -131,6 +156,8 @@ struct nvme_dev {
 	unsigned int nr_allocated_queues;
 	unsigned int nr_write_queues;
 	unsigned int nr_poll_queues;
+
+	struct nvme_hw_reset_recv* hw_reset_recv;
 };
 
 static int io_queue_depth_set(const char *val, const struct kernel_param *kp)
@@ -1781,6 +1808,35 @@ static ssize_t nvme_cmb_show(struct device *dev,
 }
 static DEVICE_ATTR(cmb, S_IRUGO, nvme_cmb_show, NULL);
 
+static ssize_t nvme_hw_reset_show_enable(struct device *dev,
+					 struct device_attribute *attr,
+					 char *buf)
+{
+	struct nvme_dev *ndev = to_nvme_dev(dev_get_drvdata(dev));
+	return sprintf(buf, "%d\n", ndev->hw_reset_recv->enabled);
+}
+
+static ssize_t nvme_hw_reset_store_enable(struct device *dev,
+					  struct device_attribute *attr,
+					  const char *buf,
+					  size_t len)
+{
+	struct nvme_dev *ndev = to_nvme_dev(dev_get_drvdata(dev));
+	bool enb;
+	int ret;
+
+	ret = strtobool(buf, &enb);
+	if (ret < 0)
+		return ret;
+
+	dev_info(ndev->ctrl.device, "%s hw_reset\n",
+		 enb ? "enabling" : "disabling");
+	ndev->hw_reset_recv->enabled = enb;
+	return (ret < 0) ? ret : len;
+}
+static DEVICE_ATTR(hw_reset_enable, S_IRUGO | S_IWUSR,
+		   nvme_hw_reset_show_enable, nvme_hw_reset_store_enable);
+
 static u64 nvme_cmb_size_unit(struct nvme_dev *dev)
 {
 	u8 szu = (dev->cmbsz >> NVME_CMBSZ_SZU_SHIFT) & NVME_CMBSZ_SZU_MASK;
@@ -2554,11 +2610,51 @@ static void nvme_remove_dead_ctrl(struct nvme_dev *dev)
 		nvme_put_ctrl(&dev->ctrl);
 }
 
+static void nvme_hw_reset(struct nvme_dev *dev)
+{
+	struct pci_dev *pdev = to_pci_dev(dev->dev);
+	struct nvme_hw_reset_recv* recv = dev->hw_reset_recv;
+	char *event_string = "RESET=1";
+	char *envp[] = { event_string, NULL };
+	int ret;
+	uint32_t dummy;
+	uint16_t cmd;
+
+	if (recv->enabled) {
+		dev_warn(dev->ctrl.device,
+			 "Attempting hardware reset recovery of device\n");
+	} else {
+		dev_warn(dev->ctrl.device,
+			 "Hardware reset for platform is disabled\n");
+		return;
+	}
+	gpio_direction_output(recv->hw_reset_gpio, 0);
+	msleep(recv->reset_off_time);
+	gpio_direction_output(recv->hw_reset_gpio, 1);
+	msleep(recv->reset_on_time);
+
+	/* PCIe reenumeraiton using cached configuration */
+	ret = pci_write_config_dword(pdev, PCI_BASE_ADDRESS_0, 0xffffffff);
+	ret = pci_read_config_dword(pdev, PCI_BASE_ADDRESS_0, &dummy);
+
+	/* restore original value so everything appears the same */
+	ret = pci_write_config_dword(pdev, PCI_BASE_ADDRESS_0, recv->bar0_config);
+
+	/* enable bus master bits */
+	ret = pci_read_config_word(pdev, PCI_COMMAND, &cmd);
+	ret = pci_write_config_word(pdev, PCI_COMMAND,
+				    cmd | PCI_COMMAND_MASTER | PCI_COMMAND_MEMORY);
+
+	/* Notify userspace that reset has occured */
+	kobject_uevent_env(&dev->ctrl.device->kobj, KOBJ_CHANGE, envp);
+}
+
 static void nvme_reset_work(struct work_struct *work)
 {
 	struct nvme_dev *dev =
 		container_of(work, struct nvme_dev, ctrl.reset_work);
 	bool was_suspend = !!(dev->ctrl.ctrl_config & NVME_CC_SHN_NORMAL);
+	bool live_reset = false;
 	int result;
 
 	if (WARN_ON(dev->ctrl.state != NVME_CTRL_RESETTING)) {
@@ -2570,11 +2666,17 @@ static void nvme_reset_work(struct work_struct *work)
 	 * If we're called to reset a live controller first shut it down before
 	 * moving on.
 	 */
-	if (dev->ctrl.ctrl_config & NVME_CC_ENABLE)
+	if (dev->ctrl.ctrl_config & NVME_CC_ENABLE) {
 		nvme_dev_disable(dev, false);
+		live_reset = true;
+	}
 	nvme_sync_queues(&dev->ctrl);
 
 	mutex_lock(&dev->shutdown_lock);
+
+	if (dev->ctrl.quirks & NVME_QUIRK_HARD_RESET && live_reset)
+		nvme_hw_reset(dev);
+
 	result = nvme_pci_enable(dev);
 	if (result)
 		goto out_unlock;
@@ -2673,6 +2775,7 @@ static void nvme_reset_work(struct work_struct *work)
 	}
 
 	nvme_start_ctrl(&dev->ctrl);
+	dev_info(dev->ctrl.device, "controller reset finished\n");
 	return;
 
  out_unlock:
@@ -2681,6 +2784,9 @@ static void nvme_reset_work(struct work_struct *work)
 	if (result)
 		dev_warn(dev->ctrl.device,
 			 "Removing after probe failure status: %d\n", result);
+	if (panic_on_death)
+		panic("NVMe failed to recover from reset and panic_on_death is enabled");
+
 	nvme_remove_dead_ctrl(dev);
 }
 
@@ -2786,6 +2892,12 @@ static unsigned long check_vendor_combination_bug(struct pci_dev *pdev)
 		if ((dmi_match(DMI_BOARD_VENDOR, "LENOVO")) &&
 		     dmi_match(DMI_BOARD_NAME, "LNVNB161216"))
 			return NVME_QUIRK_SIMPLE_SUSPEND;
+	} else if ((dmi_match(DMI_PRODUCT_FAMILY, "Tesla_InfoZ"))) {
+		/*
+		 * Power cycle NVMe controller during live resets on Tesla Infoz
+		 * Platform boards.
+		 */
+		return NVME_QUIRK_HARD_RESET;
 	}
 
 	return 0;
@@ -2866,6 +2978,28 @@ static int nvme_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	nvme_reset_ctrl(&dev->ctrl);
 	async_schedule(nvme_async_probe, dev);
+
+	if (quirks & NVME_QUIRK_HARD_RESET) {
+		/* TODO: Assign via platform data, instead of hardcoded. */
+		dev->hw_reset_recv = &infoz_platform;
+		pci_read_config_dword(pdev, PCI_BASE_ADDRESS_0,
+				      &dev->hw_reset_recv->bar0_config);
+
+		if (gpio_is_valid(dev->hw_reset_recv->hw_reset_gpio)) {
+			dev_info(dev->ctrl.device,
+				"Requested hw_reset gpio: %d\n",
+				dev->hw_reset_recv->hw_reset_gpio);
+		} else {
+			dev_err(dev->ctrl.device,
+				"Invalid hw_reset gpio: %d\n",
+				dev->hw_reset_recv->hw_reset_gpio);
+		}
+		if (sysfs_add_file_to_group(&dev->ctrl.device->kobj,
+					    &dev_attr_hw_reset_enable.attr, NULL)) {
+			dev_warn(dev->ctrl.device,
+				 "failed to add sysfs attribute for hw_reset\n");
+		}
+	}
 
 	return 0;
 
@@ -3126,6 +3260,7 @@ static const struct pci_device_id nvme_id_table[] = {
 	{ PCI_VDEVICE(INTEL, 0xf1a5),	/* Intel 600P/P3100 */
 		.driver_data = NVME_QUIRK_NO_DEEPEST_PS |
 				NVME_QUIRK_MEDIUM_PRIO_SQ |
+				NVME_QUIRK_NO_TEMP_THRESH_CHANGE |
 				NVME_QUIRK_DISABLE_WRITE_ZEROES, },
 	{ PCI_VDEVICE(INTEL, 0xf1a6),	/* Intel 760p/Pro 7600p */
 		.driver_data = NVME_QUIRK_IGNORE_DEV_SUBNQN, },

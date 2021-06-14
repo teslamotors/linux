@@ -847,6 +847,11 @@ F:	drivers/gpu/drm/amd/include/vi_structs.h
 F:	drivers/gpu/drm/amd/include/v9_structs.h
 F:	include/uapi/linux/kfd_ioctl.h
 
+AMD SPI DRIVER
+M:	Sanjay R Mehta <sanju.mehta@amd.com>
+S:	Maintained
+F:	drivers/spi/spi-amd.c
+
 AMD MP2 I2C DRIVER
 M:	Elie Morisse <syniurge@gmail.com>
 M:	Nehal Shah <nehal-bakulchandra.shah@amd.com>
@@ -856,7 +861,6 @@ S:	Maintained
 F:	drivers/i2c/busses/i2c-amd-mp2*
 
 AMD POWERPLAY
-M:	Rex Zhu <rex.zhu@amd.com>
 M:	Evan Quan <evan.quan@amd.com>
 L:	amd-gfx@lists.freedesktop.org
 S:	Supported
@@ -13554,7 +13558,6 @@ F:	drivers/net/wireless/quantenna
 RADEON and AMDGPU DRM DRIVERS
 M:	Alex Deucher <alexander.deucher@amd.com>
 M:	Christian König <christian.koenig@amd.com>
-M:	David (ChunMing) Zhou <David1.Zhou@amd.com>
 L:	amd-gfx@lists.freedesktop.org
 T:	git git://people.freedesktop.org/~agd5f/linux
 S:	Supported

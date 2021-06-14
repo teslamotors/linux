@@ -75,9 +75,9 @@ static int amdgpu_gart_dummy_page_init(struct amdgpu_device *adev)
 
 	if (adev->dummy_page_addr)
 		return 0;
-	adev->dummy_page_addr = pci_map_page(adev->pdev, dummy_page, 0,
+	adev->dummy_page_addr = dma_map_page(&adev->pdev->dev, dummy_page, 0,
 					     PAGE_SIZE, PCI_DMA_BIDIRECTIONAL);
-	if (pci_dma_mapping_error(adev->pdev, adev->dummy_page_addr)) {
+	if (dma_mapping_error(&adev->pdev->dev, adev->dummy_page_addr)) {
 		dev_err(&adev->pdev->dev, "Failed to DMA MAP the dummy page\n");
 		adev->dummy_page_addr = 0;
 		return -ENOMEM;
@@ -302,6 +302,7 @@ int amdgpu_gart_map(struct amdgpu_device *adev, uint64_t offset,
  * @pages: number of pages to bind
  * @pagelist: pages to bind
  * @dma_addr: DMA addresses of pages
+ * @flags: page table entry flags
  *
  * Binds the requested pages to the gart page table
  * (all asics).

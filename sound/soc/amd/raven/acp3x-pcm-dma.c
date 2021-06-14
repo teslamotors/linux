@@ -18,6 +18,10 @@
 
 #define DRV_NAME "acp3x-i2s-audio"
 
+static int acp_power_gating = 0x01;
+module_param(acp_power_gating, int, 0644);
+MODULE_PARM_DESC(acp_power_gating, "acp power gating flag");
+
 struct i2s_dev_data {
 	bool tdm_mode;
 	unsigned int i2s_irq;
@@ -40,6 +44,7 @@ static const struct snd_pcm_hardware acp3x_pcm_hardware_playback = {
 	.info = SNDRV_PCM_INFO_INTERLEAVED |
 		SNDRV_PCM_INFO_BLOCK_TRANSFER |
 		SNDRV_PCM_INFO_BATCH |
+		SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_MMAP_VALID |
 		SNDRV_PCM_INFO_PAUSE | SNDRV_PCM_INFO_RESUME,
 	.formats = SNDRV_PCM_FMTBIT_S16_LE |  SNDRV_PCM_FMTBIT_S8 |
 		   SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S24_LE |
@@ -60,15 +65,16 @@ static const struct snd_pcm_hardware acp3x_pcm_hardware_capture = {
 	.info = SNDRV_PCM_INFO_INTERLEAVED |
 		SNDRV_PCM_INFO_BLOCK_TRANSFER |
 		SNDRV_PCM_INFO_BATCH |
+		SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_MMAP_VALID |
 	    SNDRV_PCM_INFO_PAUSE | SNDRV_PCM_INFO_RESUME,
 	.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S8 |
 		   SNDRV_PCM_FMTBIT_U8 | SNDRV_PCM_FMTBIT_S24_LE |
 		   SNDRV_PCM_FMTBIT_S32_LE,
 	.channels_min = 2,
-	.channels_max = 2,
-	.rates = SNDRV_PCM_RATE_8000_48000,
+	.channels_max = 8,
+	.rates = SNDRV_PCM_RATE_8000_96000,
 	.rate_min = 8000,
-	.rate_max = 48000,
+	.rate_max = 96000,
 	.buffer_bytes_max = CAPTURE_MAX_NUM_PERIODS * CAPTURE_MAX_PERIOD_SIZE,
 	.period_bytes_min = CAPTURE_MIN_PERIOD_SIZE,
 	.period_bytes_max = CAPTURE_MAX_PERIOD_SIZE,
@@ -76,66 +82,69 @@ static const struct snd_pcm_hardware acp3x_pcm_hardware_capture = {
 	.periods_max = CAPTURE_MAX_NUM_PERIODS,
 };
 
-static int acp3x_power_on(void __iomem *acp3x_base, bool on)
+static int acp3x_power_on(void __iomem *acp3x_base)
 {
-	u16 val, mask;
-	u32 timeout;
+	u32 val;
+	int timeout;
 
-	if (on == true) {
-		val = 1;
-		mask = ACP3x_POWER_ON;
-	} else {
-		val = 0;
-		mask = ACP3x_POWER_OFF;
-	}
+	val = rv_readl(acp3x_base + mmACP_PGFSM_STATUS);
 
-	rv_writel(val, acp3x_base + mmACP_PGFSM_CONTROL);
+	if (val == 0)
+		return val;
+
+	if (!((val & ACP_PGFSM_STATUS_MASK) ==
+				ACP_POWER_ON_IN_PROGRESS))
+		rv_writel(ACP_PGFSM_CNTL_POWER_ON_MASK,
+			  acp3x_base + mmACP_PGFSM_CONTROL);
 	timeout = 0;
-	while (true) {
+	while (++timeout < 500) {
 		val = rv_readl(acp3x_base + mmACP_PGFSM_STATUS);
-		if ((val & ACP3x_POWER_OFF_IN_PROGRESS) == mask)
-			break;
-		if (timeout > 100) {
-			pr_err("ACP3x power state change failure\n");
-			return -ENODEV;
-		}
-		timeout++;
-		cpu_relax();
+		if (!val)
+			return 0;
+		udelay(1);
 	}
-	return 0;
+	return -ETIMEDOUT;
+}
+
+static int acp3x_power_off(void __iomem *acp3x_base)
+{
+	u32 val;
+	int timeout;
+
+	rv_writel(ACP_PGFSM_CNTL_POWER_OFF_MASK,
+		  acp3x_base + mmACP_PGFSM_CONTROL);
+	timeout = 0;
+	while (++timeout < 500) {
+		val = rv_readl(acp3x_base + mmACP_PGFSM_STATUS);
+		if ((val & ACP_PGFSM_STATUS_MASK) == ACP_POWERED_OFF)
+			return 0;
+		udelay(1);
+	}
+	return -ETIMEDOUT;
 }
 
 static int acp3x_reset(void __iomem *acp3x_base)
 {
-	u32 val, timeout;
+	u32 val;
+	int timeout;
 
 	rv_writel(1, acp3x_base + mmACP_SOFT_RESET);
 	timeout = 0;
-	while (true) {
+	while (++timeout < 500) {
 		val = rv_readl(acp3x_base + mmACP_SOFT_RESET);
-		if ((val & ACP3x_SOFT_RESET__SoftResetAudDone_MASK) ||
-		     timeout > 100) {
-			if (val & ACP3x_SOFT_RESET__SoftResetAudDone_MASK)
-				break;
-			return -ENODEV;
-		}
-		timeout++;
+		if (val & ACP_SOFT_RESET_SOFTRESET_AUDDONE_MASK)
+			break;
 		cpu_relax();
 	}
-
 	rv_writel(0, acp3x_base + mmACP_SOFT_RESET);
 	timeout = 0;
-	while (true) {
+	while (++timeout < 500) {
 		val = rv_readl(acp3x_base + mmACP_SOFT_RESET);
-		if (!val || timeout > 100) {
-			if (!val)
-				break;
-			return -ENODEV;
-		}
-		timeout++;
+		if (!val)
+			return 0;
 		cpu_relax();
 	}
-	return 0;
+	return -ETIMEDOUT;
 }
 
 static int acp3x_init(void __iomem *acp3x_base)
@@ -143,11 +152,12 @@ static int acp3x_init(void __iomem *acp3x_base)
 	int ret;
 
 	/* power on */
-	ret = acp3x_power_on(acp3x_base, true);
+	ret = acp3x_power_on(acp3x_base);
 	if (ret) {
 		pr_err("ACP3x power on failed\n");
 		return ret;
 	}
+	rv_writel(ACP_CLK_ENABLE, acp3x_base + mmACP_CONTROL);
 	/* Reset */
 	ret = acp3x_reset(acp3x_base);
 	if (ret) {
@@ -167,11 +177,14 @@ static int acp3x_deinit(void __iomem *acp3x_base)
 		pr_err("ACP3x reset failed\n");
 		return ret;
 	}
-	/* power off */
-	ret = acp3x_power_on(acp3x_base, false);
-	if (ret) {
-		pr_err("ACP3x power off failed\n");
-		return ret;
+	rv_writel(ACP_CLK_DISABLE, acp3x_base + mmACP_CONTROL);
+	if (acp_power_gating) {
+		/* power off */
+		ret = acp3x_power_off(acp3x_base);
+		if (ret) {
+			pr_err("ACP3x power off failed\n");
+			return ret;
+		}
 	}
 	return 0;
 }
@@ -188,15 +201,15 @@ static irqreturn_t i2s_irq_handler(int irq, void *dev_id)
 	play_flag = 0;
 	cap_flag = 0;
 	val = rv_readl(rv_i2s_data->acp3x_base + mmACP_EXTERNAL_INTR_STAT);
-	if ((val & BIT(BT_TX_THRESHOLD)) && rv_i2s_data->play_stream) {
-		rv_writel(BIT(BT_TX_THRESHOLD), rv_i2s_data->acp3x_base +
+	if ((val & BIT(I2S_TX_THRESHOLD)) && rv_i2s_data->play_stream) {
+		rv_writel(BIT(I2S_TX_THRESHOLD), rv_i2s_data->acp3x_base +
 			  mmACP_EXTERNAL_INTR_STAT);
 		snd_pcm_period_elapsed(rv_i2s_data->play_stream);
 		play_flag = 1;
 	}
 
-	if ((val & BIT(BT_RX_THRESHOLD)) && rv_i2s_data->capture_stream) {
-		rv_writel(BIT(BT_RX_THRESHOLD), rv_i2s_data->acp3x_base +
+	if ((val & BIT(I2S_RX_THRESHOLD)) && rv_i2s_data->capture_stream) {
+		rv_writel(BIT(I2S_RX_THRESHOLD), rv_i2s_data->acp3x_base +
 			  mmACP_EXTERNAL_INTR_STAT);
 		snd_pcm_period_elapsed(rv_i2s_data->capture_stream);
 		cap_flag = 1;
@@ -243,35 +256,31 @@ static void config_acp3x_dma(struct i2s_stream_instance *rtd, int direction)
 	if (direction == SNDRV_PCM_STREAM_PLAYBACK) {
 		/* Config ringbuffer */
 		rv_writel(MEM_WINDOW_START, rtd->acp3x_base +
-			  mmACP_BT_TX_RINGBUFADDR);
-		rv_writel(MAX_BUFFER, rtd->acp3x_base +
-			  mmACP_BT_TX_RINGBUFSIZE);
-		rv_writel(DMA_SIZE, rtd->acp3x_base + mmACP_BT_TX_DMA_SIZE);
+			  mmACP_I2S_TX_RINGBUFADDR);
+		rv_writel(DMA_SIZE, rtd->acp3x_base + mmACP_I2S_TX_DMA_SIZE);
 
 		/* Config audio fifo */
 		acp_fifo_addr = ACP_SRAM_PTE_OFFSET + (rtd->num_pages * 8)
 				+ PLAYBACK_FIFO_ADDR_OFFSET;
 		rv_writel(acp_fifo_addr, rtd->acp3x_base +
-			  mmACP_BT_TX_FIFOADDR);
-		rv_writel(FIFO_SIZE, rtd->acp3x_base + mmACP_BT_TX_FIFOSIZE);
+			  mmACP_I2S_TX_FIFOADDR);
+		rv_writel(FIFO_SIZE, rtd->acp3x_base + mmACP_I2S_TX_FIFOSIZE);
 	} else {
 		/* Config ringbuffer */
 		rv_writel(MEM_WINDOW_START + MAX_BUFFER, rtd->acp3x_base +
-			  mmACP_BT_RX_RINGBUFADDR);
-		rv_writel(MAX_BUFFER, rtd->acp3x_base +
-			  mmACP_BT_RX_RINGBUFSIZE);
-		rv_writel(DMA_SIZE, rtd->acp3x_base + mmACP_BT_RX_DMA_SIZE);
+			  mmACP_I2S_RX_RINGBUFADDR);
+		rv_writel(DMA_SIZE, rtd->acp3x_base + mmACP_I2S_RX_DMA_SIZE);
 
 		/* Config audio fifo */
 		acp_fifo_addr = ACP_SRAM_PTE_OFFSET +
 				(rtd->num_pages * 8) + CAPTURE_FIFO_ADDR_OFFSET;
 		rv_writel(acp_fifo_addr, rtd->acp3x_base +
-			  mmACP_BT_RX_FIFOADDR);
-		rv_writel(FIFO_SIZE, rtd->acp3x_base + mmACP_BT_RX_FIFOSIZE);
+			  mmACP_I2S_RX_FIFOADDR);
+		rv_writel(FIFO_SIZE, rtd->acp3x_base + mmACP_I2S_RX_FIFOSIZE);
 	}
 
 	/* Enable  watermark/period interrupt to host */
-	rv_writel(BIT(BT_TX_THRESHOLD) | BIT(BT_RX_THRESHOLD),
+	rv_writel(BIT(I2S_TX_THRESHOLD) | BIT(I2S_RX_THRESHOLD),
 		  rtd->acp3x_base + mmACP_EXTERNAL_INTR_CNTL);
 }
 
@@ -285,8 +294,9 @@ static int acp3x_dma_open(struct snd_pcm_substream *substream)
 								    DRV_NAME);
 	struct i2s_dev_data *adata = dev_get_drvdata(component->dev);
 
-	struct i2s_stream_instance *i2s_data = kzalloc(sizeof(struct i2s_stream_instance),
-						       GFP_KERNEL);
+	struct i2s_stream_instance *i2s_data =
+				kzalloc(sizeof(struct i2s_stream_instance),
+					GFP_KERNEL);
 	if (!i2s_data)
 		return -EINVAL;
 
@@ -318,20 +328,24 @@ static int acp3x_dma_open(struct snd_pcm_substream *substream)
 
 static u64 acp_get_byte_count(struct i2s_stream_instance *rtd, int direction)
 {
-	u64 byte_count;
+	union acp_dma_count byte_count;
 
 	if (direction == SNDRV_PCM_STREAM_PLAYBACK) {
-		byte_count = rv_readl(rtd->acp3x_base +
-				      mmACP_BT_TX_LINEARPOSITIONCNTR_HIGH);
-		byte_count |= rv_readl(rtd->acp3x_base +
-				       mmACP_BT_TX_LINEARPOSITIONCNTR_LOW);
+		byte_count.bcount.high =
+				rv_readl(rtd->acp3x_base +
+					 mmACP_I2S_TX_LINEARPOSITIONCNTR_HIGH);
+		byte_count.bcount.low =
+				rv_readl(rtd->acp3x_base +
+					 mmACP_I2S_TX_LINEARPOSITIONCNTR_LOW);
 	} else {
-		byte_count = rv_readl(rtd->acp3x_base +
-				      mmACP_BT_RX_LINEARPOSITIONCNTR_HIGH);
-		byte_count |= rv_readl(rtd->acp3x_base +
-				       mmACP_BT_RX_LINEARPOSITIONCNTR_LOW);
+		byte_count.bcount.high =
+				rv_readl(rtd->acp3x_base +
+					 mmACP_I2S_RX_LINEARPOSITIONCNTR_HIGH);
+		byte_count.bcount.low =
+				rv_readl(rtd->acp3x_base +
+					 mmACP_I2S_RX_LINEARPOSITIONCNTR_LOW);
 	}
-	return byte_count;
+	return byte_count.bytescount;
 }
 
 static int acp3x_dma_hw_params(struct snd_pcm_substream *substream,
@@ -384,6 +398,7 @@ static int acp3x_dma_new(struct snd_soc_pcm_runtime *rtd)
 	struct snd_soc_component *component = snd_soc_rtdcom_lookup(rtd,
 								    DRV_NAME);
 	struct device *parent = component->dev->parent;
+
 	snd_pcm_lib_preallocate_pages_for_all(rtd->pcm, SNDRV_DMA_TYPE_DEV,
 					      parent, MIN_BUFFER, MAX_BUFFER);
 	return 0;
@@ -418,6 +433,7 @@ static int acp3x_dma_close(struct snd_pcm_substream *substream)
 	 */
 	if (!adata->play_stream && !adata->capture_stream)
 		rv_writel(0, adata->acp3x_base + mmACP_EXTERNAL_INTR_ENB);
+
 	kfree(rtd);
 	return 0;
 }
@@ -432,10 +448,8 @@ static struct snd_pcm_ops acp3x_dma_ops = {
 	.mmap = acp3x_dma_mmap,
 };
 
-
 static int acp3x_dai_i2s_set_fmt(struct snd_soc_dai *cpu_dai, unsigned int fmt)
 {
-
 	struct i2s_dev_data *adata = snd_soc_dai_get_drvdata(cpu_dai);
 
 	switch (fmt & SND_SOC_DAIFMT_FORMAT_MASK) {
@@ -475,17 +489,10 @@ static int acp3x_dai_set_tdm_slot(struct snd_soc_dai *cpu_dai, u32 tx_mask,
 		break;
 	default:
 		return -EINVAL;
+	break;
 	}
 
-	val = rv_readl(adata->acp3x_base + mmACP_BTTDM_ITER);
-	rv_writel((val | 0x2), adata->acp3x_base + mmACP_BTTDM_ITER);
-	val = rv_readl(adata->acp3x_base + mmACP_BTTDM_IRER);
-	rv_writel((val | 0x2), adata->acp3x_base + mmACP_BTTDM_IRER);
-
 	val = (FRM_LEN | (slots << 15) | (slot_len << 18));
-	rv_writel(val, adata->acp3x_base + mmACP_BTTDM_TXFRMT);
-	rv_writel(val, adata->acp3x_base + mmACP_BTTDM_RXFRMT);
-
 	adata->tdm_fmt = val;
 	return 0;
 }
@@ -494,9 +501,13 @@ static int acp3x_dai_i2s_hwparams(struct snd_pcm_substream *substream,
 				  struct snd_pcm_hw_params *params,
 				  struct snd_soc_dai *dai)
 {
+	struct i2s_stream_instance *rtd;
+	struct i2s_dev_data *adata;
 	u32 val = 0;
-	struct i2s_stream_instance *rtd = substream->runtime->private_data;
+	u32 reg_val, frmt_reg;
 
+	rtd = substream->runtime->private_data;
+	adata = snd_soc_dai_get_drvdata(dai);
 	switch (params_format(params)) {
 	case SNDRV_PCM_FORMAT_U8:
 	case SNDRV_PCM_FORMAT_S8:
@@ -514,13 +525,23 @@ static int acp3x_dai_i2s_hwparams(struct snd_pcm_substream *substream,
 	default:
 		return -EINVAL;
 	}
-	val = rv_readl(rtd->acp3x_base + mmACP_BTTDM_ITER);
-	val = val | (rtd->xfer_resolution  << 3);
-	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
-		rv_writel(val, rtd->acp3x_base + mmACP_BTTDM_ITER);
-	else
-		rv_writel(val, rtd->acp3x_base + mmACP_BTTDM_IRER);
 
+	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+		reg_val = mmACP_I2STDM_ITER;
+		frmt_reg = mmACP_I2STDM_TXFRMT;
+	} else {
+		reg_val = mmACP_I2STDM_IRER;
+		frmt_reg = mmACP_I2STDM_RXFRMT;
+	}
+	if (adata->tdm_mode) {
+		val = rv_readl(rtd->acp3x_base + reg_val);
+		rv_writel(val | 0x2, rtd->acp3x_base + reg_val);
+		rv_writel(adata->tdm_fmt, rtd->acp3x_base + frmt_reg);
+	}
+	val = rv_readl(rtd->acp3x_base + reg_val);
+	val &= ~ACP_ITER_IRER_SAMP_LEN_MASK;
+	val = val | (rtd->xfer_resolution  << 3);
+	rv_writel(val, rtd->acp3x_base + reg_val);
 	return 0;
 }
 
@@ -529,43 +550,51 @@ static int acp3x_dai_i2s_trigger(struct snd_pcm_substream *substream,
 {
 	int ret = 0;
 	struct i2s_stream_instance *rtd = substream->runtime->private_data;
-	u32 val, period_bytes;
+	u32 val, period_bytes, buffer_size;
 
 	period_bytes = frames_to_bytes(substream->runtime,
 				       substream->runtime->period_size);
+	buffer_size = frames_to_bytes(substream->runtime,
+				      substream->runtime->buffer_size);
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
 	case SNDRV_PCM_TRIGGER_RESUME:
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
 		rtd->bytescount = acp_get_byte_count(rtd, substream->stream);
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+			rv_writel(buffer_size, rtd->acp3x_base +
+				  mmACP_I2S_TX_RINGBUFSIZE);
 			rv_writel(period_bytes, rtd->acp3x_base +
-				  mmACP_BT_TX_INTR_WATERMARK_SIZE);
-			val = rv_readl(rtd->acp3x_base + mmACP_BTTDM_ITER);
+				  mmACP_I2S_TX_INTR_WATERMARK_SIZE);
+			val = rv_readl(rtd->acp3x_base + mmACP_I2STDM_ITER);
 			val = val | BIT(0);
-			rv_writel(val, rtd->acp3x_base + mmACP_BTTDM_ITER);
+			rv_writel(val, rtd->acp3x_base + mmACP_I2STDM_ITER);
 		} else {
+			rv_writel(buffer_size, rtd->acp3x_base +
+				  mmACP_I2S_RX_RINGBUFSIZE);
 			rv_writel(period_bytes, rtd->acp3x_base +
-				  mmACP_BT_RX_INTR_WATERMARK_SIZE);
-			val = rv_readl(rtd->acp3x_base + mmACP_BTTDM_IRER);
+				  mmACP_I2S_RX_INTR_WATERMARK_SIZE);
+			val = rv_readl(rtd->acp3x_base + mmACP_I2STDM_IRER);
 			val = val | BIT(0);
-			rv_writel(val, rtd->acp3x_base + mmACP_BTTDM_IRER);
+			rv_writel(val, rtd->acp3x_base + mmACP_I2STDM_IRER);
 		}
-		rv_writel(1, rtd->acp3x_base + mmACP_BTTDM_IER);
+		rv_writel(1, rtd->acp3x_base + mmACP_I2STDM_IER);
 		break;
 	case SNDRV_PCM_TRIGGER_STOP:
 	case SNDRV_PCM_TRIGGER_SUSPEND:
 	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-			val = rv_readl(rtd->acp3x_base + mmACP_BTTDM_ITER);
+			val = rv_readl(rtd->acp3x_base + mmACP_I2STDM_ITER);
 			val = val & ~BIT(0);
-			rv_writel(val, rtd->acp3x_base + mmACP_BTTDM_ITER);
+			rv_writel(val, rtd->acp3x_base + mmACP_I2STDM_ITER);
 		} else {
-			val = rv_readl(rtd->acp3x_base + mmACP_BTTDM_IRER);
+			val = rv_readl(rtd->acp3x_base + mmACP_I2STDM_IRER);
 			val = val & ~BIT(0);
-			rv_writel(val, rtd->acp3x_base + mmACP_BTTDM_IRER);
+			rv_writel(val, rtd->acp3x_base + mmACP_I2STDM_IRER);
 		}
-		rv_writel(0, rtd->acp3x_base + mmACP_BTTDM_IER);
+		if (!(rv_readl(rtd->acp3x_base + mmACP_I2STDM_ITER) & BIT(0)) &&
+		    !(rv_readl(rtd->acp3x_base + mmACP_I2STDM_IRER) & BIT(0)))
+			rv_writel(0, rtd->acp3x_base + mmACP_I2STDM_IER);
 		break;
 	default:
 		ret = -EINVAL;
@@ -596,15 +625,15 @@ static struct snd_soc_dai_driver acp3x_i2s_dai_driver = {
 		.rate_max = 96000,
 	},
 	.capture = {
-		.rates = SNDRV_PCM_RATE_8000_48000,
+		.rates = SNDRV_PCM_RATE_8000_96000,
 		.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S8 |
 					SNDRV_PCM_FMTBIT_U8 |
 					SNDRV_PCM_FMTBIT_S24_LE |
 					SNDRV_PCM_FMTBIT_S32_LE,
 		.channels_min = 2,
-		.channels_max = 2,
+		.channels_max = 8,
 		.rate_min = 8000,
-		.rate_max = 48000,
+		.rate_max = 96000,
 	},
 	.ops = &acp3x_dai_i2s_ops,
 };
@@ -630,8 +659,8 @@ static int acp3x_audio_probe(struct platform_device *pdev)
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
-		dev_err(&pdev->dev, "IORESOURCE_IRQ FAILED\n");
-			return -ENODEV;
+		dev_err(&pdev->dev, "IORESOURCE_MEM FAILED\n");
+		return -ENODEV;
 	}
 
 	adata = devm_kzalloc(&pdev->dev, sizeof(*adata), GFP_KERNEL);
@@ -714,13 +743,13 @@ static int acp3x_resume(struct device *dev)
 			adata->play_stream->runtime->private_data;
 		config_acp3x_dma(rtd, SNDRV_PCM_STREAM_PLAYBACK);
 		rv_writel((rtd->xfer_resolution  << 3),
-			  rtd->acp3x_base + mmACP_BTTDM_ITER);
-		if (adata->tdm_mode == true) {
+			  rtd->acp3x_base + mmACP_I2STDM_ITER);
+		if (adata->tdm_mode == TDM_ENABLE) {
 			rv_writel(adata->tdm_fmt, adata->acp3x_base +
-				  mmACP_BTTDM_TXFRMT);
-			val = rv_readl(adata->acp3x_base + mmACP_BTTDM_ITER);
+				  mmACP_I2STDM_TXFRMT);
+			val = rv_readl(adata->acp3x_base + mmACP_I2STDM_ITER);
 			rv_writel((val | 0x2), adata->acp3x_base +
-				  mmACP_BTTDM_ITER);
+				  mmACP_I2STDM_ITER);
 		}
 	}
 
@@ -729,20 +758,19 @@ static int acp3x_resume(struct device *dev)
 			adata->capture_stream->runtime->private_data;
 		config_acp3x_dma(rtd, SNDRV_PCM_STREAM_CAPTURE);
 		rv_writel((rtd->xfer_resolution  << 3),
-			  rtd->acp3x_base + mmACP_BTTDM_IRER);
-		if (adata->tdm_mode == true) {
+			  rtd->acp3x_base + mmACP_I2STDM_IRER);
+		if (adata->tdm_mode == TDM_ENABLE) {
 			rv_writel(adata->tdm_fmt, adata->acp3x_base +
-				  mmACP_BTTDM_RXFRMT);
-			val = rv_readl(adata->acp3x_base + mmACP_BTTDM_IRER);
+				  mmACP_I2STDM_RXFRMT);
+			val = rv_readl(adata->acp3x_base + mmACP_I2STDM_IRER);
 			rv_writel((val | 0x2), adata->acp3x_base +
-				  mmACP_BTTDM_IRER);
+				  mmACP_I2STDM_IRER);
 		}
 	}
 
 	rv_writel(1, adata->acp3x_base + mmACP_EXTERNAL_INTR_ENB);
 	return 0;
 }
-
 
 static int acp3x_pcm_runtime_suspend(struct device *dev)
 {

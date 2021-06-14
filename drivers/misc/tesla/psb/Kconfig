@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
+config TESLA_AMD_PSB
+	tristate "AMD Platform Secure Boot state"
+	depends on CPU_SUP_AMD
+	help
+	  Support for OEM2 ACPI table containing AMD Platform Secure Boot
+	  state.

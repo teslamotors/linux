@@ -638,6 +638,7 @@ static const struct sdhci_ops sdhci_acpi_ops_amd = {
 	.set_bus_width	= sdhci_set_bus_width,
 	.reset		= amd_sdhci_reset,
 	.set_uhs_signaling = sdhci_set_uhs_signaling,
+	 .set_hs400_dll = sdhci_acpi_amd_hs400_dll,
 };
 
 static const struct sdhci_acpi_chip sdhci_acpi_chip_amd = {

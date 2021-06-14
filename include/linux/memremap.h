@@ -106,6 +106,7 @@ struct dev_pagemap_ops {
  */
 struct dev_pagemap {
 	struct vmem_altmap altmap;
+	bool altmap_valid;
 	struct resource res;
 	struct percpu_ref *ref;
 	struct percpu_ref internal_ref;

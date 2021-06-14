@@ -42,6 +42,49 @@ static inline struct v9_sdma_mqd *get_sdma_mqd(void *mqd)
 	return (struct v9_sdma_mqd *)mqd;
 }
 
+static bool check_sdma_queue_active(struct queue *q)
+{
+	uint32_t rptr, wptr;
+	uint32_t rptr_hi, wptr_hi;
+	struct v9_sdma_mqd *m = get_sdma_mqd(q->mqd);
+
+	rptr = m->sdmax_rlcx_rb_rptr;
+	wptr = m->sdmax_rlcx_rb_wptr;
+	rptr_hi = m->sdmax_rlcx_rb_rptr_hi;
+	wptr_hi = m->sdmax_rlcx_rb_wptr_hi;
+	pr_debug("rptr=%d, wptr=%d\n", rptr, wptr);
+	pr_debug("rptr_hi=%d, wptr_hi=%d\n", rptr_hi, wptr_hi);
+
+	return (rptr != wptr || rptr_hi != wptr_hi);
+}
+
+static bool check_queue_active(struct queue *q)
+{
+	uint32_t rptr, wptr;
+	uint32_t cntl_stack_offset, cntl_stack_size;
+	struct v9_mqd *m = get_mqd(q->mqd);
+
+	rptr = m->cp_hqd_pq_rptr;
+	wptr = m->cp_hqd_pq_wptr_lo % q->properties.queue_size;
+	cntl_stack_offset = m->cp_hqd_cntl_stack_offset;
+	cntl_stack_size = m->cp_hqd_cntl_stack_size;
+
+	pr_debug("rptr=%d, wptr=%d\n", rptr, wptr);
+	pr_debug("m->cp_hqd_cntl_stack_offset=0x%08x\n", cntl_stack_offset);
+	pr_debug("m->cp_hqd_cntl_stack_size=0x%08x\n", cntl_stack_size);
+
+	if ((rptr == 0 && wptr == 0) ||
+		cntl_stack_offset == 0xffffffff ||
+		cntl_stack_size > 0x5000)
+		return false;
+
+	/* Process is idle if both conditions are meet:
+	 * queue's rptr equals to wptr
+	 * control stack is empty, cntl_stack_offset = cntl_stack_size
+	 */
+	return (rptr != wptr || cntl_stack_offset != cntl_stack_size);
+}
+
 static void update_cu_mask(struct mqd_manager *mm, void *mqd,
 			struct queue_properties *q)
 {
@@ -87,12 +130,24 @@ static struct kfd_mem_obj *allocate_mqd(struct kfd_dev *kfd,
 	int retval;
 	struct kfd_mem_obj *mqd_mem_obj = NULL;
 
-	/* From V9,  for CWSR, the control stack is located on the next page
-	 * boundary after the mqd, we will use the gtt allocation function
-	 * instead of sub-allocation function.
+	/* For V9 only, due to a HW bug, the control stack of a user mode
+	 * compute queue needs to be allocated just behind the page boundary
+	 * of its regular MQD buffer. So we allocate an enlarged MQD buffer:
+	 * the first page of the buffer serves as the regular MQD buffer
+	 * purpose and the remaining is for control stack. Although the two
+	 * parts are in the same buffer object, they need different memory
+	 * types: MQD part needs UC (uncached) as usual, while control stack
+	 * needs NC (non coherent), which is different from the UC type which
+	 * is used when control stack is allocated in user space.
+	 *
+	 * Because of all those, we use the gtt allocation function instead
+	 * of sub-allocation function for this enlarged MQD buffer. Moreover,
+	 * in order to achieve two memory types in a single buffer object, we
+	 * pass a special bo flag AMDGPU_GEM_CREATE_CP_MQD_GFX9 to instruct
+	 * amdgpu memory functions to do so.
 	 */
 	if (kfd->cwsr_enabled && (q->type == KFD_QUEUE_TYPE_COMPUTE)) {
-		mqd_mem_obj = kzalloc(sizeof(struct kfd_mem_obj), GFP_NOIO);
+		mqd_mem_obj = kzalloc(sizeof(struct kfd_mem_obj), GFP_KERNEL);
 		if (!mqd_mem_obj)
 			return NULL;
 		retval = amdgpu_amdkfd_alloc_gtt_mem(kfd->kgd,
@@ -100,7 +155,7 @@ static struct kfd_mem_obj *allocate_mqd(struct kfd_dev *kfd,
 				ALIGN(sizeof(struct v9_mqd), PAGE_SIZE),
 			&(mqd_mem_obj->gtt_mem),
 			&(mqd_mem_obj->gpu_addr),
-			(void *)&(mqd_mem_obj->cpu_ptr), true);
+			(void *)&(mqd_mem_obj->cpu_ptr), true, true);
 	} else {
 		retval = kfd_gtt_sa_allocate(kfd, sizeof(struct v9_mqd),
 				&mqd_mem_obj);
@@ -148,7 +203,12 @@ static void init_mqd(struct mqd_manager *mm, void **mqd,
 
 	m->cp_hqd_quantum = 1 << CP_HQD_QUANTUM__QUANTUM_EN__SHIFT |
 			1 << CP_HQD_QUANTUM__QUANTUM_SCALE__SHIFT |
-			10 << CP_HQD_QUANTUM__QUANTUM_DURATION__SHIFT;
+			1 << CP_HQD_QUANTUM__QUANTUM_DURATION__SHIFT;
+
+	/* Set cp_hqd_hq_status0 bit 14 to 1 to have the CP set up the
+	 * DISPATCH_PTR.  This is required for the kfd debugger
+	 */
+	m->cp_hqd_hq_status0 = 1 << 14;
 
 	if (q->format == KFD_QUEUE_FORMAT_AQL) {
 		m->cp_hqd_aql_control =
@@ -189,6 +249,14 @@ static int load_mqd(struct mqd_manager *mm, void *mqd,
 	return mm->dev->kfd2kgd->hqd_load(mm->dev->kgd, mqd, pipe_id, queue_id,
 					  (uint32_t __user *)p->write_ptr,
 					  wptr_shift, 0, mms);
+}
+
+static int hiq_load_mqd_kiq(struct mqd_manager *mm, void *mqd,
+			    uint32_t pipe_id, uint32_t queue_id,
+			    struct queue_properties *p, struct mm_struct *mms)
+{
+	return mm->dev->kfd2kgd->hiq_mqd_load(mm->dev->kgd, mqd, pipe_id,
+					      queue_id, p->doorbell_off);
 }
 
 static void update_mqd(struct mqd_manager *mm, void *mqd,
@@ -246,6 +314,9 @@ static void update_mqd(struct mqd_manager *mm, void *mqd,
 		m->cp_hqd_pq_doorbell_control |= 1 <<
 			CP_HQD_PQ_DOORBELL_CONTROL__DOORBELL_BIF_DROP__SHIFT;
 	}
+	if (priv_cp_queues)
+		m->cp_hqd_pq_control |=
+			1 << CP_HQD_PQ_CONTROL__PRIV_STATE__SHIFT;
 	if (mm->dev->cwsr_enabled && q->ctx_save_restore_area_address)
 		m->cp_hqd_ctx_save_control = 0;
 
@@ -294,6 +365,7 @@ static int get_wave_state(struct mqd_manager *mm, void *mqd,
 			  u32 *save_area_used_size)
 {
 	struct v9_mqd *m;
+	struct mqd_user_context_save_area_header header;
 
 	/* Control stack is located one page after MQD. */
 	void *mqd_ctl_stack = (void *)((uintptr_t)mqd + PAGE_SIZE);
@@ -302,9 +374,22 @@ static int get_wave_state(struct mqd_manager *mm, void *mqd,
 
 	*ctl_stack_used_size = m->cp_hqd_cntl_stack_size -
 		m->cp_hqd_cntl_stack_offset;
-	*save_area_used_size = m->cp_hqd_wg_state_offset;
+	*save_area_used_size = m->cp_hqd_wg_state_offset -
+		m->cp_hqd_cntl_stack_size;
 
-	if (copy_to_user(ctl_stack, mqd_ctl_stack, m->cp_hqd_cntl_stack_size))
+	header.control_stack_size = *ctl_stack_used_size;
+	header.wave_state_size = *save_area_used_size;
+
+	header.wave_state_offset = m->cp_hqd_wg_state_offset;
+	header.control_stack_offset = m->cp_hqd_cntl_stack_offset;
+
+	if (copy_to_user(ctl_stack, &header, sizeof(header)))
+		return -EFAULT;
+
+	if (copy_to_user(ctl_stack + m->cp_hqd_cntl_stack_offset,
+				mqd_ctl_stack + m->cp_hqd_cntl_stack_offset,
+				*ctl_stack_used_size))
+
 		return -EFAULT;
 
 	return 0;
@@ -322,18 +407,6 @@ static void init_mqd_hiq(struct mqd_manager *mm, void **mqd,
 
 	m->cp_hqd_pq_control |= 1 << CP_HQD_PQ_CONTROL__PRIV_STATE__SHIFT |
 			1 << CP_HQD_PQ_CONTROL__KMD_QUEUE__SHIFT;
-}
-
-static void update_mqd_hiq(struct mqd_manager *mm, void *mqd,
-			struct queue_properties *q)
-{
-	struct v9_mqd *m;
-
-	update_mqd(mm, mqd, q);
-
-	/* TODO: what's the point? update_mqd already does this. */
-	m = get_mqd(mqd);
-	m->cp_hqd_vmid = q->vmid;
 }
 
 static void init_mqd_sdma(struct mqd_manager *mm, void **mqd,
@@ -443,7 +516,6 @@ struct mqd_manager *mqd_manager_init_v9(enum KFD_MQD_TYPE type,
 
 	switch (type) {
 	case KFD_MQD_TYPE_CP:
-	case KFD_MQD_TYPE_COMPUTE:
 		mqd->allocate_mqd = allocate_mqd;
 		mqd->init_mqd = init_mqd;
 		mqd->free_mqd = free_mqd;
@@ -452,6 +524,7 @@ struct mqd_manager *mqd_manager_init_v9(enum KFD_MQD_TYPE type,
 		mqd->destroy_mqd = destroy_mqd;
 		mqd->is_occupied = is_occupied;
 		mqd->get_wave_state = get_wave_state;
+		mqd->check_queue_active = check_queue_active;
 		mqd->mqd_size = sizeof(struct v9_mqd);
 #if defined(CONFIG_DEBUG_FS)
 		mqd->debugfs_show_mqd = debugfs_show_mqd;
@@ -461,23 +534,25 @@ struct mqd_manager *mqd_manager_init_v9(enum KFD_MQD_TYPE type,
 		mqd->allocate_mqd = allocate_hiq_mqd;
 		mqd->init_mqd = init_mqd_hiq;
 		mqd->free_mqd = free_mqd_hiq_sdma;
-		mqd->load_mqd = load_mqd;
-		mqd->update_mqd = update_mqd_hiq;
+		mqd->load_mqd = hiq_load_mqd_kiq;
+		mqd->update_mqd = update_mqd;
 		mqd->destroy_mqd = destroy_mqd;
 		mqd->is_occupied = is_occupied;
+		mqd->check_queue_active = check_queue_active;
 		mqd->mqd_size = sizeof(struct v9_mqd);
 #if defined(CONFIG_DEBUG_FS)
 		mqd->debugfs_show_mqd = debugfs_show_mqd;
 #endif
 		break;
 	case KFD_MQD_TYPE_DIQ:
-		mqd->allocate_mqd = allocate_hiq_mqd;
+		mqd->allocate_mqd = allocate_mqd;
 		mqd->init_mqd = init_mqd_hiq;
 		mqd->free_mqd = free_mqd;
 		mqd->load_mqd = load_mqd;
-		mqd->update_mqd = update_mqd_hiq;
+		mqd->update_mqd = update_mqd;
 		mqd->destroy_mqd = destroy_mqd;
 		mqd->is_occupied = is_occupied;
+		mqd->check_queue_active = check_queue_active;
 		mqd->mqd_size = sizeof(struct v9_mqd);
 #if defined(CONFIG_DEBUG_FS)
 		mqd->debugfs_show_mqd = debugfs_show_mqd;
@@ -491,6 +566,7 @@ struct mqd_manager *mqd_manager_init_v9(enum KFD_MQD_TYPE type,
 		mqd->update_mqd = update_mqd_sdma;
 		mqd->destroy_mqd = destroy_mqd_sdma;
 		mqd->is_occupied = is_occupied_sdma;
+		mqd->check_queue_active = check_sdma_queue_active;
 		mqd->mqd_size = sizeof(struct v9_sdma_mqd);
 #if defined(CONFIG_DEBUG_FS)
 		mqd->debugfs_show_mqd = debugfs_show_mqd_sdma;

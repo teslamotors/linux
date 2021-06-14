@@ -247,6 +247,7 @@ void enc1_stream_encoder_dp_set_stream_attribute(
 	struct stream_encoder *enc,
 	struct dc_crtc_timing *crtc_timing,
 	enum dc_color_space output_color_space,
+	bool use_vsc_sdp_for_colorimetry,
 	uint32_t enable_sdp_splitting)
 {
 	uint32_t h_active_start;
@@ -312,10 +313,7 @@ void enc1_stream_encoder_dp_set_stream_attribute(
 	 * Pixel Encoding/Colorimetry Format and that a Sink device shall ignore MISC1, bit 7,
 	 * and MISC0, bits 7:1 (MISC1, bit 7, and MISC0, bits 7:1, become "don't care").
 	 */
-	if ((hw_crtc_timing.pixel_encoding == PIXEL_ENCODING_YCBCR420) ||
-			(output_color_space == COLOR_SPACE_2020_YCBCR) ||
-			(output_color_space == COLOR_SPACE_2020_RGB_FULLRANGE) ||
-			(output_color_space == COLOR_SPACE_2020_RGB_LIMITEDRANGE))
+	if (use_vsc_sdp_for_colorimetry)
 		misc1 = misc1 | 0x40;
 	else
 		misc1 = misc1 & ~0x40;
@@ -621,7 +619,7 @@ void enc1_stream_encoder_dvi_set_stream_attribute(
 	enc1_stream_encoder_set_stream_attribute_helper(enc1, crtc_timing);
 }
 
-void enc1_stream_encoder_set_mst_bandwidth(
+void enc1_stream_encoder_set_throttled_vcp_size(
 	struct stream_encoder *enc,
 	struct fixed31_32 avg_time_slots_per_mtp)
 {
@@ -1023,88 +1021,6 @@ void enc1_reset_hdmi_stream_attribute(
 
 #include "include/audio_types.h"
 
-/**
-* speakersToChannels
-*
-* @brief
-*  translate speakers to channels
-*
-*  FL  - Front Left
-*  FR  - Front Right
-*  RL  - Rear Left
-*  RR  - Rear Right
-*  RC  - Rear Center
-*  FC  - Front Center
-*  FLC - Front Left Center
-*  FRC - Front Right Center
-*  RLC - Rear Left Center
-*  RRC - Rear Right Center
-*  LFE - Low Freq Effect
-*
-*               FC
-*          FLC      FRC
-*    FL                    FR
-*
-*                    LFE
-*              ()
-*
-*
-*    RL                    RR
-*          RLC      RRC
-*               RC
-*
-*             ch  8   7   6   5   4   3   2   1
-* 0b00000011      -   -   -   -   -   -   FR  FL
-* 0b00000111      -   -   -   -   -   LFE FR  FL
-* 0b00001011      -   -   -   -   FC  -   FR  FL
-* 0b00001111      -   -   -   -   FC  LFE FR  FL
-* 0b00010011      -   -   -   RC  -   -   FR  FL
-* 0b00010111      -   -   -   RC  -   LFE FR  FL
-* 0b00011011      -   -   -   RC  FC  -   FR  FL
-* 0b00011111      -   -   -   RC  FC  LFE FR  FL
-* 0b00110011      -   -   RR  RL  -   -   FR  FL
-* 0b00110111      -   -   RR  RL  -   LFE FR  FL
-* 0b00111011      -   -   RR  RL  FC  -   FR  FL
-* 0b00111111      -   -   RR  RL  FC  LFE FR  FL
-* 0b01110011      -   RC  RR  RL  -   -   FR  FL
-* 0b01110111      -   RC  RR  RL  -   LFE FR  FL
-* 0b01111011      -   RC  RR  RL  FC  -   FR  FL
-* 0b01111111      -   RC  RR  RL  FC  LFE FR  FL
-* 0b11110011      RRC RLC RR  RL  -   -   FR  FL
-* 0b11110111      RRC RLC RR  RL  -   LFE FR  FL
-* 0b11111011      RRC RLC RR  RL  FC  -   FR  FL
-* 0b11111111      RRC RLC RR  RL  FC  LFE FR  FL
-* 0b11000011      FRC FLC -   -   -   -   FR  FL
-* 0b11000111      FRC FLC -   -   -   LFE FR  FL
-* 0b11001011      FRC FLC -   -   FC  -   FR  FL
-* 0b11001111      FRC FLC -   -   FC  LFE FR  FL
-* 0b11010011      FRC FLC -   RC  -   -   FR  FL
-* 0b11010111      FRC FLC -   RC  -   LFE FR  FL
-* 0b11011011      FRC FLC -   RC  FC  -   FR  FL
-* 0b11011111      FRC FLC -   RC  FC  LFE FR  FL
-* 0b11110011      FRC FLC RR  RL  -   -   FR  FL
-* 0b11110111      FRC FLC RR  RL  -   LFE FR  FL
-* 0b11111011      FRC FLC RR  RL  FC  -   FR  FL
-* 0b11111111      FRC FLC RR  RL  FC  LFE FR  FL
-*
-* @param
-*  speakers - speaker information as it comes from CEA audio block
-*/
-/* translate speakers to channels */
-
-union audio_cea_channels {
-	uint8_t all;
-	struct audio_cea_channels_bits {
-		uint32_t FL:1;
-		uint32_t FR:1;
-		uint32_t LFE:1;
-		uint32_t FC:1;
-		uint32_t RL_RC:1;
-		uint32_t RR:1;
-		uint32_t RC_RLC_FLC:1;
-		uint32_t RRC_FRC:1;
-	} channels;
-};
 
 /* 25.2MHz/1.001*/
 /* 25.2MHz/1.001*/
@@ -1276,7 +1192,6 @@ static void enc1_se_audio_setup(
 {
 	struct dcn10_stream_encoder *enc1 = DCN10STRENC_FROM_STRENC(enc);
 
-	uint32_t speakers = 0;
 	uint32_t channels = 0;
 
 	ASSERT(audio_info);
@@ -1284,7 +1199,6 @@ static void enc1_se_audio_setup(
 		/* This should not happen.it does so we don't get BSOD*/
 		return;
 
-	speakers = audio_info->flags.info.ALLSPEAKERS;
 	channels = speakers_to_channels(audio_info->flags.speaker_flags).all;
 
 	/* setup the audio stream source select (audio -> dig mapping) */
@@ -1553,6 +1467,66 @@ unsigned int enc1_dig_source_otg(
 	return tg_inst;
 }
 
+bool enc1_stream_encoder_dp_get_pixel_format(
+	struct stream_encoder *enc,
+	enum dc_pixel_encoding *encoding,
+	enum dc_color_depth *depth)
+{
+	uint32_t hw_encoding = 0;
+	uint32_t hw_depth = 0;
+	struct dcn10_stream_encoder *enc1 = DCN10STRENC_FROM_STRENC(enc);
+
+	if (enc == NULL ||
+		encoding == NULL ||
+		depth == NULL)
+		return false;
+
+	REG_GET_2(DP_PIXEL_FORMAT,
+		DP_PIXEL_ENCODING, &hw_encoding,
+		DP_COMPONENT_DEPTH, &hw_depth);
+
+	switch (hw_depth) {
+	case DP_COMPONENT_PIXEL_DEPTH_6BPC:
+		*depth = COLOR_DEPTH_666;
+		break;
+	case DP_COMPONENT_PIXEL_DEPTH_8BPC:
+		*depth = COLOR_DEPTH_888;
+		break;
+	case DP_COMPONENT_PIXEL_DEPTH_10BPC:
+		*depth = COLOR_DEPTH_101010;
+		break;
+	case DP_COMPONENT_PIXEL_DEPTH_12BPC:
+		*depth = COLOR_DEPTH_121212;
+		break;
+	case DP_COMPONENT_PIXEL_DEPTH_16BPC:
+		*depth = COLOR_DEPTH_161616;
+		break;
+	default:
+		*depth = COLOR_DEPTH_UNDEFINED;
+		break;
+	}
+
+	switch (hw_encoding) {
+	case DP_PIXEL_ENCODING_TYPE_RGB444:
+		*encoding = PIXEL_ENCODING_RGB;
+		break;
+	case DP_PIXEL_ENCODING_TYPE_YCBCR422:
+		*encoding = PIXEL_ENCODING_YCBCR422;
+		break;
+	case DP_PIXEL_ENCODING_TYPE_YCBCR444:
+	case DP_PIXEL_ENCODING_TYPE_Y_ONLY:
+		*encoding = PIXEL_ENCODING_YCBCR444;
+		break;
+	case DP_PIXEL_ENCODING_TYPE_YCBCR420:
+		*encoding = PIXEL_ENCODING_YCBCR420;
+		break;
+	default:
+		*encoding = PIXEL_ENCODING_UNDEFINED;
+		break;
+	}
+	return true;
+}
+
 static const struct stream_encoder_funcs dcn10_str_enc_funcs = {
 	.dp_set_stream_attribute =
 		enc1_stream_encoder_dp_set_stream_attribute,
@@ -1560,8 +1534,8 @@ static const struct stream_encoder_funcs dcn10_str_enc_funcs = {
 		enc1_stream_encoder_hdmi_set_stream_attribute,
 	.dvi_set_stream_attribute =
 		enc1_stream_encoder_dvi_set_stream_attribute,
-	.set_mst_bandwidth =
-		enc1_stream_encoder_set_mst_bandwidth,
+	.set_throttled_vcp_size =
+		enc1_stream_encoder_set_throttled_vcp_size,
 	.update_hdmi_info_packets =
 		enc1_stream_encoder_update_hdmi_info_packets,
 	.stop_hdmi_info_packets =
@@ -1589,6 +1563,8 @@ static const struct stream_encoder_funcs dcn10_str_enc_funcs = {
 	.dig_connect_to_otg  = enc1_dig_connect_to_otg,
 	.hdmi_reset_stream_attribute = enc1_reset_hdmi_stream_attribute,
 	.dig_source_otg = enc1_dig_source_otg,
+
+	.dp_get_pixel_format  = enc1_stream_encoder_dp_get_pixel_format,
 };
 
 void dcn10_stream_encoder_construct(
@@ -1607,5 +1583,6 @@ void dcn10_stream_encoder_construct(
 	enc1->regs = regs;
 	enc1->se_shift = se_shift;
 	enc1->se_mask = se_mask;
+	enc1->base.stream_enc_inst = eng_id - ENGINE_ID_DIGA;
 }
 

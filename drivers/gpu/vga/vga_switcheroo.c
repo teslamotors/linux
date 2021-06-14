@@ -44,6 +44,8 @@
 #include <linux/uaccess.h>
 #include <linux/vgaarb.h>
 #include <linux/vga_switcheroo.h>
+#include <linux/dmi.h>
+#include <linux/pci_ids.h>
 
 /**
  * DOC: Overview
@@ -424,6 +426,37 @@ find_active_client(struct list_head *head)
 	return NULL;
 }
 
+/*
+ * Return true if @pdev matches a secondary (non-default) VGA device when
+ * the primary vga_default_device() has not yet registered a drm device
+ * matching @card_name.  This is a companion function for
+ * vga_switcheroo_client_probe_defer().
+ */
+static bool vga_secondary_defer_needed(struct pci_dev *pdev,
+				       const char *card_name)
+{
+	struct pci_dev *primary_vga;
+	struct device *drm_dev;
+
+	primary_vga = vga_default_device();
+
+	if (pdev == primary_vga)
+		return false;	/* Always OK to probe primary device */
+
+	if (primary_vga == NULL)
+		return false;
+
+	drm_dev = device_find_child_by_name(&primary_vga->dev, card_name);
+	if (drm_dev != NULL) {
+		put_device(drm_dev);
+		return false;
+	}
+
+	pr_info_once("deferring probe of vga dev @ %s until after %s\n",
+		     dev_name(&pdev->dev), dev_name(&primary_vga->dev));
+	return true;
+}
+
 /**
  * vga_switcheroo_client_probe_defer() - whether to defer probing a given client
  * @pdev: client pci device
@@ -445,6 +478,16 @@ bool vga_switcheroo_client_probe_defer(struct pci_dev *pdev)
 		if (apple_gmux_present() && pdev != vga_default_device() &&
 		    !vgasr_priv.handler_flags)
 			return true;
+	}
+
+	if (dmi_match(DMI_PRODUCT_FAMILY, "Tesla_InfoZ")) {
+		/*
+		 * Tesla InfoZ platform quirk:
+		 * Defer probing of non-primary VGA devices until the primary
+		 * device is ready.  The secondary device cannot be used
+		 * without the primary on this platform.
+		 */
+		return vga_secondary_defer_needed(pdev, "card0");
 	}
 
 	return false;

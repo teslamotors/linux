@@ -124,6 +124,9 @@
 #include "xgbe.h"
 #include "xgbe-common.h"
 
+static int autoneg = 0;
+module_param(autoneg, int, S_IWUSR | S_IRUGO);
+MODULE_PARM_DESC(autoneg, " Enable/disable autonegotiation support (0=disable, 1=enable (or any non-zero value))");
 #define XGBE_PHY_PORT_SPEED_100		BIT(0)
 #define XGBE_PHY_PORT_SPEED_1000	BIT(1)
 #define XGBE_PHY_PORT_SPEED_2500	BIT(2)
@@ -156,6 +159,11 @@
 /* RRC frequency during link status check */
 #define XGBE_RRC_FREQUENCY		10
 
+/* Enable Marvell PHY writes by forcing the MDIO connections */
+static int force_mdio_mv_bp_con = 1;
+module_param(force_mdio_mv_bp_con, uint, 0644);
+MODULE_PARM_DESC(force_mdio_mv_bp_con,
+                 " Enable Marvell PHY writes by forcing the MDIO connections");
 enum xgbe_port_mode {
 	XGBE_PORT_MODE_RSVD = 0,
 	XGBE_PORT_MODE_BACKPLANE,
@@ -997,14 +1005,24 @@ static int xgbe_phy_find_phy_device(struct xgbe_prv_data *pdata)
 	/* Clear the extra AN flag */
 	pdata->an_again = 0;
 
-	/* Check for the use of an external PHY */
-	if (phy_data->phydev_mode == XGBE_MDIO_MODE_NONE)
-		return 0;
-
 	/* For SFP, only use an external PHY if available */
-	if ((phy_data->port_mode == XGBE_PORT_MODE_SFP) &&
-	    !phy_data->sfp_phy_avail)
-		return 0;
+	if (phy_data->port_mode == XGBE_PORT_MODE_SFP) {
+		force_mdio_mv_bp_con = 0;
+	    	if(!phy_data->sfp_phy_avail)
+			return 0;
+	}
+
+	/* Check for the use of an external PHY */
+	if (phy_data->phydev_mode == XGBE_MDIO_MODE_NONE) {
+		if(force_mdio_mv_bp_con) {
+			phy_data->phydev_mode = XGBE_MDIO_MODE_CL45;
+			phy_data->conn_type = XGBE_CONN_TYPE_MDIO;
+			netif_dbg(pdata, drv, pdata->netdev, "*** DEBUG: %s - bypass phydev_mode check\n", __func__);
+		} else {
+			return 0;
+		}
+	}
+
 
 	/* Set the proper MDIO mode for the PHY */
 	ret = pdata->hw_if.set_ext_mii_mode(pdata, phy_data->mdio_addr,
@@ -1024,7 +1042,7 @@ static int xgbe_phy_find_phy_device(struct xgbe_prv_data *pdata)
 		return -ENODEV;
 	}
 	netif_dbg(pdata, drv, pdata->netdev, "external PHY id is %#010x\n",
-		  phydev->phy_id);
+		 (phy_data->phydev_mode == XGBE_MDIO_MODE_CL45) ? phydev->c45_ids.device_ids[MDIO_MMD_PMAPMD] : phydev->phy_id);
 
 	/*TODO: If c45, add request_module based on one of the MMD ids? */
 
@@ -1045,7 +1063,27 @@ static int xgbe_phy_find_phy_device(struct xgbe_prv_data *pdata)
 	}
 	phy_data->phydev = phydev;
 
+	switch (phy_data->port_mode) {
+	case XGBE_PORT_MODE_SFP:
+		/*  reset the sfp phy  EMBDEV-8951 */
+		if(phydev)
+			genphy_soft_reset(phydev);
+		else
+			netdev_err(pdata->netdev, "phy reset failed\n");
+		break;
+	default:
+		break;
+	}
+
 	xgbe_phy_external_phy_quirks(pdata);
+
+    if(force_mdio_mv_bp_con) {
+            phy_data->phydev_mode = XGBE_MDIO_MODE_NONE;
+            phy_data->conn_type = XGBE_CONN_TYPE_BACKPLANE;
+            netif_dbg(pdata, drv, pdata->netdev, "phy_dev removed!\n");
+            xgbe_phy_free_phy_device(pdata);
+            return 0;
+    }
 
 	linkmode_and(phydev->advertising, phydev->advertising,
 		     lks->link_modes.advertising);
@@ -1279,7 +1317,7 @@ static int xgbe_phy_sfp_read_eeprom(struct xgbe_prv_data *pdata)
 
 		memcpy(&phy_data->sfp_eeprom, &sfp_eeprom, sizeof(sfp_eeprom));
 
-		xgbe_phy_free_phy_device(pdata);
+
 	} else {
 		phy_data->sfp_changed = 0;
 	}
@@ -1316,7 +1354,6 @@ static void xgbe_phy_sfp_mod_absent(struct xgbe_prv_data *pdata)
 {
 	struct xgbe_phy_data *phy_data = pdata->phy_data;
 
-	xgbe_phy_free_phy_device(pdata);
 
 	phy_data->sfp_mod_absent = 1;
 	phy_data->sfp_phy_avail = 0;
@@ -1368,6 +1405,9 @@ put:
 	xgbe_phy_sfp_phy_settings(pdata);
 
 	xgbe_phy_put_comm_ownership(pdata);
+
+	if((phy_data->sfp_mod_absent) || (phy_data->sfp_changed))
+			xgbe_phy_free_phy_device(pdata);
 }
 
 static int xgbe_phy_module_eeprom(struct xgbe_prv_data *pdata,
@@ -1866,6 +1906,9 @@ static enum xgbe_an_mode xgbe_phy_an_sfp_mode(struct xgbe_phy_data *phy_data)
 static enum xgbe_an_mode xgbe_phy_an_mode(struct xgbe_prv_data *pdata)
 {
 	struct xgbe_phy_data *phy_data = pdata->phy_data;
+
+	if (!autoneg)
+		return XGBE_AN_MODE_NONE;
 
 	/* A KR re-driver will always require CL73 AN */
 	if (phy_data->redrv)
@@ -2560,8 +2603,10 @@ static int xgbe_phy_link_status(struct xgbe_prv_data *pdata, int *an_restart)
 			return 0;
 
 		if ((pdata->phy.autoneg == AUTONEG_ENABLE) &&
-		    !phy_aneg_done(phy_data->phydev))
+		    !phy_aneg_done(phy_data->phydev)) {
+			netif_dbg(pdata, drv, pdata->netdev,"%s Ext phy AN not complete!\n", __func__);
 			return 0;
+               }
 
 		if (!phy_data->phydev->link)
 			return 0;
@@ -2572,8 +2617,18 @@ static int xgbe_phy_link_status(struct xgbe_prv_data *pdata, int *an_restart)
 	 */
 	reg = XMDIO_READ(pdata, MDIO_MMD_PCS, MDIO_STAT1);
 	reg = XMDIO_READ(pdata, MDIO_MMD_PCS, MDIO_STAT1);
-	if (reg & MDIO_STAT1_LSTATUS)
-		return 1;
+	if(phy_data->sfp_speed == XGBE_SFP_SPEED_10000) {
+		if ((reg & MDIO_STAT1_LSTATUS) && !(reg & MDIO_STAT1_FAULT)) {
+			return 1;
+		} else {
+			*an_restart = 1;
+			pdata->phy_if.phy_reset(pdata);
+			return 0;
+		}
+	} else {
+		if (reg & MDIO_STAT1_LSTATUS)
+			return 1;
+	}
 
 	/* No link, attempt a receiver reset cycle */
 	if (phy_data->rrc_count++ > XGBE_RRC_FREQUENCY) {
@@ -3159,7 +3214,8 @@ static int xgbe_phy_init(struct xgbe_prv_data *pdata)
 	switch (phy_data->port_mode) {
 	/* Backplane support */
 	case XGBE_PORT_MODE_BACKPLANE:
-		XGBE_SET_SUP(lks, Autoneg);
+		if (autoneg)
+			XGBE_SET_SUP(lks, Autoneg);
 		XGBE_SET_SUP(lks, Pause);
 		XGBE_SET_SUP(lks, Asym_Pause);
 		XGBE_SET_SUP(lks, Backplane);
@@ -3188,7 +3244,8 @@ static int xgbe_phy_init(struct xgbe_prv_data *pdata)
 
 	/* MDIO 1GBase-T support */
 	case XGBE_PORT_MODE_1000BASE_T:
-		XGBE_SET_SUP(lks, Autoneg);
+		if (autoneg)
+			XGBE_SET_SUP(lks, Autoneg);
 		XGBE_SET_SUP(lks, Pause);
 		XGBE_SET_SUP(lks, Asym_Pause);
 		XGBE_SET_SUP(lks, TP);
@@ -3206,7 +3263,8 @@ static int xgbe_phy_init(struct xgbe_prv_data *pdata)
 
 	/* MDIO Base-X support */
 	case XGBE_PORT_MODE_1000BASE_X:
-		XGBE_SET_SUP(lks, Autoneg);
+		if (autoneg)
+			XGBE_SET_SUP(lks, Autoneg);
 		XGBE_SET_SUP(lks, Pause);
 		XGBE_SET_SUP(lks, Asym_Pause);
 		XGBE_SET_SUP(lks, FIBRE);
@@ -3218,7 +3276,8 @@ static int xgbe_phy_init(struct xgbe_prv_data *pdata)
 
 	/* MDIO NBase-T support */
 	case XGBE_PORT_MODE_NBASE_T:
-		XGBE_SET_SUP(lks, Autoneg);
+		if (autoneg)
+			XGBE_SET_SUP(lks, Autoneg);
 		XGBE_SET_SUP(lks, Pause);
 		XGBE_SET_SUP(lks, Asym_Pause);
 		XGBE_SET_SUP(lks, TP);
@@ -3240,7 +3299,8 @@ static int xgbe_phy_init(struct xgbe_prv_data *pdata)
 
 	/* 10GBase-T support */
 	case XGBE_PORT_MODE_10GBASE_T:
-		XGBE_SET_SUP(lks, Autoneg);
+		if (autoneg)
+			XGBE_SET_SUP(lks, Autoneg);
 		XGBE_SET_SUP(lks, Pause);
 		XGBE_SET_SUP(lks, Asym_Pause);
 		XGBE_SET_SUP(lks, TP);
@@ -3262,7 +3322,8 @@ static int xgbe_phy_init(struct xgbe_prv_data *pdata)
 
 	/* 10GBase-R support */
 	case XGBE_PORT_MODE_10GBASE_R:
-		XGBE_SET_SUP(lks, Autoneg);
+		if (autoneg)
+			XGBE_SET_SUP(lks, Autoneg);
 		XGBE_SET_SUP(lks, Pause);
 		XGBE_SET_SUP(lks, Asym_Pause);
 		XGBE_SET_SUP(lks, FIBRE);

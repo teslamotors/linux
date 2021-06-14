@@ -716,6 +716,42 @@ ssize_t spi_mem_dirmap_write(struct spi_mem_dirmap_desc *desc,
 }
 EXPORT_SYMBOL_GPL(spi_mem_dirmap_write);
 
+/**
+ * spi_mem_prepare() - Prepare for higher-level read/erase/write operation
+ *
+ * @mem: the SPI memory
+ *
+ * Return: a negative error code if the controller preparation fails.
+ *	   0 otherwise.
+ */
+int spi_mem_prepare(struct spi_mem *mem)
+{
+	struct spi_controller *ctlr = mem->spi->controller;
+
+	if (ctlr->mem_ops && ctlr->mem_ops->prepare)
+		return ctlr->mem_ops->prepare(mem);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(spi_mem_prepare);
+
+/**
+ * spi_mem_unprepare() - Clean up after higher-level read/erase/write operation
+ *
+ * @mem: the SPI memory
+ *
+ * Return: a negative error code if the controller preparation fails.
+ *	   0 otherwise.
+ */
+void spi_mem_unprepare(struct spi_mem *mem)
+{
+	struct spi_controller *ctlr = mem->spi->controller;
+
+	if (ctlr->mem_ops && ctlr->mem_ops->unprepare)
+		ctlr->mem_ops->unprepare(mem);
+}
+EXPORT_SYMBOL_GPL(spi_mem_unprepare);
+
 static inline struct spi_mem_driver *to_spi_mem_drv(struct device_driver *drv)
 {
 	return container_of(drv, struct spi_mem_driver, spidrv.driver);

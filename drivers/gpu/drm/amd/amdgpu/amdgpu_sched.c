@@ -29,7 +29,7 @@
 #include <drm/amdgpu_drm.h>
 
 #include "amdgpu.h"
-
+#include "amdgpu_sched.h"
 #include "amdgpu_vm.h"
 
 enum drm_sched_priority amdgpu_to_sched_priority(int amdgpu_priority)
@@ -115,7 +115,7 @@ int amdgpu_sched_ioctl(struct drm_device *dev, void *data,
 		       struct drm_file *filp)
 {
 	union drm_amdgpu_sched *args = data;
-	struct amdgpu_device *adev = dev->dev_private;
+	struct amdgpu_device *adev = drm_to_adev(dev);
 	enum drm_sched_priority priority;
 	int r;
 

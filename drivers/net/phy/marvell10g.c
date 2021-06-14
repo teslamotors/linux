@@ -26,6 +26,7 @@
 #include <linux/hwmon.h>
 #include <linux/marvell_phy.h>
 #include <linux/phy.h>
+#include <linux/delay.h>
 
 #define MV_PHY_ALASKA_NBT_QUIRK_MASK	0xfffffffe
 #define MV_PHY_ALASKA_NBT_QUIRK_REV	(MARVELL_PHY_ID_88X3310 | 0xa)
@@ -57,7 +58,11 @@ enum {
 	MV_V2_TEMP_CTRL_MASK	= 0xc000,
 	MV_V2_TEMP_CTRL_SAMPLE	= 0x0000,
 	MV_V2_TEMP_CTRL_DISABLE	= 0xc000,
+	MV_V2_MODE_CFG		= 0xf000,
+	MV_V2_LED0_CTRL		= 0xf020,
 	MV_V2_TEMP		= 0xf08c,
+	MV_V2_HOST_KR_ENABLE    = 0xf084,
+	MV_V2_HOST_KR_TUNE      = 0xf07c,
 	MV_V2_TEMP_UNKNOWN	= 0x9600, /* unknown function */
 };
 
@@ -66,7 +71,7 @@ struct mv3310_priv {
 	char *hwmon_name;
 };
 
-#ifdef CONFIG_HWMON
+#ifdef CONFIG_HWMON_MV
 static umode_t mv3310_hwmon_is_visible(const void *data,
 				       enum hwmon_sensor_types type,
 				       u32 attr, int channel)
@@ -274,6 +279,77 @@ static bool mv3310_has_pma_ngbaset_quirk(struct phy_device *phydev)
 		MV_PHY_ALASKA_NBT_QUIRK_MASK) == MV_PHY_ALASKA_NBT_QUIRK_REV;
 }
 
+
+/* Some PHYs within the Alaska family like 88x3310 has problems with the
+ * KR Auto-negotiation. marvell datasheet for 88x3310 section 6.2.11 says that
+ * KR auto-negotitaion can be enabled to adapt to the incoming SERDES by writing
+ * to autoneg registers and the PMA/PMD registers
+ */
+static int mv3310_amd_quirk(struct phy_device *phydev)
+{
+	int reg=0, count=0;
+	int version, subversion;
+
+	version = phy_read_mmd(phydev, MDIO_MMD_PMAPMD, 0xC011);
+	subversion = phy_read_mmd(phydev, MDIO_MMD_PMAPMD, 0xC012);
+	dev_dbg(&phydev->mdio.dev,"%s: Marvell FW Version: %x.%x \n", __func__, version, subversion);
+
+	if(subversion != 0x400)
+		return 0;
+
+	reg = phy_read_mmd(phydev, MDIO_MMD_PHYXS, MV_V2_HOST_KR_ENABLE);
+	reg |= 0x8000;
+	phy_write_mmd(phydev, MDIO_MMD_PHYXS, MV_V2_HOST_KR_ENABLE, reg);
+
+	reg = phy_read_mmd(phydev, MDIO_MMD_PHYXS, MV_V2_HOST_KR_TUNE);
+	reg = (reg & ~0x8000) | 0x4000;
+	phy_write_mmd(phydev, MDIO_MMD_PHYXS, MV_V2_HOST_KR_TUNE, reg);
+
+	if((reg & BIT(8)) && (reg & BIT(11))) {
+		reg = phy_read_mmd(phydev, MDIO_MMD_AN, MV_PCS_BASE_R);
+		/* disable BASE-R */
+		phy_write_mmd(phydev, MDIO_MMD_AN, MV_PCS_BASE_R, reg);
+	} else {
+		reg = phy_read_mmd(phydev, MDIO_MMD_AN, MV_PCS_BASE_R);
+		/* enable BASE-R for KR initiation */
+		reg |= 0x1000;
+		phy_write_mmd(phydev, MDIO_MMD_AN, MV_PCS_BASE_R, reg);
+	}
+
+	/* down the port if no link */
+	reg = phy_read_mmd(phydev, MDIO_MMD_VEND2, MV_V2_MODE_CFG);
+	reg &= 0xFFF7;
+	phy_write_mmd(phydev, MDIO_MMD_VEND2, MV_V2_MODE_CFG, reg);
+
+	/* reset port to effect above change */
+	reg = phy_read_mmd(phydev, MDIO_MMD_VEND2, MV_V2_PORT_CTRL);
+	reg |= 0x8000;
+	phy_write_mmd(phydev, MDIO_MMD_VEND2, MV_V2_PORT_CTRL, reg);
+
+	/* wait till reset complete */
+	count = 50;
+	do {
+		msleep(10);
+		reg = phy_read_mmd(phydev, MDIO_MMD_VEND2, MV_V2_PORT_CTRL);
+	} while ((reg & 0x8000) && --count);
+
+	if(reg & 0x8000){
+		dev_warn(&phydev->mdio.dev,"%s: Port Reset taking long time\n", __func__);
+		return -ETIMEDOUT;
+	}
+
+	/* LED0 Amber light On-Off settings [1:0]=01 */
+	reg = phy_read_mmd(phydev, MDIO_MMD_VEND2, MV_V2_LED0_CTRL);
+	if((reg & 0x3) != 0x1) {
+		reg &= 0xFFFC;
+		reg |= 0x1;
+		phy_write_mmd(phydev, MDIO_MMD_VEND2, MV_V2_LED0_CTRL, reg);
+	}
+
+	dev_dbg(&phydev->mdio.dev,"%s: quirk applied\n", __func__);
+	return 0;
+}
+
 static int mv3310_config_init(struct phy_device *phydev)
 {
 	/* Check that the PHY interface type is compatible */
@@ -284,6 +360,7 @@ static int mv3310_config_init(struct phy_device *phydev)
 	    phydev->interface != PHY_INTERFACE_MODE_10GKR)
 		return -ENODEV;
 
+	mv3310_amd_quirk(phydev);
 	return 0;
 }
 

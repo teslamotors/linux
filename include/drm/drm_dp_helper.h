@@ -249,7 +249,7 @@
 #define DP_DSC_PEAK_THROUGHPUT              0x06B
 # define DP_DSC_THROUGHPUT_MODE_0_MASK      (0xf << 0)
 # define DP_DSC_THROUGHPUT_MODE_0_SHIFT     0
-# define DP_DSC_THROUGHPUT_MODE_0_UPSUPPORTED 0
+# define DP_DSC_THROUGHPUT_MODE_0_UNSUPPORTED 0
 # define DP_DSC_THROUGHPUT_MODE_0_340       (1 << 0)
 # define DP_DSC_THROUGHPUT_MODE_0_400       (2 << 0)
 # define DP_DSC_THROUGHPUT_MODE_0_450       (3 << 0)
@@ -267,7 +267,7 @@
 # define DP_DSC_THROUGHPUT_MODE_0_170       (15 << 4)
 # define DP_DSC_THROUGHPUT_MODE_1_MASK      (0xf << 4)
 # define DP_DSC_THROUGHPUT_MODE_1_SHIFT     4
-# define DP_DSC_THROUGHPUT_MODE_1_UPSUPPORTED 0
+# define DP_DSC_THROUGHPUT_MODE_1_UNSUPPORTED 0
 # define DP_DSC_THROUGHPUT_MODE_1_340       (1 << 4)
 # define DP_DSC_THROUGHPUT_MODE_1_400       (2 << 4)
 # define DP_DSC_THROUGHPUT_MODE_1_450       (3 << 4)
@@ -966,6 +966,38 @@
 #define DP_HDCP_2_2_REG_STREAM_TYPE_OFFSET	0x69494
 #define DP_HDCP_2_2_REG_DBG_OFFSET		0x69518
 
+/* Link Training (LT)-tunable PHY Repeaters */
+#define DP_LT_TUNABLE_PHY_REPEATER_FIELD_DATA_STRUCTURE_REV 0xf0000 /* 1.3 */
+#define DP_MAX_LINK_RATE_PHY_REPEATER			    0xf0001 /* 1.4a */
+#define DP_PHY_REPEATER_CNT				    0xf0002 /* 1.3 */
+#define DP_PHY_REPEATER_MODE				    0xf0003 /* 1.3 */
+#define DP_MAX_LANE_COUNT_PHY_REPEATER			    0xf0004 /* 1.4a */
+#define DP_Repeater_FEC_CAPABILITY			    0xf0004 /* 1.4 */
+#define DP_PHY_REPEATER_EXTENDED_WAIT_TIMEOUT		    0xf0005 /* 1.4a */
+#define DP_TRAINING_PATTERN_SET_PHY_REPEATER1		    0xf0010 /* 1.3 */
+#define DP_TRAINING_LANE0_SET_PHY_REPEATER1		    0xf0011 /* 1.3 */
+#define DP_TRAINING_LANE1_SET_PHY_REPEATER1		    0xf0012 /* 1.3 */
+#define DP_TRAINING_LANE2_SET_PHY_REPEATER1		    0xf0013 /* 1.3 */
+#define DP_TRAINING_LANE3_SET_PHY_REPEATER1		    0xf0014 /* 1.3 */
+#define DP_TRAINING_AUX_RD_INTERVAL_PHY_REPEATER1	    0xf0020 /* 1.4a */
+#define DP_TRANSMITTER_CAPABILITY_PHY_REPEATER1		    0xf0021 /* 1.4a */
+#define DP_LANE0_1_STATUS_PHY_REPEATER1			    0xf0030 /* 1.3 */
+#define DP_LANE2_3_STATUS_PHY_REPEATER1			    0xf0031 /* 1.3 */
+#define DP_LANE_ALIGN_STATUS_UPDATED_PHY_REPEATER1	    0xf0032 /* 1.3 */
+#define DP_ADJUST_REQUEST_LANE0_1_PHY_REPEATER1		    0xf0033 /* 1.3 */
+#define DP_ADJUST_REQUEST_LANE2_3_PHY_REPEATER1		    0xf0034 /* 1.3 */
+#define DP_SYMBOL_ERROR_COUNT_LANE0_PHY_REPEATER1	    0xf0035 /* 1.3 */
+#define DP_SYMBOL_ERROR_COUNT_LANE1_PHY_REPEATER1	    0xf0037 /* 1.3 */
+#define DP_SYMBOL_ERROR_COUNT_LANE2_PHY_REPEATER1	    0xf0039 /* 1.3 */
+#define DP_SYMBOL_ERROR_COUNT_LANE3_PHY_REPEATER1	    0xf003b /* 1.3 */
+#define DP_FEC_STATUS_PHY_REPEATER1			    0xf0290 /* 1.4 */
+#define DP_FEC_ERROR_COUNT_PHY_REPEATER1                    0xf0291 /* 1.4 */
+#define DP_FEC_CAPABILITY_PHY_REPEATER1                     0xf0294 /* 1.4a */
+
+/* Repeater modes */
+#define DP_PHY_REPEATER_MODE_TRANSPARENT		    0x55    /* 1.3 */
+#define DP_PHY_REPEATER_MODE_NON_TRANSPARENT		    0xaa    /* 1.3 */
+
 /* DP HDCP message start offsets in DPCD address space */
 #define DP_HDCP_2_2_AKE_INIT_OFFSET		DP_HDCP_2_2_REG_RTX_OFFSET
 #define DP_HDCP_2_2_AKE_SEND_CERT_OFFSET	DP_HDCP_2_2_REG_CERT_RX_OFFSET
@@ -1353,6 +1385,9 @@ static inline ssize_t drm_dp_dpcd_writeb(struct drm_dp_aux *aux,
 int drm_dp_dpcd_read_link_status(struct drm_dp_aux *aux,
 				 u8 status[DP_LINK_STATUS_SIZE]);
 
+bool drm_dp_send_real_edid_checksum(struct drm_dp_aux *aux,
+				   u8 real_edid_checksum);
+
 /*
  * DisplayPort link
  */
@@ -1377,6 +1412,7 @@ int drm_dp_downstream_id(struct drm_dp_aux *aux, char id[6]);
 void drm_dp_downstream_debug(struct seq_file *m, const u8 dpcd[DP_RECEIVER_CAP_SIZE],
 			     const u8 port_cap[4], struct drm_dp_aux *aux);
 
+void drm_dp_remote_aux_init(struct drm_dp_aux *aux);
 void drm_dp_aux_init(struct drm_dp_aux *aux);
 int drm_dp_aux_register(struct drm_dp_aux *aux);
 void drm_dp_aux_unregister(struct drm_dp_aux *aux);
@@ -1434,6 +1470,13 @@ enum drm_dp_quirk {
 	 * The driver should ignore SINK_COUNT during detection.
 	 */
 	DP_DPCD_QUIRK_NO_SINK_COUNT,
+	/**
+	 * @DP_DPCD_QUIRK_DSC_WITHOUT_VIRTUAL_DPCD:
+	 *
+	 * The device supports MST DSC despite not supporting Virtual DPCD.
+	 * The DSC caps can be read from the physical aux instead.
+	 */
+	DP_DPCD_QUIRK_DSC_WITHOUT_VIRTUAL_DPCD,
 };
 
 /**

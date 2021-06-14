@@ -966,6 +966,25 @@ static bool cik_read_bios_from_rom(struct amdgpu_device *adev,
 
 static const struct amdgpu_allowed_register_entry cik_allowed_read_registers[] = {
 	{mmGRBM_STATUS},
+	{mmGRBM_STATUS2},
+	{mmGRBM_STATUS_SE0},
+	{mmGRBM_STATUS_SE1},
+	{mmGRBM_STATUS_SE2},
+	{mmGRBM_STATUS_SE3},
+	{mmSRBM_STATUS},
+	{mmSRBM_STATUS2},
+	{mmSDMA0_STATUS_REG + SDMA0_REGISTER_OFFSET},
+	{mmSDMA0_STATUS_REG + SDMA1_REGISTER_OFFSET},
+	{mmCP_STAT},
+	{mmCP_STALLED_STAT1},
+	{mmCP_STALLED_STAT2},
+	{mmCP_STALLED_STAT3},
+	{mmCP_CPF_BUSY_STAT},
+	{mmCP_CPF_STALLED_STAT1},
+	{mmCP_CPF_STATUS},
+	{mmCP_CPC_BUSY_STAT},
+	{mmCP_CPC_STALLED_STAT1},
+	{mmCP_CPC_STATUS},
 	{mmGB_ADDR_CONFIG},
 	{mmMC_ARB_RAMCFG},
 	{mmGB_TILE_MODE0},
@@ -1270,15 +1289,15 @@ static int cik_gpu_pci_config_reset(struct amdgpu_device *adev)
 }
 
 /**
- * cik_asic_reset - soft reset GPU
+ * cik_asic_pci_config_reset - soft reset GPU
  *
  * @adev: amdgpu_device pointer
  *
- * Look up which blocks are hung and attempt
- * to reset them.
+ * Use PCI Config method to reset the GPU.
+ *
  * Returns 0 for success.
  */
-static int cik_asic_reset(struct amdgpu_device *adev)
+static int cik_asic_pci_config_reset(struct amdgpu_device *adev)
 {
 	int r;
 
@@ -1291,10 +1310,72 @@ static int cik_asic_reset(struct amdgpu_device *adev)
 	return r;
 }
 
+static bool cik_asic_supports_baco(struct amdgpu_device *adev)
+{
+	switch (adev->asic_type) {
+	case CHIP_BONAIRE:
+	case CHIP_HAWAII:
+		return amdgpu_dpm_is_baco_supported(adev);
+	default:
+		return false;
+	}
+}
+
 static enum amd_reset_method
 cik_asic_reset_method(struct amdgpu_device *adev)
 {
-	return AMD_RESET_METHOD_LEGACY;
+	bool baco_reset;
+
+	if (amdgpu_reset_method == AMD_RESET_METHOD_LEGACY ||
+	    amdgpu_reset_method == AMD_RESET_METHOD_BACO)
+		return amdgpu_reset_method;
+
+	if (amdgpu_reset_method != -1)
+		dev_warn(adev->dev, "Specified reset:%d isn't supported, using AUTO instead.\n",
+				  amdgpu_reset_method);
+
+	switch (adev->asic_type) {
+	case CHIP_BONAIRE:
+		/* disable baco reset until it works */
+		/* smu7_asic_get_baco_capability(adev, &baco_reset); */
+		baco_reset = false;
+		break;
+	case CHIP_HAWAII:
+		baco_reset = cik_asic_supports_baco(adev);
+		break;
+	default:
+		baco_reset = false;
+		break;
+	}
+
+	if (baco_reset)
+		return AMD_RESET_METHOD_BACO;
+	else
+		return AMD_RESET_METHOD_LEGACY;
+}
+
+/**
+ * cik_asic_reset - soft reset GPU
+ *
+ * @adev: amdgpu_device pointer
+ *
+ * Look up which blocks are hung and attempt
+ * to reset them.
+ * Returns 0 for success.
+ */
+static int cik_asic_reset(struct amdgpu_device *adev)
+{
+	int r;
+
+	if (cik_asic_reset_method(adev) == AMD_RESET_METHOD_BACO) {
+		dev_info(adev->dev, "BACO reset\n");
+		r = amdgpu_dpm_baco_reset(adev);
+	} else {
+		dev_info(adev->dev, "PCI CONFIG reset\n");
+		r = cik_asic_pci_config_reset(adev);
+	}
+
+	return r;
 }
 
 static u32 cik_get_config_memsize(struct amdgpu_device *adev)
@@ -1715,12 +1796,6 @@ static uint32_t cik_get_rev_id(struct amdgpu_device *adev)
 		>> CC_DRM_ID_STRAPS__ATI_REV_ID__SHIFT;
 }
 
-static void cik_detect_hw_virtualization(struct amdgpu_device *adev)
-{
-	if (is_virtual_machine()) /* passthrough mode */
-		adev->virt.caps |= AMDGPU_PASSTHROUGH_MODE;
-}
-
 static void cik_flush_hdp(struct amdgpu_device *adev, struct amdgpu_ring *ring)
 {
 	if (!ring || !ring->funcs->emit_wreg) {
@@ -1823,6 +1898,10 @@ static uint64_t cik_get_pcie_replay_count(struct amdgpu_device *adev)
 	return (nak_r + nak_g);
 }
 
+static void cik_pre_asic_init(struct amdgpu_device *adev)
+{
+}
+
 static const struct amdgpu_asic_funcs cik_asic_funcs =
 {
 	.read_disabled_bios = &cik_read_disabled_bios,
@@ -1842,6 +1921,8 @@ static const struct amdgpu_asic_funcs cik_asic_funcs =
 	.get_pcie_usage = &cik_get_pcie_usage,
 	.need_reset_on_init = &cik_need_reset_on_init,
 	.get_pcie_replay_count = &cik_get_pcie_replay_count,
+	.supports_baco = &cik_asic_supports_baco,
+	.pre_asic_init = &cik_pre_asic_init,
 };
 
 static int cik_common_early_init(void *handle)
@@ -2082,8 +2163,6 @@ static const struct amdgpu_ip_block_version cik_common_ip_block =
 
 int cik_set_ip_blocks(struct amdgpu_device *adev)
 {
-	cik_detect_hw_virtualization(adev);
-
 	switch (adev->asic_type) {
 	case CHIP_BONAIRE:
 		amdgpu_device_ip_block_add(adev, &cik_common_ip_block);

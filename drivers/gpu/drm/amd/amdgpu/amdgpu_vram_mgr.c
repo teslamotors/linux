@@ -23,6 +23,9 @@
  */
 
 #include "amdgpu.h"
+#include "amdgpu_vm.h"
+#include "amdgpu_atomfirmware.h"
+#include "atom.h"
 
 struct amdgpu_vram_mgr {
 	struct drm_mm mm;
@@ -43,7 +46,7 @@ static ssize_t amdgpu_mem_info_vram_total_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct drm_device *ddev = dev_get_drvdata(dev);
-	struct amdgpu_device *adev = ddev->dev_private;
+	struct amdgpu_device *adev = drm_to_adev(ddev);
 
 	return snprintf(buf, PAGE_SIZE, "%llu\n", adev->gmc.real_vram_size);
 }
@@ -60,7 +63,7 @@ static ssize_t amdgpu_mem_info_vis_vram_total_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct drm_device *ddev = dev_get_drvdata(dev);
-	struct amdgpu_device *adev = ddev->dev_private;
+	struct amdgpu_device *adev = drm_to_adev(ddev);
 
 	return snprintf(buf, PAGE_SIZE, "%llu\n", adev->gmc.visible_vram_size);
 }
@@ -77,7 +80,7 @@ static ssize_t amdgpu_mem_info_vram_used_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct drm_device *ddev = dev_get_drvdata(dev);
-	struct amdgpu_device *adev = ddev->dev_private;
+	struct amdgpu_device *adev = drm_to_adev(ddev);
 
 	return snprintf(buf, PAGE_SIZE, "%llu\n",
 		amdgpu_vram_mgr_usage(&adev->mman.bdev.man[TTM_PL_VRAM]));
@@ -95,10 +98,43 @@ static ssize_t amdgpu_mem_info_vis_vram_used_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct drm_device *ddev = dev_get_drvdata(dev);
-	struct amdgpu_device *adev = ddev->dev_private;
+	struct amdgpu_device *adev = drm_to_adev(ddev);
 
 	return snprintf(buf, PAGE_SIZE, "%llu\n",
 		amdgpu_vram_mgr_vis_usage(&adev->mman.bdev.man[TTM_PL_VRAM]));
+}
+
+static ssize_t amdgpu_mem_info_vram_vendor(struct device *dev,
+						 struct device_attribute *attr,
+						 char *buf)
+{
+	struct drm_device *ddev = dev_get_drvdata(dev);
+	struct amdgpu_device *adev = drm_to_adev(ddev);
+
+	switch (adev->gmc.vram_vendor) {
+	case SAMSUNG:
+		return snprintf(buf, PAGE_SIZE, "samsung\n");
+	case INFINEON:
+		return snprintf(buf, PAGE_SIZE, "infineon\n");
+	case ELPIDA:
+		return snprintf(buf, PAGE_SIZE, "elpida\n");
+	case ETRON:
+		return snprintf(buf, PAGE_SIZE, "etron\n");
+	case NANYA:
+		return snprintf(buf, PAGE_SIZE, "nanya\n");
+	case HYNIX:
+		return snprintf(buf, PAGE_SIZE, "hynix\n");
+	case MOSEL:
+		return snprintf(buf, PAGE_SIZE, "mosel\n");
+	case WINBOND:
+		return snprintf(buf, PAGE_SIZE, "winbond\n");
+	case ESMT:
+		return snprintf(buf, PAGE_SIZE, "esmt\n");
+	case MICRON:
+		return snprintf(buf, PAGE_SIZE, "micron\n");
+	default:
+		return snprintf(buf, PAGE_SIZE, "unknown\n");
+	}
 }
 
 static DEVICE_ATTR(mem_info_vram_total, S_IRUGO,
@@ -109,12 +145,22 @@ static DEVICE_ATTR(mem_info_vram_used, S_IRUGO,
 		   amdgpu_mem_info_vram_used_show, NULL);
 static DEVICE_ATTR(mem_info_vis_vram_used, S_IRUGO,
 		   amdgpu_mem_info_vis_vram_used_show, NULL);
+static DEVICE_ATTR(mem_info_vram_vendor, S_IRUGO,
+		   amdgpu_mem_info_vram_vendor, NULL);
+
+static const struct attribute *amdgpu_vram_mgr_attributes[] = {
+	&dev_attr_mem_info_vram_total.attr,
+	&dev_attr_mem_info_vis_vram_total.attr,
+	&dev_attr_mem_info_vram_used.attr,
+	&dev_attr_mem_info_vis_vram_used.attr,
+	&dev_attr_mem_info_vram_vendor.attr,
+	NULL
+};
 
 /**
  * amdgpu_vram_mgr_init - init VRAM manager and DRM MM
  *
- * @man: TTM memory type manager
- * @p_size: maximum size of VRAM
+ * @adev: amdgpu_device pointer
  *
  * Allocate and initialize the VRAM manager.
  */
@@ -134,26 +180,9 @@ static int amdgpu_vram_mgr_init(struct ttm_mem_type_manager *man,
 	man->priv = mgr;
 
 	/* Add the two VRAM-related sysfs files */
-	ret = device_create_file(adev->dev, &dev_attr_mem_info_vram_total);
-	if (ret) {
-		DRM_ERROR("Failed to create device file mem_info_vram_total\n");
-		return ret;
-	}
-	ret = device_create_file(adev->dev, &dev_attr_mem_info_vis_vram_total);
-	if (ret) {
-		DRM_ERROR("Failed to create device file mem_info_vis_vram_total\n");
-		return ret;
-	}
-	ret = device_create_file(adev->dev, &dev_attr_mem_info_vram_used);
-	if (ret) {
-		DRM_ERROR("Failed to create device file mem_info_vram_used\n");
-		return ret;
-	}
-	ret = device_create_file(adev->dev, &dev_attr_mem_info_vis_vram_used);
-	if (ret) {
-		DRM_ERROR("Failed to create device file mem_info_vis_vram_used\n");
-		return ret;
-	}
+	ret = sysfs_create_files(&adev->dev->kobj, amdgpu_vram_mgr_attributes);
+	if (ret)
+		DRM_ERROR("Failed to register sysfs\n");
 
 	return 0;
 }
@@ -161,7 +190,7 @@ static int amdgpu_vram_mgr_init(struct ttm_mem_type_manager *man,
 /**
  * amdgpu_vram_mgr_fini - free and destroy VRAM manager
  *
- * @man: TTM memory type manager
+ * @adev: amdgpu_device pointer
  *
  * Destroy and free the VRAM manager, returns -EBUSY if ranges are still
  * allocated inside it.
@@ -176,17 +205,14 @@ static int amdgpu_vram_mgr_fini(struct ttm_mem_type_manager *man)
 	spin_unlock(&mgr->lock);
 	kfree(mgr);
 	man->priv = NULL;
-	device_remove_file(adev->dev, &dev_attr_mem_info_vram_total);
-	device_remove_file(adev->dev, &dev_attr_mem_info_vis_vram_total);
-	device_remove_file(adev->dev, &dev_attr_mem_info_vram_used);
-	device_remove_file(adev->dev, &dev_attr_mem_info_vis_vram_used);
+	sysfs_remove_files(&adev->dev->kobj, amdgpu_vram_mgr_attributes);
 	return 0;
 }
 
 /**
  * amdgpu_vram_mgr_vis_size - Calculate visible node size
  *
- * @adev: amdgpu device structure
+ * @adev: amdgpu_device pointer
  * @node: MM node structure
  *
  * Calculate how many bytes of the MM node are inside visible VRAM
@@ -275,7 +301,7 @@ static int amdgpu_vram_mgr_new(struct ttm_mem_type_manager *man,
 	struct drm_mm_node *nodes;
 	enum drm_mm_insert_mode mode;
 	unsigned long lpfn, num_nodes, pages_per_node, pages_left;
-	uint64_t vis_usage = 0, mem_bytes;
+	uint64_t vis_usage = 0, mem_bytes, max_bytes;
 	unsigned i;
 	int r;
 
@@ -283,9 +309,13 @@ static int amdgpu_vram_mgr_new(struct ttm_mem_type_manager *man,
 	if (!lpfn)
 		lpfn = man->size;
 
+	max_bytes = adev->gmc.mc_vram_size;
+	if (tbo->type != ttm_bo_type_kernel)
+		max_bytes -= AMDGPU_VM_RESERVED_VRAM;
+
 	/* bail out quickly if there's likely not enough VRAM for this BO */
 	mem_bytes = (u64)mem->num_pages << PAGE_SHIFT;
-	if (atomic64_add_return(mem_bytes, &mgr->usage) > adev->gmc.mc_vram_size) {
+	if (atomic64_add_return(mem_bytes, &mgr->usage) > max_bytes) {
 		atomic64_sub(mem_bytes, &mgr->usage);
 		mem->mm_node = NULL;
 		return 0;
@@ -375,8 +405,6 @@ error:
  * amdgpu_vram_mgr_del - free ranges
  *
  * @man: TTM memory type manager
- * @tbo: TTM BO we need this range for
- * @place: placement flags and restrictions
  * @mem: TTM memory object
  *
  * Free the allocated VRAM again.

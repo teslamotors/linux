@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
+config TESLA_AMD_HSTI1
+	tristate "AMD Hardware Security Test Interface 1 state"
+	depends on CPU_SUP_AMD
+	help
+	  Support for OEM4 ACPI table containing additional
+	  information from AMD Hardware Security Test Interface.

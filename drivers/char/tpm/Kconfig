@@ -170,5 +170,16 @@ config TCG_FTPM_TEE
 	help
 	  This driver proxies for firmware TPM running in TEE.
 
+config TPM2_RELAXED_TIMEOUTS
+	bool "Relax TPM2 timeout durations"
+	depends on TCG_TPM && TCG_CRB
+	default n
+	---help---
+	  This setting relaxes the timeout durations for all TPM2 operations.
+	  This may be necessary on some platforms that intentionally defer TPM
+	  operations.
+
+	  If unsure, say N.
+
 source "drivers/char/tpm/st33zp24/Kconfig"
 endif # TCG_TPM

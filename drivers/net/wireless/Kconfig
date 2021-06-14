@@ -122,4 +122,5 @@ config VIRT_WIFI
 	  This option adds support for ethernet connections to appear as if they
 	  are wifi connections through a special rtnetlink device.
 
+
 endif # WLAN

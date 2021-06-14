@@ -41,6 +41,21 @@
 #define AMDGPU_MAX_GFX_QUEUES KGD_MAX_QUEUES
 #define AMDGPU_MAX_COMPUTE_QUEUES KGD_MAX_QUEUES
 
+enum gfx_pipe_priority {
+	AMDGPU_GFX_PIPE_PRIO_NORMAL = 1,
+	AMDGPU_GFX_PIPE_PRIO_HIGH,
+	AMDGPU_GFX_PIPE_PRIO_MAX
+};
+
+/* Argument for PPSMC_MSG_GpuChangeState */
+enum gfx_change_state {
+	sGpuChangeState_D0Entry = 1,
+	sGpuChangeState_D3Entry,
+};
+
+#define AMDGPU_GFX_QUEUE_PRIORITY_MINIMUM  0
+#define AMDGPU_GFX_QUEUE_PRIORITY_MAXIMUM  15
+
 struct amdgpu_mec {
 	struct amdgpu_bo	*hpd_eop_obj;
 	u64			hpd_eop_gpu_addr;
@@ -76,11 +91,15 @@ struct kiq_pm4_funcs {
 					struct amdgpu_ring *ring,
 					u64 addr,
 					u64 seq);
+	void (*kiq_invalidate_tlbs)(struct amdgpu_ring *kiq_ring,
+				uint16_t pasid, uint32_t flush_type,
+				bool all_hub);
 	/* Packet sizes */
 	int set_resources_size;
 	int map_queues_size;
 	int unmap_queues_size;
 	int query_status_size;
+	int invalidate_tlbs_size;
 };
 
 struct amdgpu_kiq {
@@ -90,6 +109,15 @@ struct amdgpu_kiq {
 	struct amdgpu_ring	ring;
 	struct amdgpu_irq_src	irq;
 	const struct kiq_pm4_funcs *pmf;
+};
+
+struct spm_funcs {
+	void (*start)(struct amdgpu_device *adev);
+	void (*stop)(struct amdgpu_device *adev);
+	void (*set_rdptr)(struct amdgpu_device *adev, u32 rptr);
+	void (*set_spm_perfmon_ring_buf)(struct amdgpu_device *adev, u64 gpu_rptr, u32 size);
+	/* Packet sizes */
+	int set_spm_config_size;
 };
 
 /*
@@ -121,6 +149,7 @@ struct gb_addr_config {
 	uint8_t num_banks;
 	uint8_t num_se;
 	uint8_t num_rb_per_se;
+	uint8_t num_pkrs;
 };
 
 struct amdgpu_gfx_config {
@@ -146,6 +175,8 @@ struct amdgpu_gfx_config {
 	unsigned num_gpus;
 	unsigned multi_gpu_tile_size;
 	unsigned mc_arb_ramcfg;
+	unsigned num_banks;
+	unsigned num_ranks;
 	unsigned gb_addr_config;
 	unsigned num_rbs;
 	unsigned gs_vgt_table_depth;
@@ -199,28 +230,10 @@ struct amdgpu_gfx_funcs {
 				 u32 queue, u32 vmid);
 	int (*ras_error_inject)(struct amdgpu_device *adev, void *inject_if);
 	int (*query_ras_error_count) (struct amdgpu_device *adev, void *ras_error_status);
-};
-
-struct amdgpu_ngg_buf {
-	struct amdgpu_bo	*bo;
-	uint64_t		gpu_addr;
-	uint32_t		size;
-	uint32_t		bo_size;
-};
-
-enum {
-	NGG_PRIM = 0,
-	NGG_POS,
-	NGG_CNTL,
-	NGG_PARAM,
-	NGG_BUF_MAX
-};
-
-struct amdgpu_ngg {
-	struct amdgpu_ngg_buf	buf[NGG_BUF_MAX];
-	uint32_t		gds_reserve_addr;
-	uint32_t		gds_reserve_size;
-	bool			init;
+	void (*reset_ras_error_count) (struct amdgpu_device *adev);
+	void (*init_spm_golden)(struct amdgpu_device *adev);
+	void (*query_ras_error_status) (struct amdgpu_device *adev);
+	void (*update_perfmon_mgcg)(struct amdgpu_device *adev, bool enable);
 };
 
 struct sq_work {
@@ -247,7 +260,7 @@ struct amdgpu_me {
 	uint32_t			num_me;
 	uint32_t			num_pipe_per_me;
 	uint32_t			num_queue_per_pipe;
-	void				*mqd_backup[AMDGPU_MAX_GFX_RINGS + 1];
+	void				*mqd_backup[AMDGPU_MAX_GFX_RINGS];
 
 	/* These are the resources for which amdgpu takes ownership */
 	DECLARE_BITMAP(queue_bitmap, AMDGPU_MAX_GFX_QUEUES);
@@ -262,6 +275,7 @@ struct amdgpu_gfx {
 	struct amdgpu_me		me;
 	struct amdgpu_mec		mec;
 	struct amdgpu_kiq		kiq;
+	const struct spm_funcs		*spmfuncs;
 	struct amdgpu_scratch		scratch;
 	const struct firmware		*me_fw;	/* ME firmware */
 	uint32_t			me_fw_version;
@@ -298,6 +312,7 @@ struct amdgpu_gfx {
 	struct amdgpu_irq_src		priv_reg_irq;
 	struct amdgpu_irq_src		priv_inst_irq;
 	struct amdgpu_irq_src		cp_ecc_error_irq;
+	struct amdgpu_irq_src		spm_irq;
 	struct amdgpu_irq_src		sq_irq;
 	struct sq_work			sq_work;
 
@@ -311,9 +326,6 @@ struct amdgpu_gfx {
 	/* reset mask */
 	uint32_t                        grbm_soft_reset;
 	uint32_t                        srbm_soft_reset;
-
-	/* NGG */
-	struct amdgpu_ngg		ngg;
 
 	/* gfx off */
 	bool                            gfx_off_state; /* true: enabled, false: disabled */
@@ -332,6 +344,7 @@ struct amdgpu_gfx {
 #define amdgpu_gfx_get_gpu_clock_counter(adev) (adev)->gfx.funcs->get_gpu_clock_counter((adev))
 #define amdgpu_gfx_select_se_sh(adev, se, sh, instance) (adev)->gfx.funcs->select_se_sh((adev), (se), (sh), (instance))
 #define amdgpu_gfx_select_me_pipe_q(adev, me, pipe, q, vmid) (adev)->gfx.funcs->select_me_pipe_q((adev), (me), (pipe), (q), (vmid))
+#define amdgpu_gfx_init_spm_golden(adev) (adev)->gfx.funcs->init_spm_golden((adev))
 
 /**
  * amdgpu_gfx_create_bitmask - create a bitmask
@@ -356,8 +369,7 @@ int amdgpu_gfx_kiq_init_ring(struct amdgpu_device *adev,
 			     struct amdgpu_ring *ring,
 			     struct amdgpu_irq_src *irq);
 
-void amdgpu_gfx_kiq_free_ring(struct amdgpu_ring *ring,
-			      struct amdgpu_irq_src *irq);
+void amdgpu_gfx_kiq_free_ring(struct amdgpu_ring *ring);
 
 void amdgpu_gfx_kiq_fini(struct amdgpu_device *adev);
 int amdgpu_gfx_kiq_init(struct amdgpu_device *adev,
@@ -374,10 +386,12 @@ void amdgpu_gfx_graphics_queue_acquire(struct amdgpu_device *adev);
 
 int amdgpu_gfx_mec_queue_to_bit(struct amdgpu_device *adev, int mec,
 				int pipe, int queue);
-void amdgpu_gfx_bit_to_mec_queue(struct amdgpu_device *adev, int bit,
+void amdgpu_queue_mask_bit_to_mec_queue(struct amdgpu_device *adev, int bit,
 				 int *mec, int *pipe, int *queue);
 bool amdgpu_gfx_is_mec_queue_enabled(struct amdgpu_device *adev, int mec,
 				     int pipe, int queue);
+bool amdgpu_gfx_is_high_priority_compute_queue(struct amdgpu_device *adev,
+					       int pipe, int queue);
 int amdgpu_gfx_me_queue_to_bit(struct amdgpu_device *adev, int me,
 			       int pipe, int queue);
 void amdgpu_gfx_bit_to_me_queue(struct amdgpu_device *adev, int bit,
@@ -385,5 +399,17 @@ void amdgpu_gfx_bit_to_me_queue(struct amdgpu_device *adev, int bit,
 bool amdgpu_gfx_is_me_queue_enabled(struct amdgpu_device *adev, int me,
 				    int pipe, int queue);
 void amdgpu_gfx_off_ctrl(struct amdgpu_device *adev, bool enable);
-
+int amdgpu_get_gfx_off_status(struct amdgpu_device *adev, uint32_t *value);
+int amdgpu_gfx_ras_late_init(struct amdgpu_device *adev);
+void amdgpu_gfx_ras_fini(struct amdgpu_device *adev);
+int amdgpu_gfx_process_ras_data_cb(struct amdgpu_device *adev,
+		void *err_data,
+		struct amdgpu_iv_entry *entry);
+int amdgpu_gfx_cp_ecc_error_irq(struct amdgpu_device *adev,
+				  struct amdgpu_irq_src *source,
+				  struct amdgpu_iv_entry *entry);
+uint32_t amdgpu_kiq_rreg(struct amdgpu_device *adev, uint32_t reg);
+void amdgpu_kiq_wreg(struct amdgpu_device *adev, uint32_t reg, uint32_t v);
+int amdgpu_gfx_get_num_kcq(struct amdgpu_device *adev);
+void amdgpu_gfx_state_change_set(struct amdgpu_device *adev, enum gfx_change_state state);
 #endif

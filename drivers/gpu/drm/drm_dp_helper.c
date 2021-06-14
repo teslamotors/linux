@@ -32,6 +32,7 @@
 #include <drm/drm_dp_helper.h>
 #include <drm/drm_print.h>
 #include <drm/drm_vblank.h>
+#include <drm/drm_dp_mst_helper.h>
 
 #include "drm_crtc_helper_internal.h"
 
@@ -251,7 +252,7 @@ unlock:
 
 /**
  * drm_dp_dpcd_read() - read a series of bytes from the DPCD
- * @aux: DisplayPort AUX channel
+ * @aux: DisplayPort AUX channel (SST or MST)
  * @offset: address of the (first) register to read
  * @buffer: buffer to store the register values
  * @size: number of bytes in @buffer
@@ -280,13 +281,18 @@ ssize_t drm_dp_dpcd_read(struct drm_dp_aux *aux, unsigned int offset,
 	 * We just have to do it before any DPCD access and hope that the
 	 * monitor doesn't power down exactly after the throw away read.
 	 */
-	ret = drm_dp_dpcd_access(aux, DP_AUX_NATIVE_READ, DP_DPCD_REV, buffer,
-				 1);
-	if (ret != 1)
-		goto out;
+	if (!aux->is_remote) {
+		ret = drm_dp_dpcd_access(aux, DP_AUX_NATIVE_READ, DP_DPCD_REV,
+					 buffer, 1);
+		if (ret != 1)
+			goto out;
+	}
 
-	ret = drm_dp_dpcd_access(aux, DP_AUX_NATIVE_READ, offset, buffer,
-				 size);
+	if (aux->is_remote)
+		ret = drm_dp_mst_dpcd_read(aux, offset, buffer, size);
+	else
+		ret = drm_dp_dpcd_access(aux, DP_AUX_NATIVE_READ, offset,
+					 buffer, size);
 
 out:
 	drm_dp_dump_access(aux, DP_AUX_NATIVE_READ, offset, buffer, ret);
@@ -296,7 +302,7 @@ EXPORT_SYMBOL(drm_dp_dpcd_read);
 
 /**
  * drm_dp_dpcd_write() - write a series of bytes to the DPCD
- * @aux: DisplayPort AUX channel
+ * @aux: DisplayPort AUX channel (SST or MST)
  * @offset: address of the (first) register to write
  * @buffer: buffer containing the values to write
  * @size: number of bytes in @buffer
@@ -313,8 +319,12 @@ ssize_t drm_dp_dpcd_write(struct drm_dp_aux *aux, unsigned int offset,
 {
 	int ret;
 
-	ret = drm_dp_dpcd_access(aux, DP_AUX_NATIVE_WRITE, offset, buffer,
-				 size);
+	if (aux->is_remote)
+		ret = drm_dp_mst_dpcd_write(aux, offset, buffer, size);
+	else
+		ret = drm_dp_dpcd_access(aux, DP_AUX_NATIVE_WRITE, offset,
+					 buffer, size);
+
 	drm_dp_dump_access(aux, DP_AUX_NATIVE_WRITE, offset, buffer, ret);
 	return ret;
 }
@@ -335,6 +345,65 @@ int drm_dp_dpcd_read_link_status(struct drm_dp_aux *aux,
 				DP_LINK_STATUS_SIZE);
 }
 EXPORT_SYMBOL(drm_dp_dpcd_read_link_status);
+
+/**
+ * drm_dp_send_real_edid_checksum() - send back real edid checksum value
+ * @aux: DisplayPort AUX channel
+ * @real_edid_checksum: real edid checksum for the last block
+ *
+ * Returns:
+ * True on success
+ */
+bool drm_dp_send_real_edid_checksum(struct drm_dp_aux *aux,
+				    u8 real_edid_checksum)
+{
+	u8 link_edid_read = 0, auto_test_req = 0, test_resp = 0;
+
+	if (drm_dp_dpcd_read(aux, DP_DEVICE_SERVICE_IRQ_VECTOR,
+			     &auto_test_req, 1) < 1) {
+		DRM_ERROR("DPCD failed read at register 0x%x\n",
+			  DP_DEVICE_SERVICE_IRQ_VECTOR);
+		return false;
+	}
+	auto_test_req &= DP_AUTOMATED_TEST_REQUEST;
+
+	if (drm_dp_dpcd_read(aux, DP_TEST_REQUEST, &link_edid_read, 1) < 1) {
+		DRM_ERROR("DPCD failed read at register 0x%x\n",
+			  DP_TEST_REQUEST);
+		return false;
+	}
+	link_edid_read &= DP_TEST_LINK_EDID_READ;
+
+	if (!auto_test_req || !link_edid_read) {
+		DRM_DEBUG_KMS("Source DUT does not support TEST_EDID_READ\n");
+		return false;
+	}
+
+	if (drm_dp_dpcd_write(aux, DP_DEVICE_SERVICE_IRQ_VECTOR,
+			      &auto_test_req, 1) < 1) {
+		DRM_ERROR("DPCD failed write at register 0x%x\n",
+			  DP_DEVICE_SERVICE_IRQ_VECTOR);
+		return false;
+	}
+
+	/* send back checksum for the last edid extension block data */
+	if (drm_dp_dpcd_write(aux, DP_TEST_EDID_CHECKSUM,
+			      &real_edid_checksum, 1) < 1) {
+		DRM_ERROR("DPCD failed write at register 0x%x\n",
+			  DP_TEST_EDID_CHECKSUM);
+		return false;
+	}
+
+	test_resp |= DP_TEST_EDID_CHECKSUM_WRITE;
+	if (drm_dp_dpcd_write(aux, DP_TEST_RESPONSE, &test_resp, 1) < 1) {
+		DRM_ERROR("DPCD failed write at register 0x%x\n",
+			  DP_TEST_RESPONSE);
+		return false;
+	}
+
+	return true;
+}
+EXPORT_SYMBOL(drm_dp_send_real_edid_checksum);
 
 /**
  * drm_dp_link_probe() - probe a DisplayPort link for capabilities
@@ -1082,6 +1151,19 @@ static void drm_dp_aux_crc_work(struct work_struct *work)
 }
 
 /**
+ * drm_dp_remote_aux_init() - minimally initialise a remote aux channel
+ * @aux: DisplayPort AUX channel
+ *
+ * Used for remote aux channel in general. Merely initialize the crc work
+ * struct.
+ */
+void drm_dp_remote_aux_init(struct drm_dp_aux *aux)
+{
+        INIT_WORK(&aux->crc_work, drm_dp_aux_crc_work);
+}
+EXPORT_SYMBOL(drm_dp_remote_aux_init);
+
+/**
  * drm_dp_aux_init() - minimally initialise an aux channel
  * @aux: DisplayPort AUX channel
  *
@@ -1260,6 +1342,8 @@ static const struct dpcd_quirk dpcd_quirk_list[] = {
 	{ OUI(0x00, 0x10, 0xfa), DEVICE_ID_ANY, false, BIT(DP_DPCD_QUIRK_NO_PSR) },
 	/* CH7511 seems to leave SINK_COUNT zeroed */
 	{ OUI(0x00, 0x00, 0x00), DEVICE_ID('C', 'H', '7', '5', '1', '1'), false, BIT(DP_DPCD_QUIRK_NO_SINK_COUNT) },
+	/* Synaptics DP1.4 MST hubs can support DSC without virtual DPCD */
+	{ OUI(0x90, 0xCC, 0x24), DEVICE_ID_ANY, true, BIT(DP_DPCD_QUIRK_DSC_WITHOUT_VIRTUAL_DPCD) },
 };
 
 #undef OUI

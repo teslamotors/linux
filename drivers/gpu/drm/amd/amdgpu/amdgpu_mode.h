@@ -46,6 +46,7 @@
 
 #include <drm/drm_dp_mst_helper.h>
 #include "modules/inc/mod_freesync.h"
+#include "amdgpu_dm_irq_params.h"
 
 struct amdgpu_bo;
 struct amdgpu_device;
@@ -295,11 +296,16 @@ struct amdgpu_display_funcs {
 			      struct amdgpu_hpd *hpd,
 			      struct amdgpu_router *router);
 
-
+	/* it is used to enter or exit into free sync mode */
+	int (*notify_freesync)(struct drm_device *dev, void *data,
+			       struct drm_file *filp);
 };
 
 struct amdgpu_framebuffer {
 	struct drm_framebuffer base;
+
+	uint64_t tiling_flags;
+	bool tmz_surface;
 
 	/* caching for later use */
 	uint64_t address;
@@ -333,6 +339,10 @@ struct amdgpu_mode_info {
 	struct drm_property *dither_property;
 	/* Adaptive Backlight Modulation (power feature) */
 	struct drm_property *abm_level_property;
+	/* it is used to allow enablement of freesync mode */
+	struct drm_property *freesync_property;
+	/* it is used to know about display capability of freesync mode */
+	struct drm_property *freesync_capable_property;
 	/* hardcoded DFP edid from BIOS */
 	struct edid *bios_hardcoded_edid;
 	int bios_hardcoded_edid_size;
@@ -404,7 +414,8 @@ struct amdgpu_crtc {
 	struct amdgpu_flip_work *pflip_works;
 	enum amdgpu_flip_status pflip_status;
 	int deferred_flip_completion;
-	u32 last_flip_vblank;
+	/* parameters access from DM IRQ handler */
+	struct dm_irq_params dm_irq_params;
 	/* pll sharing */
 	struct amdgpu_atom_ss ss;
 	bool ss_enabled;

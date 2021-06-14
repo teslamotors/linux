@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
+config TESLA_PANIC_BIOSRAM
+	tristate "Save panic reason to BIOSRAM region"
+	depends on X86 && DMI
+	help
+	  Say Y here to save kernel panic reason messages to the BIOSRAM
+	  region if the platform supports it.  The so-called BIOSRAM is
+	  persistent across warm resets and can be retrieved by bootloader
+	  firmware.
+
+	  If unsure, say N.

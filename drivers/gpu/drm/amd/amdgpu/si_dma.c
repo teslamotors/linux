@@ -81,7 +81,9 @@ static void si_dma_ring_emit_ib(struct amdgpu_ring *ring,
  * si_dma_ring_emit_fence - emit a fence on the DMA ring
  *
  * @ring: amdgpu ring pointer
- * @fence: amdgpu fence object
+ * @addr: address
+ * @seq: sequence number
+ * @flags: fence related flags
  *
  * Add a DMA fence packet to the ring to write
  * the fence seq number and DMA trap packet to generate
@@ -124,7 +126,6 @@ static void si_dma_stop(struct amdgpu_device *adev)
 
 		if (adev->mman.buffer_funcs_ring == ring)
 			amdgpu_ttm_set_buffer_funcs_status(adev, false);
-		ring->sched.ready = false;
 	}
 }
 
@@ -245,6 +246,7 @@ error_free_wb:
  * si_dma_ring_test_ib - test an IB on the DMA engine
  *
  * @ring: amdgpu_ring structure holding ring information
+ * @timeout: timeout value in jiffies, or MAX_SCHEDULE_TIMEOUT
  *
  * Test a simple IB in the DMA ring (VI).
  * Returns 0 on success, error on failure.
@@ -267,7 +269,8 @@ static int si_dma_ring_test_ib(struct amdgpu_ring *ring, long timeout)
 	tmp = 0xCAFEDEAD;
 	adev->wb.wb[index] = cpu_to_le32(tmp);
 	memset(&ib, 0, sizeof(ib));
-	r = amdgpu_ib_get(adev, NULL, 256, &ib);
+	r = amdgpu_ib_get(adev, NULL, 256,
+					AMDGPU_IB_POOL_DIRECT, &ib);
 	if (r)
 		goto err0;
 
@@ -401,6 +404,7 @@ static void si_dma_vm_set_pte_pde(struct amdgpu_ib *ib,
 /**
  * si_dma_pad_ib - pad the IB to the required number of dw
  *
+ * @ring: amdgpu_ring pointer
  * @ib: indirect buffer to fill with padding
  *
  */
@@ -436,7 +440,8 @@ static void si_dma_ring_emit_pipeline_sync(struct amdgpu_ring *ring)
  * si_dma_ring_emit_vm_flush - cik vm flush using sDMA
  *
  * @ring: amdgpu_ring pointer
- * @vm: amdgpu_vm pointer
+ * @vmid: vmid number to use
+ * @pd_addr: address
  *
  * Update the page table base and flush the VM TLB
  * using sDMA (VI).
@@ -504,7 +509,8 @@ static int si_dma_sw_init(void *handle)
 				     &adev->sdma.trap_irq,
 				     (i == 0) ?
 				     AMDGPU_SDMA_IRQ_INSTANCE0 :
-				     AMDGPU_SDMA_IRQ_INSTANCE1);
+				     AMDGPU_SDMA_IRQ_INSTANCE1,
+				     AMDGPU_RING_PRIO_DEFAULT);
 		if (r)
 			return r;
 	}
@@ -648,7 +654,7 @@ static int si_dma_set_clockgating_state(void *handle,
 	bool enable;
 	struct amdgpu_device *adev = (struct amdgpu_device *)handle;
 
-	enable = (state == AMD_CG_STATE_GATE) ? true : false;
+	enable = (state == AMD_CG_STATE_GATE);
 
 	if (enable && (adev->cg_flags & AMD_CG_SUPPORT_SDMA_MGCG)) {
 		for (i = 0; i < adev->sdma.num_instances; i++) {
@@ -763,10 +769,11 @@ static void si_dma_set_irq_funcs(struct amdgpu_device *adev)
 /**
  * si_dma_emit_copy_buffer - copy buffer using the sDMA engine
  *
- * @ring: amdgpu_ring structure holding ring information
+ * @ib: indirect buffer to copy to
  * @src_offset: src GPU address
  * @dst_offset: dst GPU address
  * @byte_count: number of bytes to xfer
+ * @tmz: is this a secure operation
  *
  * Copy GPU buffers using the DMA engine (VI).
  * Used by the amdgpu ttm implementation to move pages if
@@ -775,7 +782,8 @@ static void si_dma_set_irq_funcs(struct amdgpu_device *adev)
 static void si_dma_emit_copy_buffer(struct amdgpu_ib *ib,
 				       uint64_t src_offset,
 				       uint64_t dst_offset,
-				       uint32_t byte_count)
+				       uint32_t byte_count,
+				       bool tmz)
 {
 	ib->ptr[ib->length_dw++] = DMA_PACKET(DMA_PACKET_COPY,
 					      1, 0, 0, byte_count);
@@ -788,7 +796,7 @@ static void si_dma_emit_copy_buffer(struct amdgpu_ib *ib,
 /**
  * si_dma_emit_fill_buffer - fill buffer using the sDMA engine
  *
- * @ring: amdgpu_ring structure holding ring information
+ * @ib: indirect buffer to copy to
  * @src_data: value to write to buffer
  * @dst_offset: dst GPU address
  * @byte_count: number of bytes to xfer
@@ -834,16 +842,14 @@ static const struct amdgpu_vm_pte_funcs si_dma_vm_pte_funcs = {
 
 static void si_dma_set_vm_pte_funcs(struct amdgpu_device *adev)
 {
-	struct drm_gpu_scheduler *sched;
 	unsigned i;
 
 	adev->vm_manager.vm_pte_funcs = &si_dma_vm_pte_funcs;
 	for (i = 0; i < adev->sdma.num_instances; i++) {
-		sched = &adev->sdma.instance[i].ring.sched;
-		adev->vm_manager.vm_pte_rqs[i] =
-			&sched->sched_rq[DRM_SCHED_PRIORITY_KERNEL];
+		adev->vm_manager.vm_pte_scheds[i] =
+			&adev->sdma.instance[i].ring.sched;
 	}
-	adev->vm_manager.vm_pte_num_rqs = adev->sdma.num_instances;
+	adev->vm_manager.vm_pte_num_scheds = adev->sdma.num_instances;
 }
 
 const struct amdgpu_ip_block_version si_dma_ip_block =

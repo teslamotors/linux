@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# Tesla misc devices/drivers
+#
+
+menu "Tesla misc drivers/devices"
+
+source "drivers/misc/tesla/hsti/Kconfig"
+source "drivers/misc/tesla/hsti1/Kconfig"
+source "drivers/misc/tesla/oem/Kconfig"
+source "drivers/misc/tesla/psb/Kconfig"
+source "drivers/misc/tesla/panic-biosram/Kconfig"
+
+endmenu

@@ -76,6 +76,8 @@ static void audit_mnt_flags(struct audit_buffer *ab, unsigned long flags)
 		audit_log_format(ab, ", strictatime");
 	if (flags & MS_NOUSER)
 		audit_log_format(ab, ", nouser");
+	if (flags & MS_NOSYMFOLLOW)
+		audit_log_format(ab, ", nosymfollow");
 }
 
 /**

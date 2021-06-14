@@ -44,5 +44,13 @@ struct drm_framebuffer *
 amdgpu_display_user_framebuffer_create(struct drm_device *dev,
 				       struct drm_file *file_priv,
 				       const struct drm_mode_fb_cmd2 *mode_cmd);
+const struct drm_format_info *
+amdgpu_lookup_format_info(u32 format, uint64_t modifier);
+int amdgpu_sem_ioctl(struct drm_device *dev, void *data,
+		     struct drm_file *filp);
 
+int amdgpu_sem_add_cs(struct amdgpu_ctx *ctx, struct drm_sched_entity *entity,
+		     struct amdgpu_sync *sync);
+
+void amdgpu_sem_destroy(struct amdgpu_fpriv *fpriv, u32 handle);
 #endif

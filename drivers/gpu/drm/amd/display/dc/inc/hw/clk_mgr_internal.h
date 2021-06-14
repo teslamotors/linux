@@ -71,8 +71,9 @@ enum dentist_divider_range {
 
 #define CTX \
 	clk_mgr->base.ctx
+
 #define DC_LOGGER \
-	clk_mgr->ctx->logger
+	clk_mgr->base.ctx->logger
 
 
 
@@ -87,6 +88,11 @@ enum dentist_divider_range {
 #define CLK_COMMON_REG_LIST_DCE_BASE() \
 	.DPREFCLK_CNTL = mmDPREFCLK_CNTL, \
 	.DENTIST_DISPCLK_CNTL = mmDENTIST_DISPCLK_CNTL
+
+#if defined(CONFIG_DRM_AMD_DC_SI)
+#define CLK_COMMON_REG_LIST_DCE60_BASE() \
+	SR(DENTIST_DISPCLK_CNTL)
+#endif
 
 #define CLK_COMMON_REG_LIST_DCN_BASE() \
 	SR(DENTIST_DISPCLK_CNTL)
@@ -103,12 +109,24 @@ enum dentist_divider_range {
 	CLK_SRI(CLK3_CLK2_DFS_CNTL, CLK3, 0)
 #endif
 
+#ifdef CONFIG_DRM_AMD_DC_DCN3_0
+// TODO:
+#define CLK_REG_LIST_DCN3()	  \
+	SR(DENTIST_DISPCLK_CNTL)
+#endif
+
 #define CLK_SF(reg_name, field_name, post_fix)\
 	.field_name = reg_name ## __ ## field_name ## post_fix
 
 #define CLK_COMMON_MASK_SH_LIST_DCE_COMMON_BASE(mask_sh) \
 	CLK_SF(DPREFCLK_CNTL, DPREFCLK_SRC_SEL, mask_sh), \
 	CLK_SF(DENTIST_DISPCLK_CNTL, DENTIST_DPREFCLK_WDIVIDER, mask_sh)
+
+#if defined(CONFIG_DRM_AMD_DC_SI)
+#define CLK_COMMON_MASK_SH_LIST_DCE60_COMMON_BASE(mask_sh) \
+	CLK_SF(DENTIST_DISPCLK_CNTL, DENTIST_DISPCLK_WDIVIDER, mask_sh),\
+	CLK_SF(DENTIST_DISPCLK_CNTL, DENTIST_DISPCLK_CHG_DONE, mask_sh)
+#endif
 
 #define CLK_COMMON_MASK_SH_LIST_DCN_COMMON_BASE(mask_sh) \
 	CLK_SF(DENTIST_DISPCLK_CNTL, DENTIST_DISPCLK_WDIVIDER, mask_sh),\
@@ -179,10 +197,29 @@ struct clk_mgr_registers {
 	uint32_t CLK3_CLK_PLL_REQ;
 #endif
 
+#ifdef CONFIG_DRM_AMD_DC_DCN3_0
+	uint32_t CLK0_CLK2_DFS_CNTL;
+	uint32_t CLK0_CLK_PLL_REQ;
+#endif
 	uint32_t MP1_SMN_C2PMSG_67;
 	uint32_t MP1_SMN_C2PMSG_83;
 	uint32_t MP1_SMN_C2PMSG_91;
 };
+
+enum clock_type {
+	clock_type_dispclk = 1,
+	clock_type_dcfclk,
+	clock_type_socclk,
+	clock_type_pixelclk,
+	clock_type_phyclk,
+	clock_type_dppclk,
+	clock_type_fclk,
+	clock_type_dcfdsclk,
+	clock_type_dscclk,
+	clock_type_uclk,
+	clock_type_dramclk,
+};
+
 
 struct state_dependent_clocks {
 	int display_clk_khz;
@@ -210,8 +247,6 @@ struct clk_mgr_internal {
 	struct state_dependent_clocks max_clks_by_state[DM_PP_CLOCKS_MAX_STATES];
 
 	/*TODO: figure out which of the below fields should be here vs in asic specific portion */
-	int dentist_vco_freq_khz;
-
 	/* Cache the status of DFS-bypass feature*/
 	bool dfs_bypass_enabled;
 	/* True if the DFS-bypass feature is enabled and active. */
@@ -259,6 +294,15 @@ struct clk_mgr_internal {
 
 	enum dm_pp_clocks_state max_clks_state;
 	enum dm_pp_clocks_state cur_min_clks_state;
+	bool periodic_retraining_disabled;
+
+	unsigned int cur_phyclk_req_table[MAX_PIPES * 2];
+#ifdef CONFIG_DRM_AMD_DC_DCN3_0
+
+	bool smu_present;
+	void *wm_range_table;
+	long long wm_range_table_addr;
+#endif
 };
 
 struct clk_mgr_internal_funcs {
@@ -292,6 +336,10 @@ static inline bool should_update_pstate_support(bool safe_to_lower, bool calc_su
 }
 
 int clk_mgr_helper_get_active_display_cnt(
+		struct dc *dc,
+		struct dc_state *context);
+
+int clk_mgr_helper_get_active_plane_cnt(
 		struct dc *dc,
 		struct dc_state *context);
 

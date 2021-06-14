@@ -31,6 +31,9 @@ enum dcc_control {
 	dcc_control__256_256_xxx,
 	dcc_control__128_128_xxx,
 	dcc_control__256_64_64,
+#if defined(CONFIG_DRM_AMD_DC_DCN3_0)
+	dcc_control__256_128_128,
+#endif
 };
 
 enum segment_order {
@@ -63,6 +66,9 @@ enum dcn_hubbub_page_table_depth {
 enum dcn_hubbub_page_table_block_size {
 	DCN_PAGE_TABLE_BLOCK_SIZE_4KB = 0,
 	DCN_PAGE_TABLE_BLOCK_SIZE_64KB = 4,
+#if defined(CONFIG_DRM_AMD_DC_DCN3_0)
+	DCN_PAGE_TABLE_BLOCK_SIZE_32KB = 3
+#endif
 };
 
 struct dcn_hubbub_phys_addr_config {
@@ -138,7 +144,7 @@ struct hubbub_funcs {
 			unsigned int dccg_ref_freq_inKhz,
 			unsigned int *dchub_ref_freq_inKhz);
 
-	void (*program_watermarks)(
+	bool (*program_watermarks)(
 			struct hubbub *hubbub,
 			struct dcn_watermark_set *watermarks,
 			unsigned int refclk_mhz,
@@ -147,11 +153,21 @@ struct hubbub_funcs {
 	bool (*is_allow_self_refresh_enabled)(struct hubbub *hubbub);
 	void (*allow_self_refresh_control)(struct hubbub *hubbub, bool allow);
 
+	void (*apply_DEDCN21_147_wa)(struct hubbub *hubbub);
+
+	void (*force_wm_propagate_to_pipes)(struct hubbub *hubbub);
+#if defined(CONFIG_DRM_AMD_DC_DCN3_0)
+
+	void (*force_pstate_change_control)(struct hubbub *hubbub, bool force, bool allow);
+
+	void (*init_watermarks)(struct hubbub *hubbub);
+#endif
 };
 
 struct hubbub {
 	const struct hubbub_funcs *funcs;
 	struct dc_context *ctx;
+	bool riommu_active;
 };
 
 #endif

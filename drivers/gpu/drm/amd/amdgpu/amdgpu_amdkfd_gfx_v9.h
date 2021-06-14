@@ -33,6 +33,9 @@ int kgd_gfx_v9_hqd_load(struct kgd_dev *kgd, void *mqd, uint32_t pipe_id,
 			uint32_t queue_id, uint32_t __user *wptr,
 			uint32_t wptr_shift, uint32_t wptr_mask,
 			struct mm_struct *mm);
+int kgd_gfx_v9_hiq_mqd_load(struct kgd_dev *kgd, void *mqd,
+			    uint32_t pipe_id, uint32_t queue_id,
+			    uint32_t doorbell_off);
 int kgd_gfx_v9_hqd_dump(struct kgd_dev *kgd,
 			uint32_t pipe_id, uint32_t queue_id,
 			uint32_t (**dump)[2], uint32_t *n_regs);
@@ -55,15 +58,39 @@ uint32_t kgd_gfx_v9_address_watch_get_offset(struct kgd_dev *kgd,
 					unsigned int watch_point_id,
 					unsigned int reg_offset);
 
-bool kgd_gfx_v9_get_atc_vmid_pasid_mapping_valid(struct kgd_dev *kgd,
-		uint8_t vmid);
-uint16_t kgd_gfx_v9_get_atc_vmid_pasid_mapping_pasid(struct kgd_dev *kgd,
-		uint8_t vmid);
-void kgd_gfx_v9_set_vm_context_page_table_base(struct kgd_dev *kgd, uint32_t vmid,
-		uint64_t page_table_base);
-void kgd_gfx_v9_set_scratch_backing_va(struct kgd_dev *kgd,
-					uint64_t va, uint32_t vmid);
-int kgd_gfx_v9_invalidate_tlbs(struct kgd_dev *kgd, uint16_t pasid);
-int kgd_gfx_v9_invalidate_tlbs_vmid(struct kgd_dev *kgd, uint16_t vmid);
-int kgd_gfx_v9_get_tile_config(struct kgd_dev *kgd,
-		struct tile_config *config);
+bool kgd_gfx_v9_get_atc_vmid_pasid_mapping_info(struct kgd_dev *kgd,
+					uint8_t vmid, uint16_t *p_pasid);
+void kgd_gfx_v9_enable_debug_trap(struct kgd_dev *kgd,
+									  uint32_t vmid);
+void kgd_gfx_v9_disable_debug_trap(struct kgd_dev *kgd, uint32_t vmid);
+int kgd_gfx_v9_set_wave_launch_trap_override(struct kgd_dev *kgd,
+					    uint32_t vmid,
+					    uint32_t trap_override,
+					    uint32_t trap_mask_bits,
+					    uint32_t trap_mask_request,
+					    uint32_t *trap_mask_prev,
+					    uint32_t *trap_mask_supported);
+void kgd_gfx_v9_set_wave_launch_mode(struct kgd_dev *kgd,
+										 uint8_t wave_launch_mode,
+										 uint32_t vmid);
+void kgd_gfx_v9_set_address_watch(struct kgd_dev *kgd,
+					uint64_t watch_address,
+					uint32_t watch_address_mask,
+					uint32_t watch_id,
+					uint32_t watch_mode,
+					uint32_t debug_vmid);
+void kgd_gfx_v9_clear_address_watch(struct kgd_dev *kgd,
+					uint32_t watch_id);
+int kgd_gfx_v9_set_precise_mem_ops(struct kgd_dev *kgd, uint32_t vmid,
+			    bool enable);
+void kgd_gfx_v9_get_iq_wait_times(struct kgd_dev *kgd,
+								  uint32_t *wait_times);
+void kgd_gfx_v9_build_grace_period_packet_info(struct kgd_dev *kgd,
+											   uint32_t wait_times,
+											   uint32_t grace_period,
+											   uint32_t *reg_offset,
+											   uint32_t *reg_data);
+void kgd_gfx_v9_set_vm_context_page_table_base(struct kgd_dev *kgd,
+			uint32_t vmid, uint64_t page_table_base);
+void kgd_gfx_v9_get_cu_occupancy(struct kgd_dev *kgd, int pasid,
+		int *pasid_wave_cnt, int *max_waves_per_cu);

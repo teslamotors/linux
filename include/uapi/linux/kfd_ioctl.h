@@ -23,11 +23,37 @@
 #ifndef KFD_IOCTL_H_INCLUDED
 #define KFD_IOCTL_H_INCLUDED
 
-#include <drm/drm.h>
+#include <linux/types.h>
 #include <linux/ioctl.h>
 
+/*
+ * - 1.1 - initial version
+ * - 1.3 - Add SMI events support
+ */
 #define KFD_IOCTL_MAJOR_VERSION 1
-#define KFD_IOCTL_MINOR_VERSION 1
+#define KFD_IOCTL_MINOR_VERSION 3
+
+/*
+ * Debug revision change log
+ *
+ * 0.1 - Initial revision
+ * 0.2 - Fix to include querying pending event that is both trap and vmfault
+ * 1.0 - Removed function to set debug data (renumbering functions broke ABI)
+ * 1.1 - Allow attaching to processes that have not opened /dev/kfd yet
+ * 1.2 - Allow flag option to clear queue status on queue suspend
+ * 1.3 - Fix race condition between clear on suspend and trap event handling
+ * 1.4 - Fix bad kfifo free
+ * 1.5 - Fix ABA issue between queue snapshot and suspend
+ * 2.0 - Return number of queues suspended/resumed and mask invalid/error
+ *	 array slots
+ * 2.1 - Add Set Address Watch, and Clear Address Watch support.
+ * 3.0 - Overhaul set wave launch override API
+ * 3.1 - Add support for GFX10
+ * 3.2 - Add support for GFX10.3
+ * 3.3 - Add precise memory operations enable
+ */
+#define KFD_IOCTL_DBG_MAJOR_VERSION	3
+#define KFD_IOCTL_DBG_MINOR_VERSION	3
 
 struct kfd_ioctl_get_version_args {
 	__u32 major_version;	/* from KFD */
@@ -89,6 +115,19 @@ struct kfd_ioctl_get_queue_wave_state_args {
 	__u32 save_area_used_size;	/* from KFD */
 	__u32 queue_id;			/* to KFD */
 	__u32 pad;
+};
+
+struct kfd_queue_snapshot_entry {
+	__u64 ring_base_address;
+	__u64 write_pointer_address;
+	__u64 read_pointer_address;
+	__u64 ctx_save_restore_address;
+	__u32 queue_id;
+	__u32 gpu_id;
+	__u32 ring_size;
+	__u32 queue_type;
+	__u32 queue_status;
+	__u32 reserved[19];
 };
 
 /* For kfd_ioctl_set_memory_policy_args.default_policy and alternate_policy */
@@ -187,6 +226,171 @@ struct kfd_ioctl_dbg_wave_control_args {
 	__u32 buf_size_in_bytes;	/*including gpu_id and buf_size */
 };
 
+/* mapping event types to API spec */
+#define KFD_DBG_EV_STATUS_TRAP_BIT	0
+#define KFD_DBG_EV_STATUS_VMFAULT_BIT	1
+#define	KFD_DBG_EV_STATUS_TRAP		(1 << KFD_DBG_EV_STATUS_TRAP_BIT)
+#define	KFD_DBG_EV_STATUS_VMFAULT	(1 << KFD_DBG_EV_STATUS_VMFAULT_BIT)
+#define	KFD_DBG_EV_STATUS_SUSPENDED	4
+#define KFD_DBG_EV_STATUS_NEW_QUEUE	8
+#define	KFD_DBG_EV_FLAG_CLEAR_STATUS	1
+
+/* queue states for suspend/resume */
+#define KFD_DBG_QUEUE_ERROR_BIT		30
+#define KFD_DBG_QUEUE_INVALID_BIT	31
+#define KFD_DBG_QUEUE_ERROR_MASK	(1 << KFD_DBG_QUEUE_ERROR_BIT)
+#define KFD_DBG_QUEUE_INVALID_MASK	(1 << KFD_DBG_QUEUE_INVALID_BIT)
+
+#define KFD_INVALID_QUEUEID	0xffffffff
+
+enum kfd_dbg_trap_override_mode {
+	KFD_DBG_TRAP_OVERRIDE_OR = 0,
+	KFD_DBG_TRAP_OVERRIDE_REPLACE = 1
+};
+enum kfd_dbg_trap_mask {
+	KFD_DBG_TRAP_MASK_FP_INVALID = 1,
+	KFD_DBG_TRAP_MASK_FP_INPUT_DENORMAL = 2,
+	KFD_DBG_TRAP_MASK_FP_DIVIDE_BY_ZERO = 4,
+	KFD_DBG_TRAP_MASK_FP_OVERFLOW = 8,
+	KFD_DBG_TRAP_MASK_FP_UNDERFLOW = 16,
+	KFD_DBG_TRAP_MASK_FP_INEXACT = 32,
+	KFD_DBG_TRAP_MASK_INT_DIVIDE_BY_ZERO = 64,
+	KFD_DBG_TRAP_MASK_DBG_ADDRESS_WATCH = 128,
+	KFD_DBG_TRAP_MASK_DBG_MEMORY_VIOLATION = 256
+};
+
+/* KFD_IOC_DBG_TRAP_ENABLE:
+ * ptr:   unused
+ * data1: 0=disable, 1=enable
+ * data2: queue ID (for future use)
+ * data3: return value for fd
+ */
+#define KFD_IOC_DBG_TRAP_ENABLE 0
+
+/* KFD_IOC_DBG_TRAP_SET_WAVE_LAUNCH_OVERRIDE:
+ * ptr:   unused
+ * data1: override mode (see enum kfd_dbg_trap_override_mode)
+ * data2: [in/out] trap mask (see enum kfd_dbg_trap_mask)
+ * data3: [in] requested mask, [out] supported mask
+ *
+ * May fail with -EPERM if the requested mode is not supported.
+ *
+ * May fail with -EACCES if requested trap mask bits are not supported.
+ * In that case the supported trap mask bits are returned in data3.
+ *
+ * If successful, output parameters return the previous trap mask
+ * value and the hardware-dependent mask of supported trap mask bits.
+ */
+#define KFD_IOC_DBG_TRAP_SET_WAVE_LAUNCH_OVERRIDE 1
+
+/* KFD_IOC_DBG_TRAP_SET_WAVE_LAUNCH_MODE:
+ * ptr:   unused
+ * data1: 0=normal, 1=halt, 2=kill, 3=singlestep, 4=disable
+ * data2: unused
+ * data3: unused
+ */
+#define KFD_IOC_DBG_TRAP_SET_WAVE_LAUNCH_MODE 2
+
+/* KFD_IOC_DBG_TRAP_NODE_SUSPEND:
+ * ptr:   pointer to an array of Queues IDs (IN/OUT)
+ * data1: flags (IN)
+ * data2: number of queues (IN)
+ * data3: grace period (IN)
+ *
+ * Returns the number of queues suspended from array of Queue IDs (ptr).
+ * Requested queues that fail to suspend are masked in the array:
+ *
+ * KFD_DBG_QUEUE_INVALID_MASK - requested queue does not exist or cannot be
+ * suspended (new or being destroyed).
+ *
+ * KFD_DBG_QUEUE_ERROR_MASK - bad internal operation occurred on requested
+ * queue.
+ *
+ * NOTE!  All queue destroy requests will be blocked on a suspended queue.
+ * Queue resume will unblock.
+ *
+ * KFD_DBG_EV_FLAG_CLEAR_STATUS can be passed as a flag (data1) to clear
+ * pending events.
+ *
+ * Grace period (data3) is time allowed for waves to complete before CWSR.
+ * 0 can be entered for immediate preemption.
+ */
+#define KFD_IOC_DBG_TRAP_NODE_SUSPEND 3
+
+/* KFD_IOC_DBG_TRAP_NODE_RESUME:
+ * ptr:   pointer to an array of Queues IDs (IN/OUT)
+ * data1: flags (IN)
+ * data2: number of queues (IN)
+ * data3: unused (IN)
+ *
+ * Returns the number of queues resumed from array of Queue IDs (ptr).
+ * Requested queues that fail to resume are masked in the array:
+ *
+ * KFD_DBG_QUEUE_INVALID_MASK - requested queue does not exist.
+ *
+ * KFD_DBG_QUEUE_ERROR_MASK - bad internal operation occurred on requested
+ * queue.
+ */
+#define KFD_IOC_DBG_TRAP_NODE_RESUME 4
+
+/* KFD_IOC_DBG_TRAP_QUERY_DEBUG_EVENT:
+ * ptr: unused
+ * data1: queue id (IN/OUT)
+ * data2: flags (IN)
+ * data3: suspend[2:2], event type [1:0] (OUT)
+ */
+#define KFD_IOC_DBG_TRAP_QUERY_DEBUG_EVENT 5
+
+/* KFD_IOC_DBG_TRAP_GET_QUEUE_SNAPSHOT:
+ * ptr: user buffer (IN)
+ * data1: flags (IN)
+ * data2: number of queue snapshots (IN/OUT) - 0 for IN ignores buffer writes
+ * data3: unused
+ */
+#define KFD_IOC_DBG_TRAP_GET_QUEUE_SNAPSHOT 6
+
+/* KFD_IOC_DBG_TRAP_GET_VERSION:
+ * ptr: unsused
+ * data1: major version (OUT)
+ * data2: minor version (OUT)
+ * data3: unused
+ */
+#define KFD_IOC_DBG_TRAP_GET_VERSION	7
+
+/* KFD_IOC_DBG_TRAP_CLEAR_ADDRESS_WATCH:
+ * ptr: unused
+ * data1: watch ID
+ * data2: unused
+ * data3: unused
+ */
+#define KFD_IOC_DBG_TRAP_CLEAR_ADDRESS_WATCH 8
+
+/* KFD_IOC_DBG_TRAP_SET_ADDRESS_WATCH:
+ * ptr:   Watch address
+ * data1: Watch ID (OUT)
+ * data2: watch_mode: 0=read, 1=nonread, 2=atomic, 3=all
+ * data3: watch address mask
+ */
+#define KFD_IOC_DBG_TRAP_SET_ADDRESS_WATCH 9
+
+/* KFD_IOC_DBG_TRAP_SET_PRECISE_MEM_OPS
+ * ptr:   unused
+ * data1: 0=disable, 1=enable (IN)
+ * data2: unused
+ * data3: unused
+ */
+#define KFD_IOC_DBG_TRAP_SET_PRECISE_MEM_OPS 10
+
+struct kfd_ioctl_dbg_trap_args {
+	__u64 ptr;     /* to KFD -- used for pointer arguments: queue arrays */
+	__u32 pid;     /* to KFD */
+	__u32 gpu_id;  /* to KFD */
+	__u32 op;      /* to KFD */
+	__u32 data1;   /* to KFD */
+	__u32 data2;   /* to KFD */
+	__u32 data3;   /* to KFD */
+};
+
 /* Matching HSA_EVENTTYPE */
 #define KFD_IOC_EVENT_SIGNAL			0
 #define KFD_IOC_EVENT_NODECHANGE		1
@@ -251,7 +455,7 @@ struct kfd_memory_exception_failure {
 	__u32 imprecise;	/* Can't determine the	exact fault address */
 };
 
-/* memory exception data*/
+/* memory exception data */
 struct kfd_hsa_memory_exception_data {
 	struct kfd_memory_exception_failure failure;
 	__u64 va;
@@ -410,6 +614,20 @@ struct kfd_ioctl_unmap_memory_from_gpu_args {
 	__u32 n_success;		/* to/from KFD */
 };
 
+/* Allocate GWS for specific queue
+ *
+ * @queue_id:    queue's id that GWS is allocated for
+ * @num_gws:     how many GWS to allocate
+ * @first_gws:   index of the first GWS allocated.
+ *               only support contiguous GWS allocation
+ */
+struct kfd_ioctl_alloc_queue_gws_args {
+	__u32 queue_id;		/* to KFD */
+	__u32 num_gws;		/* to KFD */
+	__u32 first_gws;	/* from KFD */
+	__u32 pad;
+};
+
 struct kfd_ioctl_get_dmabuf_info_args {
 	__u64 size;		/* from KFD */
 	__u64 metadata_ptr;	/* to KFD */
@@ -428,11 +646,151 @@ struct kfd_ioctl_import_dmabuf_args {
 	__u32 dmabuf_fd;	/* to KFD */
 };
 
+/*
+ * KFD SMI(System Management Interface) events
+ */
+enum kfd_smi_event {
+	KFD_SMI_EVENT_NONE = 0, /* not used */
+	KFD_SMI_EVENT_VMFAULT = 1, /* event start counting at 1 */
+	KFD_SMI_EVENT_THERMAL_THROTTLE = 2,
+	KFD_SMI_EVENT_GPU_PRE_RESET = 3,
+	KFD_SMI_EVENT_GPU_POST_RESET = 4,
+};
+
+#define KFD_SMI_EVENT_MASK_FROM_INDEX(i) (1ULL << ((i) - 1))
+
+struct kfd_ioctl_smi_events_args {
+	__u32 gpuid;	/* to KFD */
+	__u32 anon_fd;	/* from KFD */
+};
+
+/**
+ * kfd_ioctl_spm_op - SPM ioctl operations
+ *
+ * @KFD_IOCTL_SPM_OP_ACQUIRE: acquire exclusive access to SPM
+ * @KFD_IOCTL_SPM_OP_RELEASE: release exclusive access to SPM
+ * @KFD_IOCTL_SPM_OP_SET_DEST_BUF: set or unset destination buffer for SPM streaming
+ */
+enum kfd_ioctl_spm_op {
+	KFD_IOCTL_SPM_OP_ACQUIRE,
+	KFD_IOCTL_SPM_OP_RELEASE,
+	KFD_IOCTL_SPM_OP_SET_DEST_BUF
+};
+
+/**
+ * kfd_ioctl_spm_args - Arguments for SPM ioctl
+ *
+ * @op[in]:            specifies the operation to perform
+ * @gpu_id[in]:        GPU ID of the GPU to profile
+ * @dst_buf[in]:       used for the address of the destination buffer
+ *                      in @KFD_IOCTL_SPM_SET_DEST_BUFFER
+ * @buf_size[in]:      size of the destination buffer
+ * @timeout[in/out]:   [in]: timeout in milliseconds, [out]: amount of time left
+ *                      `in the timeout window
+ * @bytes_copied[out]: amount of data that was copied to the previous dest_buf
+ * @has_data_loss:     boolean indicating whether data was lost
+ *                      (e.g. due to a ring-buffer overflow)
+ *
+ * This ioctl performs different functions depending on the @op parameter.
+ *
+ * KFD_IOCTL_SPM_OP_ACQUIRE
+ * ------------------------
+ *
+ * Acquires exclusive access of SPM on the specified @gpu_id for the calling process.
+ * This must be called before using KFD_IOCTL_SPM_OP_SET_DEST_BUF.
+ *
+ * KFD_IOCTL_SPM_OP_RELEASE
+ * ------------------------
+ *
+ * Releases exclusive access of SPM on the specified @gpu_id for the calling process,
+ * which allows another process to acquire it in the future.
+ *
+ * KFD_IOCTL_SPM_OP_SET_DEST_BUF
+ * -----------------------------
+ *
+ * If @dst_buf is NULL, the destination buffer address is unset and copying of counters
+ * is stopped.
+ *
+ * If @dst_buf is not NULL, it specifies the pointer to a new destination buffer.
+ * @buf_size specifies the size of the buffer.
+ *
+ * If @timeout is non-0, the call will wait for up to @timeout ms for the previous
+ * buffer to be filled. If previous buffer to be filled before timeout, the @timeout
+ * will be updated value with the time remaining. If the timeout is exceeded, the function
+ * copies any partial data available into the previous user buffer and returns success.
+ * The amount of valid data in the previous user buffer is indicated by @bytes_copied.
+ *
+ * If @timeout is 0, the function immediately replaces the previous destination buffer
+ * without waiting for the previous buffer to be filled. That means the previous buffer
+ * may only be partially filled, and @bytes_copied will indicate how much data has been
+ * copied to it.
+ *
+ * If data was lost, e.g. due to a ring buffer overflow, @has_data_loss will be non-0.
+ *
+ * Returns negative error code on failure, 0 on success.
+ */
+struct kfd_ioctl_spm_args {
+	__u64 dest_buf;
+	__u32 buf_size;
+	__u32 op;
+	__u32 timeout;
+	__u32 gpu_id;
+	__u32 bytes_copied;
+	__u32 has_data_loss;
+};
+
 /* Register offset inside the remapped mmio page
  */
 enum kfd_mmio_remap {
 	KFD_MMIO_REMAP_HDP_MEM_FLUSH_CNTL = 0,
 	KFD_MMIO_REMAP_HDP_REG_FLUSH_CNTL = 4,
+};
+
+struct kfd_ioctl_ipc_export_handle_args {
+	__u64 handle;		/* to KFD */
+	__u32 share_handle[4];	/* from KFD */
+	__u32 gpu_id;		/* to KFD */
+	__u32 pad;
+};
+
+struct kfd_ioctl_ipc_import_handle_args {
+	__u64 handle;		/* from KFD */
+	__u64 va_addr;		/* to KFD */
+	__u64 mmap_offset;		/* from KFD */
+	__u32 share_handle[4];	/* to KFD */
+	__u32 gpu_id;		/* to KFD */
+	__u32 pad;
+};
+
+struct kfd_memory_range {
+	__u64 va_addr;
+	__u64 size;
+};
+
+/* flags definitions
+ * BIT0: 0: read operation, 1: write operation.
+ * This also identifies if the src or dst array belongs to remote process
+ */
+#define KFD_CROSS_MEMORY_RW_BIT (1 << 0)
+#define KFD_SET_CROSS_MEMORY_READ(flags) (flags &= ~KFD_CROSS_MEMORY_RW_BIT)
+#define KFD_SET_CROSS_MEMORY_WRITE(flags) (flags |= KFD_CROSS_MEMORY_RW_BIT)
+#define KFD_IS_CROSS_MEMORY_WRITE(flags) (flags & KFD_CROSS_MEMORY_RW_BIT)
+
+struct kfd_ioctl_cross_memory_copy_args {
+	/* to KFD: Process ID of the remote process */
+	__u32 pid;
+	/* to KFD: See above definition */
+	__u32 flags;
+	/* to KFD: Source GPU VM range */
+	__u64 src_mem_range_array;
+	/* to KFD: Size of above array */
+	__u64 src_mem_array_size;
+	/* to KFD: Destination GPU VM range */
+	__u64 dst_mem_range_array;
+	/* to KFD: Size of above array */
+	__u64 dst_mem_array_size;
+	/* from KFD: Total amount of bytes copied */
+	__u64 bytes_copied;
 };
 
 #define AMDKFD_IOCTL_BASE 'K'
@@ -529,7 +887,33 @@ enum kfd_mmio_remap {
 #define AMDKFD_IOC_IMPORT_DMABUF		\
 		AMDKFD_IOWR(0x1D, struct kfd_ioctl_import_dmabuf_args)
 
+#define AMDKFD_IOC_ALLOC_QUEUE_GWS		\
+		AMDKFD_IOWR(0x1E, struct kfd_ioctl_alloc_queue_gws_args)
+
+#define AMDKFD_IOC_SMI_EVENTS			\
+		AMDKFD_IOWR(0x1F, struct kfd_ioctl_smi_events_args)
+
 #define AMDKFD_COMMAND_START		0x01
-#define AMDKFD_COMMAND_END		0x1E
+#define AMDKFD_COMMAND_END		0x20
+
+/* non-upstream ioctls */
+#define AMDKFD_IOC_IPC_IMPORT_HANDLE                                    \
+		AMDKFD_IOWR(0x80, struct kfd_ioctl_ipc_import_handle_args)
+
+#define AMDKFD_IOC_IPC_EXPORT_HANDLE		\
+		AMDKFD_IOWR(0x81, struct kfd_ioctl_ipc_export_handle_args)
+
+#define AMDKFD_IOC_DBG_TRAP			\
+		AMDKFD_IOWR(0x82, struct kfd_ioctl_dbg_trap_args)
+
+#define AMDKFD_IOC_CROSS_MEMORY_COPY		\
+		AMDKFD_IOWR(0x83, struct kfd_ioctl_cross_memory_copy_args)
+
+#define AMDKFD_IOC_RLC_SPM		\
+		AMDKFD_IOWR(0x84, struct kfd_ioctl_spm_args)
+
+
+#define AMDKFD_COMMAND_START_2		0x80
+#define AMDKFD_COMMAND_END_2		0x85
 
 #endif

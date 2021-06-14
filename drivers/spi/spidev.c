@@ -27,6 +27,8 @@
 
 #include <linux/uaccess.h>
 
+#define SPI_BUS		0
+#define SPI_BUS_CS1	0
 
 /*
  * This supports access to SPI devices using normal userspace I/O calls.
@@ -46,6 +48,7 @@
 
 static DECLARE_BITMAP(minors, N_SPI_MINORS);
 
+struct spi_device *spi_device;
 
 /* Bit masks for spi_device.mode management.  Note that incorrect
  * settings for some settings can cause *lots* of trouble for other
@@ -737,7 +740,7 @@ static int spidev_probe(struct spi_device *spi)
 	     of_device_is_compatible(spi->dev.of_node, "spidev"),
 	     "%pOF: buggy DT: spidev listed directly in DT\n", spi->dev.of_node);
 
-	spidev_probe_acpi(spi);
+//	spidev_probe_acpi(spi);
 
 	/* Allocate driver data */
 	spidev = kzalloc(sizeof(*spidev), GFP_KERNEL);
@@ -823,6 +826,32 @@ static struct spi_driver spidev_spi_driver = {
 
 /*-------------------------------------------------------------------------*/
 
+static int __init add_spi_device_to_bus(void)
+{
+	struct spi_master *spi_master;
+	struct spi_board_info spi_info;
+
+	spi_master = spi_busnum_to_master(SPI_BUS);
+	if (!spi_master) {
+		printk(KERN_ALERT "Please make sure to \'modprobe "
+			"spi_amd\' driver first\n");
+		return -1;
+	}
+	memset(&spi_info, 0, sizeof(struct spi_board_info));
+
+	strlcpy(spi_info.modalias, "spidev", SPI_NAME_SIZE);
+	spi_info.bus_num = SPI_BUS; //Bus number of SPI master
+	spi_info.chip_select = SPI_BUS_CS1; //CS on which SPI device is connected
+
+	spi_device = spi_new_device(spi_master, &spi_info);
+	if (!spi_device)
+		return -ENODEV;
+
+	return 0;
+}
+
+
+
 static int __init spidev_init(void)
 {
 	int status;
@@ -847,6 +876,14 @@ static int __init spidev_init(void)
 		class_destroy(spidev_class);
 		unregister_chrdev(SPIDEV_MAJOR, spidev_spi_driver.driver.name);
 	}
+
+	status = add_spi_device_to_bus();
+	if (status < 0) {
+		spi_unregister_driver(&spidev_spi_driver);
+		class_destroy(spidev_class);
+		unregister_chrdev(SPIDEV_MAJOR, spidev_spi_driver.driver.name);
+	}
+
 	return status;
 }
 module_init(spidev_init);
@@ -854,6 +891,7 @@ module_init(spidev_init);
 static void __exit spidev_exit(void)
 {
 	spi_unregister_driver(&spidev_spi_driver);
+	spi_unregister_device(spi_device);
 	class_destroy(spidev_class);
 	unregister_chrdev(SPIDEV_MAJOR, spidev_spi_driver.driver.name);
 }

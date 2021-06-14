@@ -45,6 +45,7 @@
 
 #include <linux/firmware.h>
 #include <linux/module.h>
+#include <drm/drmP.h>
 #include <drm/drm.h>
 
 #include "amdgpu.h"
@@ -136,6 +137,7 @@ void amdgpu_mn_unlock(struct amdgpu_mn *mn)
  * amdgpu_mn_read_lock - take the read side lock for this notifier
  *
  * @amn: our notifier
+ * @blockable: is the notifier blockable
  */
 static int amdgpu_mn_read_lock(struct amdgpu_mn *amn, bool blockable)
 {
@@ -197,7 +199,7 @@ static void amdgpu_mn_invalidate_node(struct amdgpu_mn_node *node,
  */
 static int
 amdgpu_mn_sync_pagetables_gfx(struct hmm_mirror *mirror,
-			      const struct mmu_notifier_range *update)
+			     const struct mmu_notifier_range *update)
 {
 	struct amdgpu_mn *amn = container_of(mirror, struct amdgpu_mn, mirror);
 	unsigned long start = update->start;
@@ -213,11 +215,11 @@ amdgpu_mn_sync_pagetables_gfx(struct hmm_mirror *mirror,
 	 */
 	if (amdgpu_mn_read_lock(amn, blockable))
 		return -EAGAIN;
-
+	
 	it = interval_tree_iter_first(&amn->objects, start, end);
 	while (it) {
 		struct amdgpu_mn_node *node;
-
+		
 		if (!blockable) {
 			amdgpu_mn_read_unlock(amn);
 			return -EAGAIN;
@@ -225,7 +227,7 @@ amdgpu_mn_sync_pagetables_gfx(struct hmm_mirror *mirror,
 
 		node = container_of(it, struct amdgpu_mn_node, it);
 		it = interval_tree_iter_next(it, start, end);
-
+		
 		amdgpu_mn_invalidate_node(node, start, end);
 	}
 
@@ -246,7 +248,7 @@ amdgpu_mn_sync_pagetables_gfx(struct hmm_mirror *mirror,
  */
 static int
 amdgpu_mn_sync_pagetables_hsa(struct hmm_mirror *mirror,
-			      const struct mmu_notifier_range *update)
+			     const struct mmu_notifier_range *update)
 {
 	struct amdgpu_mn *amn = container_of(mirror, struct amdgpu_mn, mirror);
 	unsigned long start = update->start;
@@ -256,15 +258,15 @@ amdgpu_mn_sync_pagetables_hsa(struct hmm_mirror *mirror,
 
 	/* notification is exclusive, but interval is inclusive */
 	end -= 1;
-
+	
 	if (amdgpu_mn_read_lock(amn, blockable))
 		return -EAGAIN;
-
+	
 	it = interval_tree_iter_first(&amn->objects, start, end);
 	while (it) {
 		struct amdgpu_mn_node *node;
 		struct amdgpu_bo *bo;
-
+		
 		if (!blockable) {
 			amdgpu_mn_read_unlock(amn);
 			return -EAGAIN;
@@ -277,8 +279,8 @@ amdgpu_mn_sync_pagetables_hsa(struct hmm_mirror *mirror,
 			struct kgd_mem *mem = bo->kfd_bo;
 
 			if (amdgpu_ttm_tt_affect_userptr(bo->tbo.ttm,
-							 start, end))
-				amdgpu_amdkfd_evict_userptr(mem, amn->mm);
+							start, end))
+				amdgpu_amdkfd_evict_userptr(mem, amn->mm);		
 		}
 	}
 
@@ -290,7 +292,7 @@ amdgpu_mn_sync_pagetables_hsa(struct hmm_mirror *mirror,
 /* Low bits of any reasonable mm pointer will be unused due to struct
  * alignment. Use these bits to make a unique key from the mm pointer
  * and notifier type.
- */
+*/
 #define AMDGPU_MN_KEY(mm, type) ((unsigned long)(mm) + (type))
 
 static struct hmm_mirror_ops amdgpu_hmm_mirror_ops[] = {
@@ -341,7 +343,7 @@ struct amdgpu_mn *amdgpu_mn_get(struct amdgpu_device *adev,
 	init_rwsem(&amn->lock);
 	amn->type = type;
 	amn->objects = RB_ROOT_CACHED;
-
+		
 	amn->mirror.ops = &amdgpu_hmm_mirror_ops[type];
 	r = hmm_mirror_register(&amn->mirror, mm);
 	if (r)
@@ -484,5 +486,6 @@ void amdgpu_hmm_init_range(struct hmm_range *range)
 		range->flags = hmm_range_flags;
 		range->values = hmm_range_values;
 		range->pfn_shift = PAGE_SHIFT;
+		INIT_LIST_HEAD(&range->list);
 	}
 }

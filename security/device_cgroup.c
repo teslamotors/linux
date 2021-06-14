@@ -802,8 +802,8 @@ struct cgroup_subsys devices_cgrp_subsys = {
  *
  * returns 0 on success, -EPERM case the operation is not permitted
  */
-int __devcgroup_check_permission(short type, u32 major, u32 minor,
-				 short access)
+static int __devcgroup_check_permission(short type, u32 major, u32 minor,
+					 short access)
 {
 	struct dev_cgroup *dev_cgroup;
 	bool rc;
@@ -825,3 +825,14 @@ int __devcgroup_check_permission(short type, u32 major, u32 minor,
 
 	return 0;
 }
+
+int devcgroup_check_permission(short type, u32 major, u32 minor, short access)
+{
+	int rc = BPF_CGROUP_RUN_PROG_DEVICE_CGROUP(type, major, minor, access);
+
+	if (rc)
+		return -EPERM;
+
+	return __devcgroup_check_permission(type, major, minor, access);
+}
+EXPORT_SYMBOL(devcgroup_check_permission);

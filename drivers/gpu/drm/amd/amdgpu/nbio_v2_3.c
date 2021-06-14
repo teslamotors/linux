@@ -27,15 +27,43 @@
 #include "nbio/nbio_2_3_default.h"
 #include "nbio/nbio_2_3_offset.h"
 #include "nbio/nbio_2_3_sh_mask.h"
+#include <uapi/linux/kfd_ioctl.h>
+#include <linux/pci.h>
 
 #define smnPCIE_CONFIG_CNTL	0x11180044
 #define smnCPM_CONTROL		0x11180460
 #define smnPCIE_CNTL2		0x11180070
+#define smnPCIE_LC_CNTL		0x11140280
+
+#define mmBIF_SDMA2_DOORBELL_RANGE		0x01d6
+#define mmBIF_SDMA2_DOORBELL_RANGE_BASE_IDX	2
+#define mmBIF_SDMA3_DOORBELL_RANGE		0x01d7
+#define mmBIF_SDMA3_DOORBELL_RANGE_BASE_IDX	2
+
+#define mmBIF_MMSCH1_DOORBELL_RANGE		0x01d8
+#define mmBIF_MMSCH1_DOORBELL_RANGE_BASE_IDX	2
+
+static void nbio_v2_3_remap_hdp_registers(struct amdgpu_device *adev)
+{
+	WREG32_SOC15(NBIO, 0, mmREMAP_HDP_MEM_FLUSH_CNTL,
+		adev->rmmio_remap.reg_offset + KFD_MMIO_REMAP_HDP_MEM_FLUSH_CNTL);
+	WREG32_SOC15(NBIO, 0, mmREMAP_HDP_REG_FLUSH_CNTL,
+		adev->rmmio_remap.reg_offset + KFD_MMIO_REMAP_HDP_REG_FLUSH_CNTL);
+}
 
 static u32 nbio_v2_3_get_rev_id(struct amdgpu_device *adev)
 {
-	u32 tmp = RREG32_SOC15(NBIO, 0, mmRCC_DEV0_EPF0_STRAP0);
+	u32 tmp;
 
+	/*
+	 * guest vm gets 0xffffffff when reading RCC_DEV0_EPF0_STRAP0,
+	 * therefore we force rev_id to 0 (which is the default value)
+	 */
+	if (amdgpu_sriov_vf(adev)) {
+		return 0;
+	}
+
+	tmp = RREG32_SOC15(NBIO, 0, mmRCC_DEV0_EPF0_STRAP0);
 	tmp &= RCC_DEV0_EPF0_STRAP0__STRAP_ATI_REV_ID_DEV0_F0_MASK;
 	tmp >>= RCC_DEV0_EPF0_STRAP0__STRAP_ATI_REV_ID_DEV0_F0__SHIFT;
 
@@ -56,10 +84,9 @@ static void nbio_v2_3_hdp_flush(struct amdgpu_device *adev,
 				struct amdgpu_ring *ring)
 {
 	if (!ring || !ring->funcs->emit_wreg)
-		WREG32_SOC15_NO_KIQ(NBIO, 0, mmBIF_BX_PF_HDP_MEM_COHERENCY_FLUSH_CNTL, 0);
+		WREG32_NO_KIQ((adev->rmmio_remap.reg_offset + KFD_MMIO_REMAP_HDP_MEM_FLUSH_CNTL) >> 2, 0);
 	else
-		amdgpu_ring_emit_wreg(ring, SOC15_REG_OFFSET(
-			NBIO, 0, mmBIF_BX_PF_HDP_MEM_COHERENCY_FLUSH_CNTL), 0);
+		amdgpu_ring_emit_wreg(ring, (adev->rmmio_remap.reg_offset + KFD_MMIO_REMAP_HDP_MEM_FLUSH_CNTL) >> 2, 0);
 }
 
 static u32 nbio_v2_3_get_memsize(struct amdgpu_device *adev)
@@ -72,7 +99,9 @@ static void nbio_v2_3_sdma_doorbell_range(struct amdgpu_device *adev, int instan
 					  int doorbell_size)
 {
 	u32 reg = instance == 0 ? SOC15_REG_OFFSET(NBIO, 0, mmBIF_SDMA0_DOORBELL_RANGE) :
-			SOC15_REG_OFFSET(NBIO, 0, mmBIF_SDMA1_DOORBELL_RANGE);
+			instance == 1 ? SOC15_REG_OFFSET(NBIO, 0, mmBIF_SDMA1_DOORBELL_RANGE) :
+			instance == 2 ? SOC15_REG_OFFSET(NBIO, 0, mmBIF_SDMA2_DOORBELL_RANGE) :
+			SOC15_REG_OFFSET(NBIO, 0, mmBIF_SDMA3_DOORBELL_RANGE);
 
 	u32 doorbell_range = RREG32(reg);
 
@@ -94,7 +123,8 @@ static void nbio_v2_3_sdma_doorbell_range(struct amdgpu_device *adev, int instan
 static void nbio_v2_3_vcn_doorbell_range(struct amdgpu_device *adev, bool use_doorbell,
 					 int doorbell_index, int instance)
 {
-	u32 reg = SOC15_REG_OFFSET(NBIO, 0, mmBIF_MMSCH0_DOORBELL_RANGE);
+	u32 reg = instance ? SOC15_REG_OFFSET(NBIO, 0, mmBIF_MMSCH1_DOORBELL_RANGE) :
+		SOC15_REG_OFFSET(NBIO, 0, mmBIF_MMSCH0_DOORBELL_RANGE);
 
 	u32 doorbell_range = RREG32(reg);
 
@@ -281,23 +311,6 @@ const struct nbio_hdp_flush_reg nbio_v2_3_hdp_flush_reg = {
 	.ref_and_mask_sdma1 = BIF_BX_PF_GPU_HDP_FLUSH_DONE__SDMA1_MASK,
 };
 
-static void nbio_v2_3_detect_hw_virt(struct amdgpu_device *adev)
-{
-	uint32_t reg;
-
-	reg = RREG32_SOC15(NBIO, 0, mmRCC_DEV0_EPF0_RCC_IOV_FUNC_IDENTIFIER);
-	if (reg & 1)
-		adev->virt.caps |= AMDGPU_SRIOV_CAPS_IS_VF;
-
-	if (reg & 0x80000000)
-		adev->virt.caps |= AMDGPU_SRIOV_CAPS_ENABLE_IOV;
-
-	if (!reg) {
-		if (is_virtual_machine())	/* passthrough mode exclus sriov mod */
-			adev->virt.caps |= AMDGPU_PASSTHROUGH_MODE;
-	}
-}
-
 static void nbio_v2_3_init_registers(struct amdgpu_device *adev)
 {
 	uint32_t def, data;
@@ -310,8 +323,43 @@ static void nbio_v2_3_init_registers(struct amdgpu_device *adev)
 		WREG32_PCIE(smnPCIE_CONFIG_CNTL, data);
 }
 
+#define NAVI10_PCIE__LC_L0S_INACTIVITY_DEFAULT		0x00000000 // off by default, no gains over L1
+#define NAVI10_PCIE__LC_L1_INACTIVITY_DEFAULT		0x00000009 // 1=1us, 9=1ms
+#define NAVI10_PCIE__LC_L1_INACTIVITY_TBT_DEFAULT	0x0000000E // 4ms
+
+static void nbio_v2_3_enable_aspm(struct amdgpu_device *adev,
+				  bool enable)
+{
+	uint32_t def, data;
+
+	def = data = RREG32_PCIE(smnPCIE_LC_CNTL);
+
+	if (enable) {
+		/* Disable ASPM L0s/L1 first */
+		data &= ~(PCIE_LC_CNTL__LC_L0S_INACTIVITY_MASK | PCIE_LC_CNTL__LC_L1_INACTIVITY_MASK);
+
+		data |= NAVI10_PCIE__LC_L0S_INACTIVITY_DEFAULT << PCIE_LC_CNTL__LC_L0S_INACTIVITY__SHIFT;
+
+		if (pci_is_thunderbolt_attached(adev->pdev))
+			data |= NAVI10_PCIE__LC_L1_INACTIVITY_TBT_DEFAULT  << PCIE_LC_CNTL__LC_L1_INACTIVITY__SHIFT;
+		else
+			data |= NAVI10_PCIE__LC_L1_INACTIVITY_DEFAULT << PCIE_LC_CNTL__LC_L1_INACTIVITY__SHIFT;
+
+		data &= ~PCIE_LC_CNTL__LC_PMI_TO_L1_DIS_MASK;
+	} else {
+		/* Disbale ASPM L1 */
+		data &= ~PCIE_LC_CNTL__LC_L1_INACTIVITY_MASK;
+		/* Disable ASPM TxL0s */
+		data &= ~PCIE_LC_CNTL__LC_L0S_INACTIVITY_MASK;
+		/* Disable ACPI L1 */
+		data |= PCIE_LC_CNTL__LC_PMI_TO_L1_DIS_MASK;
+	}
+
+	if (def != data)
+		WREG32_PCIE(smnPCIE_LC_CNTL, data);
+}
+
 const struct amdgpu_nbio_funcs nbio_v2_3_funcs = {
-	.hdp_flush_reg = &nbio_v2_3_hdp_flush_reg,
 	.get_hdp_flush_req_offset = nbio_v2_3_get_hdp_flush_req_offset,
 	.get_hdp_flush_done_offset = nbio_v2_3_get_hdp_flush_done_offset,
 	.get_pcie_index_offset = nbio_v2_3_get_pcie_index_offset,
@@ -330,5 +378,6 @@ const struct amdgpu_nbio_funcs nbio_v2_3_funcs = {
 	.get_clockgating_state = nbio_v2_3_get_clockgating_state,
 	.ih_control = nbio_v2_3_ih_control,
 	.init_registers = nbio_v2_3_init_registers,
-	.detect_hw_virt = nbio_v2_3_detect_hw_virt,
+	.remap_hdp_registers = nbio_v2_3_remap_hdp_registers,
+	.enable_aspm = nbio_v2_3_enable_aspm,
 };

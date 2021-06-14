@@ -513,12 +513,12 @@ static int ttm_buffer_object_transfer(struct ttm_buffer_object *bo,
 	drm_vma_node_reset(&fbo->base.base.vma_node);
 	atomic_set(&fbo->base.cpu_writers, 0);
 
-	kref_init(&fbo->base.list_kref);
 	kref_init(&fbo->base.kref);
 	fbo->base.destroy = &ttm_transfered_destroy;
 	fbo->base.acc_size = 0;
 	fbo->base.base.resv = &fbo->base.base._resv;
 	dma_resv_init(fbo->base.base.resv);
+	fbo->base.base.dev = NULL;
 	ret = dma_resv_trylock(fbo->base.base.resv);
 	WARN_ON(!ret);
 

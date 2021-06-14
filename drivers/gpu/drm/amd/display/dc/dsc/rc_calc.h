@@ -67,8 +67,8 @@ enum bits_per_comp {
 };
 
 enum max_min {
-	MM_MIN = 0,
-	MM_MAX = 1
+	DAL_MM_MIN = 0,
+	DAL_MM_MAX = 1
 };
 
 struct qp_entry {
@@ -78,7 +78,10 @@ struct qp_entry {
 
 typedef struct qp_entry qp_table[];
 
-void calc_rc_params(struct rc_params *rc, enum colour_mode cm, enum bits_per_comp bpc, float bpp, int slice_width, int slice_height, int minor_version);
+void calc_rc_params(struct rc_params *rc, const struct drm_dsc_config *pps);
+u32 calc_dsc_bytes_per_pixel(const struct drm_dsc_config *pps);
+u32 calc_dsc_bpp_x16(u32 stream_bandwidth_kbps, u32 pix_clk_100hz,
+		     u32 bpp_increment_div);
 
 #endif
 

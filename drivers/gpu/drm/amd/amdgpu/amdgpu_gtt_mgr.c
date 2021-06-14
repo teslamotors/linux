@@ -47,7 +47,7 @@ static ssize_t amdgpu_mem_info_gtt_total_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct drm_device *ddev = dev_get_drvdata(dev);
-	struct amdgpu_device *adev = ddev->dev_private;
+	struct amdgpu_device *adev = drm_to_adev(ddev);
 
 	return snprintf(buf, PAGE_SIZE, "%llu\n",
 			(adev->mman.bdev.man[TTM_PL_TT].size) * PAGE_SIZE);
@@ -65,7 +65,7 @@ static ssize_t amdgpu_mem_info_gtt_used_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct drm_device *ddev = dev_get_drvdata(dev);
-	struct amdgpu_device *adev = ddev->dev_private;
+	struct amdgpu_device *adev = drm_to_adev(ddev);
 
 	return snprintf(buf, PAGE_SIZE, "%llu\n",
 			amdgpu_gtt_mgr_usage(&adev->mman.bdev.man[TTM_PL_TT]));
@@ -79,8 +79,8 @@ static DEVICE_ATTR(mem_info_gtt_used, S_IRUGO,
 /**
  * amdgpu_gtt_mgr_init - init GTT manager and DRM MM
  *
- * @man: TTM memory type manager
- * @p_size: maximum size of GTT
+ * @adev: amdgpu_device pointer
+ * @gtt_size: maximum size of GTT
  *
  * Allocate and initialize the GTT manager.
  */
@@ -120,7 +120,7 @@ static int amdgpu_gtt_mgr_init(struct ttm_mem_type_manager *man,
 /**
  * amdgpu_gtt_mgr_fini - free and destroy GTT manager
  *
- * @man: TTM memory type manager
+ * @adev: amdgpu_device pointer
  *
  * Destroy and free the GTT manager, returns -EBUSY if ranges are still
  * allocated inside it.
@@ -268,8 +268,6 @@ err_out:
  * amdgpu_gtt_mgr_del - free ranges
  *
  * @man: TTM memory type manager
- * @tbo: TTM BO we need this range for
- * @place: placement flags and restrictions
  * @mem: TTM memory object
  *
  * Free the allocated GTT again.

@@ -68,6 +68,7 @@ struct encoder_feature_support {
 	unsigned int max_hdmi_pixel_clock;
 	bool hdmi_ycbcr420_supported;
 	bool dp_ycbcr420_supported;
+	bool fec_supported;
 };
 
 union dpcd_psr_configuration {
@@ -89,7 +90,8 @@ union psr_error_status {
 	struct {
 		unsigned char LINK_CRC_ERROR        :1;
 		unsigned char RFB_STORAGE_ERROR     :1;
-		unsigned char RESERVED              :6;
+		unsigned char VSC_SDP_ERROR         :1;
+		unsigned char RESERVED              :5;
 	} bits;
 	unsigned char raw;
 };
@@ -124,6 +126,7 @@ struct link_enc_state {
 		uint32_t dphy_fec_en;
 		uint32_t dphy_fec_ready_shadow;
 		uint32_t dphy_fec_active_status;
+		uint32_t dp_link_training_complete;
 
 };
 #endif
@@ -184,6 +187,10 @@ struct link_encoder_funcs {
 	bool (*fec_is_active)(struct link_encoder *enc);
 #endif
 	bool (*is_in_alt_mode) (struct link_encoder *enc);
+
+	void (*get_max_link_cap)(struct link_encoder *enc,
+		struct dc_link_settings *link_settings);
+
 	enum signal_type (*get_dig_mode)(
 		struct link_encoder *enc);
 };

@@ -144,10 +144,13 @@ struct pm4_mes_map_process {
 
 	union {
 		struct {
-			uint32_t pasid:16;
-			uint32_t reserved1:8;
-			uint32_t diq_enable:1;
-			uint32_t process_quantum:7;
+			uint32_t pasid:16;	    /* 0 - 15  */
+			uint32_t reserved1:2;	    /* 16 - 17 */
+			uint32_t debug_vmid:4;	    /* 18 - 21 */
+			uint32_t new_debug:1;	    /* 22      */
+			uint32_t tmz:1;		    /* 23      */
+			uint32_t diq_enable:1;      /* 24      */
+			uint32_t process_quantum:7; /* 25 - 31 */
 		} bitfields2;
 		uint32_t ordinal2;
 	};
@@ -577,6 +580,71 @@ struct pm4_mec_release_mem {
 	};
 
 	uint32_t int_ctxid;
+
+};
+
+#endif
+
+#ifndef PM4_MEC_WRITE_DATA_DEFINED
+#define PM4_MEC_WRITE_DATA_DEFINED
+
+enum WRITE_DATA_dst_sel_enum {
+	dst_sel___write_data__mem_mapped_register = 0,
+	dst_sel___write_data__tc_l2 = 2,
+	dst_sel___write_data__gds = 3,
+	dst_sel___write_data__memory = 5,
+	dst_sel___write_data__memory_mapped_adc_persistent_state = 6,
+};
+
+enum WRITE_DATA_addr_incr_enum {
+	addr_incr___write_data__increment_address = 0,
+	addr_incr___write_data__do_not_increment_address = 1
+};
+
+enum WRITE_DATA_wr_confirm_enum {
+	wr_confirm___write_data__do_not_wait_for_write_confirmation = 0,
+	wr_confirm___write_data__wait_for_write_confirmation = 1
+};
+
+enum WRITE_DATA_cache_policy_enum {
+	cache_policy___write_data__lru = 0,
+	cache_policy___write_data__stream = 1
+};
+
+
+struct pm4_mec_write_data_mmio {
+	union {
+		union PM4_MES_TYPE_3_HEADER header;     /*header */
+		unsigned int ordinal1;
+	};
+
+	union {
+		struct {
+			unsigned int reserved1:8;
+			unsigned int dst_sel:4;
+			unsigned int reserved2:4;
+			unsigned int addr_incr:1;
+			unsigned int reserved3:2;
+			unsigned int resume_vf:1;
+			unsigned int wr_confirm:1;
+			unsigned int reserved4:4;
+			unsigned int cache_policy:2;
+			unsigned int reserved5:5;
+		} bitfields2;
+		unsigned int ordinal2;
+	};
+
+	union {
+		struct {
+			unsigned int dst_mmreg_addr:18;
+			unsigned int reserved6:14;
+		} bitfields3;
+		unsigned int ordinal3;
+	};
+
+	uint32_t reserved7;
+
+	uint32_t data;
 
 };
 

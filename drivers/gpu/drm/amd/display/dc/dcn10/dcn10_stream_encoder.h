@@ -171,6 +171,14 @@ struct dcn10_stream_enc_registers {
 	uint32_t HDMI_METADATA_PACKET_CONTROL;
 	uint32_t DP_SEC_FRAMING4;
 #endif
+#if defined(CONFIG_DRM_AMD_DC_DCN3_0)
+	uint32_t DP_GSP11_CNTL;
+	uint32_t HDMI_GENERIC_PACKET_CONTROL6;
+	uint32_t HDMI_GENERIC_PACKET_CONTROL7;
+	uint32_t HDMI_GENERIC_PACKET_CONTROL8;
+	uint32_t HDMI_GENERIC_PACKET_CONTROL9;
+	uint32_t HDMI_GENERIC_PACKET_CONTROL10;
+#endif
 	uint32_t DIG_CLOCK_PATTERN;
 };
 
@@ -501,10 +509,41 @@ struct dcn10_stream_enc_registers {
 	type DP_SST_SDP_SPLITTING
 #endif
 
+#if defined(CONFIG_DRM_AMD_DC_DCN3_0)
+#define SE_REG_FIELD_LIST_DCN3_0(type) \
+	type HDMI_GENERIC8_CONT;\
+	type HDMI_GENERIC8_SEND;\
+	type HDMI_GENERIC8_LINE;\
+	type HDMI_GENERIC9_CONT;\
+	type HDMI_GENERIC9_SEND;\
+	type HDMI_GENERIC9_LINE;\
+	type HDMI_GENERIC10_CONT;\
+	type HDMI_GENERIC10_SEND;\
+	type HDMI_GENERIC10_LINE;\
+	type HDMI_GENERIC11_CONT;\
+	type HDMI_GENERIC11_SEND;\
+	type HDMI_GENERIC11_LINE;\
+	type HDMI_GENERIC12_CONT;\
+	type HDMI_GENERIC12_SEND;\
+	type HDMI_GENERIC12_LINE;\
+	type HDMI_GENERIC13_CONT;\
+	type HDMI_GENERIC13_SEND;\
+	type HDMI_GENERIC13_LINE;\
+	type HDMI_GENERIC14_CONT;\
+	type HDMI_GENERIC14_SEND;\
+	type HDMI_GENERIC14_LINE;\
+	type DP_SEC_GSP11_PPS;\
+	type DP_SEC_GSP11_ENABLE;\
+	type DP_SEC_GSP11_LINE_NUM
+#endif
+
 struct dcn10_stream_encoder_shift {
 	SE_REG_FIELD_LIST_DCN1_0(uint8_t);
 #if defined(CONFIG_DRM_AMD_DC_DCN2_0)
 	SE_REG_FIELD_LIST_DCN2_0(uint8_t);
+#endif
+#if defined(CONFIG_DRM_AMD_DC_DCN3_0)
+	SE_REG_FIELD_LIST_DCN3_0(uint8_t);
 #endif
 };
 
@@ -512,6 +551,9 @@ struct dcn10_stream_encoder_mask {
 	SE_REG_FIELD_LIST_DCN1_0(uint32_t);
 #if defined(CONFIG_DRM_AMD_DC_DCN2_0)
 	SE_REG_FIELD_LIST_DCN2_0(uint32_t);
+#endif
+#if defined(CONFIG_DRM_AMD_DC_DCN3_0)
+	SE_REG_FIELD_LIST_DCN3_0(uint32_t);
 #endif
 };
 
@@ -540,6 +582,7 @@ void enc1_stream_encoder_dp_set_stream_attribute(
 	struct stream_encoder *enc,
 	struct dc_crtc_timing *crtc_timing,
 	enum dc_color_space output_color_space,
+	bool use_vsc_sdp_for_colorimetry,
 	uint32_t enable_sdp_splitting);
 
 void enc1_stream_encoder_hdmi_set_stream_attribute(
@@ -553,7 +596,7 @@ void enc1_stream_encoder_dvi_set_stream_attribute(
 	struct dc_crtc_timing *crtc_timing,
 	bool is_dual_link);
 
-void enc1_stream_encoder_set_mst_bandwidth(
+void enc1_stream_encoder_set_throttled_vcp_size(
 	struct stream_encoder *enc,
 	struct fixed31_32 avg_time_slots_per_mtp);
 
@@ -634,5 +677,10 @@ void get_audio_clock_info(
 
 void enc1_reset_hdmi_stream_attribute(
 	struct stream_encoder *enc);
+
+bool enc1_stream_encoder_dp_get_pixel_format(
+	struct stream_encoder *enc,
+	enum dc_pixel_encoding *encoding,
+	enum dc_color_depth *depth);
 
 #endif /* __DC_STREAM_ENCODER_DCN10_H__ */

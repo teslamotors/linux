@@ -154,14 +154,14 @@ static void calculate_bandwidth(
 
 
 
-	if (data->d0_underlay_mode == bw_def_none) { d0_underlay_enable = 0; }
-	else {
-		d0_underlay_enable = 1;
-	}
-	if (data->d1_underlay_mode == bw_def_none) { d1_underlay_enable = 0; }
-	else {
-		d1_underlay_enable = 1;
-	}
+	if (data->d0_underlay_mode == bw_def_none)
+		d0_underlay_enable = false;
+	else
+		d0_underlay_enable = true;
+	if (data->d1_underlay_mode == bw_def_none)
+		d1_underlay_enable = false;
+	else
+		d1_underlay_enable = true;
 	data->number_of_underlay_surfaces = d0_underlay_enable + d1_underlay_enable;
 	switch (data->underlay_surface_type) {
 	case bw_def_420:
@@ -286,8 +286,8 @@ static void calculate_bandwidth(
 	data->cursor_width_pixels[2] = bw_int_to_fixed(0);
 	data->cursor_width_pixels[3] = bw_int_to_fixed(0);
 	/* graphics surface parameters from spreadsheet*/
-	fbc_enabled = 0;
-	lpt_enabled = 0;
+	fbc_enabled = false;
+	lpt_enabled = false;
 	for (i = 4; i <= maximum_number_of_surfaces - 3; i++) {
 		if (i < data->number_of_displays + 4) {
 			if (i == 4 && data->d0_underlay_mode == bw_def_underlay_only) {
@@ -338,9 +338,9 @@ static void calculate_bandwidth(
 			data->access_one_channel_only[i] = 0;
 		}
 		if (data->fbc_en[i] == 1) {
-			fbc_enabled = 1;
+			fbc_enabled = true;
 			if (data->lpt_en[i] == 1) {
-				lpt_enabled = 1;
+				lpt_enabled = true;
 			}
 		}
 		data->cursor_width_pixels[i] = bw_int_to_fixed(vbios->cursor_width);
@@ -1364,13 +1364,10 @@ static void calculate_bandwidth(
 	/*if stutter and dram clock state change are gated before cursor then the cursor latency hiding does not limit stutter or dram clock state change*/
 	for (i = 0; i <= maximum_number_of_surfaces - 1; i++) {
 		if (data->enable[i]) {
-			if (dceip->graphics_lb_nodownscaling_multi_line_prefetching == 1) {
-				data->maximum_latency_hiding[i] = bw_add(data->minimum_latency_hiding[i], bw_mul(bw_frc_to_fixed(5, 10), data->total_dmifmc_urgent_latency));
-			}
-			else {
-				/*maximum_latency_hiding(i) = minimum_latency_hiding(i) + 1 / vsr(i) * h_total(i) / pixel_rate(i) + 0.5 * total_dmifmc_urgent_latency*/
-				data->maximum_latency_hiding[i] = bw_add(data->minimum_latency_hiding[i], bw_mul(bw_frc_to_fixed(5, 10), data->total_dmifmc_urgent_latency));
-			}
+			/*maximum_latency_hiding(i) = minimum_latency_hiding(i) + 1 / vsr(i) **/
+			/*      h_total(i) / pixel_rate(i) + 0.5 * total_dmifmc_urgent_latency*/
+			data->maximum_latency_hiding[i] = bw_add(data->minimum_latency_hiding[i],
+				bw_mul(bw_frc_to_fixed(5, 10), data->total_dmifmc_urgent_latency));
 			data->maximum_latency_hiding_with_cursor[i] = bw_min2(data->maximum_latency_hiding[i], data->cursor_latency_hiding[i]);
 		}
 	}
@@ -1980,7 +1977,7 @@ static void calculate_bandwidth(
 	else {
 		data->latency_for_non_mcifwr_clients = bw_int_to_fixed(0);
 	}
-	/*dmif mc urgent latency suppported in high sclk and yclk*/
+	/*dmif mc urgent latency supported in high sclk and yclk*/
 	data->dmifmc_urgent_latency_supported_in_high_sclk_and_yclk = bw_div((bw_sub(data->min_read_buffer_size_in_time, data->dmif_burst_time[high][s_high])), data->total_dmifmc_urgent_trips);
 	/*dram speed/p-state change margin*/
 	/*in the multi-display case the nb p-state change watermark cannot exceed the average lb size plus the dmif size or the cursor dcp buffer size*/
@@ -3265,33 +3262,33 @@ bool bw_calcs(struct dc_context *ctx,
 				bw_fixed_to_int(bw_mul(data->
 					stutter_exit_watermark[9], bw_int_to_fixed(1000)));
 
-		calcs_output->stutter_entry_wm_ns[0].b_mark =
-			bw_fixed_to_int(bw_mul(data->
-				stutter_entry_watermark[4], bw_int_to_fixed(1000)));
-		calcs_output->stutter_entry_wm_ns[1].b_mark =
-			bw_fixed_to_int(bw_mul(data->
-				stutter_entry_watermark[5], bw_int_to_fixed(1000)));
-		calcs_output->stutter_entry_wm_ns[2].b_mark =
-			bw_fixed_to_int(bw_mul(data->
-				stutter_entry_watermark[6], bw_int_to_fixed(1000)));
-		if (ctx->dc->caps.max_slave_planes) {
-			calcs_output->stutter_entry_wm_ns[3].b_mark =
+			calcs_output->stutter_entry_wm_ns[0].b_mark =
 				bw_fixed_to_int(bw_mul(data->
-					stutter_entry_watermark[0], bw_int_to_fixed(1000)));
-			calcs_output->stutter_entry_wm_ns[4].b_mark =
+					stutter_entry_watermark[4], bw_int_to_fixed(1000)));
+			calcs_output->stutter_entry_wm_ns[1].b_mark =
 				bw_fixed_to_int(bw_mul(data->
-					stutter_entry_watermark[1], bw_int_to_fixed(1000)));
-		} else {
-			calcs_output->stutter_entry_wm_ns[3].b_mark =
+					stutter_entry_watermark[5], bw_int_to_fixed(1000)));
+			calcs_output->stutter_entry_wm_ns[2].b_mark =
 				bw_fixed_to_int(bw_mul(data->
-					stutter_entry_watermark[7], bw_int_to_fixed(1000)));
-			calcs_output->stutter_entry_wm_ns[4].b_mark =
+					stutter_entry_watermark[6], bw_int_to_fixed(1000)));
+			if (ctx->dc->caps.max_slave_planes) {
+				calcs_output->stutter_entry_wm_ns[3].b_mark =
+					bw_fixed_to_int(bw_mul(data->
+						stutter_entry_watermark[0], bw_int_to_fixed(1000)));
+				calcs_output->stutter_entry_wm_ns[4].b_mark =
+					bw_fixed_to_int(bw_mul(data->
+						stutter_entry_watermark[1], bw_int_to_fixed(1000)));
+			} else {
+				calcs_output->stutter_entry_wm_ns[3].b_mark =
+					bw_fixed_to_int(bw_mul(data->
+						stutter_entry_watermark[7], bw_int_to_fixed(1000)));
+				calcs_output->stutter_entry_wm_ns[4].b_mark =
+					bw_fixed_to_int(bw_mul(data->
+						stutter_entry_watermark[8], bw_int_to_fixed(1000)));
+			}
+			calcs_output->stutter_entry_wm_ns[5].b_mark =
 				bw_fixed_to_int(bw_mul(data->
-					stutter_entry_watermark[8], bw_int_to_fixed(1000)));
-		}
-		calcs_output->stutter_entry_wm_ns[5].b_mark =
-			bw_fixed_to_int(bw_mul(data->
-				stutter_entry_watermark[9], bw_int_to_fixed(1000)));
+					stutter_entry_watermark[9], bw_int_to_fixed(1000)));
 
 			calcs_output->urgent_wm_ns[0].b_mark =
 				bw_fixed_to_int(bw_mul(data->

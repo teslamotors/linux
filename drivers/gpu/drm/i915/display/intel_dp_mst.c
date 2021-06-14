@@ -61,10 +61,11 @@ static int intel_dp_mst_compute_link_config(struct intel_encoder *encoder,
 		crtc_state->pipe_bpp = bpp;
 
 		crtc_state->pbn = drm_dp_calc_pbn_mode(adjusted_mode->crtc_clock,
-						       crtc_state->pipe_bpp);
+						       crtc_state->pipe_bpp,
+						       false);
 
 		slots = drm_dp_atomic_find_vcpi_slots(state, &intel_dp->mst_mgr,
-						      port, crtc_state->pbn);
+						      port, crtc_state->pbn, 0);
 		if (slots == -EDEADLK)
 			return slots;
 		if (slots >= 0)
@@ -393,20 +394,7 @@ static int intel_dp_mst_get_ddc_modes(struct drm_connector *connector)
 	return ret;
 }
 
-static enum drm_connector_status
-intel_dp_mst_detect(struct drm_connector *connector, bool force)
-{
-	struct intel_connector *intel_connector = to_intel_connector(connector);
-	struct intel_dp *intel_dp = intel_connector->mst_port;
-
-	if (drm_connector_is_unregistered(connector))
-		return connector_status_disconnected;
-	return drm_dp_mst_detect_port(connector, &intel_dp->mst_mgr,
-				      intel_connector->port);
-}
-
 static const struct drm_connector_funcs intel_dp_mst_connector_funcs = {
-	.detect = intel_dp_mst_detect,
 	.fill_modes = drm_helper_probe_single_connector_modes,
 	.atomic_get_property = intel_digital_connector_atomic_get_property,
 	.atomic_set_property = intel_digital_connector_atomic_set_property,
@@ -466,11 +454,26 @@ static struct drm_encoder *intel_mst_atomic_best_encoder(struct drm_connector *c
 	return &intel_dp->mst_encoders[crtc->pipe]->base.base;
 }
 
+static int
+intel_dp_mst_detect(struct drm_connector *connector,
+		    struct drm_modeset_acquire_ctx *ctx, bool force)
+{
+	struct intel_connector *intel_connector = to_intel_connector(connector);
+	struct intel_dp *intel_dp = intel_connector->mst_port;
+
+	if (drm_connector_is_unregistered(connector))
+		return connector_status_disconnected;
+
+	return drm_dp_mst_detect_port(connector, ctx, &intel_dp->mst_mgr,
+				      intel_connector->port);
+}
+
 static const struct drm_connector_helper_funcs intel_dp_mst_connector_helper_funcs = {
 	.get_modes = intel_dp_mst_get_modes,
 	.mode_valid = intel_dp_mst_mode_valid,
 	.atomic_best_encoder = intel_mst_atomic_best_encoder,
 	.atomic_check = intel_dp_mst_atomic_check,
+	.detect_ctx = intel_dp_mst_detect,
 };
 
 static void intel_dp_mst_encoder_destroy(struct drm_encoder *encoder)

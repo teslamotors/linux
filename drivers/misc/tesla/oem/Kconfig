@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
+config TESLA_AMD_OEM
+	tristate "AMD OEM fuse state"
+	depends on CPU_SUP_AMD
+	help
+	  Support for OEM3 ACPI table containing AMD OEM-specific fuse
+	  state.

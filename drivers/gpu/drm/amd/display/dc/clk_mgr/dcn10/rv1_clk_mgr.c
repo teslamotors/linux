@@ -187,6 +187,17 @@ static void ramp_up_dispclk_with_dpp(
 	clk_mgr->base.clks.max_supported_dppclk_khz = new_clocks->max_supported_dppclk_khz;
 }
 
+static bool is_mpo_enabled(struct dc_state *context)
+{
+	int i;
+
+	for (i = 0; i < context->stream_count; i++) {
+		if (context->stream_status[i].plane_count > 1)
+			return true;
+	}
+	return false;
+}
+
 static void rv1_update_clocks(struct clk_mgr *clk_mgr_base,
 			struct dc_state *context,
 			bool safe_to_lower)
@@ -203,6 +214,9 @@ static void rv1_update_clocks(struct clk_mgr *clk_mgr_base,
 	bool enter_display_off = false;
 
 	ASSERT(clk_mgr->pp_smu);
+
+	if (dc->work_arounds.skip_clock_update)
+		return;
 
 	pp_smu = &clk_mgr->pp_smu->rv_funcs;
 
@@ -281,9 +295,22 @@ static void rv1_update_clocks(struct clk_mgr *clk_mgr_base,
 		if (pp_smu->set_hard_min_fclk_by_freq &&
 				pp_smu->set_hard_min_dcfclk_by_freq &&
 				pp_smu->set_min_deep_sleep_dcfclk) {
-			pp_smu->set_hard_min_fclk_by_freq(&pp_smu->pp_smu, new_clocks->fclk_khz / 1000);
-			pp_smu->set_hard_min_dcfclk_by_freq(&pp_smu->pp_smu, new_clocks->dcfclk_khz / 1000);
-			pp_smu->set_min_deep_sleep_dcfclk(&pp_smu->pp_smu, (new_clocks->dcfclk_deep_sleep_khz + 999) / 1000);
+			// Only increase clocks when display is active and MPO is enabled
+			if (display_count && is_mpo_enabled(context)) {
+				pp_smu->set_hard_min_fclk_by_freq(&pp_smu->pp_smu,
+						((new_clocks->fclk_khz / 1000) *  101) / 100);
+				pp_smu->set_hard_min_dcfclk_by_freq(&pp_smu->pp_smu,
+						((new_clocks->dcfclk_khz / 1000) * 101) / 100);
+				pp_smu->set_min_deep_sleep_dcfclk(&pp_smu->pp_smu,
+						(new_clocks->dcfclk_deep_sleep_khz + 999) / 1000);
+			} else {
+				pp_smu->set_hard_min_fclk_by_freq(&pp_smu->pp_smu,
+						new_clocks->fclk_khz / 1000);
+				pp_smu->set_hard_min_dcfclk_by_freq(&pp_smu->pp_smu,
+						new_clocks->dcfclk_khz / 1000);
+				pp_smu->set_min_deep_sleep_dcfclk(&pp_smu->pp_smu,
+						(new_clocks->dcfclk_deep_sleep_khz + 999) / 1000);
+			}
 		}
 	}
 }
@@ -331,11 +358,11 @@ void rv1_clk_mgr_construct(struct dc_context *ctx, struct clk_mgr_internal *clk_
 	clk_mgr->base.dprefclk_khz = 600000;
 
 	if (bp->integrated_info)
-		clk_mgr->dentist_vco_freq_khz = bp->integrated_info->dentist_vco_freq;
-	if (bp->fw_info_valid && clk_mgr->dentist_vco_freq_khz == 0) {
-		clk_mgr->dentist_vco_freq_khz = bp->fw_info.smu_gpu_pll_output_freq;
-		if (clk_mgr->dentist_vco_freq_khz == 0)
-			clk_mgr->dentist_vco_freq_khz = 3600000;
+		clk_mgr->base.dentist_vco_freq_khz = bp->integrated_info->dentist_vco_freq;
+	if (bp->fw_info_valid && clk_mgr->base.dentist_vco_freq_khz == 0) {
+		clk_mgr->base.dentist_vco_freq_khz = bp->fw_info.smu_gpu_pll_output_freq;
+		if (clk_mgr->base.dentist_vco_freq_khz == 0)
+			clk_mgr->base.dentist_vco_freq_khz = 3600000;
 	}
 
 	if (!debug->disable_dfs_bypass && bp->integrated_info)

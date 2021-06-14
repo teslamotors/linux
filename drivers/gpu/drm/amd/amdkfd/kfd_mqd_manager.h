@@ -98,6 +98,8 @@ struct mqd_manager {
 				  u32 *ctl_stack_used_size,
 				  u32 *save_area_used_size);
 
+	bool	(*check_queue_active)(struct queue *q);
+
 #if defined(CONFIG_DEBUG_FS)
 	int	(*debugfs_show_mqd)(struct seq_file *m, void *data);
 #endif
@@ -105,6 +107,31 @@ struct mqd_manager {
 	struct mutex	mqd_mutex;
 	struct kfd_dev	*dev;
 	uint32_t mqd_size;
+};
+
+struct mqd_user_context_save_area_header {
+	/* Byte offset from start of user context
+	 * save area to the last saved top (lowest
+	 * address) of control stack data. Must be
+	 * 4 byte aligned.
+	 */
+	uint32_t control_stack_offset;
+
+	/* Byte size of the last saved control stack
+	 * data. Must be 4 byte aligned.
+	 */
+	uint32_t control_stack_size;
+
+	/* Byte offset from start of user context save
+	 * area to the last saved base (lowest address)
+	 * of wave state data. Must be 4 byte aligned.
+	 */
+	uint32_t wave_state_offset;
+
+	/* Byte size of the last saved wave state data.
+	 * Must be 4 byte aligned.
+	 */
+	uint32_t wave_state_size;
 };
 
 struct kfd_mem_obj *allocate_hiq_mqd(struct kfd_dev *dev,

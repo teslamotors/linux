@@ -117,11 +117,21 @@ enum nvme_quirks {
 	NVME_QUIRK_SHARED_TAGS                  = (1 << 13),
 
 	/*
+	 * Don't change the value of the temperature threshold feature
+	 */
+	NVME_QUIRK_NO_TEMP_THRESH_CHANGE	= (1 << 14),
+
+	/*
 	 * The controller doesn't handle the Identify Namespace
 	 * Identification Descriptor list subcommand despite claiming
 	 * NVMe 1.3 compliance.
 	 */
 	NVME_QUIRK_NO_NS_DESC_LIST		= (1 << 15),
+
+	/*
+	 * The controller needs a hardware reset to restore functionality.
+	 */
+	NVME_QUIRK_HARD_RESET			= (1 << 16),
 };
 
 /*
@@ -238,10 +248,17 @@ struct nvme_ctrl {
 	u16 kas;
 	u8 npss;
 	u8 apsta;
+	u16 wctemp;
+	u16 cctemp;
 	u32 oaes;
 	u32 aen_result;
 	u32 ctratt;
 	unsigned int shutdown_timeout;
+
+	struct mutex blocking_cmd_lock;
+	unsigned int blocking_cmd_timeout;
+	bool user_cmd_frozen;
+
 	unsigned int kato;
 	bool subsystem;
 	unsigned long quirks;
@@ -250,6 +267,7 @@ struct nvme_ctrl {
 	struct work_struct scan_work;
 	struct work_struct async_event_work;
 	struct delayed_work ka_work;
+	struct delayed_work unfreeze_work;
 	struct nvme_command ka_cmd;
 	struct work_struct fw_act_work;
 	unsigned long events;
@@ -686,5 +704,11 @@ static inline struct nvme_ns *nvme_get_ns_from_dev(struct device *dev)
 {
 	return dev_to_disk(dev)->private_data;
 }
+
+#ifdef CONFIG_NVME_HWMON
+void nvme_hwmon_init(struct nvme_ctrl *ctrl);
+#else
+static inline void nvme_hwmon_init(struct nvme_ctrl *ctrl) { }
+#endif
 
 #endif /* _NVME_H */

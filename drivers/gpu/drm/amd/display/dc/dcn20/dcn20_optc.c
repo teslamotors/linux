@@ -59,10 +59,15 @@ bool optc2_enable_crtc(struct timing_generator *optc)
 	REG_UPDATE(CONTROL,
 			VTG0_ENABLE, 1);
 
+	REG_SEQ_START();
+
 	/* Enable CRTC */
 	REG_UPDATE_2(OTG_CONTROL,
 			OTG_DISABLE_POINT_CNTL, 3,
 			OTG_MASTER_EN, 1);
+
+	REG_SEQ_SUBMIT();
+	REG_SEQ_WAIT_DONE();
 
 	return true;
 }
@@ -203,11 +208,11 @@ void optc2_set_dsc_config(struct timing_generator *optc,
 }
 #endif
 
-/**
- * PTI i think is already done somewhere else for 2ka
- * (opp?, please double check.
- * OPTC side only has 1 register to set for PTI_ENABLE)
- */
+/*TEMP: Need to figure out inheritance model here.*/
+bool optc2_is_two_pixels_per_containter(const struct dc_crtc_timing *timing)
+{
+	return optc1_is_two_pixels_per_containter(timing);
+}
 
 void optc2_set_odm_bypass(struct timing_generator *optc,
 		const struct dc_crtc_timing *dc_crtc_timing)
@@ -221,7 +226,7 @@ void optc2_set_odm_bypass(struct timing_generator *optc,
 			OPTC_SEG1_SRC_SEL, 0xf);
 	REG_WRITE(OTG_H_TIMING_CNTL, 0);
 
-	h_div_2 = optc1_is_two_pixels_per_containter(dc_crtc_timing);
+	h_div_2 = optc2_is_two_pixels_per_containter(dc_crtc_timing);
 	REG_UPDATE(OTG_H_TIMING_CNTL,
 			OTG_H_TIMING_DIV_BY2, h_div_2);
 	REG_SET(OPTC_MEMORY_CONFIG, 0,
@@ -236,7 +241,6 @@ void optc2_set_odm_combine(struct timing_generator *optc, int *opp_id, int opp_c
 	int mpcc_hactive = (timing->h_addressable + timing->h_border_left + timing->h_border_right)
 			/ opp_cnt;
 	uint32_t memory_mask;
-	uint32_t data_fmt = 0;
 
 	ASSERT(opp_cnt == 2);
 
@@ -258,13 +262,6 @@ void optc2_set_odm_combine(struct timing_generator *optc, int *opp_id, int opp_c
 	if (REG(OPTC_MEMORY_CONFIG))
 		REG_SET(OPTC_MEMORY_CONFIG, 0,
 			OPTC_MEM_SEL, memory_mask);
-
-	if (timing->pixel_encoding == PIXEL_ENCODING_YCBCR422)
-		data_fmt = 1;
-	else if (timing->pixel_encoding == PIXEL_ENCODING_YCBCR420)
-		data_fmt = 2;
-
-	REG_UPDATE(OPTC_DATA_FORMAT_CONTROL, OPTC_DATA_FORMAT, data_fmt);
 
 	REG_SET_3(OPTC_DATA_SOURCE_SELECT, 0,
 			OPTC_NUM_OF_INPUT_SEGMENT, 1,
@@ -387,14 +384,8 @@ void optc2_setup_manual_trigger(struct timing_generator *optc)
 {
 	struct optc *optc1 = DCN10TG_FROM_TG(optc);
 
-	REG_SET(OTG_MANUAL_FLOW_CONTROL, 0,
-			MANUAL_FLOW_CONTROL, 1);
-
-	REG_SET(OTG_GLOBAL_CONTROL2, 0,
-			MANUAL_FLOW_CONTROL_SEL, optc->inst);
-
 	REG_SET_8(OTG_TRIGA_CNTL, 0,
-			OTG_TRIGA_SOURCE_SELECT, 22,
+			OTG_TRIGA_SOURCE_SELECT, 21,
 			OTG_TRIGA_SOURCE_PIPE_SELECT, optc->inst,
 			OTG_TRIGA_RISING_EDGE_DETECT_CNTL, 1,
 			OTG_TRIGA_FALLING_EDGE_DETECT_CNTL, 0,
@@ -410,6 +401,23 @@ void optc2_program_manual_trigger(struct timing_generator *optc)
 
 	REG_SET(OTG_TRIGA_MANUAL_TRIG, 0,
 			OTG_TRIGA_MANUAL_TRIG, 1);
+}
+
+bool optc2_configure_crc(struct timing_generator *optc,
+			  const struct crc_params *params)
+{
+	struct optc *optc1 = DCN10TG_FROM_TG(optc);
+
+#ifdef CONFIG_DRM_AMD_DC_DSC_SUPPORT
+	REG_SET_2(OTG_CRC_CNTL2, 0,
+			OTG_CRC_DSC_MODE, params->dsc_mode,
+			OTG_CRC_DATA_STREAM_COMBINE_MODE, params->odm_mode);
+#else
+	REG_SET(OTG_CRC_CNTL2, 0,
+			OTG_CRC_DATA_STREAM_COMBINE_MODE, params->odm_mode);
+#endif
+
+	return optc1_configure_crc(optc, params);
 }
 
 static struct timing_generator_funcs dcn20_tg_funcs = {
@@ -455,7 +463,7 @@ static struct timing_generator_funcs dcn20_tg_funcs = {
 		.clear_optc_underflow = optc1_clear_optc_underflow,
 		.setup_global_swap_lock = NULL,
 		.get_crc = optc1_get_crc,
-		.configure_crc = optc1_configure_crc,
+		.configure_crc = optc2_configure_crc,
 #ifdef CONFIG_DRM_AMD_DC_DSC_SUPPORT
 		.set_dsc_config = optc2_set_dsc_config,
 #endif
@@ -468,7 +476,7 @@ static struct timing_generator_funcs dcn20_tg_funcs = {
 		.set_vtg_params = optc1_set_vtg_params,
 		.program_manual_trigger = optc2_program_manual_trigger,
 		.setup_manual_trigger = optc2_setup_manual_trigger,
-		.is_matching_timing = optc1_is_matching_timing
+		.get_hw_timing = optc1_get_hw_timing,
 };
 
 void dcn20_timing_generator_init(struct optc *optc1)
