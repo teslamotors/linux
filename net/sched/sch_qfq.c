@@ -496,11 +496,6 @@ static int qfq_change_class(struct Qdisc *sch, u32 classid, u32 parentid,
 
 	if (cl->qdisc != &noop_qdisc)
 		qdisc_hash_add(cl->qdisc, true);
-	sch_tree_lock(sch);
-	qdisc_class_hash_insert(&q->clhash, &cl->common);
-	sch_tree_unlock(sch);
-
-	qdisc_class_hash_grow(sch, &q->clhash);
 
 set_change_agg:
 	sch_tree_lock(sch);
@@ -518,8 +513,11 @@ set_change_agg:
 	}
 	if (existing)
 		qfq_deact_rm_from_agg(q, cl);
+	else
+		qdisc_class_hash_insert(&q->clhash, &cl->common);
 	qfq_add_to_agg(q, new_agg, cl);
 	sch_tree_unlock(sch);
+	qdisc_class_hash_grow(sch, &q->clhash);
 
 	*arg = (unsigned long)cl;
 	return 0;
