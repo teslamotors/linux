@@ -216,6 +216,8 @@ struct map *map__new(struct machine *machine, u64 start, u64 len,
 			if (type != MAP__FUNCTION)
 				dso__set_loaded(dso, map->type);
 		}
+
+		nsinfo__put(dso->nsinfo);
 		dso->nsinfo = nsi;
 		dso__put(dso);
 	}
