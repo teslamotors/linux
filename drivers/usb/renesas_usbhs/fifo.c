@@ -137,6 +137,8 @@ struct usbhs_pkt *usbhs_pkt_pop(struct usbhs_pipe *pipe, struct usbhs_pkt *pkt)
 			usbhsf_dma_unmap(pkt);
 		}
 
+		usbhs_pipe_running(pipe, 0);
+
 		__usbhsf_pkt_del(pkt);
 	}
 

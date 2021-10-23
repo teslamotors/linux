@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 #
 # Tool for analyzing boot timing
 # Copyright (c) 2013, Intel Corporation.

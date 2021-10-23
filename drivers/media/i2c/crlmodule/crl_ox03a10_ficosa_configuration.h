@@ -22,7 +22,12 @@ struct crl_sensor_subdev_config ox03a10_ficosa_sensor_subdevs[] = {
 	}
 };
 
+int ox03a10_ficosa_sensor_init(struct i2c_client *);
+
 struct crl_sensor_configuration ox03a10_ficosa_crl_configuration = {
+
+	.sensor_init = ox03a10_ficosa_sensor_init,
+
 	.pll_config_items = ARRAY_SIZE(ox03a10_pll_configurations),
 	.pll_configs = ox03a10_pll_configurations,
 
@@ -46,11 +51,11 @@ struct crl_sensor_configuration ox03a10_ficosa_crl_configuration = {
 	.flip_items = ARRAY_SIZE(ox03a10_flip_configurations),
 	.flip_data = ox03a10_flip_configurations,
 
+        .streamon_regs_items = ARRAY_SIZE(ox03a10_streamon_regs),
+        .streamon_regs = ox03a10_streamon_regs,
+
 	.streamoff_regs_items = ARRAY_SIZE(ox03a10_streamoff_regs),
 	.streamoff_regs = ox03a10_streamoff_regs,
-
-	.powerup_regs_items = ARRAY_SIZE(ox03a10_powerup_regs),
-	.powerup_regs = ox03a10_powerup_regs,
 
 	.frame_desc_entries = ARRAY_SIZE(ox03a10_frame_desc),
 	.frame_desc_type = CRL_V4L2_MBUS_FRAME_DESC_TYPE_CSI2,

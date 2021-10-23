@@ -76,11 +76,10 @@ MODULE_ALIAS("platform:pxa2xx-spi");
 #define LPSS_CAPS_CS_EN_SHIFT			9
 #define LPSS_CAPS_CS_EN_MASK			(0xf << LPSS_CAPS_CS_EN_SHIFT)
 
+static int port_id = 1;
 #define LPSS_PRIV_CLOCK_GATE 0x38
 #define LPSS_PRIV_CLOCK_GATE_CLK_CTL_MASK 0x3
 #define LPSS_PRIV_CLOCK_GATE_CLK_CTL_FORCE_ON 0x3
-
-static int port_id = 1;
 
 struct lpss_config {
 	/* LPSS offset from drv_data->ioaddr */

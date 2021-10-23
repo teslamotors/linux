@@ -22,6 +22,14 @@ struct crl_registers_info {
 #define CRL_G_REGISTERS			_IOWR('C', 1, struct crl_registers_info)
 #define CRL_S_REGISTERS			_IOW('C', 2, struct crl_registers_info)
 
+struct crl_sensor_init {
+	unsigned int width;
+	unsigned int height;
+	unsigned int mode;
+};
+
+#define CRL_SENSOR_INIT			_IOW('C', 3, struct crl_sensor_init)
+
 #define V4L2_CID_CRLMODULE_BASE		(V4L2_CID_USER_BASE + 0x2050)
 
 #define V4L2_CID_FRAME_LENGTH_LINES (V4L2_CID_CRLMODULE_BASE + 1)

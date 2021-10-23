@@ -2659,7 +2659,7 @@ out:
 int gvt_emit_pdps(struct intel_vgpu_workload *workload)
 {
 	const int num_cmds = GEN8_PDPES * 2;
-	struct drm_i915_gem_request *req = workload->req;
+	struct i915_request *req = workload->req;
 	struct intel_engine_cs *engine = req->engine;
 	u32 *cs;
 	u32 *pdps = (u32 *)workload->shadow_mm->shadow_page_table;

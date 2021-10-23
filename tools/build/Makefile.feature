@@ -31,8 +31,11 @@ FEATURE_TESTS_BASIC :=                  \
         backtrace                       \
         dwarf                           \
         dwarf_getlocations              \
+        eventfd                         \
         fortify-source                  \
         sync-compare-and-swap           \
+        get_current_dir_name            \
+        gettid				\
         glibc                           \
         gtk2                            \
         gtk2-infobar                    \
@@ -56,6 +59,7 @@ FEATURE_TESTS_BASIC :=                  \
         libunwind-arm                   \
         libunwind-aarch64               \
         pthread-attr-setaffinity-np     \
+        pthread-barrier     		\
         stackprotector-all              \
         timerfd                         \
         libdw-dwarf-unwind              \

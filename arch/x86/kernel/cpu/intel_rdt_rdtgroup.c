@@ -2863,13 +2863,10 @@ static int rdtgroup_rmdir_ctrl(struct kernfs_node *kn, struct rdtgroup *rdtgrp,
 	closid_free(rdtgrp->closid);
 	free_rmid(rdtgrp->mon.rmid);
 
-<<<<<<< HEAD
-=======
 	list_del(&rdtgrp->rdtgroup_list);
 
 	kernfs_remove(rdtgrp->kn);
 
->>>>>>> 2c8a3fceddf0dd87f278e7a5e01350f86f844b1c
 	/*
 	 * Free all the child monitor group rmids.
 	 */
@@ -2904,19 +2901,13 @@ static int rdtgroup_rmdir(struct kernfs_node *kn)
 	 * is a valid "mon_groups" directory, remove the mon group.
 	 */
 	if (rdtgrp->type == RDTCTRL_GROUP && parent_kn == rdtgroup_default.kn &&
-	    rdtgrp != &rdtgroup_default) {
-		if (rdtgrp->mode == RDT_MODE_PSEUDO_LOCKSETUP ||
-		    rdtgrp->mode == RDT_MODE_PSEUDO_LOCKED) {
-			ret = rdtgroup_ctrl_remove(kn, rdtgrp);
-		} else {
-			ret = rdtgroup_rmdir_ctrl(kn, rdtgrp, tmpmask);
-		}
-	} else if (rdtgrp->type == RDTMON_GROUP &&
-		 is_mon_groups(parent_kn, kn->name)) {
+	    rdtgrp != &rdtgroup_default)
+		ret = rdtgroup_rmdir_ctrl(kn, rdtgrp, tmpmask);
+	else if (rdtgrp->type == RDTMON_GROUP &&
+		 is_mon_groups(parent_kn, kn->name))
 		ret = rdtgroup_rmdir_mon(kn, rdtgrp, tmpmask);
-	} else {
+	else
 		ret = -EPERM;
-	}
 
 out:
 	rdtgroup_kn_unlock(kn);

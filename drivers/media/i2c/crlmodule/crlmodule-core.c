@@ -25,6 +25,10 @@
 #include "crlmodule-regs.h"
 #include "crlmodule-msrlist.h"
 
+static bool mode_reg_write;
+module_param(mode_reg_write, bool, 0664);
+MODULE_PARM_DESC(mode_reg_write, "write mode registers only new mode selected.");
+
 #ifdef CONFIG_INTEL_IPU4_OV13858
 bool vcm_in_use;
 EXPORT_SYMBOL(vcm_in_use);
@@ -2159,12 +2163,12 @@ static int crlmodule_start_streaming(struct crl_sensor *sensor)
 	}
 
 	/* Write mode list */
-	rval = crlmodule_write_regs(sensor,
-			sensor->current_mode->mode_regs,
-			sensor->current_mode->mode_regs_items);
-	if (rval) {
-		dev_err(&client->dev, "%s failed to set mode\n", __func__);
-		return rval;
+        rval = crlmodule_write_regs(sensor,
+                        sensor->current_mode->mode_regs,
+                        sensor->current_mode->mode_regs_items);
+        if (rval) {
+                dev_err(&client->dev, "%s failed to set mode\n", __func__);
+                return rval;
 	}
 
 	/* Write stream on list */
@@ -2481,6 +2485,8 @@ static int crlmodule_run_poweron_init(struct crl_sensor *sensor)
 				      __func__);
 		return rval;
 	}
+
+	sensor->previous_mode = NULL;
 
 	/* Are we still initialising...? If yes, return here. */
 	if (!sensor->pixel_array)
@@ -3270,6 +3276,40 @@ static int crlmodule_set_registers(struct v4l2_subdev *sd, struct crl_registers_
 	return ret;
 }
 
+/*
+ * In the case of sensor powered off by others, then init sensor explicitly.
+ */
+static int crlmodule_sensor_init(struct v4l2_subdev *sd, struct crl_sensor_init *arg)
+{
+	struct crl_subdev *ssd = to_crlmodule_subdev(sd);
+	struct crl_sensor *sensor = ssd->sensor;
+	struct i2c_client *client = v4l2_get_subdevdata(&sensor->src->sd);
+	int ret = 0;
+
+	ret = crlmodule_write_regs(sensor,
+			sensor->sensor_ds->onetime_init_regs,
+			sensor->sensor_ds->onetime_init_regs_items);
+	if (ret) {
+		dev_err(&client->dev, "%s failed to set powerup registers\n",
+			__func__);
+		return ret;
+	}
+
+	if (sensor->sensor_ds->sensor_init) {
+		ret = sensor->sensor_ds->sensor_init(client);
+
+		if (ret) {
+			dev_err(&client->dev,
+				"%s failed to run sensor specific init\n",
+				__func__);
+			ret = -ENODEV;
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
 static long crlmodule_ioctl(struct v4l2_subdev *sd, unsigned int cmd, void *arg)
 {
 	int ret;
@@ -3280,6 +3320,9 @@ static long crlmodule_ioctl(struct v4l2_subdev *sd, unsigned int cmd, void *arg)
 		break;
 	case CRL_S_REGISTERS:
 		ret = crlmodule_set_registers(sd, arg);
+		break;
+	case CRL_SENSOR_INIT:
+		ret = crlmodule_sensor_init(sd, arg);
 		break;
 	default:
 		ret = -1;

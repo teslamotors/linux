@@ -322,7 +322,7 @@ int intel_gvt_scan_and_shadow_workload(struct intel_vgpu_workload *workload)
 	struct i915_gem_context *shadow_ctx = workload->vgpu->shadow_ctx;
 	struct drm_i915_private *dev_priv = workload->vgpu->gvt->dev_priv;
 	struct intel_engine_cs *engine = dev_priv->engine[ring_id];
-	struct drm_i915_gem_request *rq;
+	struct i915_request *rq;
 	struct intel_vgpu *vgpu = workload->vgpu;
 	struct intel_ring *ring;
 	int ret;
@@ -388,7 +388,7 @@ int intel_gvt_scan_and_shadow_workload(struct intel_vgpu_workload *workload)
 	if (IS_BROXTON(vgpu->gvt->dev_priv)) {
 		ret = gvt_emit_pdps(workload);
 		if (ret) {
-			i915_gem_request_put(rq);
+			i915_request_put(rq);
 			workload->req = NULL;
 			goto err_unpin;
 		}

@@ -1,6 +1,6 @@
 # # #
 # Support for Intel Camera Imaging ISP subsystem.
-# Copyright (c) 2010 - 2018, Intel Corporation.
+# Copyright (c) 2010 - 2020, Intel Corporation.
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms and conditions of the GNU General Public License,
@@ -74,7 +74,7 @@ PSYS_SERVER_MAX_NUM_PROC_GRP			= $(PSYS_SERVER_NOF_CACHES)
 PSYS_SERVER_MAX_NUM_EXEC_PROC_GRP		= 8	# Max PG's running, 4 running on Cores, 4 being updated on the host upon executing.
 PSYS_SERVER_MAX_PROC_GRP_SIZE			= 4052
 PSYS_SERVER_MAX_MANIFEST_SIZE			= 3732
-PSYS_SERVER_MAX_CLIENT_PKG_SIZE			= 2420
+PSYS_SERVER_MAX_CLIENT_PKG_SIZE			= 2660
 PSYS_SERVER_MAX_BUFFER_SET_SIZE			= 0
 PSYS_SERVER_MAX_NUMBER_OF_TERMINAL_SECTIONS	= 88
 PSYS_SERVER_MAX_NUMBER_OF_TERMINAL_STORE_SECTIONS = 1

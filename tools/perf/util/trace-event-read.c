@@ -382,6 +382,7 @@ static int read_saved_cmdline(struct pevent *pevent)
 		pr_debug("error reading saved cmdlines\n");
 		goto out;
 	}
+	buf[ret] = '\0';
 
 	parse_saved_cmdline(pevent, buf, size);
 	ret = 0;

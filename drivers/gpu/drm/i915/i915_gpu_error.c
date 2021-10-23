@@ -1742,7 +1742,35 @@ i915_capture_gpu_state(struct drm_i915_private *i915)
 	kref_init(&error->ref);
 	error->i915 = i915;
 
-	stop_machine(capture, error, NULL);
+	/* kalyan: This is in VT-d path,WA for capturing the error
+	without the stop_machine() as it deadlocks the system with
+	error capture called inside it. However this needs to revisited
+	for a proper fix. Currently we got rid of the stop_machine and the
+	functions being called inside the handler given by the caller i,e capture
+	in our case are called here.  */
+
+	do_gettimeofday(&error->time);
+        error->boottime = ktime_to_timeval(ktime_get_boottime());
+        error->uptime =
+                ktime_to_timeval(ktime_sub(ktime_get(),
+                                           error->i915->gt.last_init_time));
+
+        error->params = i915_modparams;
+#define DUP(T, x) dup_param(#T, &error->params.x);
+        I915_PARAMS_FOR_EACH(DUP);
+#undef DUP
+
+        i915_capture_gen_state(error->i915, error);
+        i915_capture_reg_state(error->i915, error);
+        i915_gem_record_fences(error->i915, error);
+        i915_gem_record_rings(error->i915, error);
+        i915_capture_active_buffers(error->i915, error);
+        i915_capture_pinned_buffers(error->i915, error);
+        i915_gem_capture_guc_log_buffer(error->i915, error);
+
+        error->overlay = intel_overlay_capture_error_state(error->i915);
+        error->display = intel_display_capture_error_state(error->i915);
+
 
 	return error;
 }

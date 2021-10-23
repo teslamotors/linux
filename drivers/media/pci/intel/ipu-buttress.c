@@ -1260,10 +1260,8 @@ static void ipu_buttress_read_psys_fused_freqs(struct ipu_device *isp)
 	fused_freq->efficient_freq = efficient_ratio * BUTTRESS_PS_FREQ_STEP;
 }
 
-
 #ifdef I2C_DYNAMIC
 static LIST_HEAD(clkmap_dynamic);
-
 
 struct clk_dynamic {
 	struct list_head node;
@@ -1381,7 +1379,6 @@ static int ipu_buttress_clk_init(struct ipu_device *isp)
 	if (!clkmap)
 		return 0;
 
-
 	while (clkmap->clkdev_data.dev_id) {
 #ifdef I2C_DYNAMIC
 		char *dev_id = kstrdup(clkmap->clkdev_data.dev_id, GFP_KERNEL);
@@ -1423,7 +1420,6 @@ static int ipu_buttress_clk_init(struct ipu_device *isp)
 				list_add_tail(&clk->node, &clkmap_dynamic);
 #else
 				clkmap->clkdev_data.clk = b->clk_sensor[i];
-
 				clkdev_add(&clkmap->clkdev_data);
 #endif
 				break;
@@ -1449,7 +1445,6 @@ static void ipu_buttress_clk_exit(struct ipu_device *isp)
 {
 	struct ipu_buttress *b = &isp->buttress;
 	int i;
-
 #ifdef I2C_DYNAMIC
 	struct clk_dynamic *clk = NULL;
 	const char *dev_id = NULL;
@@ -1464,7 +1459,6 @@ static void ipu_buttress_clk_exit(struct ipu_device *isp)
 		list_del(&clk->node);
 		kfree(clk);
 	}
-
 #endif
 
 	/* It is safe to call clk_unregister with null pointer */
@@ -1473,8 +1467,6 @@ static void ipu_buttress_clk_exit(struct ipu_device *isp)
 
 	for (i = 0; i < ARRAY_SIZE(ipu_buttress_sensor_pll_data); i++)
 		clk_unregister(b->pll_sensor[i]);
-
-
 }
 
 int ipu_buttress_tsc_read(struct ipu_device *isp, u64 *val)

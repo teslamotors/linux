@@ -1059,9 +1059,9 @@ static void stop_streaming(struct vb2_queue *q)
 	return_buffers(aq, VB2_BUF_STATE_ERROR);
 }
 
-static unsigned int
+static int
 get_sof_sequence_by_timestamp(struct ipu_isys_pipeline *ip,
-			      struct ipu_fw_isys_resp_info_abi *info)
+			      struct ipu_fw_isys_resp_info_abi *info, unsigned int *seq_ret )
 {
 	struct ipu_isys *isys =
 	    container_of(ip, struct ipu_isys_video, ip)->isys;
@@ -1073,7 +1073,8 @@ get_sof_sequence_by_timestamp(struct ipu_isys_pipeline *ip,
 			dev_dbg(&isys->adev->dev,
 				"sof: using sequence number %u for timestamp 0x%16.16llx\n",
 				ip->seq[i].sequence, time);
-			return ip->seq[i].sequence;
+                        *seq_ret = ip->seq[i].sequence;
+			return 0;
 		}
 
 	dev_dbg(&isys->adev->dev, "SOF: looking for 0x%16.16llx\n", time);
@@ -1082,8 +1083,8 @@ get_sof_sequence_by_timestamp(struct ipu_isys_pipeline *ip,
 			"SOF: sequence %u, timestamp value 0x%16.16llx\n",
 			ip->seq[i].sequence, ip->seq[i].timestamp);
 	dev_dbg(&isys->adev->dev, "SOF sequence number not found\n");
-
-	return 0;
+        *seq_ret =0;
+	return -1;
 }
 
 static u64 get_sof_ns_delta(struct ipu_isys_video *av,
@@ -1119,6 +1120,7 @@ ipu_isys_buf_calc_sequence_time(struct ipu_isys_buffer *ib,
 	    to_ipu_isys_pipeline(av->vdev.entity.pipe);
 	u64 ns;
 	u32 sequence;
+	int ret;
 
 	if (ip->has_sof) {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 17, 0)
@@ -1126,10 +1128,12 @@ ipu_isys_buf_calc_sequence_time(struct ipu_isys_buffer *ib,
 				 ktime_get());
 		ns -= get_sof_ns_delta(av, info);
 #else
+		ret = get_sof_sequence_by_timestamp(ip, info, &sequence);
 		ns = (wall_clock_ts_on) ? ktime_get_real_ns() : ktime_get_ns();
-		ns -= get_sof_ns_delta(av, info);
+		if (ret >= 0) {
+			ns -= get_sof_ns_delta(av, info);
+		} 
 #endif
-		sequence = get_sof_sequence_by_timestamp(ip, info);
 	} else {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 17, 0)
 		ns = ktime_to_ns((wall_clock_ts_on) ? ktime_get_real() :

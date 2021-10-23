@@ -1666,7 +1666,7 @@ static void invalidate_mm_pv(struct intel_vgpu_mm *mm)
 	if (WARN_ON(mm->page_table_level != 4))
 		return;
 
-	i915_ppgtt_close(&mm->ppgtt->base);
+	i915_ppgtt_close(&mm->ppgtt->vm);
 	i915_ppgtt_put(mm->ppgtt);
 
 	ppgtt_get_shadow_root_entry(mm, &se, 0);
@@ -2699,7 +2699,7 @@ int intel_vgpu_g2v_pv_ppgtt_alloc_4lvl(struct intel_vgpu *vgpu,
 		gvt_vgpu_err("failed to find mm for pdp 0x%llx\n", pdp);
 		ret = -EINVAL;
 	} else {
-		ret = mm->ppgtt->base.allocate_va_range(&mm->ppgtt->base,
+		ret = mm->ppgtt->vm.allocate_va_range(&mm->ppgtt->vm,
 			pv_ppgtt->start, pv_ppgtt->length);
 		if (ret)
 			gvt_vgpu_err("failed to alloc for pdp %llx\n", pdp);
@@ -2728,7 +2728,7 @@ int intel_vgpu_g2v_pv_ppgtt_clear_4lvl(struct intel_vgpu *vgpu,
 		gvt_vgpu_err("failed to find mm for pdp 0x%llx\n", pdp);
 		ret = -EINVAL;
 	} else {
-		mm->ppgtt->base.clear_range(&mm->ppgtt->base,
+		mm->ppgtt->vm.clear_range(&mm->ppgtt->vm,
 			pv_ppgtt->start, pv_ppgtt->length);
 	}
 
@@ -2957,7 +2957,7 @@ int intel_vgpu_g2v_pv_ppgtt_insert_4lvl(struct intel_vgpu *vgpu,
 	memset(&vma, 0, sizeof(vma));
 	vma.node.start = start;
 	vma.pages = &st;
-	mm->ppgtt->base.insert_entries(&mm->ppgtt->base, &vma,
+	mm->ppgtt->vm.insert_entries(&mm->ppgtt->vm, &vma,
 					pv_ppgtt->cache_level, 0);
 
 fail_free_sg:
@@ -2974,8 +2974,8 @@ static void validate_ggtt_range(struct intel_vgpu *vgpu,
 {
 	u64 end;
 
-	if (WARN_ON(*start > vgpu->gvt->dev_priv->ggtt.base.total ||
-	     *length > vgpu->gvt->dev_priv->ggtt.base.total)) {
+	if (WARN_ON(*start > vgpu->gvt->dev_priv->ggtt.vm.total ||
+	     *length > vgpu->gvt->dev_priv->ggtt.vm.total)) {
 		*length = 0;
 		return;
 	}
@@ -3079,7 +3079,7 @@ int intel_vgpu_g2v_pv_ggtt_insert(struct intel_vgpu *vgpu)
 	memset(&vma, 0, sizeof(vma));
 	vma.node.start = start;
 	vma.pages = &st;
-	ggtt->base.insert_entries(&ggtt->base, &vma, cache_level, 0);
+	ggtt->vm.insert_entries(&ggtt->vm, &vma, cache_level, 0);
 
 fail:
 	sg_free_table(&st);
@@ -3099,7 +3099,7 @@ int intel_vgpu_g2v_pv_ggtt_clear(struct intel_vgpu *vgpu)
 	if (length == 0)
 		return 0;
 
-	ggtt->base.clear_range(&ggtt->base, start, length);
+	ggtt->vm.clear_range(&ggtt->vm, start, length);
 
 	return 0;
 }

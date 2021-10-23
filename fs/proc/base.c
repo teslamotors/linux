@@ -2557,6 +2557,10 @@ static ssize_t proc_pid_attr_write(struct file * file, const char __user * buf,
 	ssize_t length;
 	struct task_struct *task = get_proc_task(inode);
 
+	/* A task may only write when it was the opener. */
+	if (file->f_cred != current_real_cred())
+		return -EPERM;
+
 	length = -ESRCH;
 	if (!task)
 		goto out_no_task;

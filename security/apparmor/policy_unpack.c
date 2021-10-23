@@ -755,10 +755,6 @@ static struct aa_profile *unpack_profile(struct aa_ext *e, char **ns_name)
 		}
 		if (!unpack_nameX(e, AA_ARRAYEND, NULL))
 			goto fail;
-	} else {
-		/* support policy pre AF socket mediation */
-		for (i = 0; i < AF_MAX; i++)
-			profile->net.allow[i] = 0xffff;
 	}
 	if (VERSION_LT(e->version, v7)) {
 		/* pre v7 policy always allowed these */

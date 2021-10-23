@@ -1317,6 +1317,9 @@ int intel_guc_resume(struct drm_i915_private *dev_priv)
 	if (!(i915_modparams.enable_guc_submission))
 		return 0;
 
+       	if (!i915_modparams.enable_guc_submission)
+	       	return 0;
+
 	if (guc->fw.load_status != INTEL_UC_FIRMWARE_SUCCESS)
 		return 0;
 

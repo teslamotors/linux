@@ -920,6 +920,8 @@ static void process_csb(struct intel_engine_cs *engine)
 							EXECLISTS_ACTIVE_PREEMPT));
 			execlists_clear_active(execlists,
 					       EXECLISTS_ACTIVE_PREEMPT);
+			execlists_clear_active(execlists,
+					       EXECLISTS_ACTIVE_USER);
 			hrtimer_try_to_cancel(&engine->fpreempt_timer);
 			continue;
 		}
