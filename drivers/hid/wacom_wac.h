@@ -293,6 +293,7 @@ struct hid_data {
 	bool inrange_state;
 	bool invert_state;
 	bool tipswitch;
+	bool confidence;
 	int x;
 	int y;
 	int pressure;
