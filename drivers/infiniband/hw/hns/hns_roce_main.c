@@ -294,6 +294,9 @@ static int hns_roce_query_gid(struct ib_device *ib_dev, u8 port_num, int index,
 static int hns_roce_query_pkey(struct ib_device *ib_dev, u8 port, u16 index,
 			       u16 *pkey)
 {
+	if (index > 0)
+		return -EINVAL;
+
 	*pkey = PKEY_ID;
 
 	return 0;
