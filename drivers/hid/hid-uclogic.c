@@ -791,6 +791,9 @@ static int uclogic_tablet_enable(struct hid_device *hdev)
 	__u8 *p;
 	s32 v;
 
+	if (!hid_is_usb(hdev))
+		return -EINVAL;
+
 	/*
 	 * Read string descriptor containing tablet parameters. The specific
 	 * string descriptor and data were discovered by sniffing the Windows
