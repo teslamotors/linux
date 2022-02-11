@@ -13,6 +13,11 @@
 #include <asm/memory.h>
 #include <asm/page.h>
 
+/* Set start/end symbol names to the LMA for the section */
+#define ARM_LMA(sym, section)						\
+	sym##_start = LOADADDR(section);				\
+	sym##_end = LOADADDR(section) + SIZEOF(section)
+
 #define PROC_INFO							\
 	. = ALIGN(4);							\
 	VMLINUX_SYMBOL(__proc_info_begin) = .;				\
@@ -149,19 +154,19 @@ SECTIONS
 	 * The vectors and stubs are relocatable code, and the
 	 * only thing that matters is their relative offsets
 	 */
-	__vectors_start = .;
+	__vectors_lma = .;
 	.vectors 0xffff0000 : AT(__vectors_start) {
 		*(.vectors)
 	}
-	. = __vectors_start + SIZEOF(.vectors);
-	__vectors_end = .;
+	ARM_LMA(__vectors, .vectors);
+	. = __vectors_lma + SIZEOF(.vectors);
 
-	__stubs_start = .;
-	.stubs ADDR(.vectors) + 0x1000 : AT(__stubs_start) {
+	__stubs_lma = .;
+	.stubs ADDR(.vectors) + 0x1000 : AT(__stubs_lma) {
 		*(.stubs)
 	}
-	. = __stubs_start + SIZEOF(.stubs);
-	__stubs_end = .;
+	ARM_LMA(__stubs, .stubs);
+	. = __stubs_lma + SIZEOF(.stubs);
 
 	PROVIDE(vector_fiq_offset = vector_fiq - ADDR(.vectors));
 
