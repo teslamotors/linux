@@ -239,8 +239,8 @@ void smc_conn_free(struct smc_connection *conn)
 	if (!lgr)
 		return;
 	smc_cdc_tx_dismiss_slots(conn);
-	smc_lgr_unregister_conn(conn);
 	smc_buf_unuse(conn);
+	smc_lgr_unregister_conn(conn);
 }
 
 static void smc_link_clear(struct smc_link *lnk)
