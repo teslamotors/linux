@@ -1517,7 +1517,7 @@ static int qcom_qmp_phy_enable(struct phy *phy)
 	qcom_qmp_phy_configure(pcs, cfg->regs, cfg->pcs_tbl, cfg->pcs_tbl_num);
 	ret = reset_control_deassert(qmp->ufs_reset);
 	if (ret)
-		goto err_lane_rst;
+		goto err_pcs_ready;
 
 	/*
 	 * Pull out PHY from POWER DOWN state.
