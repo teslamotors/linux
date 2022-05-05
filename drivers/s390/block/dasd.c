@@ -2812,8 +2812,7 @@ static void __dasd_cleanup_cqr(struct dasd_ccw_req *cqr)
 		 * complete a request partially.
 		 */
 		if (proc_bytes) {
-			blk_update_request(req, BLK_STS_OK,
-					   blk_rq_bytes(req) - proc_bytes);
+			blk_update_request(req, BLK_STS_OK, proc_bytes);
 			blk_mq_requeue_request(req, true);
 		} else {
 			blk_mq_complete_request(req);
