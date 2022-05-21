@@ -413,8 +413,8 @@ static void rxrpc_input_data(struct rxrpc_call *call, struct sk_buff *skb)
 {
 	struct rxrpc_skb_priv *sp = rxrpc_skb(skb);
 	enum rxrpc_call_state state;
-	unsigned int j, nr_subpackets;
-	rxrpc_serial_t serial = sp->hdr.serial, ack_serial = 0;
+	unsigned int j, nr_subpackets, nr_unacked = 0;
+	rxrpc_serial_t serial = sp->hdr.serial, ack_serial = serial;
 	rxrpc_seq_t seq0 = sp->hdr.seq, hard_ack;
 	bool immediate_ack = false, jumbo_bad = false;
 	u8 ack = 0;
@@ -570,6 +570,8 @@ static void rxrpc_input_data(struct rxrpc_call *call, struct sk_buff *skb)
 			sp = NULL;
 		}
 
+		nr_unacked++;
+
 		if (last) {
 			set_bit(RXRPC_CALL_RX_LAST, &call->flags);
 			if (!ack) {
@@ -589,9 +591,14 @@ static void rxrpc_input_data(struct rxrpc_call *call, struct sk_buff *skb)
 			}
 			call->rx_expect_next = seq + 1;
 		}
+		if (!ack)
+			ack_serial = serial;
 	}
 
 ack:
+	if (atomic_add_return(nr_unacked, &call->ackr_nr_unacked) > 2 && !ack)
+		ack = RXRPC_ACK_IDLE;
+
 	if (ack)
 		rxrpc_propose_ACK(call, ack, ack_serial,
 				  immediate_ack, true,
