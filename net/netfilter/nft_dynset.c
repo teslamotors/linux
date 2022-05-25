@@ -204,9 +204,6 @@ static int nft_dynset_init(const struct nft_ctx *ctx,
 			return PTR_ERR(priv->expr);
 
 		err = -EOPNOTSUPP;
-		if (!(priv->expr->ops->type->flags & NFT_EXPR_STATEFUL))
-			goto err1;
-
 		if (priv->expr->ops->type->flags & NFT_EXPR_GC) {
 			if (set->flags & NFT_SET_TIMEOUT)
 				goto err1;
