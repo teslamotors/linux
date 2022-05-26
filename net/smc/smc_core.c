@@ -239,8 +239,8 @@ void smc_conn_free(struct smc_connection *conn)
 	if (!lgr)
 		return;
 	smc_cdc_tx_dismiss_slots(conn);
-	smc_lgr_unregister_conn(conn);
 	smc_buf_unuse(conn);
+	smc_lgr_unregister_conn(conn);
 }
 
 static void smc_link_clear(struct smc_link *lnk)
@@ -428,7 +428,8 @@ int smc_conn_create(struct smc_sock *smc, __be32 peer_in_addr,
 		    (lgr->role == role) &&
 		    (lgr->vlan_id == vlan_id) &&
 		    ((role == SMC_CLNT) ||
-		     (lgr->conns_num < SMC_RMBS_PER_LGR_MAX))) {
+		     (lgr->conns_num < SMC_RMBS_PER_LGR_MAX &&
+		      !bitmap_full(lgr->rtokens_used_mask, SMC_RMBS_PER_LGR_MAX)))) {
 			/* link group found */
 			local_contact = SMC_REUSE_CONTACT;
 			conn->lgr = lgr;

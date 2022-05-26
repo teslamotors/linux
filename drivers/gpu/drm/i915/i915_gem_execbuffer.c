@@ -1176,9 +1176,6 @@ static u32 *reloc_gpu(struct i915_execbuffer *eb,
 		if (eb_use_cmdparser(eb))
 			return ERR_PTR(-EWOULDBLOCK);
 
-		if (!intel_engine_can_store_dword(eb->engine))
-			return ERR_PTR(-ENODEV);
-
 		err = __reloc_gpu_alloc(eb, vma, len);
 		if (unlikely(err))
 			return ERR_PTR(err);
@@ -1929,7 +1926,7 @@ shadow_batch_pin(struct i915_execbuffer *eb, struct drm_i915_gem_object *obj)
 	 */
 	if (CMDPARSER_USES_GGTT(dev_priv)) {
 		flags = PIN_GLOBAL;
-		vm = &dev_priv->ggtt.vm;
+		vm = &dev_priv->ggtt.base;
 	} else if (eb->vm->has_read_only) {
 		flags = PIN_USER;
 		vm = eb->vm;

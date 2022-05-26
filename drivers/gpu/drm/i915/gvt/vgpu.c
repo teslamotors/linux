@@ -542,7 +542,6 @@ void intel_gvt_reset_vgpu_locked(struct intel_vgpu *vgpu, bool dmlr,
 
 		intel_vgpu_reset_mmio(vgpu, dmlr);
 		populate_pvinfo_page(vgpu);
-		vgpu_vreg(vgpu, _vgtif_reg(enable_pvmmio)) = enable_pvmmio;
 
 		if (dmlr) {
 			intel_vgpu_reset_display(vgpu);

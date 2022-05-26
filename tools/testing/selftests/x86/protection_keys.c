@@ -1479,6 +1479,8 @@ int main(void)
 {
 	int nr_iterations = 22;
 
+	srand((unsigned int)time(NULL));
+
 	setup_handlers();
 
 	printf("has pku: %d\n", cpu_has_pku());

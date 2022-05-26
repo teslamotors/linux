@@ -956,7 +956,7 @@ static long media_device_enum_links32(struct media_device *mdev,
 	links.pads = compat_ptr(pads_ptr);
 	links.links = compat_ptr(links_ptr);
 
-	ret = media_device_enum_links(mdev, filp, &links);
+	ret = media_device_enum_links(mdev, &links);
 	if (ret)
 		return ret;
 

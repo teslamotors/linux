@@ -565,10 +565,8 @@ static int __rdtgroup_move_task(struct task_struct *tsk,
 	} else if (rdtgrp->type == RDTMON_GROUP) {
 		if (rdtgrp->mon.parent->closid == tsk->closid)
 			tsk->rmid = rdtgrp->mon.rmid;
-		else {
-			rdt_last_cmd_puts("Can't move task to different control group\n");
+		else
 			return -EINVAL;
-		}
 	}
 
 	/*
@@ -586,32 +584,6 @@ static int __rdtgroup_move_task(struct task_struct *tsk,
 	update_task_closid_rmid(tsk);
 
 	return 0;
-}
-
-/**
- * rdtgroup_tasks_assigned - Test if tasks have been assigned to resource group
- * @r: Resource group
- *
- * Return: 1 if tasks have been assigned to @r, 0 otherwise
- */
-int rdtgroup_tasks_assigned(struct rdtgroup *r)
-{
-	struct task_struct *p, *t;
-	int ret = 0;
-
-	lockdep_assert_held(&rdtgroup_mutex);
-
-	rcu_read_lock();
-	for_each_process_thread(p, t) {
-		if ((r->type == RDTCTRL_GROUP && t->closid == r->closid) ||
-		    (r->type == RDTMON_GROUP && t->rmid == r->mon.rmid)) {
-			ret = 1;
-			break;
-		}
-	}
-	rcu_read_unlock();
-
-	return ret;
 }
 
 static int rdtgroup_task_write_permission(struct task_struct *task,
@@ -1628,10 +1600,6 @@ static int rdtgroup_create_info_dir(struct kernfs_node *parent_kn)
 	if (IS_ERR(kn_info))
 		return PTR_ERR(kn_info);
 
-	ret = rdtgroup_add_files(kn_info, RF_TOP_INFO);
-	if (ret)
-		goto out_destroy;
-
 	for_each_alloc_enabled_rdt_resource(r) {
 		fflags =  r->fflags | RF_CTRL_INFO;
 		ret = rdtgroup_mkdir_info_resdir(r, r->name, fflags);
@@ -1702,11 +1670,6 @@ static void l2_qos_cfg_update(void *arg)
 	wrmsrl(IA32_L2_QOS_CFG, *enable ? L2_QOS_CDP_ENABLE : 0ULL);
 }
 
-static inline bool is_mba_linear(void)
-{
-	return rdt_resources_all[RDT_RESOURCE_MBA].membw.delay_linear;
-}
-
 static int set_cache_qos_cfg(int level, bool enable)
 {
 	void (*update)(void *arg);
@@ -1739,28 +1702,6 @@ static int set_cache_qos_cfg(int level, bool enable)
 	put_cpu();
 
 	free_cpumask_var(cpu_mask);
-
-	return 0;
-}
-
-/*
- * Enable or disable the MBA software controller
- * which helps user specify bandwidth in MBps.
- * MBA software controller is supported only if
- * MBM is supported and MBA is in linear scale.
- */
-static int set_mba_sc(bool mba_sc)
-{
-	struct rdt_resource *r = &rdt_resources_all[RDT_RESOURCE_MBA];
-	struct rdt_domain *d;
-
-	if (!is_mbm_enabled() || !is_mba_linear() ||
-	    mba_sc == is_mba_sc(r))
-		return -EINVAL;
-
-	r->membw.mba_sc = mba_sc;
-	list_for_each_entry(d, &r->domains, list)
-		setup_default_ctrlval(r, d->ctrl_val, d->mbps_val);
 
 	return 0;
 }
@@ -1845,10 +1786,6 @@ static int parse_rdtgroupfs_options(char *data)
 				goto out;
 		} else if (!strcmp(token, "cdpl2")) {
 			ret = cdpl2_enable();
-			if (ret)
-				goto out;
-		} else if (!strcmp(token, "mba_MBps")) {
-			ret = set_mba_sc(true);
 			if (ret)
 				goto out;
 		} else {
@@ -2546,7 +2483,6 @@ static int mkdir_rdt_prepare(struct kernfs_node *parent_kn,
 	int ret;
 
 	prdtgrp = rdtgroup_kn_lock_live(parent_kn);
-	rdt_last_cmd_clear();
 	if (!prdtgrp) {
 		ret = -ENODEV;
 		rdt_last_cmd_puts("directory was removed\n");
@@ -2714,10 +2650,8 @@ static int rdtgroup_mkdir_ctrl_mon(struct kernfs_node *parent_kn,
 		 * of tasks and cpus to monitor.
 		 */
 		ret = mongroup_create_dir(kn, rdtgrp, "mon_groups", NULL);
-		if (ret) {
-			rdt_last_cmd_puts("kernfs subdir error\n");
-			goto out_del_list;
-		}
+		if (ret)
+			goto out_id_free;
 	}
 
 	goto out_unlock;
@@ -2816,22 +2750,6 @@ static int rdtgroup_rmdir_mon(struct kernfs_node *kn, struct rdtgroup *rdtgrp,
 	list_del(&rdtgrp->mon.crdtgrp_list);
 
 	kernfs_remove(rdtgrp->kn);
-
-	return 0;
-}
-
-static int rdtgroup_ctrl_remove(struct kernfs_node *kn,
-				struct rdtgroup *rdtgrp)
-{
-	rdtgrp->flags = RDT_DELETED;
-	list_del(&rdtgrp->rdtgroup_list);
-
-	/*
-	 * one extra hold on this, will drop when we kfree(rdtgrp)
-	 * in rdtgroup_kn_unlock()
-	 */
-	kernfs_get(kn);
-	kernfs_remove(rdtgrp->kn);
 	return 0;
 }
 
@@ -2871,8 +2789,6 @@ static int rdtgroup_rmdir_ctrl(struct kernfs_node *kn, struct rdtgroup *rdtgrp,
 	 * Free all the child monitor group rmids.
 	 */
 	free_all_child_rdtgrp(rdtgrp);
-
-	rdtgroup_ctrl_remove(kn, rdtgrp);
 
 	return 0;
 }

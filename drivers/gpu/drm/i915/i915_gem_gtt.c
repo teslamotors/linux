@@ -1320,7 +1320,7 @@ static void gen8_dump_ppgtt(struct i915_hw_ppgtt *ppgtt, struct seq_file *m)
 	struct i915_address_space *vm = &ppgtt->vm;
 	const gen8_pte_t scratch_pte =
 		gen8_pte_encode(vm->scratch_page.daddr, I915_CACHE_LLC, 0);
-	u64 start = 0, length = ppgtt->vm.total;
+	u64 start = 0, length = ppgtt->base.total;
 
 	if (use_4lvl(vm)) {
 		u64 pml4e;
@@ -1399,7 +1399,7 @@ static int gen8_ppgtt_init(struct i915_hw_ppgtt *ppgtt)
 	 *
 	 * XXX GVT is not honouring the lack of RW in the PTE bits.
 	 */
-	ppgtt->vm.has_read_only = !intel_vgpu_active(dev_priv);
+	ppgtt->base.has_read_only = !intel_vgpu_active(dev_priv);
 
 	/* There are only few exceptions for gen >=6. chv and bxt.
 	 * And we are not sure about the latter so play safe for now.
@@ -2163,11 +2163,6 @@ static void gen8_ggtt_insert_page(struct i915_address_space *vm,
 
 	gen8_set_pte(pte, gen8_pte_encode(addr, level, 0));
 
-	if (PVMMIO_LEVEL_ENABLE(vm->i915, PVMMIO_GGTT_UPDATE)) {
-		vgpu_ggtt_insert(vm->i915, offset, 1, level);
-		return;
-	}
-
 	ggtt->invalidate(vm->i915);
 }
 
@@ -2354,15 +2349,7 @@ static int bxt_vtd_ggtt_insert_entries__cb(void *_arg)
 {
 	struct insert_entries *arg = _arg;
 
-#if IS_ENABLED(CONFIG_DRM_I915_GVT)
-	if (intel_gvt_active(arg->vm->i915))
-		gvt_pause_user_domains(arg->vm->i915);
-#endif
 	gen8_ggtt_insert_entries(arg->vm, arg->vma, arg->level, arg->flags);
-#if IS_ENABLED(CONFIG_DRM_I915_GVT)
-	if (intel_gvt_active(arg->vm->i915))
-		gvt_unpause_user_domains(arg->vm->i915);
-#endif
 	bxt_vtd_ggtt_wa(arg->vm);
 
 	return 0;
@@ -3206,10 +3193,10 @@ int i915_ggtt_init_hw(struct drm_i915_private *dev_priv)
 	 * and beyond the end of the GTT if we do not provide a guard.
 	 */
 	mutex_lock(&dev_priv->drm.struct_mutex);
-	i915_address_space_init(&ggtt->vm, dev_priv, "[global]");
+	i915_address_space_init(&ggtt->base, dev_priv, "[global]");
 
 	/* Only VLV supports read-only GGTT mappings */
-	ggtt->vm.has_read_only = IS_VALLEYVIEW(dev_priv);
+	ggtt->base.has_read_only = IS_VALLEYVIEW(dev_priv);
 
 	if (!HAS_LLC(dev_priv) && !USES_PPGTT(dev_priv))
 		ggtt->vm.mm.color_adjust = i915_gtt_color_adjust;

@@ -3686,12 +3686,6 @@ static void ibmvnic_tasklet(void *data)
 			ibmvnic_handle_crq(crq, adapter);
 			crq->generic.first = 0;
 		}
-
-		/* remain in tasklet until all
-		 * capabilities responses are received
-		 */
-		if (!adapter->wait_capability)
-			done = true;
 	}
 	/* if capabilities CRQ's were sent in this tasklet, the following
 	 * tasklet must wait until all responses are received
@@ -3829,6 +3823,9 @@ static int init_crq_queue(struct ibmvnic_adapter *adapter)
 
 	crq->cur = 0;
 	spin_lock_init(&crq->lock);
+
+	/* process any CRQs that were queued before we enabled interrupts */
+	tasklet_schedule(&adapter->tasklet);
 
 	return retrc;
 

@@ -528,10 +528,6 @@ struct intel_engine_cs {
 
 	struct intel_engine_hangcheck hangcheck;
 
-	struct hrtimer fpreempt_timer;
-	struct work_struct fpreempt_work;
-	bool fpreempt_stalled;
-
 #define I915_ENGINE_USING_CMD_PARSER	BIT(0)
 #define I915_ENGINE_REQUIRES_CMD_PARSER	BIT(3)
 	unsigned int flags;
@@ -560,46 +556,6 @@ struct intel_engine_cs {
 	 */
 	u32 (*get_cmd_length_mask)(u32 cmd_header);
 };
-
-static inline void
-execlists_set_active(struct intel_engine_execlists *execlists,
-		     unsigned int bit)
-{
-	__set_bit(bit, (unsigned long *)&execlists->active);
-}
-
-static inline void
-execlists_clear_active(struct intel_engine_execlists *execlists,
-		       unsigned int bit)
-{
-	__clear_bit(bit, (unsigned long *)&execlists->active);
-}
-
-static inline bool
-execlists_is_active(const struct intel_engine_execlists *execlists,
-		    unsigned int bit)
-{
-	return test_bit(bit, (unsigned long *)&execlists->active);
-}
-
-static inline unsigned int
-execlists_num_ports(const struct intel_engine_execlists * const execlists)
-{
-	return execlists->port_mask + 1;
-}
-
-static inline void
-execlists_port_complete(struct intel_engine_execlists * const execlists,
-			struct execlist_port * const port)
-{
-	const unsigned int m = execlists->port_mask;
-
-	GEM_BUG_ON(port_index(port, execlists) != 0);
-	GEM_BUG_ON(!execlists_is_active(execlists, EXECLISTS_ACTIVE_USER));
-
-	memmove(port, port + 1, m * sizeof(struct execlist_port));
-	memset(port + m, 0, sizeof(struct execlist_port));
-}
 
 static inline bool
 intel_engine_using_cmd_parser(const struct intel_engine_cs *engine)

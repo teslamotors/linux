@@ -191,9 +191,6 @@ static async_cookie_t __async_schedule(async_func_t func, void *data, struct asy
 	atomic_inc(&entry_count);
 	spin_unlock_irqrestore(&async_lock, flags);
 
-	/* mark that this task has queued an async job, used by module init */
-	current->flags |= PF_USED_ASYNC;
-
 	/* schedule for execution */
 	queue_work(system_unbound_wq, &entry->work);
 

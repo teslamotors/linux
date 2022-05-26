@@ -55,7 +55,7 @@ static struct kmem_cache *create_pid_cachep(int nr_ids)
 	snprintf(pcache->name, sizeof(pcache->name), "pid_%d", nr_ids);
 	cachep = kmem_cache_create(pcache->name,
 			sizeof(struct pid) + (nr_ids - 1) * sizeof(struct upid),
-			0, SLAB_HWCACHE_ALIGN, NULL);
+			0, SLAB_HWCACHE_ALIGN | SLAB_ACCOUNT, NULL);
 	if (cachep == NULL)
 		goto err_cachep;
 

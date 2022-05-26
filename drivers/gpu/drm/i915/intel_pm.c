@@ -2997,9 +2997,9 @@ static void snb_wm_latency_quirk(struct drm_i915_private *dev_priv)
 	 * The BIOS provided WM memory latency values are often
 	 * inadequate for high resolution displays. Adjust them.
 	 */
-	changed = ilk_increase_wm_latency(dev_priv, dev_priv->wm.pri_latency, 12) |
-		ilk_increase_wm_latency(dev_priv, dev_priv->wm.spr_latency, 12) |
-		ilk_increase_wm_latency(dev_priv, dev_priv->wm.cur_latency, 12);
+	changed = ilk_increase_wm_latency(dev_priv, dev_priv->wm.pri_latency, 12);
+	changed |= ilk_increase_wm_latency(dev_priv, dev_priv->wm.spr_latency, 12);
+	changed |= ilk_increase_wm_latency(dev_priv, dev_priv->wm.cur_latency, 12);
 
 	if (!changed)
 		return;
@@ -8381,6 +8381,8 @@ void intel_init_gt_powersave(struct drm_i915_private *dev_priv)
 
 	i915_rc6_ctx_wa_init(dev_priv);
 
+	i915_rc6_ctx_wa_init(dev_priv);
+
 	/* Initialize RPS limits (for userspace) */
 	if (IS_CHERRYVIEW(dev_priv))
 		cherryview_init_gt_powersave(dev_priv);
@@ -8432,7 +8434,7 @@ void intel_cleanup_gt_powersave(struct drm_i915_private *dev_priv)
 
 	i915_rc6_ctx_wa_cleanup(dev_priv);
 
-	if (!i915_modparams.enable_rc6)
+	if (!i915.enable_rc6)
 		intel_runtime_pm_put(dev_priv);
 }
 
@@ -8477,9 +8479,9 @@ static void __intel_disable_rc6(struct drm_i915_private *dev_priv)
 
 static void intel_disable_rc6(struct drm_i915_private *dev_priv)
 {
-	mutex_lock(&dev_priv->pcu_lock);
+	mutex_lock(&dev_priv->rps.hw_lock);
 	__intel_disable_rc6(dev_priv);
-	mutex_unlock(&dev_priv->pcu_lock);
+	mutex_unlock(&dev_priv->rps.hw_lock);
 }
 
 static void intel_disable_rps(struct drm_i915_private *dev_priv)
@@ -8497,14 +8499,14 @@ void intel_disable_gt_powersave(struct drm_i915_private *dev_priv)
 	if (!READ_ONCE(dev_priv->rps.enabled))
 		return;
 
-	mutex_lock(&dev_priv->pcu_lock);
+	mutex_lock(&dev_priv->rps.hw_lock);
 
 	__intel_disable_rc6(dev_priv);
 	intel_disable_rps(dev_priv);
 
 	dev_priv->rps.enabled = false;
 
-	mutex_unlock(&dev_priv->pcu_lock);
+	mutex_unlock(&dev_priv->rps.hw_lock);
 }
 
 void intel_enable_gt_powersave(struct drm_i915_private *dev_priv)

@@ -31,7 +31,7 @@ struct tee_device;
  * @paddr:	physical address of the shared memory
  * @kaddr:	virtual address of the shared memory
  * @size:	size of shared memory
- * @dmabuf:	dmabuf used to for exporting to user space
+ * @refcount:	reference counter
  * @flags:	defined by TEE_SHM_* in tee_drv.h
  * @id:		unique id of a shared memory object on this device
  */
@@ -42,7 +42,7 @@ struct tee_shm {
 	phys_addr_t paddr;
 	void *kaddr;
 	size_t size;
-	struct dma_buf *dmabuf;
+	refcount_t refcount;
 	u32 flags;
 	int id;
 };

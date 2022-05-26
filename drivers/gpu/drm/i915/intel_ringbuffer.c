@@ -1285,7 +1285,7 @@ void intel_ring_unpin(struct intel_ring *ring)
 static struct i915_vma *
 intel_ring_create_vma(struct drm_i915_private *dev_priv, int size)
 {
-	struct i915_address_space *vm = &dev_priv->ggtt.vm;
+	struct i915_address_space *vm = &dev_priv->ggtt.base;
 	struct drm_i915_gem_object *obj;
 	struct i915_vma *vma;
 
@@ -1302,7 +1302,7 @@ intel_ring_create_vma(struct drm_i915_private *dev_priv, int size)
 	if (vm->has_read_only)
 		i915_gem_object_set_readonly(obj);
 
-	vma = i915_vma_instance(obj, &dev_priv->ggtt.vm, NULL);
+	vma = i915_vma_instance(obj, vm, NULL);
 	if (IS_ERR(vma))
 		goto err;
 
