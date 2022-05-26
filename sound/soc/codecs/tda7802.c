@@ -825,4 +825,5 @@ module_i2c_driver(tda7802_i2c_driver);
 
 MODULE_DESCRIPTION("ASoC ST TDA7802 driver");
 MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Tesla OpenSource <opensource@tesla.com>");
 MODULE_AUTHOR("Thomas Preston <thomas.preston@codethink.co.uk>");

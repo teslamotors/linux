@@ -1189,6 +1189,7 @@ static int uart_break_ctl(struct tty_struct *tty, int break_state)
 	if (!uport)
 		goto out;
 
+	pm_runtime_get_sync(uport->dev);
 	if (uport->type != PORT_UNKNOWN && uport->ops->break_ctl)
 		uport->ops->break_ctl(uport, break_state);
 	pm_runtime_mark_last_busy(uport->dev);
@@ -1631,19 +1632,6 @@ static void uart_tty_port_shutdown(struct tty_port *port)
 	 * we don't try to resume a port that has been shutdown.
 	 */
 	tty_port_set_suspended(port, 0);
-
-	/*
-	 * Free the transmit buffer.
-	 */
-	spin_lock_irq(&uport->lock);
-	buf = state->xmit.buf;
-	state->xmit.buf = NULL;
-	spin_unlock_irq(&uport->lock);
-
-	if (buf)
-		free_page((unsigned long)buf);
-
-	uart_change_pm(state, UART_PM_STATE_OFF);
 }
 
 static void uart_wait_until_sent(struct tty_struct *tty, int timeout)

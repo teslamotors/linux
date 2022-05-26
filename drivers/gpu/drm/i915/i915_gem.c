@@ -4087,7 +4087,7 @@ i915_gem_object_ggtt_pin(struct drm_i915_gem_object *obj,
 			 u64 flags)
 {
 	struct drm_i915_private *dev_priv = to_i915(obj->base.dev);
-	struct i915_address_space *vm = &dev_priv->ggtt.base;
+	struct i915_address_space *vm = &dev_priv->ggtt.vm;
 
 	return i915_gem_object_pin(obj, vm, view, size, alignment,
 				   flags | PIN_GLOBAL);

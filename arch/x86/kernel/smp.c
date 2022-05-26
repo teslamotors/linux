@@ -270,6 +270,7 @@ static void native_stop_other_cpus(int wait)
 			udelay(1);
 	}
 
+	store_regs(NULL);
 	local_irq_save(flags);
 	disable_local_APIC();
 	mcheck_cpu_clear(this_cpu_ptr(&cpu_info));

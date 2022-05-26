@@ -8381,8 +8381,6 @@ void intel_init_gt_powersave(struct drm_i915_private *dev_priv)
 
 	i915_rc6_ctx_wa_init(dev_priv);
 
-	i915_rc6_ctx_wa_init(dev_priv);
-
 	/* Initialize RPS limits (for userspace) */
 	if (IS_CHERRYVIEW(dev_priv))
 		cherryview_init_gt_powersave(dev_priv);
@@ -8434,7 +8432,7 @@ void intel_cleanup_gt_powersave(struct drm_i915_private *dev_priv)
 
 	i915_rc6_ctx_wa_cleanup(dev_priv);
 
-	if (!i915.enable_rc6)
+	if (!i915_modparams.enable_rc6)
 		intel_runtime_pm_put(dev_priv);
 }
 
@@ -8479,9 +8477,9 @@ static void __intel_disable_rc6(struct drm_i915_private *dev_priv)
 
 static void intel_disable_rc6(struct drm_i915_private *dev_priv)
 {
-	mutex_lock(&dev_priv->rps.hw_lock);
+	mutex_lock(&dev_priv->pcu_lock);
 	__intel_disable_rc6(dev_priv);
-	mutex_unlock(&dev_priv->rps.hw_lock);
+	mutex_unlock(&dev_priv->pcu_lock);
 }
 
 static void intel_disable_rps(struct drm_i915_private *dev_priv)
@@ -8499,14 +8497,14 @@ void intel_disable_gt_powersave(struct drm_i915_private *dev_priv)
 	if (!READ_ONCE(dev_priv->rps.enabled))
 		return;
 
-	mutex_lock(&dev_priv->rps.hw_lock);
+	mutex_lock(&dev_priv->pcu_lock);
 
 	__intel_disable_rc6(dev_priv);
 	intel_disable_rps(dev_priv);
 
 	dev_priv->rps.enabled = false;
 
-	mutex_unlock(&dev_priv->rps.hw_lock);
+	mutex_unlock(&dev_priv->pcu_lock);
 }
 
 void intel_enable_gt_powersave(struct drm_i915_private *dev_priv)

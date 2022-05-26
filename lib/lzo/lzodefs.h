@@ -13,6 +13,12 @@
  */
 
 
+/* Version
+ * 0: original lzo version
+ * 1: lzo with support for RLE
+ */
+#define LZO_VERSION 1
+
 #define COPY4(dst, src)	\
 		put_unaligned(get_unaligned((const u32 *)(src)), (u32 *)(dst))
 #if defined(__x86_64__)
@@ -28,6 +34,7 @@
 #elif defined(__x86_64__)
 #define LZO_USE_CTZ64	1
 #define LZO_USE_CTZ32	1
+#define LZO_FAST_64BIT_MEMORY_ACCESS
 #elif defined(__i386__) || defined(__powerpc__)
 #define LZO_USE_CTZ32	1
 #elif defined(__arm__) && (__LINUX_ARM_ARCH__ >= 5)
@@ -37,7 +44,8 @@
 #define M1_MAX_OFFSET	0x0400
 #define M2_MAX_OFFSET	0x0800
 #define M3_MAX_OFFSET	0x4000
-#define M4_MAX_OFFSET	0xbfff
+#define M4_MAX_OFFSET_V0	0xbfff
+#define M4_MAX_OFFSET_V1	0xbffe
 
 #define M1_MIN_LEN	2
 #define M1_MAX_LEN	2
@@ -52,6 +60,9 @@
 #define M2_MARKER	64
 #define M3_MARKER	32
 #define M4_MARKER	16
+
+#define MIN_ZERO_RUN_LENGTH	4
+#define MAX_ZERO_RUN_LENGTH	(2047 + MIN_ZERO_RUN_LENGTH)
 
 #define lzo_dict_t      unsigned short
 #define D_BITS		13

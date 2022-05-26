@@ -63,7 +63,6 @@ static bool xenvif_rx_ring_slots_available(struct xenvif_queue *queue)
 	needed = READ_ONCE(queue->rx_slots_needed);
 	if (!needed)
 		return false;
-	}
 
 	do {
 		prod = queue->rx.sring->req_prod;

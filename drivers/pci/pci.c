@@ -1388,7 +1388,6 @@ static int pci_enable_device_flags(struct pci_dev *dev, unsigned long flags)
 
 	if (atomic_inc_return(&dev->enable_cnt) > 1)
 		return 0;		/* already enabled */
-	}
 
 	bridge = pci_upstream_bridge(dev);
 	if (bridge)

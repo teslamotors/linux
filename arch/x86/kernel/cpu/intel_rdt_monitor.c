@@ -225,6 +225,14 @@ void free_rmid(u32 rmid)
 		list_add_tail(&entry->list, &rmid_free_lru);
 }
 
+static u64 mbm_overflow_count(u64 prev_msr, u64 cur_msr)
+{
+	u64 shift = 64 - MBM_CNTR_WIDTH, chunks;
+
+	chunks = (cur_msr << shift) - (prev_msr << shift);
+	return chunks >>= shift;
+}
+
 static u64 __mon_event_count(u32 rmid, struct rmid_read *rr)
 {
 	struct mbm_state *m;
