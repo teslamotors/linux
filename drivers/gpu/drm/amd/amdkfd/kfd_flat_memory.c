@@ -405,6 +405,10 @@ int kfd_init_apertures(struct kfd_process *process)
 			case CHIP_POLARIS12:
 			case CHIP_VEGAM:
 				kfd_init_apertures_vi(pdd, id);
+				/* VI GPUs cannot support SVM with only
+				 * 40 bits of virtual address space.
+				 */
+				process->svm_disabled = true;
 				break;
 			case CHIP_VEGA10:
 			case CHIP_VEGA12:
@@ -412,6 +416,7 @@ int kfd_init_apertures(struct kfd_process *process)
 			case CHIP_RAVEN:
 			case CHIP_RENOIR:
 			case CHIP_ARCTURUS:
+			case CHIP_ALDEBARAN:
 			case CHIP_NAVI10:
 			case CHIP_NAVI12:
 			case CHIP_NAVI14:
@@ -419,6 +424,8 @@ int kfd_init_apertures(struct kfd_process *process)
 			case CHIP_NAVY_FLOUNDER:
 			case CHIP_VANGOGH:
 			case CHIP_DIMGREY_CAVEFISH:
+			case CHIP_BEIGE_GOBY:
+			case CHIP_YELLOW_CARP:
 				kfd_init_apertures_v9(pdd, id);
 				break;
 			default:

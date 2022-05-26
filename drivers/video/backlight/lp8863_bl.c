@@ -161,7 +161,9 @@ static int lp8863_backlight_update_status(struct backlight_device *bl)
 	}
 
 	if (bl->props.state & BL_CORE_SUSPENDED) {
-		brightness = 0;
+		dev_info(&lp->client->dev,
+			 "Device suspended, not updating backlight\n");
+		return 0;
 	}
 
 	/* update internal power state */

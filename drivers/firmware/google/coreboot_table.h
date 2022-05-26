@@ -39,6 +39,14 @@ struct lb_cbmem_ref {
 	u64 cbmem_addr;
 };
 
+struct lb_range {
+	u32 tag;
+	u32 size;
+
+	u64 range_start;
+	u32 range_size;
+};
+
 /* Describes framebuffer setup by coreboot */
 struct lb_framebuffer {
 	u32 tag;
@@ -65,6 +73,7 @@ struct coreboot_device {
 	union {
 		struct coreboot_table_entry entry;
 		struct lb_cbmem_ref cbmem_ref;
+		struct lb_range range;
 		struct lb_framebuffer framebuffer;
 	};
 };

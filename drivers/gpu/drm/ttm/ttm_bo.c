@@ -51,6 +51,7 @@ static void ttm_bo_global_kobj_release(struct kobject *kobj);
 DEFINE_MUTEX(ttm_global_mutex);
 unsigned ttm_bo_glob_use_count;
 struct ttm_bo_global ttm_bo_glob;
+EXPORT_SYMBOL(ttm_bo_glob);
 
 static struct attribute ttm_bo_count = {
 	.name = "bo_count",
@@ -1172,9 +1173,8 @@ static int ttm_bo_move_buffer(struct ttm_buffer_object *bo,
 	 */
 	ret = ttm_bo_mem_space(bo, placement, &mem, ctx);
 	if (ret)
-		goto out_unlock;
+		return ret;
 	ret = ttm_bo_handle_move_mem(bo, &mem, false, ctx);
-out_unlock:
 	if (ret && mem.mm_node)
 		ttm_bo_mem_put(bo, &mem);
 	return ret;
@@ -1787,9 +1787,13 @@ void ttm_bo_unmap_virtual(struct ttm_buffer_object *bo)
 	ttm_bo_unmap_virtual_locked(bo);
 	ttm_mem_io_unlock(man);
 }
-
-
 EXPORT_SYMBOL(ttm_bo_unmap_virtual);
+
+void ttm_bo_unmap_virtual_address_space(struct ttm_bo_device *bdev)
+{
+	unmap_mapping_range(bdev->dev_mapping, 0, 0, 1);
+}
+EXPORT_SYMBOL(ttm_bo_unmap_virtual_address_space);
 
 int ttm_bo_wait(struct ttm_buffer_object *bo,
 		bool interruptible, bool no_wait)

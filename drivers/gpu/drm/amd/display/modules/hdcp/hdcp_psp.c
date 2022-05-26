@@ -44,11 +44,16 @@ static void hdcp2_message_init(struct mod_hdcp *hdcp,
 	in->process.msg3_desc.msg_id = TA_HDCP_HDCP2_MSG_ID__NULL_MESSAGE;
 	in->process.msg3_desc.msg_size = 0;
 }
+#if defined(CONFIG_DRM_AMD_DC_DCN3_1)
+static enum mod_hdcp_status mod_hdcp_remove_display_from_topology_v2(
+		struct mod_hdcp *hdcp, uint8_t index)
+#else
 enum mod_hdcp_status mod_hdcp_remove_display_from_topology(
 		struct mod_hdcp *hdcp, uint8_t index)
- {
- 	struct psp_context *psp = hdcp->config.psp.handle;
- 	struct ta_dtm_shared_memory *dtm_cmd;
+#endif
+{
+	struct psp_context *psp = hdcp->config.psp.handle;
+	struct ta_dtm_shared_memory *dtm_cmd;
 	struct mod_hdcp_display *display =
 			get_active_display_at_index(hdcp, index);
 	enum mod_hdcp_status status = MOD_HDCP_STATUS_SUCCESS;
@@ -79,8 +84,66 @@ enum mod_hdcp_status mod_hdcp_remove_display_from_topology(
 	mutex_unlock(&psp->dtm_context.mutex);
 	return status;
 }
+#if defined(CONFIG_DRM_AMD_DC_DCN3_1)
+static enum mod_hdcp_status mod_hdcp_remove_display_from_topology_v3(
+		struct mod_hdcp *hdcp, uint8_t index)
+{
+	struct psp_context *psp = hdcp->config.psp.handle;
+	struct ta_dtm_shared_memory *dtm_cmd;
+	struct mod_hdcp_display *display =
+		get_active_display_at_index(hdcp, index);
+	enum mod_hdcp_status status = MOD_HDCP_STATUS_SUCCESS;
+
+	dtm_cmd = (struct ta_dtm_shared_memory *)psp->dtm_context.dtm_shared_buf;
+
+	if (!display || !is_display_active(display))
+		return MOD_HDCP_STATUS_DISPLAY_NOT_FOUND;
+
+	mutex_lock(&psp->dtm_context.mutex);
+
+	memset(dtm_cmd, 0, sizeof(struct ta_dtm_shared_memory));
+
+	dtm_cmd->cmd_id = TA_DTM_COMMAND__TOPOLOGY_UPDATE_V3;
+	dtm_cmd->dtm_in_message.topology_update_v3.display_handle = display->index;
+	dtm_cmd->dtm_in_message.topology_update_v3.is_active = 0;
+	dtm_cmd->dtm_status = TA_DTM_STATUS__GENERIC_FAILURE;
+
+	psp_dtm_invoke(psp, dtm_cmd->cmd_id);
+
+	if (dtm_cmd->dtm_status != TA_DTM_STATUS__SUCCESS) {
+		status = mod_hdcp_remove_display_from_topology_v2(hdcp, index);
+		if (status != MOD_HDCP_STATUS_SUCCESS)
+			display->state = MOD_HDCP_DISPLAY_INACTIVE;
+	} else {
+		display->state = MOD_HDCP_DISPLAY_ACTIVE;
+		HDCP_TOP_REMOVE_DISPLAY_TRACE(hdcp, display->index);
+	}
+
+	mutex_unlock(&psp->dtm_context.mutex);
+
+	return status;
+}
+
+enum mod_hdcp_status mod_hdcp_remove_display_from_topology(
+		struct mod_hdcp *hdcp, uint8_t index)
+{
+	enum mod_hdcp_status status = MOD_HDCP_STATUS_UPDATE_TOPOLOGY_FAILURE;
+
+	if (hdcp->config.psp.caps.dtm_v3_supported)
+		status = mod_hdcp_remove_display_from_topology_v3(hdcp, index);
+	else
+		status = mod_hdcp_remove_display_from_topology_v2(hdcp, index);
+
+	return status;
+}
+#endif
+#if defined(CONFIG_DRM_AMD_DC_DCN3_1)
+static enum mod_hdcp_status mod_hdcp_add_display_to_topology_v2(
+		struct mod_hdcp *hdcp, struct mod_hdcp_display *display)
+#else
 enum mod_hdcp_status mod_hdcp_add_display_to_topology(struct mod_hdcp *hdcp,
 					       struct mod_hdcp_display *display)
+#endif
 {
 	struct psp_context *psp = hdcp->config.psp.handle;
 	struct ta_dtm_shared_memory *dtm_cmd;
@@ -106,7 +169,7 @@ enum mod_hdcp_status mod_hdcp_add_display_to_topology(struct mod_hdcp *hdcp,
 	dtm_cmd->dtm_in_message.topology_update_v2.dig_be = link->dig_be;
 	dtm_cmd->dtm_in_message.topology_update_v2.dig_fe = display->dig_fe;
 	if (is_dp_hdcp(hdcp))
-		dtm_cmd->dtm_in_message.topology_update_v2.is_assr = link->dp.assr_supported;
+		dtm_cmd->dtm_in_message.topology_update_v2.is_assr = link->dp.assr_enabled;
 
 	dtm_cmd->dtm_in_message.topology_update_v2.dp_mst_vcid = display->vc_id;
 	dtm_cmd->dtm_in_message.topology_update_v2.max_hdcp_supported_version =
@@ -126,6 +189,72 @@ enum mod_hdcp_status mod_hdcp_add_display_to_topology(struct mod_hdcp *hdcp,
 	return status;
 }
 
+#if defined(CONFIG_DRM_AMD_DC_DCN3_1)
+static enum mod_hdcp_status mod_hdcp_add_display_to_topology_v3(
+		struct mod_hdcp *hdcp, struct mod_hdcp_display *display)
+{
+	struct psp_context *psp = hdcp->config.psp.handle;
+	struct ta_dtm_shared_memory *dtm_cmd;
+	struct mod_hdcp_link *link = &hdcp->connection.link;
+	enum mod_hdcp_status status = MOD_HDCP_STATUS_SUCCESS;
+
+	if (!psp->dtm_context.dtm_initialized) {
+		DRM_INFO("Failed to add display topology, DTM TA is not initialized.");
+		display->state = MOD_HDCP_DISPLAY_INACTIVE;
+		return MOD_HDCP_STATUS_FAILURE;
+	}
+
+	dtm_cmd = (struct ta_dtm_shared_memory *)psp->dtm_context.dtm_shared_buf;
+
+	mutex_lock(&psp->dtm_context.mutex);
+	memset(dtm_cmd, 0, sizeof(struct ta_dtm_shared_memory));
+
+	dtm_cmd->cmd_id = TA_DTM_COMMAND__TOPOLOGY_UPDATE_V3;
+	dtm_cmd->dtm_in_message.topology_update_v3.display_handle = display->index;
+	dtm_cmd->dtm_in_message.topology_update_v3.is_active = 1;
+	dtm_cmd->dtm_in_message.topology_update_v3.controller = display->controller;
+	dtm_cmd->dtm_in_message.topology_update_v3.ddc_line = link->ddc_line;
+	dtm_cmd->dtm_in_message.topology_update_v3.link_enc = link->link_enc_idx;
+	dtm_cmd->dtm_in_message.topology_update_v3.stream_enc = display->stream_enc_idx;
+	if (is_dp_hdcp(hdcp))
+		dtm_cmd->dtm_in_message.topology_update_v3.is_assr = link->dp.assr_enabled;
+
+	dtm_cmd->dtm_in_message.topology_update_v3.dp_mst_vcid = display->vc_id;
+	dtm_cmd->dtm_in_message.topology_update_v3.max_hdcp_supported_version =
+			TA_DTM_HDCP_VERSION_MAX_SUPPORTED__2_3;
+	dtm_cmd->dtm_in_message.topology_update_v3.encoder_type = TA_DTM_ENCODER_TYPE__DIG;
+	dtm_cmd->dtm_status = TA_DTM_STATUS__GENERIC_FAILURE;
+	dtm_cmd->dtm_in_message.topology_update_v3.phy_id = link->phy_idx;
+	dtm_cmd->dtm_in_message.topology_update_v3.link_hdcp_cap = link->hdcp_supported_informational;
+
+	psp_dtm_invoke(psp, dtm_cmd->cmd_id);
+
+	if (dtm_cmd->dtm_status != TA_DTM_STATUS__SUCCESS) {
+		status = mod_hdcp_add_display_to_topology_v2(hdcp, display);
+		if (status != MOD_HDCP_STATUS_SUCCESS)
+			display->state = MOD_HDCP_DISPLAY_INACTIVE;
+	} else {
+		HDCP_TOP_ADD_DISPLAY_TRACE(hdcp, display->index);
+	}
+
+	mutex_unlock(&psp->dtm_context.mutex);
+
+	return status;
+}
+
+enum mod_hdcp_status mod_hdcp_add_display_to_topology(struct mod_hdcp *hdcp,
+					       struct mod_hdcp_display *display)
+{
+	enum mod_hdcp_status status = MOD_HDCP_STATUS_SUCCESS;
+
+	if (hdcp->config.psp.caps.dtm_v3_supported)
+		status = mod_hdcp_add_display_to_topology_v3(hdcp, display);
+	else
+		status = mod_hdcp_add_display_to_topology_v2(hdcp, display);
+
+	return status;
+}
+#endif
 enum mod_hdcp_status mod_hdcp_hdcp1_create_session(struct mod_hdcp *hdcp)
 {
 
@@ -371,19 +500,6 @@ enum mod_hdcp_status mod_hdcp_hdcp1_link_maintenance(struct mod_hdcp *hdcp)
 	return status;
 }
 
-enum mod_hdcp_status mod_hdcp_hdcp1_get_link_encryption_status(struct mod_hdcp *hdcp,
-							       enum mod_hdcp_encryption_status *encryption_status)
-{
-	*encryption_status = MOD_HDCP_ENCRYPTION_STATUS_HDCP_OFF;
-
-	if (mod_hdcp_hdcp1_link_maintenance(hdcp) != MOD_HDCP_STATUS_SUCCESS)
-		return MOD_HDCP_STATUS_FAILURE;
-
-	*encryption_status = MOD_HDCP_ENCRYPTION_STATUS_HDCP1_ON;
-
-	return MOD_HDCP_STATUS_SUCCESS;
-}
-
 enum mod_hdcp_status mod_hdcp_hdcp2_create_session(struct mod_hdcp *hdcp)
 {
 	struct psp_context *psp = hdcp->config.psp.handle;
@@ -548,6 +664,8 @@ enum mod_hdcp_status mod_hdcp_hdcp2_validate_ake_cert(struct mod_hdcp *hdcp)
 			   TA_HDCP2_MSG_AUTHENTICATION_STATUS__RECEIVERID_REVOKED) {
 			hdcp->connection.is_hdcp2_revoked = 1;
 			status = MOD_HDCP_STATUS_HDCP2_AKE_CERT_REVOKED;
+		}  else {
+			status = MOD_HDCP_STATUS_HDCP2_VALIDATE_AKE_CERT_FAILURE;
 		}
 	}
 	mutex_unlock(&psp->hdcp_context.mutex);
@@ -789,6 +907,8 @@ enum mod_hdcp_status mod_hdcp_hdcp2_validate_rx_id_list(struct mod_hdcp *hdcp)
 			   TA_HDCP2_MSG_AUTHENTICATION_STATUS__RECEIVERID_REVOKED) {
 			hdcp->connection.is_hdcp2_revoked = 1;
 			status = MOD_HDCP_STATUS_HDCP2_RX_ID_LIST_REVOKED;
+		} else {
+			status = MOD_HDCP_STATUS_HDCP2_VALIDATE_RX_ID_LIST_FAILURE;
 		}
 	}
 	mutex_unlock(&psp->hdcp_context.mutex);
@@ -912,3 +1032,13 @@ enum mod_hdcp_status mod_hdcp_hdcp2_validate_stream_ready(struct mod_hdcp *hdcp)
 	return status;
 }
 
+bool mod_hdcp_is_link_encryption_enabled(struct mod_hdcp *hdcp)
+{
+	/* unsupported */
+	return true;
+}
+
+void mod_hdcp_save_current_encryption_states(struct mod_hdcp *hdcp)
+{
+	/* unsupported */
+}

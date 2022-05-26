@@ -1160,6 +1160,8 @@ void ttm_unmap_and_unpopulate_pages(struct device *dev, struct ttm_dma_tt *tt)
 		dma_unmap_page(dev, tt->dma_address[i], num_pages * PAGE_SIZE,
 			       DMA_BIDIRECTIONAL);
 
+                tt->dma_address[i] = 0;
+
 		i += num_pages;
 	}
 	ttm_pool_unpopulate(&tt->ttm);

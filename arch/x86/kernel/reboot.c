@@ -564,6 +564,8 @@ void __attribute__((weak)) mach_reboot_fixups(void)
 {
 }
 
+#define EFCH_PM_ACPI_MMIO_OFFSET	0xfed80310
+
 /*
  * To the best of our knowledge Windows compatible x86 hardware expects
  * the following on reboot:
@@ -589,6 +591,8 @@ static void native_machine_emergency_restart(void)
 	int attempt = 0;
 	int orig_reboot_type = reboot_type;
 	unsigned short mode;
+	unsigned char  PwrRsrCfg;
+	static void __iomem  *pmbase;
 
 	if (reboot_emergency)
 		emergency_vmx_disable_all();
@@ -598,6 +602,19 @@ static void native_machine_emergency_restart(void)
 	/* Tell the BIOS if we want cold or warm reboot */
 	mode = reboot_mode == REBOOT_WARM ? 0x1234 : 0;
 	*((unsigned short *)__va(0x472)) = mode;
+
+	if (reboot_mode == REBOOT_WARM) {
+		pmbase = ioremap(EFCH_PM_ACPI_MMIO_OFFSET,0x2);
+		if (!pmbase) {
+			pr_err("failed to map pmbase address\n");
+		} else {
+			PwrRsrCfg = ioread8(pmbase);
+			PwrRsrCfg = PwrRsrCfg & 0xFD;
+			iowrite8(PwrRsrCfg, pmbase);
+			iounmap(pmbase);
+		}
+
+	}
 
 	/*
 	 * If an EFI capsule has been registered with the firmware then

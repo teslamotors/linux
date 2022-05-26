@@ -73,6 +73,11 @@ extern "C" {
 /* Forward declarations */
 struct dmub_srv;
 struct dmub_srv_common_regs;
+#ifdef CONFIG_DRM_AMD_DC_DCN3_1
+struct dmub_srv_dcn31_regs;
+#endif
+
+struct dmcub_trace_buf_entry;
 
 /* enum dmub_status - return code for dmcub functions */
 enum dmub_status {
@@ -97,6 +102,10 @@ enum dmub_asic {
 #ifdef CONFIG_DRM_AMD_DC_DCN3_02
 	DMUB_ASIC_DCN302,
 #endif
+	DMUB_ASIC_DCN303,
+#ifdef CONFIG_DRM_AMD_DC_DCN3_1
+	DMUB_ASIC_DCN31,
+#endif
 	DMUB_ASIC_MAX,
 };
 
@@ -111,6 +120,15 @@ enum dmub_window_id {
 	DMUB_WINDOW_6_FW_STATE,
 	DMUB_WINDOW_7_SCRATCH_MEM,
 	DMUB_WINDOW_TOTAL,
+};
+
+/* enum dmub_notification_type - dmub outbox notification identifier */
+enum dmub_notification_type {
+	DMUB_NOTIFICATION_NO_DATA = 0,
+	DMUB_NOTIFICATION_AUX_REPLY,
+	DMUB_NOTIFICATION_HPD,
+	DMUB_NOTIFICATION_HPD_IRQ,
+	DMUB_NOTIFICATION_MAX
 };
 
 /**
@@ -211,6 +229,26 @@ struct dmub_srv_fb_info {
 	struct dmub_fb fb[DMUB_WINDOW_TOTAL];
 };
 
+/*
+ * struct dmub_srv_hw_params - params for dmub hardware initialization
+ * @fb: framebuffer info for each region
+ * @fb_base: base of the framebuffer aperture
+ * @fb_offset: offset of the framebuffer aperture
+ * @psp_version: psp version to pass for DMCU init
+ * @load_inst_const: true if DMUB should load inst const fw
+ */
+struct dmub_srv_hw_params {
+	struct dmub_fb *fb[DMUB_WINDOW_TOTAL];
+	uint64_t fb_base;
+	uint64_t fb_offset;
+	uint32_t psp_version;
+	bool load_inst_const;
+	bool skip_panel_power_sequence;
+#ifdef CONFIG_DRM_AMD_DC_DCN3_1
+	bool disable_z10;
+#endif
+};
+
 /**
  * struct dmub_srv_base_funcs - Driver specific base callbacks
  */
@@ -262,6 +300,20 @@ struct dmub_srv_hw_funcs {
 
 	void (*set_inbox1_wptr)(struct dmub_srv *dmub, uint32_t wptr_offset);
 
+	void (*setup_out_mailbox)(struct dmub_srv *dmub,
+			      const struct dmub_region *outbox1);
+
+	uint32_t (*get_outbox1_wptr)(struct dmub_srv *dmub);
+
+	void (*set_outbox1_rptr)(struct dmub_srv *dmub, uint32_t rptr_offset);
+
+	void (*setup_outbox0)(struct dmub_srv *dmub,
+			      const struct dmub_region *outbox0);
+
+	uint32_t (*get_outbox0_wptr)(struct dmub_srv *dmub);
+
+	void (*set_outbox0_rptr)(struct dmub_srv *dmub, uint32_t rptr_offset);
+
 	uint32_t (*emul_get_inbox1_rptr)(struct dmub_srv *dmub);
 
 	void (*emul_set_inbox1_wptr)(struct dmub_srv *dmub, uint32_t wptr_offset);
@@ -271,7 +323,8 @@ struct dmub_srv_hw_funcs {
 	bool (*is_hw_init)(struct dmub_srv *dmub);
 
 	bool (*is_phy_init)(struct dmub_srv *dmub);
-	void (*enable_dmub_boot_options)(struct dmub_srv *dmub);
+	void (*enable_dmub_boot_options)(struct dmub_srv *dmub,
+				const struct dmub_srv_hw_params *params);
 
 	void (*skip_dmub_panel_power_sequence)(struct dmub_srv *dmub, bool skip);
 
@@ -285,6 +338,9 @@ struct dmub_srv_hw_funcs {
 			       union dmub_gpint_data_register reg);
 
 	uint32_t (*get_gpint_response)(struct dmub_srv *dmub);
+
+	void (*send_inbox0_cmd)(struct dmub_srv *dmub, union dmub_inbox0_data_register data);
+	uint32_t (*get_current_time)(struct dmub_srv *dmub);
 };
 
 /**
@@ -305,23 +361,6 @@ struct dmub_srv_create_params {
 	bool is_virtual;
 };
 
-/*
- * struct dmub_srv_hw_params - params for dmub hardware initialization
- * @fb: framebuffer info for each region
- * @fb_base: base of the framebuffer aperture
- * @fb_offset: offset of the framebuffer aperture
- * @psp_version: psp version to pass for DMCU init
- * @load_inst_const: true if DMUB should load inst const fw
- */
-struct dmub_srv_hw_params {
-	struct dmub_fb *fb[DMUB_WINDOW_TOTAL];
-	uint64_t fb_base;
-	uint64_t fb_offset;
-	uint32_t psp_version;
-	bool load_inst_const;
-	bool skip_panel_power_sequence;
-};
-
 /**
  * struct dmub_srv - software state for dmcub
  * @asic: dmub asic identifier
@@ -340,10 +379,20 @@ struct dmub_srv {
 
 	/* private: internal use only */
 	const struct dmub_srv_common_regs *regs;
+#ifdef CONFIG_DRM_AMD_DC_DCN3_1
+	const struct dmub_srv_dcn31_regs *regs_dcn31;
+#endif
 
 	struct dmub_srv_base_funcs funcs;
 	struct dmub_srv_hw_funcs hw_funcs;
 	struct dmub_rb inbox1_rb;
+	/**
+	 * outbox1_rb is accessed without locks (dal & dc)
+	 * and to be used only in dmub_srv_stat_get_notification()
+	 */
+	struct dmub_rb outbox1_rb;
+
+	struct dmub_rb outbox0_rb;
 
 	bool sw_init;
 	bool hw_init;
@@ -354,6 +403,26 @@ struct dmub_srv {
 
 	/* Feature capabilities reported by fw */
 	struct dmub_feature_caps feature_caps;
+};
+
+/**
+ * struct dmub_notification - dmub notification data
+ * @type: dmub notification type
+ * @link_index: link index to identify aux connection
+ * @result: USB4 status returned from dmub
+ * @pending_notification: Indicates there are other pending notifications
+ * @aux_reply: aux reply
+ * @hpd_status: hpd status
+ */
+struct dmub_notification {
+	enum dmub_notification_type type;
+	uint8_t link_index;
+	uint8_t result;
+	bool pending_notification;
+	union {
+		struct aux_reply_data aux_reply;
+		enum dp_hpd_status hpd_status;
+	};
 };
 
 /**
@@ -619,6 +688,8 @@ enum dmub_status dmub_srv_get_fw_boot_status(struct dmub_srv *dmub,
 
 enum dmub_status dmub_srv_cmd_with_reply_data(struct dmub_srv *dmub,
 					      union dmub_rb_cmd *cmd);
+
+bool dmub_srv_get_outbox0_msg(struct dmub_srv *dmub, struct dmcub_trace_buf_entry *entry);
 
 #if defined(__cplusplus)
 }

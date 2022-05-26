@@ -204,6 +204,7 @@ enum {
 	NV_NAVI14_M_A0      = 20,
 	NV_SIENNA_CICHLID_P_A0      = 40,
 	NV_DIMGREY_CAVEFISH_P_A0      = 60,
+	NV_BEIGE_GOBY_P_A0  = 70,
 	NV_UNKNOWN          = 0xFF
 };
 
@@ -218,8 +219,9 @@ enum {
 #define ASICREV_IS_SIENNA_CICHLID_P(eChipRev)        ((eChipRev >= NV_SIENNA_CICHLID_P_A0) && (eChipRev < NV_DIMGREY_CAVEFISH_P_A0))
 #endif
 #if defined(CONFIG_DRM_AMD_DC_DCN3_02)
-#define ASICREV_IS_DIMGREY_CAVEFISH_P(eChipRev)        ((eChipRev >= NV_DIMGREY_CAVEFISH_P_A0) && (eChipRev < NV_UNKNOWN))
+#define ASICREV_IS_DIMGREY_CAVEFISH_P(eChipRev)        ((eChipRev >= NV_DIMGREY_CAVEFISH_P_A0) && (eChipRev < NV_BEIGE_GOBY_P_A0))
 #endif
+#define ASICREV_IS_BEIGE_GOBY_P(eChipRev)	((eChipRev >= NV_BEIGE_GOBY_P_A0) && (eChipRev < NV_UNKNOWN))
 #define GREEN_SARDINE_A0 0xA1
 #ifndef ASICREV_IS_GREEN_SARDINE
 #define ASICREV_IS_GREEN_SARDINE(eChipRev) ((eChipRev >= GREEN_SARDINE_A0) && (eChipRev < 0xFF))
@@ -234,6 +236,19 @@ enum {
 #define ASICREV_IS_VANGOGH(eChipRev) ((eChipRev >= VANGOGH_A0) && (eChipRev < VANGOGH_UNKNOWN))
 #endif
 #endif
+
+#if defined(CONFIG_DRM_AMD_DC_DCN3_1)
+#define FAMILY_YELLOW_CARP                     146
+
+#define YELLOW_CARP_A0 0x01
+#define YELLOW_CARP_B0 0x02		// TODO: DCN31 - update with correct B0 ID
+#define YELLOW_CARP_UNKNOWN 0xFF
+
+#ifndef ASICREV_IS_YELLOW_CARP
+#define ASICREV_IS_YELLOW_CARP(eChipRev) ((eChipRev >= YELLOW_CARP_A0) && (eChipRev < YELLOW_CARP_UNKNOWN))
+#endif
+#endif
+
 
 /*
  * ASIC chip ID

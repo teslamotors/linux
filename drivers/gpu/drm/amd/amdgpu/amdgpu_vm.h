@@ -57,6 +57,9 @@ struct amdgpu_bo_list_entry;
 /* RV+ */
 #define AMDGPU_PTE_TMZ         (1ULL << 3)
 
+/* RV+ */
+#define AMDGPU_PTE_TMZ		(1ULL << 3)
+
 /* VI only */
 #define AMDGPU_PTE_EXECUTABLE	(1ULL << 4)
 
@@ -120,9 +123,6 @@ struct amdgpu_bo_list_entry;
 
 /* max vmids dedicated for process */
 #define AMDGPU_VM_MAX_RESERVED_VMID	1
-
-#define AMDGPU_VM_CONTEXT_GFX 0
-#define AMDGPU_VM_CONTEXT_COMPUTE 1
 
 /* See vm_update_mode */
 #define AMDGPU_VM_USE_CPU_FOR_GFX (1 << 0)
@@ -331,6 +331,7 @@ struct amdgpu_vm_manager {
 	/* Handling of VMIDs */
 	struct amdgpu_vmid_mgr			id_mgr[AMDGPU_MAX_VMHUBS];
 	unsigned int				first_kfd_vmid;
+	bool					concurrent_flush;
 
 	/* Handling of VM fences */
 	u64					fence_context;
@@ -377,8 +378,7 @@ void amdgpu_vm_manager_init(struct amdgpu_device *adev);
 void amdgpu_vm_manager_fini(struct amdgpu_device *adev);
 
 long amdgpu_vm_wait_idle(struct amdgpu_vm *vm, long timeout);
-int amdgpu_vm_init(struct amdgpu_device *adev, struct amdgpu_vm *vm,
-		   int vm_context, unsigned int pasid);
+int amdgpu_vm_init(struct amdgpu_device *adev, struct amdgpu_vm *vm, u32 pasid);
 int amdgpu_vm_make_compute(struct amdgpu_device *adev, struct amdgpu_vm *vm, unsigned int pasid);
 void amdgpu_vm_release_compute(struct amdgpu_device *adev, struct amdgpu_vm *vm);
 void amdgpu_vm_fini(struct amdgpu_device *adev, struct amdgpu_vm *vm);

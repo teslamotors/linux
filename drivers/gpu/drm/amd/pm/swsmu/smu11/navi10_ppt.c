@@ -70,6 +70,8 @@
 	FEATURE_MASK(FEATURE_DPM_LINK_BIT)	 | \
 	FEATURE_MASK(FEATURE_DPM_DCEFCLK_BIT))
 
+#define SMU_11_0_GFX_BUSY_THRESHOLD 15
+
 static struct cmn2asic_msg_mapping navi10_message_map[SMU_MSG_MAX_COUNT] = {
 	MSG_MAP(TestMessage,			PPSMC_MSG_TestMessage,			1),
 	MSG_MAP(GetSmuVersion,			PPSMC_MSG_GetSmuVersion,		1),
@@ -338,19 +340,34 @@ navi10_get_allowed_feature_mask(struct smu_context *smu,
 	return 0;
 }
 
-static int navi10_check_powerplay_table(struct smu_context *smu)
+static void navi10_check_bxco_support(struct smu_context *smu)
 {
 	struct smu_table_context *table_context = &smu->smu_table;
 	struct smu_11_0_powerplay_table *powerplay_table =
 		table_context->power_play_table;
 	struct smu_baco_context *smu_baco = &smu->smu_baco;
+	struct amdgpu_device *adev = smu->adev;
+	uint32_t val;
+
+	if (powerplay_table->platform_caps & SMU_11_0_PP_PLATFORM_CAP_BACO ||
+	    powerplay_table->platform_caps & SMU_11_0_PP_PLATFORM_CAP_MACO) {
+		val = RREG32_SOC15(NBIO, 0, mmRCC_BIF_STRAP0);
+		smu_baco->platform_support =
+			(val & RCC_BIF_STRAP0__STRAP_PX_CAPABLE_MASK) ? true :
+									false;
+	}
+}
+
+static int navi10_check_powerplay_table(struct smu_context *smu)
+{
+	struct smu_table_context *table_context = &smu->smu_table;
+	struct smu_11_0_powerplay_table *powerplay_table =
+		table_context->power_play_table;
 
 	if (powerplay_table->platform_caps & SMU_11_0_PP_PLATFORM_CAP_HARDWAREDC)
 		smu->dc_controlled_by_gpio = true;
 
-	if (powerplay_table->platform_caps & SMU_11_0_PP_PLATFORM_CAP_BACO ||
-	    powerplay_table->platform_caps & SMU_11_0_PP_PLATFORM_CAP_MACO)
-		smu_baco->platform_support = true;
+	navi10_check_bxco_support(smu);
 
 	table_context->thermal_controller_type =
 		powerplay_table->thermal_controller_type;
@@ -429,6 +446,30 @@ static int navi10_store_powerplay_table(struct smu_context *smu)
 	return 0;
 }
 
+static int navi10_set_mp1_state(struct smu_context *smu,
+				enum pp_mp1_state mp1_state)
+{
+	struct amdgpu_device *adev = smu->adev;
+	uint32_t mp1_fw_flags;
+	int ret = 0;
+
+	ret = smu_cmn_set_mp1_state(smu, mp1_state);
+	if (ret)
+		return ret;
+
+	if (mp1_state == PP_MP1_STATE_UNLOAD) {
+		mp1_fw_flags = RREG32_PCIE(MP1_Public |
+					   (smnMP1_FIRMWARE_FLAGS & 0xffffffff));
+
+		mp1_fw_flags &= ~MP1_FIRMWARE_FLAGS__INTERRUPTS_ENABLED_MASK;
+
+		WREG32_PCIE(MP1_Public |
+			    (smnMP1_FIRMWARE_FLAGS & 0xffffffff), mp1_fw_flags);
+	}
+
+	return 0;
+}
+
 static int navi10_setup_pptable(struct smu_context *smu)
 {
 	int ret = 0;
@@ -456,18 +497,13 @@ static int navi10_tables_init(struct smu_context *smu)
 {
 	struct smu_table_context *smu_table = &smu->smu_table;
 	struct smu_table *tables = smu_table->tables;
-	struct amdgpu_device *adev = smu->adev;
 
 	SMU_TABLE_INIT(tables, SMU_TABLE_PPTABLE, sizeof(PPTable_t),
 		       PAGE_SIZE, AMDGPU_GEM_DOMAIN_VRAM);
 	SMU_TABLE_INIT(tables, SMU_TABLE_WATERMARKS, sizeof(Watermarks_t),
 		       PAGE_SIZE, AMDGPU_GEM_DOMAIN_VRAM);
-	if (adev->asic_type == CHIP_NAVI12)
-		SMU_TABLE_INIT(tables, SMU_TABLE_SMU_METRICS, sizeof(SmuMetrics_NV12_t),
-			       PAGE_SIZE, AMDGPU_GEM_DOMAIN_VRAM);
-	else
-		SMU_TABLE_INIT(tables, SMU_TABLE_SMU_METRICS, sizeof(SmuMetrics_t),
-			       PAGE_SIZE, AMDGPU_GEM_DOMAIN_VRAM);
+	SMU_TABLE_INIT(tables, SMU_TABLE_SMU_METRICS, sizeof(SmuMetrics_NV1X_t),
+		       PAGE_SIZE, AMDGPU_GEM_DOMAIN_VRAM);
 	SMU_TABLE_INIT(tables, SMU_TABLE_I2C_COMMANDS, sizeof(SwI2cRequest_t),
 		       PAGE_SIZE, AMDGPU_GEM_DOMAIN_VRAM);
 	SMU_TABLE_INIT(tables, SMU_TABLE_OVERDRIVE, sizeof(OverDriveTable_t),
@@ -478,14 +514,13 @@ static int navi10_tables_init(struct smu_context *smu)
 		       sizeof(DpmActivityMonitorCoeffInt_t), PAGE_SIZE,
 		       AMDGPU_GEM_DOMAIN_VRAM);
 
-	smu_table->metrics_table = kzalloc(adev->asic_type == CHIP_NAVI12 ?
-					   sizeof(SmuMetrics_NV12_t) :
-					   sizeof(SmuMetrics_t), GFP_KERNEL);
+	smu_table->metrics_table = kzalloc(sizeof(SmuMetrics_NV1X_t),
+					   GFP_KERNEL);
 	if (!smu_table->metrics_table)
 		goto err0_out;
 	smu_table->metrics_time = 0;
 
-	smu_table->gpu_metrics_table_size = sizeof(struct gpu_metrics_v1_0);
+	smu_table->gpu_metrics_table_size = sizeof(struct gpu_metrics_v1_3);
 	smu_table->gpu_metrics_table = kzalloc(smu_table->gpu_metrics_table_size, GFP_KERNEL);
 	if (!smu_table->gpu_metrics_table)
 		goto err1_out;
@@ -504,17 +539,13 @@ err0_out:
 	return -ENOMEM;
 }
 
-static int navi10_get_smu_metrics_data(struct smu_context *smu,
-				       MetricsMember_t member,
-				       uint32_t *value)
+static int navi10_get_legacy_smu_metrics_data(struct smu_context *smu,
+					      MetricsMember_t member,
+					      uint32_t *value)
 {
 	struct smu_table_context *smu_table= &smu->smu_table;
-	/*
-	 * This works for NV12 also. As although NV12 uses a different
-	 * SmuMetrics structure from other NV1X ASICs, they share the
-	 * same offsets for the heading parts(those members used here).
-	 */
-	SmuMetrics_t *metrics = (SmuMetrics_t *)smu_table->metrics_table;
+	SmuMetrics_legacy_t *metrics =
+		(SmuMetrics_legacy_t *)smu_table->metrics_table;
 	int ret = 0;
 
 	mutex_lock(&smu->metrics_lock);
@@ -596,6 +627,323 @@ static int navi10_get_smu_metrics_data(struct smu_context *smu,
 	}
 
 	mutex_unlock(&smu->metrics_lock);
+
+	return ret;
+}
+
+static int navi10_get_smu_metrics_data(struct smu_context *smu,
+				       MetricsMember_t member,
+				       uint32_t *value)
+{
+	struct smu_table_context *smu_table= &smu->smu_table;
+	SmuMetrics_t *metrics =
+		(SmuMetrics_t *)smu_table->metrics_table;
+	int ret = 0;
+
+	mutex_lock(&smu->metrics_lock);
+
+	ret = smu_cmn_get_metrics_table_locked(smu,
+					       NULL,
+					       false);
+	if (ret) {
+		mutex_unlock(&smu->metrics_lock);
+		return ret;
+	}
+
+	switch (member) {
+	case METRICS_CURR_GFXCLK:
+		*value = metrics->CurrClock[PPCLK_GFXCLK];
+		break;
+	case METRICS_CURR_SOCCLK:
+		*value = metrics->CurrClock[PPCLK_SOCCLK];
+		break;
+	case METRICS_CURR_UCLK:
+		*value = metrics->CurrClock[PPCLK_UCLK];
+		break;
+	case METRICS_CURR_VCLK:
+		*value = metrics->CurrClock[PPCLK_VCLK];
+		break;
+	case METRICS_CURR_DCLK:
+		*value = metrics->CurrClock[PPCLK_DCLK];
+		break;
+	case METRICS_CURR_DCEFCLK:
+		*value = metrics->CurrClock[PPCLK_DCEFCLK];
+		break;
+	case METRICS_AVERAGE_GFXCLK:
+		if (metrics->AverageGfxActivity > SMU_11_0_GFX_BUSY_THRESHOLD)
+			*value = metrics->AverageGfxclkFrequencyPreDs;
+		else
+			*value = metrics->AverageGfxclkFrequencyPostDs;
+		break;
+	case METRICS_AVERAGE_SOCCLK:
+		*value = metrics->AverageSocclkFrequency;
+		break;
+	case METRICS_AVERAGE_UCLK:
+		*value = metrics->AverageUclkFrequencyPostDs;
+		break;
+	case METRICS_AVERAGE_GFXACTIVITY:
+		*value = metrics->AverageGfxActivity;
+		break;
+	case METRICS_AVERAGE_MEMACTIVITY:
+		*value = metrics->AverageUclkActivity;
+		break;
+	case METRICS_AVERAGE_SOCKETPOWER:
+		*value = metrics->AverageSocketPower << 8;
+		break;
+	case METRICS_TEMPERATURE_EDGE:
+		*value = metrics->TemperatureEdge *
+			SMU_TEMPERATURE_UNITS_PER_CENTIGRADES;
+		break;
+	case METRICS_TEMPERATURE_HOTSPOT:
+		*value = metrics->TemperatureHotspot *
+			SMU_TEMPERATURE_UNITS_PER_CENTIGRADES;
+		break;
+	case METRICS_TEMPERATURE_MEM:
+		*value = metrics->TemperatureMem *
+			SMU_TEMPERATURE_UNITS_PER_CENTIGRADES;
+		break;
+	case METRICS_TEMPERATURE_VRGFX:
+		*value = metrics->TemperatureVrGfx *
+			SMU_TEMPERATURE_UNITS_PER_CENTIGRADES;
+		break;
+	case METRICS_TEMPERATURE_VRSOC:
+		*value = metrics->TemperatureVrSoc *
+			SMU_TEMPERATURE_UNITS_PER_CENTIGRADES;
+		break;
+	case METRICS_THROTTLER_STATUS:
+		*value = metrics->ThrottlerStatus;
+		break;
+	case METRICS_CURR_FANSPEED:
+		*value = metrics->CurrFanSpeed;
+		break;
+	default:
+		*value = UINT_MAX;
+		break;
+	}
+
+	mutex_unlock(&smu->metrics_lock);
+
+	return ret;
+}
+
+static int navi12_get_legacy_smu_metrics_data(struct smu_context *smu,
+					      MetricsMember_t member,
+					      uint32_t *value)
+{
+	struct smu_table_context *smu_table= &smu->smu_table;
+	SmuMetrics_NV12_legacy_t *metrics =
+		(SmuMetrics_NV12_legacy_t *)smu_table->metrics_table;
+	int ret = 0;
+
+	mutex_lock(&smu->metrics_lock);
+
+	ret = smu_cmn_get_metrics_table_locked(smu,
+					       NULL,
+					       false);
+	if (ret) {
+		mutex_unlock(&smu->metrics_lock);
+		return ret;
+	}
+
+	switch (member) {
+	case METRICS_CURR_GFXCLK:
+		*value = metrics->CurrClock[PPCLK_GFXCLK];
+		break;
+	case METRICS_CURR_SOCCLK:
+		*value = metrics->CurrClock[PPCLK_SOCCLK];
+		break;
+	case METRICS_CURR_UCLK:
+		*value = metrics->CurrClock[PPCLK_UCLK];
+		break;
+	case METRICS_CURR_VCLK:
+		*value = metrics->CurrClock[PPCLK_VCLK];
+		break;
+	case METRICS_CURR_DCLK:
+		*value = metrics->CurrClock[PPCLK_DCLK];
+		break;
+	case METRICS_CURR_DCEFCLK:
+		*value = metrics->CurrClock[PPCLK_DCEFCLK];
+		break;
+	case METRICS_AVERAGE_GFXCLK:
+		*value = metrics->AverageGfxclkFrequency;
+		break;
+	case METRICS_AVERAGE_SOCCLK:
+		*value = metrics->AverageSocclkFrequency;
+		break;
+	case METRICS_AVERAGE_UCLK:
+		*value = metrics->AverageUclkFrequency;
+		break;
+	case METRICS_AVERAGE_GFXACTIVITY:
+		*value = metrics->AverageGfxActivity;
+		break;
+	case METRICS_AVERAGE_MEMACTIVITY:
+		*value = metrics->AverageUclkActivity;
+		break;
+	case METRICS_AVERAGE_SOCKETPOWER:
+		*value = metrics->AverageSocketPower << 8;
+		break;
+	case METRICS_TEMPERATURE_EDGE:
+		*value = metrics->TemperatureEdge *
+			SMU_TEMPERATURE_UNITS_PER_CENTIGRADES;
+		break;
+	case METRICS_TEMPERATURE_HOTSPOT:
+		*value = metrics->TemperatureHotspot *
+			SMU_TEMPERATURE_UNITS_PER_CENTIGRADES;
+		break;
+	case METRICS_TEMPERATURE_MEM:
+		*value = metrics->TemperatureMem *
+			SMU_TEMPERATURE_UNITS_PER_CENTIGRADES;
+		break;
+	case METRICS_TEMPERATURE_VRGFX:
+		*value = metrics->TemperatureVrGfx *
+			SMU_TEMPERATURE_UNITS_PER_CENTIGRADES;
+		break;
+	case METRICS_TEMPERATURE_VRSOC:
+		*value = metrics->TemperatureVrSoc *
+			SMU_TEMPERATURE_UNITS_PER_CENTIGRADES;
+		break;
+	case METRICS_THROTTLER_STATUS:
+		*value = metrics->ThrottlerStatus;
+		break;
+	case METRICS_CURR_FANSPEED:
+		*value = metrics->CurrFanSpeed;
+		break;
+	default:
+		*value = UINT_MAX;
+		break;
+	}
+
+	mutex_unlock(&smu->metrics_lock);
+
+	return ret;
+}
+
+static int navi12_get_smu_metrics_data(struct smu_context *smu,
+				       MetricsMember_t member,
+				       uint32_t *value)
+{
+	struct smu_table_context *smu_table= &smu->smu_table;
+	SmuMetrics_NV12_t *metrics =
+		(SmuMetrics_NV12_t *)smu_table->metrics_table;
+	int ret = 0;
+
+	mutex_lock(&smu->metrics_lock);
+
+	ret = smu_cmn_get_metrics_table_locked(smu,
+					       NULL,
+					       false);
+	if (ret) {
+		mutex_unlock(&smu->metrics_lock);
+		return ret;
+	}
+
+	switch (member) {
+	case METRICS_CURR_GFXCLK:
+		*value = metrics->CurrClock[PPCLK_GFXCLK];
+		break;
+	case METRICS_CURR_SOCCLK:
+		*value = metrics->CurrClock[PPCLK_SOCCLK];
+		break;
+	case METRICS_CURR_UCLK:
+		*value = metrics->CurrClock[PPCLK_UCLK];
+		break;
+	case METRICS_CURR_VCLK:
+		*value = metrics->CurrClock[PPCLK_VCLK];
+		break;
+	case METRICS_CURR_DCLK:
+		*value = metrics->CurrClock[PPCLK_DCLK];
+		break;
+	case METRICS_CURR_DCEFCLK:
+		*value = metrics->CurrClock[PPCLK_DCEFCLK];
+		break;
+	case METRICS_AVERAGE_GFXCLK:
+		if (metrics->AverageGfxActivity > SMU_11_0_GFX_BUSY_THRESHOLD)
+			*value = metrics->AverageGfxclkFrequencyPreDs;
+		else
+			*value = metrics->AverageGfxclkFrequencyPostDs;
+		break;
+	case METRICS_AVERAGE_SOCCLK:
+		*value = metrics->AverageSocclkFrequency;
+		break;
+	case METRICS_AVERAGE_UCLK:
+		*value = metrics->AverageUclkFrequencyPostDs;
+		break;
+	case METRICS_AVERAGE_GFXACTIVITY:
+		*value = metrics->AverageGfxActivity;
+		break;
+	case METRICS_AVERAGE_MEMACTIVITY:
+		*value = metrics->AverageUclkActivity;
+		break;
+	case METRICS_AVERAGE_SOCKETPOWER:
+		*value = metrics->AverageSocketPower << 8;
+		break;
+	case METRICS_TEMPERATURE_EDGE:
+		*value = metrics->TemperatureEdge *
+			SMU_TEMPERATURE_UNITS_PER_CENTIGRADES;
+		break;
+	case METRICS_TEMPERATURE_HOTSPOT:
+		*value = metrics->TemperatureHotspot *
+			SMU_TEMPERATURE_UNITS_PER_CENTIGRADES;
+		break;
+	case METRICS_TEMPERATURE_MEM:
+		*value = metrics->TemperatureMem *
+			SMU_TEMPERATURE_UNITS_PER_CENTIGRADES;
+		break;
+	case METRICS_TEMPERATURE_VRGFX:
+		*value = metrics->TemperatureVrGfx *
+			SMU_TEMPERATURE_UNITS_PER_CENTIGRADES;
+		break;
+	case METRICS_TEMPERATURE_VRSOC:
+		*value = metrics->TemperatureVrSoc *
+			SMU_TEMPERATURE_UNITS_PER_CENTIGRADES;
+		break;
+	case METRICS_THROTTLER_STATUS:
+		*value = metrics->ThrottlerStatus;
+		break;
+	case METRICS_CURR_FANSPEED:
+		*value = metrics->CurrFanSpeed;
+		break;
+	default:
+		*value = UINT_MAX;
+		break;
+	}
+
+	mutex_unlock(&smu->metrics_lock);
+
+	return ret;
+}
+
+static int navi1x_get_smu_metrics_data(struct smu_context *smu,
+				       MetricsMember_t member,
+				       uint32_t *value)
+{
+	struct amdgpu_device *adev = smu->adev;
+	uint32_t smu_version;
+	int ret = 0;
+
+	ret = smu_cmn_get_smc_version(smu, NULL, &smu_version);
+	if (ret) {
+		dev_err(adev->dev, "Failed to get smu version!\n");
+		return ret;
+	}
+
+	switch (adev->asic_type) {
+	case CHIP_NAVI12:
+		if (smu_version > 0x00341C00)
+			ret = navi12_get_smu_metrics_data(smu, member, value);
+		else
+			ret = navi12_get_legacy_smu_metrics_data(smu, member, value);
+		break;
+	case CHIP_NAVI10:
+	case CHIP_NAVI14:
+	default:
+		if (((adev->asic_type == CHIP_NAVI14) && smu_version > 0x00351F00) ||
+		      ((adev->asic_type == CHIP_NAVI10) && smu_version > 0x002A3B00))
+			ret = navi10_get_smu_metrics_data(smu, member, value);
+		else
+			ret = navi10_get_legacy_smu_metrics_data(smu, member, value);
+		break;
+	}
 
 	return ret;
 }
@@ -880,7 +1228,7 @@ static int navi10_get_current_clk_freq_by_table(struct smu_context *smu,
 		return -EINVAL;
 	}
 
-	return navi10_get_smu_metrics_data(smu,
+	return navi1x_get_smu_metrics_data(smu,
 					   member_type,
 					   value);
 }
@@ -897,7 +1245,7 @@ static bool navi10_is_support_fine_grained_dpm(struct smu_context *smu, enum smu
 	dpm_desc = &pptable->DpmDescriptor[clk_index];
 
 	/* 0 - Fine grained DPM, 1 - Discrete DPM */
-	return dpm_desc->SnapToDiscrete == 0 ? true : false;
+	return dpm_desc->SnapToDiscrete == 0;
 }
 
 static inline bool navi10_od_feature_is_supported(struct smu_11_0_overdrive_table *od_table, enum SMU_11_0_ODFEATURE_CAP cap)
@@ -940,6 +1288,8 @@ static int navi10_print_clk_levels(struct smu_context *smu,
 	case SMU_MCLK:
 	case SMU_UCLK:
 	case SMU_FCLK:
+	case SMU_VCLK:
+	case SMU_DCLK:
 	case SMU_DCEFCLK:
 		ret = navi10_get_current_clk_freq_by_table(smu, clk_type, &cur_value);
 		if (ret)
@@ -1110,7 +1460,6 @@ static int navi10_force_clk_levels(struct smu_context *smu,
 	case SMU_SOCCLK:
 	case SMU_MCLK:
 	case SMU_UCLK:
-	case SMU_DCEFCLK:
 	case SMU_FCLK:
 		/* There is only 2 levels for fine grained DPM */
 		if (navi10_is_support_fine_grained_dpm(smu, clk_type)) {
@@ -1130,6 +1479,10 @@ static int navi10_force_clk_levels(struct smu_context *smu,
 		if (ret)
 			return size;
 		break;
+	case SMU_DCEFCLK:
+		dev_info(smu->adev->dev,"Setting DCEFCLK min/max dpm level is not supported!\n");
+		break;
+
 	default:
 		break;
 	}
@@ -1317,15 +1670,27 @@ static bool navi10_is_dpm_running(struct smu_context *smu)
 	return !!(feature_enabled & SMC_DPM_FEATURE);
 }
 
-static int navi10_get_fan_speed_rpm(struct smu_context *smu,
-				    uint32_t *speed)
+static int navi10_get_fan_speed_percent(struct smu_context *smu,
+					uint32_t *speed)
 {
+	int ret;
+	u32 rpm;
+
 	if (!speed)
 		return -EINVAL;
 
-	return navi10_get_smu_metrics_data(smu,
-					   METRICS_CURR_FANSPEED,
-					   speed);
+	switch (smu_v11_0_get_fan_control_mode(smu)) {
+	case AMD_FAN_CTRL_AUTO:
+		ret = navi1x_get_smu_metrics_data(smu,
+						  METRICS_CURR_FANSPEED,
+						  &rpm);
+		if (!ret && smu->fan_max_rpm)
+			*speed = rpm * 100 / smu->fan_max_rpm;
+		return ret;
+	default:
+		*speed = smu->user_dpm_profile.fan_speed_percent;
+		return 0;
+	}
 }
 
 static int navi10_get_fan_parameters(struct smu_context *smu)
@@ -1632,37 +1997,37 @@ static int navi10_read_sensor(struct smu_context *smu,
 		*size = 4;
 		break;
 	case AMDGPU_PP_SENSOR_MEM_LOAD:
-		ret = navi10_get_smu_metrics_data(smu,
+		ret = navi1x_get_smu_metrics_data(smu,
 						  METRICS_AVERAGE_MEMACTIVITY,
 						  (uint32_t *)data);
 		*size = 4;
 		break;
 	case AMDGPU_PP_SENSOR_GPU_LOAD:
-		ret = navi10_get_smu_metrics_data(smu,
+		ret = navi1x_get_smu_metrics_data(smu,
 						  METRICS_AVERAGE_GFXACTIVITY,
 						  (uint32_t *)data);
 		*size = 4;
 		break;
 	case AMDGPU_PP_SENSOR_GPU_POWER:
-		ret = navi10_get_smu_metrics_data(smu,
+		ret = navi1x_get_smu_metrics_data(smu,
 						  METRICS_AVERAGE_SOCKETPOWER,
 						  (uint32_t *)data);
 		*size = 4;
 		break;
 	case AMDGPU_PP_SENSOR_HOTSPOT_TEMP:
-		ret = navi10_get_smu_metrics_data(smu,
+		ret = navi1x_get_smu_metrics_data(smu,
 						  METRICS_TEMPERATURE_HOTSPOT,
 						  (uint32_t *)data);
 		*size = 4;
 		break;
 	case AMDGPU_PP_SENSOR_EDGE_TEMP:
-		ret = navi10_get_smu_metrics_data(smu,
+		ret = navi1x_get_smu_metrics_data(smu,
 						  METRICS_TEMPERATURE_EDGE,
 						  (uint32_t *)data);
 		*size = 4;
 		break;
 	case AMDGPU_PP_SENSOR_MEM_TEMP:
-		ret = navi10_get_smu_metrics_data(smu,
+		ret = navi1x_get_smu_metrics_data(smu,
 						  METRICS_TEMPERATURE_MEM,
 						  (uint32_t *)data);
 		*size = 4;
@@ -1673,7 +2038,7 @@ static int navi10_read_sensor(struct smu_context *smu,
 		*size = 4;
 		break;
 	case AMDGPU_PP_SENSOR_GFX_SCLK:
-		ret = navi10_get_current_clk_freq_by_table(smu, SMU_GFXCLK, (uint32_t *)data);
+		ret = navi1x_get_smu_metrics_data(smu, METRICS_AVERAGE_GFXCLK, (uint32_t *)data);
 		*(uint32_t *)data *= 100;
 		*size = 4;
 		break;
@@ -1790,7 +2155,7 @@ static int navi10_get_power_limit(struct smu_context *smu)
 		power_limit =
 			pptable->SocketPowerLimitAc[PPT_THROTTLER_PPT0];
 	}
-	smu->current_power_limit = power_limit;
+	smu->current_power_limit = smu->default_power_limit = power_limit;
 
 	if (smu->od_enabled &&
 	    navi10_od_feature_is_supported(od_settings, SMU_11_0_ODCAP_POWER_LIMIT)) {
@@ -1890,18 +2255,6 @@ static int navi10_overdrive_get_gfx_clk_base_voltage(struct smu_context *smu,
 	*voltage = (uint16_t)value;
 
 	return 0;
-}
-
-static bool navi10_is_baco_supported(struct smu_context *smu)
-{
-	struct amdgpu_device *adev = smu->adev;
-	uint32_t val;
-
-	if (amdgpu_sriov_vf(adev) || (!smu_v11_0_baco_is_support(smu)))
-		return false;
-
-	val = RREG32_SOC15(NBIO, 0, mmRCC_BIF_STRAP0);
-	return (val & RCC_BIF_STRAP0__STRAP_PX_CAPABLE_MASK) ? true : false;
 }
 
 static int navi10_set_default_od_settings(struct smu_context *smu)
@@ -2275,15 +2628,13 @@ static int navi10_run_umc_cdr_workaround(struct smu_context *smu)
 	return 0;
 }
 
-static ssize_t navi10_get_gpu_metrics(struct smu_context *smu,
-				      void **table)
+static ssize_t navi10_get_legacy_gpu_metrics(struct smu_context *smu,
+					     void **table)
 {
 	struct smu_table_context *smu_table = &smu->smu_table;
-	struct gpu_metrics_v1_0 *gpu_metrics =
-		(struct gpu_metrics_v1_0 *)smu_table->gpu_metrics_table;
-	struct amdgpu_device *adev = smu->adev;
-	SmuMetrics_NV12_t nv12_metrics = { 0 };
-	SmuMetrics_t metrics;
+	struct gpu_metrics_v1_3 *gpu_metrics =
+		(struct gpu_metrics_v1_3 *)smu_table->gpu_metrics_table;
+	SmuMetrics_legacy_t metrics;
 	int ret = 0;
 
 	mutex_lock(&smu->metrics_lock);
@@ -2296,13 +2647,11 @@ static ssize_t navi10_get_gpu_metrics(struct smu_context *smu,
 		return ret;
 	}
 
-	memcpy(&metrics, smu_table->metrics_table, sizeof(SmuMetrics_t));
-	if (adev->asic_type == CHIP_NAVI12)
-		memcpy(&nv12_metrics, smu_table->metrics_table, sizeof(SmuMetrics_NV12_t));
+	memcpy(&metrics, smu_table->metrics_table, sizeof(SmuMetrics_legacy_t));
 
 	mutex_unlock(&smu->metrics_lock);
 
-	smu_v11_0_init_gpu_metrics_v1_0(gpu_metrics);
+	smu_cmn_init_soft_gpu_metrics(gpu_metrics, 1, 3);
 
 	gpu_metrics->temperature_edge = metrics.TemperatureEdge;
 	gpu_metrics->temperature_hotspot = metrics.TemperatureHotspot;
@@ -2320,12 +2669,158 @@ static ssize_t navi10_get_gpu_metrics(struct smu_context *smu,
 	gpu_metrics->average_socclk_frequency = metrics.AverageSocclkFrequency;
 	gpu_metrics->average_uclk_frequency = metrics.AverageUclkFrequency;
 
-	if (adev->asic_type == CHIP_NAVI12) {
-		gpu_metrics->energy_accumulator = nv12_metrics.EnergyAccumulator;
-		gpu_metrics->average_vclk0_frequency = nv12_metrics.AverageVclkFrequency;
-		gpu_metrics->average_dclk0_frequency = nv12_metrics.AverageDclkFrequency;
-		gpu_metrics->average_mm_activity = nv12_metrics.VcnActivityPercentage;
+	gpu_metrics->current_gfxclk = metrics.CurrClock[PPCLK_GFXCLK];
+	gpu_metrics->current_socclk = metrics.CurrClock[PPCLK_SOCCLK];
+	gpu_metrics->current_uclk = metrics.CurrClock[PPCLK_UCLK];
+	gpu_metrics->current_vclk0 = metrics.CurrClock[PPCLK_VCLK];
+	gpu_metrics->current_dclk0 = metrics.CurrClock[PPCLK_DCLK];
+
+	gpu_metrics->throttle_status = metrics.ThrottlerStatus;
+
+	gpu_metrics->current_fan_speed = metrics.CurrFanSpeed;
+
+	gpu_metrics->pcie_link_width =
+			smu_v11_0_get_current_pcie_link_width(smu);
+	gpu_metrics->pcie_link_speed =
+			smu_v11_0_get_current_pcie_link_speed(smu);
+
+	gpu_metrics->system_clock_counter = ktime_get_boottime_ns();
+
+	if (metrics.CurrGfxVoltageOffset)
+		gpu_metrics->voltage_gfx =
+			(155000 - 625 * metrics.CurrGfxVoltageOffset) / 100;
+	if (metrics.CurrMemVidOffset)
+		gpu_metrics->voltage_mem =
+			(155000 - 625 * metrics.CurrMemVidOffset) / 100;
+	if (metrics.CurrSocVoltageOffset)
+		gpu_metrics->voltage_soc =
+			(155000 - 625 * metrics.CurrSocVoltageOffset) / 100;
+
+	*table = (void *)gpu_metrics;
+
+	return sizeof(struct gpu_metrics_v1_3);
+}
+
+static ssize_t navi10_get_gpu_metrics(struct smu_context *smu,
+				      void **table)
+{
+	struct smu_table_context *smu_table = &smu->smu_table;
+	struct gpu_metrics_v1_3 *gpu_metrics =
+		(struct gpu_metrics_v1_3 *)smu_table->gpu_metrics_table;
+	SmuMetrics_t metrics;
+	int ret = 0;
+
+	mutex_lock(&smu->metrics_lock);
+
+	ret = smu_cmn_get_metrics_table_locked(smu,
+					       NULL,
+					       true);
+	if (ret) {
+		mutex_unlock(&smu->metrics_lock);
+		return ret;
 	}
+
+	memcpy(&metrics, smu_table->metrics_table, sizeof(SmuMetrics_t));
+
+	mutex_unlock(&smu->metrics_lock);
+
+	smu_cmn_init_soft_gpu_metrics(gpu_metrics, 1, 3);
+
+	gpu_metrics->temperature_edge = metrics.TemperatureEdge;
+	gpu_metrics->temperature_hotspot = metrics.TemperatureHotspot;
+	gpu_metrics->temperature_mem = metrics.TemperatureMem;
+	gpu_metrics->temperature_vrgfx = metrics.TemperatureVrGfx;
+	gpu_metrics->temperature_vrsoc = metrics.TemperatureVrSoc;
+	gpu_metrics->temperature_vrmem = metrics.TemperatureVrMem0;
+
+	gpu_metrics->average_gfx_activity = metrics.AverageGfxActivity;
+	gpu_metrics->average_umc_activity = metrics.AverageUclkActivity;
+
+	gpu_metrics->average_socket_power = metrics.AverageSocketPower;
+
+	if (metrics.AverageGfxActivity > SMU_11_0_GFX_BUSY_THRESHOLD)
+		gpu_metrics->average_gfxclk_frequency = metrics.AverageGfxclkFrequencyPreDs;
+	else
+		gpu_metrics->average_gfxclk_frequency = metrics.AverageGfxclkFrequencyPostDs;
+
+	gpu_metrics->average_socclk_frequency = metrics.AverageSocclkFrequency;
+	gpu_metrics->average_uclk_frequency = metrics.AverageUclkFrequencyPostDs;
+
+	gpu_metrics->current_gfxclk = metrics.CurrClock[PPCLK_GFXCLK];
+	gpu_metrics->current_socclk = metrics.CurrClock[PPCLK_SOCCLK];
+	gpu_metrics->current_uclk = metrics.CurrClock[PPCLK_UCLK];
+	gpu_metrics->current_vclk0 = metrics.CurrClock[PPCLK_VCLK];
+	gpu_metrics->current_dclk0 = metrics.CurrClock[PPCLK_DCLK];
+
+	gpu_metrics->throttle_status = metrics.ThrottlerStatus;
+
+	gpu_metrics->current_fan_speed = metrics.CurrFanSpeed;
+
+	gpu_metrics->pcie_link_width = metrics.PcieWidth;
+	gpu_metrics->pcie_link_speed = link_speed[metrics.PcieRate];
+
+	gpu_metrics->system_clock_counter = ktime_get_boottime_ns();
+
+	if (metrics.CurrGfxVoltageOffset)
+		gpu_metrics->voltage_gfx =
+			(155000 - 625 * metrics.CurrGfxVoltageOffset) / 100;
+	if (metrics.CurrMemVidOffset)
+		gpu_metrics->voltage_mem =
+			(155000 - 625 * metrics.CurrMemVidOffset) / 100;
+	if (metrics.CurrSocVoltageOffset)
+		gpu_metrics->voltage_soc =
+			(155000 - 625 * metrics.CurrSocVoltageOffset) / 100;
+
+	*table = (void *)gpu_metrics;
+
+	return sizeof(struct gpu_metrics_v1_3);
+}
+
+static ssize_t navi12_get_legacy_gpu_metrics(struct smu_context *smu,
+					     void **table)
+{
+	struct smu_table_context *smu_table = &smu->smu_table;
+	struct gpu_metrics_v1_3 *gpu_metrics =
+		(struct gpu_metrics_v1_3 *)smu_table->gpu_metrics_table;
+	SmuMetrics_NV12_legacy_t metrics;
+	int ret = 0;
+
+	mutex_lock(&smu->metrics_lock);
+
+	ret = smu_cmn_get_metrics_table_locked(smu,
+					       NULL,
+					       true);
+	if (ret) {
+		mutex_unlock(&smu->metrics_lock);
+		return ret;
+	}
+
+	memcpy(&metrics, smu_table->metrics_table, sizeof(SmuMetrics_NV12_legacy_t));
+
+	mutex_unlock(&smu->metrics_lock);
+
+	smu_cmn_init_soft_gpu_metrics(gpu_metrics, 1, 3);
+
+	gpu_metrics->temperature_edge = metrics.TemperatureEdge;
+	gpu_metrics->temperature_hotspot = metrics.TemperatureHotspot;
+	gpu_metrics->temperature_mem = metrics.TemperatureMem;
+	gpu_metrics->temperature_vrgfx = metrics.TemperatureVrGfx;
+	gpu_metrics->temperature_vrsoc = metrics.TemperatureVrSoc;
+	gpu_metrics->temperature_vrmem = metrics.TemperatureVrMem0;
+
+	gpu_metrics->average_gfx_activity = metrics.AverageGfxActivity;
+	gpu_metrics->average_umc_activity = metrics.AverageUclkActivity;
+
+	gpu_metrics->average_socket_power = metrics.AverageSocketPower;
+
+	gpu_metrics->average_gfxclk_frequency = metrics.AverageGfxclkFrequency;
+	gpu_metrics->average_socclk_frequency = metrics.AverageSocclkFrequency;
+	gpu_metrics->average_uclk_frequency = metrics.AverageUclkFrequency;
+
+	gpu_metrics->energy_accumulator = metrics.EnergyAccumulator;
+	gpu_metrics->average_vclk0_frequency = metrics.AverageVclkFrequency;
+	gpu_metrics->average_dclk0_frequency = metrics.AverageDclkFrequency;
+	gpu_metrics->average_mm_activity = metrics.VcnActivityPercentage;
 
 	gpu_metrics->current_gfxclk = metrics.CurrClock[PPCLK_GFXCLK];
 	gpu_metrics->current_socclk = metrics.CurrClock[PPCLK_SOCCLK];
@@ -2342,18 +2837,153 @@ static ssize_t navi10_get_gpu_metrics(struct smu_context *smu,
 	gpu_metrics->pcie_link_speed =
 			smu_v11_0_get_current_pcie_link_speed(smu);
 
+	gpu_metrics->system_clock_counter = ktime_get_boottime_ns();
+
+	if (metrics.CurrGfxVoltageOffset)
+		gpu_metrics->voltage_gfx =
+			(155000 - 625 * metrics.CurrGfxVoltageOffset) / 100;
+	if (metrics.CurrMemVidOffset)
+		gpu_metrics->voltage_mem =
+			(155000 - 625 * metrics.CurrMemVidOffset) / 100;
+	if (metrics.CurrSocVoltageOffset)
+		gpu_metrics->voltage_soc =
+			(155000 - 625 * metrics.CurrSocVoltageOffset) / 100;
+
 	*table = (void *)gpu_metrics;
 
-	return sizeof(struct gpu_metrics_v1_0);
+	return sizeof(struct gpu_metrics_v1_3);
+}
+
+static ssize_t navi12_get_gpu_metrics(struct smu_context *smu,
+				      void **table)
+{
+	struct smu_table_context *smu_table = &smu->smu_table;
+	struct gpu_metrics_v1_3 *gpu_metrics =
+		(struct gpu_metrics_v1_3 *)smu_table->gpu_metrics_table;
+	SmuMetrics_NV12_t metrics;
+	int ret = 0;
+
+	mutex_lock(&smu->metrics_lock);
+
+	ret = smu_cmn_get_metrics_table_locked(smu,
+					       NULL,
+					       true);
+	if (ret) {
+		mutex_unlock(&smu->metrics_lock);
+		return ret;
+	}
+
+	memcpy(&metrics, smu_table->metrics_table, sizeof(SmuMetrics_NV12_t));
+
+	mutex_unlock(&smu->metrics_lock);
+
+	smu_cmn_init_soft_gpu_metrics(gpu_metrics, 1, 3);
+
+	gpu_metrics->temperature_edge = metrics.TemperatureEdge;
+	gpu_metrics->temperature_hotspot = metrics.TemperatureHotspot;
+	gpu_metrics->temperature_mem = metrics.TemperatureMem;
+	gpu_metrics->temperature_vrgfx = metrics.TemperatureVrGfx;
+	gpu_metrics->temperature_vrsoc = metrics.TemperatureVrSoc;
+	gpu_metrics->temperature_vrmem = metrics.TemperatureVrMem0;
+
+	gpu_metrics->average_gfx_activity = metrics.AverageGfxActivity;
+	gpu_metrics->average_umc_activity = metrics.AverageUclkActivity;
+
+	gpu_metrics->average_socket_power = metrics.AverageSocketPower;
+
+	if (metrics.AverageGfxActivity > SMU_11_0_GFX_BUSY_THRESHOLD)
+		gpu_metrics->average_gfxclk_frequency = metrics.AverageGfxclkFrequencyPreDs;
+	else
+		gpu_metrics->average_gfxclk_frequency = metrics.AverageGfxclkFrequencyPostDs;
+
+	gpu_metrics->average_socclk_frequency = metrics.AverageSocclkFrequency;
+	gpu_metrics->average_uclk_frequency = metrics.AverageUclkFrequencyPostDs;
+
+	gpu_metrics->energy_accumulator = metrics.EnergyAccumulator;
+	gpu_metrics->average_vclk0_frequency = metrics.AverageVclkFrequency;
+	gpu_metrics->average_dclk0_frequency = metrics.AverageDclkFrequency;
+	gpu_metrics->average_mm_activity = metrics.VcnActivityPercentage;
+
+	gpu_metrics->current_gfxclk = metrics.CurrClock[PPCLK_GFXCLK];
+	gpu_metrics->current_socclk = metrics.CurrClock[PPCLK_SOCCLK];
+	gpu_metrics->current_uclk = metrics.CurrClock[PPCLK_UCLK];
+	gpu_metrics->current_vclk0 = metrics.CurrClock[PPCLK_VCLK];
+	gpu_metrics->current_dclk0 = metrics.CurrClock[PPCLK_DCLK];
+
+	gpu_metrics->throttle_status = metrics.ThrottlerStatus;
+
+	gpu_metrics->current_fan_speed = metrics.CurrFanSpeed;
+
+	gpu_metrics->pcie_link_width = metrics.PcieWidth;
+	gpu_metrics->pcie_link_speed = link_speed[metrics.PcieRate];
+
+	gpu_metrics->system_clock_counter = ktime_get_boottime_ns();
+
+	if (metrics.CurrGfxVoltageOffset)
+		gpu_metrics->voltage_gfx =
+			(155000 - 625 * metrics.CurrGfxVoltageOffset) / 100;
+	if (metrics.CurrMemVidOffset)
+		gpu_metrics->voltage_mem =
+			(155000 - 625 * metrics.CurrMemVidOffset) / 100;
+	if (metrics.CurrSocVoltageOffset)
+		gpu_metrics->voltage_soc =
+			(155000 - 625 * metrics.CurrSocVoltageOffset) / 100;
+
+	*table = (void *)gpu_metrics;
+
+	return sizeof(struct gpu_metrics_v1_3);
+}
+
+static ssize_t navi1x_get_gpu_metrics(struct smu_context *smu,
+				      void **table)
+{
+	struct amdgpu_device *adev = smu->adev;
+	uint32_t smu_version;
+	int ret = 0;
+
+	ret = smu_cmn_get_smc_version(smu, NULL, &smu_version);
+	if (ret) {
+		dev_err(adev->dev, "Failed to get smu version!\n");
+		return ret;
+	}
+
+	switch (adev->asic_type) {
+	case CHIP_NAVI12:
+		if (smu_version > 0x00341C00)
+			ret = navi12_get_gpu_metrics(smu, table);
+		else
+			ret = navi12_get_legacy_gpu_metrics(smu, table);
+		break;
+	case CHIP_NAVI10:
+	case CHIP_NAVI14:
+	default:
+		if (((adev->asic_type == CHIP_NAVI14) && smu_version > 0x00351F00) ||
+		      ((adev->asic_type == CHIP_NAVI10) && smu_version > 0x002A3B00))
+			ret = navi10_get_gpu_metrics(smu, table);
+		else
+			ret =navi10_get_legacy_gpu_metrics(smu, table);
+		break;
+	}
+
+	return ret;
 }
 
 static int navi10_enable_mgpu_fan_boost(struct smu_context *smu)
 {
+	struct smu_table_context *table_context = &smu->smu_table;
+	PPTable_t *smc_pptable = table_context->driver_pptable;
 	struct amdgpu_device *adev = smu->adev;
 	uint32_t param = 0;
 
 	/* Navi12 does not support this */
 	if (adev->asic_type == CHIP_NAVI12)
+		return 0;
+
+	/*
+	 * Skip the MGpuFanBoost setting for those ASICs
+	 * which do not support it
+	 */
+	if (!smc_pptable->MGpuFanBoostLimitRpm)
 		return 0;
 
 	/* Workaround for WS SKU */
@@ -2413,7 +3043,7 @@ static const struct pptable_funcs navi10_ppt_funcs = {
 	.display_config_changed = navi10_display_config_changed,
 	.notify_smc_display_config = navi10_notify_smc_display_config,
 	.is_dpm_running = navi10_is_dpm_running,
-	.get_fan_speed_rpm = navi10_get_fan_speed_rpm,
+	.get_fan_speed_percent = navi10_get_fan_speed_percent,
 	.get_power_profile_mode = navi10_get_power_profile_mode,
 	.set_power_profile_mode = navi10_set_power_profile_mode,
 	.set_watermarks_table = navi10_set_watermarks_table,
@@ -2456,13 +3086,13 @@ static const struct pptable_funcs navi10_ppt_funcs = {
 	.display_clock_voltage_request = smu_v11_0_display_clock_voltage_request,
 	.get_fan_control_mode = smu_v11_0_get_fan_control_mode,
 	.set_fan_control_mode = smu_v11_0_set_fan_control_mode,
-	.set_fan_speed_rpm = smu_v11_0_set_fan_speed_rpm,
+	.set_fan_speed_percent = smu_v11_0_set_fan_speed_percent,
 	.set_xgmi_pstate = smu_v11_0_set_xgmi_pstate,
 	.gfx_off_control = smu_v11_0_gfx_off_control,
 	.register_irq_handler = smu_v11_0_register_irq_handler,
 	.set_azalia_d3_pme = smu_v11_0_set_azalia_d3_pme,
 	.get_max_sustainable_clocks_by_dc = smu_v11_0_get_max_sustainable_clocks_by_dc,
-	.baco_is_support= navi10_is_baco_supported,
+	.baco_is_support = smu_v11_0_baco_is_support,
 	.baco_get_state = smu_v11_0_baco_get_state,
 	.baco_set_state = smu_v11_0_baco_set_state,
 	.baco_enter = smu_v11_0_baco_enter,
@@ -2475,13 +3105,14 @@ static const struct pptable_funcs navi10_ppt_funcs = {
 	.set_power_source = smu_v11_0_set_power_source,
 	.get_pp_feature_mask = smu_cmn_get_pp_feature_mask,
 	.set_pp_feature_mask = smu_cmn_set_pp_feature_mask,
-	.get_gpu_metrics = navi10_get_gpu_metrics,
+	.get_gpu_metrics = navi1x_get_gpu_metrics,
 	.enable_mgpu_fan_boost = navi10_enable_mgpu_fan_boost,
 	.gfx_ulv_control = smu_v11_0_gfx_ulv_control,
 	.deep_sleep_control = smu_v11_0_deep_sleep_control,
 	.get_fan_parameters = navi10_get_fan_parameters,
 	.post_init = navi10_post_smu_init,
 	.interrupt_work = smu_v11_0_interrupt_work,
+	.set_mp1_state = navi10_set_mp1_state,
 };
 
 void navi10_set_ppt_funcs(struct smu_context *smu)

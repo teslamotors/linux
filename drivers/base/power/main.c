@@ -1347,7 +1347,7 @@ Run:
 Skip:
 	dev->power.is_noirq_suspended = true;
 
-	if (dev_pm_test_driver_flags(dev, DPM_FLAG_LEAVE_SUSPENDED)) {
+	if (dev_pm_test_driver_flags(dev, DPM_FLAG_MAY_SKIP_RESUME)) {
 		dev->power.must_resume = dev->power.must_resume ||
 				atomic_read(&dev->power.usage_count) > 1 ||
 				device_must_resume(dev, state, no_subsys_cb);
@@ -1924,7 +1924,7 @@ static int device_prepare(struct device *dev, pm_message_t state)
 
 	WARN_ON(!pm_runtime_enabled(dev) &&
 		dev_pm_test_driver_flags(dev, DPM_FLAG_SMART_SUSPEND |
-					      DPM_FLAG_LEAVE_SUSPENDED));
+					      DPM_FLAG_MAY_SKIP_RESUME));
 
 	/*
 	 * If a device's parent goes into runtime suspend at the wrong time,

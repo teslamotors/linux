@@ -55,6 +55,11 @@ DC_LIBS += dcn302
 
 endif
 
+DC_LIBS += dcn303
+ifdef CONFIG_DRM_AMD_DC_DCN3_1
+DC_LIBS += dcn31
+endif
+
 DC_LIBS += dce120
 
 DC_LIBS += dce112
@@ -74,8 +79,9 @@ AMD_DC = $(addsuffix /Makefile, $(addprefix $(FULL_AMD_DISPLAY_PATH)/dc/,$(DC_LI
 
 include $(AMD_DC)
 
-DISPLAY_CORE = dc.o dc_link.o dc_resource.o dc_hw_sequencer.o dc_sink.o \
-dc_surface.o dc_link_hwss.o dc_link_dp.o dc_link_ddc.o dc_debug.o dc_stream.o
+DISPLAY_CORE = dc.o  dc_stat.o dc_link.o dc_resource.o dc_hw_sequencer.o dc_sink.o \
+dc_surface.o dc_link_hwss.o dc_link_dp.o dc_link_ddc.o dc_debug.o dc_stream.o \
+dc_link_enc_cfg.o
 
 ifdef CONFIG_DRM_AMD_DC_DCN2_0
 DISPLAY_CORE += dc_vm_helper.o
@@ -89,5 +95,7 @@ AMD_DISPLAY_FILES += $(AMD_DISPLAY_CORE)
 AMD_DISPLAY_FILES += $(AMD_DM_REG_UPDATE)
 
 DC_DMUB += dc_dmub_srv.o
+DC_EDID += dc_edid_parser.o
 AMD_DISPLAY_DMUB = $(addprefix $(AMDDALPATH)/dc/,$(DC_DMUB))
-AMD_DISPLAY_FILES += $(AMD_DISPLAY_DMUB)
+AMD_DISPLAY_EDID = $(addprefix $(AMDDALPATH)/dc/,$(DC_EDID))
+AMD_DISPLAY_FILES += $(AMD_DISPLAY_DMUB) $(AMD_DISPLAY_EDID)

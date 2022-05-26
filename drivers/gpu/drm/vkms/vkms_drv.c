@@ -62,7 +62,6 @@ static void vkms_release(struct drm_device *dev)
 	platform_device_unregister(vkms->platform);
 	drm_atomic_helper_shutdown(&vkms->drm);
 	drm_mode_config_cleanup(&vkms->drm);
-	drm_dev_fini(&vkms->drm);
 	destroy_workqueue(vkms->output.composer_workq);
 }
 
@@ -176,7 +175,6 @@ static int __init vkms_init(void)
 	return 0;
 
 out_fini:
-	drm_dev_fini(&vkms_device->drm);
 
 out_unregister:
 	platform_device_unregister(vkms_device->platform);

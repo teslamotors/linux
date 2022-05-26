@@ -92,6 +92,7 @@ mmhub_v2_3_print_l2_protection_fault_status(struct amdgpu_device *adev,
 		status);
 	switch (adev->asic_type) {
 	case CHIP_VANGOGH:
+	case CHIP_YELLOW_CARP:
 		mmhub_cid = mmhub_client_ids_vangogh[cid][rw];
 		break;
 	default:
@@ -162,8 +163,7 @@ static void mmhub_v2_3_init_system_aperture_regs(struct amdgpu_device *adev)
 		     max(adev->gmc.fb_end, adev->gmc.agp_end) >> 18);
 
 	/* Set default page address. */
-	value = adev->vram_scratch.gpu_addr - adev->gmc.vram_start +
-		adev->vm_manager.vram_base_offset;
+	value = amdgpu_gmc_vram_mc2pa(adev, adev->vram_scratch.gpu_addr);
 	WREG32_SOC15(MMHUB, 0, mmMMMC_VM_SYSTEM_APERTURE_DEFAULT_ADDR_LSB,
 		     (u32)(value >> 12));
 	WREG32_SOC15(MMHUB, 0, mmMMMC_VM_SYSTEM_APERTURE_DEFAULT_ADDR_MSB,
@@ -310,7 +310,7 @@ static void mmhub_v2_3_setup_vmid_config(struct amdgpu_device *adev)
 		/* Send no-retry XNACK on fault to suppress VM fault storm. */
 		tmp = REG_SET_FIELD(tmp, MMVM_CONTEXT1_CNTL,
 				    RETRY_PERMISSION_OR_INVALID_PAGE_FAULT,
-				    !amdgpu_noretry);
+				    !adev->gmc.noretry);
 		WREG32_SOC15_OFFSET(MMHUB, 0, mmMMVM_CONTEXT1_CNTL,
 				    i * hub->ctx_distance, tmp);
 		WREG32_SOC15_OFFSET(MMHUB, 0, mmMMVM_CONTEXT1_PAGE_TABLE_START_ADDR_LO32,
@@ -491,12 +491,11 @@ mmhub_v2_3_update_medium_grain_clock_gating(struct amdgpu_device *adev,
 {
 	uint32_t def, data, def1, data1;
 
-	def  = data  = RREG32_SOC15(MMHUB, 0, mmMM_ATC_L2_MISC_CG);
+	def  = data  = RREG32_SOC15(MMHUB, 0, mmMM_ATC_L2_CGTT_CLK_CTRL);
 	def1 = data1 = RREG32_SOC15(MMHUB, 0, mmDAGB0_CNTL_MISC2);
 
 	if (enable && (adev->cg_flags & AMD_CG_SUPPORT_MC_MGCG)) {
-		data |= MM_ATC_L2_MISC_CG__ENABLE_MASK;
-
+		data &= ~MM_ATC_L2_CGTT_CLK_CTRL__SOFT_OVERRIDE_MASK;
 		data1 &= ~(DAGB0_CNTL_MISC2__DISABLE_WRREQ_CG_MASK |
 		           DAGB0_CNTL_MISC2__DISABLE_WRRET_CG_MASK |
 		           DAGB0_CNTL_MISC2__DISABLE_RDREQ_CG_MASK |
@@ -505,8 +504,7 @@ mmhub_v2_3_update_medium_grain_clock_gating(struct amdgpu_device *adev,
 		           DAGB0_CNTL_MISC2__DISABLE_TLBRD_CG_MASK);
 
 	} else {
-		data &= ~MM_ATC_L2_MISC_CG__ENABLE_MASK;
-
+		data |= MM_ATC_L2_CGTT_CLK_CTRL__SOFT_OVERRIDE_MASK;
 		data1 |= (DAGB0_CNTL_MISC2__DISABLE_WRREQ_CG_MASK |
 			  DAGB0_CNTL_MISC2__DISABLE_WRRET_CG_MASK |
 			  DAGB0_CNTL_MISC2__DISABLE_RDREQ_CG_MASK |
@@ -516,7 +514,7 @@ mmhub_v2_3_update_medium_grain_clock_gating(struct amdgpu_device *adev,
 	}
 
 	if (def != data)
-		WREG32_SOC15(MMHUB, 0, mmMM_ATC_L2_MISC_CG, data);
+		WREG32_SOC15(MMHUB, 0, mmMM_ATC_L2_CGTT_CLK_CTRL, data);
 	if (def1 != data1)
 		WREG32_SOC15(MMHUB, 0, mmDAGB0_CNTL_MISC2, data1);
 }
@@ -525,17 +523,44 @@ static void
 mmhub_v2_3_update_medium_grain_light_sleep(struct amdgpu_device *adev,
 					   bool enable)
 {
-	uint32_t def, data;
+	uint32_t def, data, def1, data1, def2, data2;
 
-	def  = data  = RREG32_SOC15(MMHUB, 0, mmMM_ATC_L2_MISC_CG);
+	def  = data  = RREG32_SOC15(MMHUB, 0, mmMM_ATC_L2_CGTT_CLK_CTRL);
+	def1 = data1 = RREG32_SOC15(MMHUB, 0, mmDAGB0_WR_CGTT_CLK_CTRL);
+	def2 = data2 = RREG32_SOC15(MMHUB, 0, mmDAGB0_RD_CGTT_CLK_CTRL);
 
-	if (enable && (adev->cg_flags & AMD_CG_SUPPORT_MC_LS))
-		data |= MM_ATC_L2_MISC_CG__MEM_LS_ENABLE_MASK;
-	else
-		data &= ~MM_ATC_L2_MISC_CG__MEM_LS_ENABLE_MASK;
+	if (enable && (adev->cg_flags & AMD_CG_SUPPORT_MC_LS)) {
+		data &= ~MM_ATC_L2_CGTT_CLK_CTRL__MGLS_OVERRIDE_MASK;
+		data1 &= ~(DAGB0_WR_CGTT_CLK_CTRL__LS_OVERRIDE_MASK |
+			DAGB0_WR_CGTT_CLK_CTRL__LS_OVERRIDE_WRITE_MASK |
+			DAGB0_WR_CGTT_CLK_CTRL__LS_OVERRIDE_READ_MASK |
+			DAGB0_WR_CGTT_CLK_CTRL__LS_OVERRIDE_RETURN_MASK |
+			DAGB0_WR_CGTT_CLK_CTRL__LS_OVERRIDE_REGISTER_MASK);
+		data2 &= ~(DAGB0_RD_CGTT_CLK_CTRL__LS_OVERRIDE_MASK |
+			DAGB0_RD_CGTT_CLK_CTRL__LS_OVERRIDE_WRITE_MASK |
+			DAGB0_RD_CGTT_CLK_CTRL__LS_OVERRIDE_READ_MASK |
+			DAGB0_RD_CGTT_CLK_CTRL__LS_OVERRIDE_RETURN_MASK |
+			DAGB0_RD_CGTT_CLK_CTRL__LS_OVERRIDE_REGISTER_MASK);
+	} else {
+		data |= MM_ATC_L2_CGTT_CLK_CTRL__MGLS_OVERRIDE_MASK;
+		data1 |= (DAGB0_WR_CGTT_CLK_CTRL__LS_OVERRIDE_MASK |
+			DAGB0_WR_CGTT_CLK_CTRL__LS_OVERRIDE_WRITE_MASK |
+			DAGB0_WR_CGTT_CLK_CTRL__LS_OVERRIDE_READ_MASK |
+			DAGB0_WR_CGTT_CLK_CTRL__LS_OVERRIDE_RETURN_MASK |
+			DAGB0_WR_CGTT_CLK_CTRL__LS_OVERRIDE_REGISTER_MASK);
+		data2 |= (DAGB0_RD_CGTT_CLK_CTRL__LS_OVERRIDE_MASK |
+			DAGB0_RD_CGTT_CLK_CTRL__LS_OVERRIDE_WRITE_MASK |
+			DAGB0_RD_CGTT_CLK_CTRL__LS_OVERRIDE_READ_MASK |
+			DAGB0_RD_CGTT_CLK_CTRL__LS_OVERRIDE_RETURN_MASK |
+			DAGB0_RD_CGTT_CLK_CTRL__LS_OVERRIDE_REGISTER_MASK);
+	}
 
 	if (def != data)
-		WREG32_SOC15(MMHUB, 0, mmMM_ATC_L2_MISC_CG, data);
+		WREG32_SOC15(MMHUB, 0, mmMM_ATC_L2_CGTT_CLK_CTRL, data);
+	if (def1 != data1)
+		WREG32_SOC15(MMHUB, 0, mmDAGB0_WR_CGTT_CLK_CTRL, data1);
+	if (def2 != data2)
+		WREG32_SOC15(MMHUB, 0, mmDAGB0_RD_CGTT_CLK_CTRL, data2);
 }
 
 static int mmhub_v2_3_set_clockgating(struct amdgpu_device *adev,
@@ -545,40 +570,52 @@ static int mmhub_v2_3_set_clockgating(struct amdgpu_device *adev,
 		return 0;
 
 	mmhub_v2_3_update_medium_grain_clock_gating(adev,
-			state == AMD_CG_STATE_GATE ? true : false);
+				state == AMD_CG_STATE_GATE);
 	mmhub_v2_3_update_medium_grain_light_sleep(adev,
-			state == AMD_CG_STATE_GATE ? true : false);
+				state == AMD_CG_STATE_GATE);
 
 	return 0;
 }
 
 static void mmhub_v2_3_get_clockgating(struct amdgpu_device *adev, u32 *flags)
 {
-	int data, data1;
+	int data, data1, data2, data3;
 
 	if (amdgpu_sriov_vf(adev))
 		*flags = 0;
 
-	data  = RREG32_SOC15(MMHUB, 0, mmMM_ATC_L2_MISC_CG);
-	data1 = RREG32_SOC15(MMHUB, 0, mmDAGB0_CNTL_MISC2);
+	data = RREG32_SOC15(MMHUB, 0, mmDAGB0_CNTL_MISC2);
+	data1  = RREG32_SOC15(MMHUB, 0, mmMM_ATC_L2_CGTT_CLK_CTRL);
+	data2 = RREG32_SOC15(MMHUB, 0, mmDAGB0_WR_CGTT_CLK_CTRL);
+	data3 = RREG32_SOC15(MMHUB, 0, mmDAGB0_RD_CGTT_CLK_CTRL);
 
 	/* AMD_CG_SUPPORT_MC_MGCG */
-	if ((data & MM_ATC_L2_MISC_CG__ENABLE_MASK) &&
-	    !(data1 & (DAGB0_CNTL_MISC2__DISABLE_WRREQ_CG_MASK |
+	if (!(data & (DAGB0_CNTL_MISC2__DISABLE_WRREQ_CG_MASK |
 		       DAGB0_CNTL_MISC2__DISABLE_WRRET_CG_MASK |
 		       DAGB0_CNTL_MISC2__DISABLE_RDREQ_CG_MASK |
 		       DAGB0_CNTL_MISC2__DISABLE_RDRET_CG_MASK |
 		       DAGB0_CNTL_MISC2__DISABLE_TLBWR_CG_MASK |
-		       DAGB0_CNTL_MISC2__DISABLE_TLBRD_CG_MASK)))
-		*flags |= AMD_CG_SUPPORT_MC_MGCG;
+		       DAGB0_CNTL_MISC2__DISABLE_TLBRD_CG_MASK))
+		&& !(data1 & MM_ATC_L2_CGTT_CLK_CTRL__SOFT_OVERRIDE_MASK)) {
+			*flags |= AMD_CG_SUPPORT_MC_MGCG;
+	}
 
 	/* AMD_CG_SUPPORT_MC_LS */
-	if (data & MM_ATC_L2_MISC_CG__MEM_LS_ENABLE_MASK)
+	if (!(data1 & MM_ATC_L2_CGTT_CLK_CTRL__MGLS_OVERRIDE_MASK)
+		&& !(data2 & (DAGB0_WR_CGTT_CLK_CTRL__LS_OVERRIDE_MASK |
+				DAGB0_WR_CGTT_CLK_CTRL__LS_OVERRIDE_WRITE_MASK |
+				DAGB0_WR_CGTT_CLK_CTRL__LS_OVERRIDE_READ_MASK |
+				DAGB0_WR_CGTT_CLK_CTRL__LS_OVERRIDE_RETURN_MASK |
+				DAGB0_WR_CGTT_CLK_CTRL__LS_OVERRIDE_REGISTER_MASK))
+		&& !(data3 & (DAGB0_RD_CGTT_CLK_CTRL__LS_OVERRIDE_MASK |
+				DAGB0_RD_CGTT_CLK_CTRL__LS_OVERRIDE_WRITE_MASK |
+				DAGB0_RD_CGTT_CLK_CTRL__LS_OVERRIDE_READ_MASK |
+				DAGB0_RD_CGTT_CLK_CTRL__LS_OVERRIDE_RETURN_MASK |
+				DAGB0_RD_CGTT_CLK_CTRL__LS_OVERRIDE_REGISTER_MASK)))
 		*flags |= AMD_CG_SUPPORT_MC_LS;
 }
 
 const struct amdgpu_mmhub_funcs mmhub_v2_3_funcs = {
-	.ras_late_init = amdgpu_mmhub_ras_late_init,
 	.init = mmhub_v2_3_init,
 	.gart_enable = mmhub_v2_3_gart_enable,
 	.set_fault_enable_default = mmhub_v2_3_set_fault_enable_default,

@@ -382,6 +382,13 @@ struct mpc_funcs {
 
 #endif
 
+	unsigned int (*get_mpc_out_mux)(
+			struct mpc *mpc,
+			int opp_id);
+
+	void (*set_bg_color)(struct mpc *mpc,
+			struct tg_color *bg_color,
+			int mpcc_id);
 };
 
 #endif

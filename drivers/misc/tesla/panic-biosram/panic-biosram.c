@@ -172,4 +172,5 @@ module_init(panic_biosram_init);
 module_exit(panic_biosram_exit);
 
 MODULE_LICENSE("GPL v2");
+MODULE_AUTHOR("Tesla OpenSource <opensource@tesla.com>");
 MODULE_DESCRIPTION("Log panic reason to BIOSRAM region");

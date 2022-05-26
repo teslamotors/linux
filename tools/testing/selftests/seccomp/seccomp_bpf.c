@@ -225,6 +225,40 @@ int seccomp(unsigned int op, unsigned int flags, void *args)
 #define SIBLING_EXIT_FAILURE	0xbadface
 #define SIBLING_EXIT_NEWPRIVS	0xbadfeed
 
+static int __filecmp(pid_t pid1, pid_t pid2, int fd1, int fd2)
+{
+#ifdef __NR_kcmp
+	errno = 0;
+	return syscall(__NR_kcmp, pid1, pid2, KCMP_FILE, fd1, fd2);
+#else
+	errno = ENOSYS;
+	return -1;
+#endif
+}
+
+/* Have TH_LOG report actual location filecmp() is used. */
+#define filecmp(pid1, pid2, fd1, fd2)	({		\
+	int _ret;					\
+							\
+	_ret = __filecmp(pid1, pid2, fd1, fd2);		\
+	if (_ret != 0) {				\
+		if (_ret < 0 && errno == ENOSYS) {	\
+			TH_LOG("kcmp() syscall missing (test is less accurate)");\
+			_ret = 0;			\
+		}					\
+	}						\
+	_ret; })
+
+TEST(kcmp)
+{
+	int ret;
+
+	ret = __filecmp(getpid(), getpid(), 1, 1);
+	EXPECT_EQ(ret, 0);
+	if (ret != 0 && errno == ENOSYS)
+		SKIP(return, "Kernel does not support kcmp() (missing CONFIG_KCMP?)");
+}
+
 TEST(mode_strict_support)
 {
 	long ret;

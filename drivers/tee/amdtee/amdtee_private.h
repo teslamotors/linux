@@ -21,6 +21,7 @@
 #define TEEC_SUCCESS			0x00000000
 #define TEEC_ERROR_GENERIC		0xFFFF0000
 #define TEEC_ERROR_BAD_PARAMETERS	0xFFFF0006
+#define TEEC_ERROR_OUT_OF_MEMORY	0xFFFF000C
 #define TEEC_ERROR_COMMUNICATION	0xFFFF000E
 
 #define TEEC_ORIGIN_COMMS		0x00000002
@@ -64,9 +65,13 @@ struct amdtee_session {
 /**
  * struct amdtee_context_data - AMD-TEE driver context data
  * @sess_list:    Keeps track of sessions opened in current TEE context
+ * @shm_list:     Keeps track of buffers allocated and mapped in current TEE
+ *                context
  */
 struct amdtee_context_data {
 	struct list_head sess_list;
+	struct list_head shm_list;
+	struct mutex shm_mutex;   /* synchronizes access to @shm_list */
 };
 
 struct amdtee_driver_data {
@@ -89,8 +94,16 @@ struct amdtee_shm_data {
 	u32     buf_id;
 };
 
-struct amdtee_shm_context {
-	struct list_head shmdata_list;
+/**
+ * struct amdtee_ta_data - Keeps track of all TAs loaded in AMD Secure
+ *			   Processor
+ * @ta_handle:	Handle to TA loaded in TEE
+ * @refcount:	Reference count for the loaded TA
+ */
+struct amdtee_ta_data {
+	struct list_head list_node;
+	u32 ta_handle;
+	u32 refcount;
 };
 
 #define LOWER_TWO_BYTE_MASK	0x0000FFFF

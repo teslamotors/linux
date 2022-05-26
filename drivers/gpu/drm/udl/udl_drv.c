@@ -54,7 +54,6 @@ static void udl_driver_release(struct drm_device *dev)
 {
 	udl_fini(dev);
 	udl_modeset_cleanup(dev);
-	drm_dev_fini(dev);
 	kfree(dev);
 }
 
@@ -104,7 +103,6 @@ static struct udl_device *udl_driver_create(struct usb_interface *interface)
 
 	r = udl_init(udl);
 	if (r) {
-		drm_dev_fini(&udl->drm);
 		kfree(udl);
 		return ERR_PTR(r);
 	}

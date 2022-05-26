@@ -486,7 +486,6 @@ static void ingenic_drm_release(struct drm_device *drm)
 	struct ingenic_drm *priv = drm_device_get_priv(drm);
 
 	drm_mode_config_cleanup(drm);
-	drm_dev_fini(drm);
 	kfree(priv);
 }
 

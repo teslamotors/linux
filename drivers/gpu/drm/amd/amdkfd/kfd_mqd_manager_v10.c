@@ -115,6 +115,11 @@ static void init_mqd(struct mqd_manager *mm, void **mqd,
 			1 << CP_HQD_QUANTUM__QUANTUM_SCALE__SHIFT |
 			1 << CP_HQD_QUANTUM__QUANTUM_DURATION__SHIFT;
 
+	/* Set cp_hqd_hq_scheduler0 bit 14 to 1 to have the CP set up the
+	 * DISPATCH_PTR.  This is required for the kfd debugger
+	 */
+	m->cp_hqd_hq_scheduler0 = 1 << 14;
+
 	if (q->format == KFD_QUEUE_FORMAT_AQL) {
 		m->cp_hqd_aql_control =
 			1 << CP_HQD_AQL_CONTROL__CONTROL0__SHIFT;
@@ -222,6 +227,13 @@ static void update_mqd(struct mqd_manager *mm, void *mqd,
 	set_priority(m, q);
 
 	q->is_active = QUEUE_IS_ACTIVE(*q);
+}
+
+static uint32_t read_doorbell_id(void *mqd)
+{
+	struct v10_compute_mqd *m = (struct v10_compute_mqd *)mqd;
+
+	return m->queue_doorbell_id0;
 }
 
 static int destroy_mqd(struct mqd_manager *mm, void *mqd,
@@ -435,6 +447,7 @@ struct mqd_manager *mqd_manager_init_v10(enum KFD_MQD_TYPE type,
 #if defined(CONFIG_DEBUG_FS)
 		mqd->debugfs_show_mqd = debugfs_show_mqd;
 #endif
+		mqd->read_doorbell_id = read_doorbell_id;
 		pr_debug("%s@%i\n", __func__, __LINE__);
 		break;
 	case KFD_MQD_TYPE_DIQ:

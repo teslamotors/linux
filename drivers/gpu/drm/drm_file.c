@@ -49,6 +49,38 @@
 /* from BKL pushdown */
 DEFINE_MUTEX(drm_global_mutex);
 
+bool drm_dev_needs_global_mutex(struct drm_device *dev)
+{
+       /*
+        * Legacy drivers rely on all kinds of BKL locking semantics, don't
+        * bother. They also still need BKL locking for their ioctls, so better
+        * safe than sorry.
+        */
+       if (drm_core_check_feature(dev, DRIVER_LEGACY))
+               return true;
+
+       /*
+        * The deprecated ->load callback must be called after the driver is
+        * already registered. This means such drivers rely on the BKL to make
+        * sure an open can't proceed until the driver is actually fully set up.
+        * Similar hilarity holds for the unload callback.
+        */
+       if (dev->driver->load || dev->driver->unload)
+               return true;
+
+       /*
+        * Drivers with the lastclose callback assume that it's synchronized
+        * against concurrent opens, which again needs the BKL. The proper fix
+        * is to use the drm_client infrastructure with proper locking for each
+        * client.
+        */
+       if (dev->driver->lastclose)
+               return true;
+
+       return false;
+}
+
+
 /**
  * DOC: file operations
  *
@@ -155,6 +187,12 @@ struct drm_file *drm_file_alloc(struct drm_minor *minor)
 			goto out_prime_destroy;
 	}
 
+	file->dummy_page = alloc_page(GFP_KERNEL | __GFP_ZERO);
+	if (!file->dummy_page) {
+		ret = -ENOMEM;
+		goto out_prime_destroy;
+	}
+
 	return file;
 
 out_prime_destroy:
@@ -250,6 +288,8 @@ void drm_file_free(struct drm_file *file)
 
 	if (dev->driver->postclose)
 		dev->driver->postclose(dev, file);
+
+	__free_page(file->dummy_page);
 
 	drm_prime_destroy_file_private(&file->prime);
 
@@ -377,6 +417,10 @@ int drm_open(struct inode *inode, struct file *filp)
 		return PTR_ERR(minor);
 
 	dev = minor->dev;
+
+        if (drm_dev_needs_global_mutex(dev))
+               mutex_lock(&drm_global_mutex);
+
 	if (!dev->open_count++)
 		need_setup = 1;
 
@@ -393,10 +437,16 @@ int drm_open(struct inode *inode, struct file *filp)
 			goto err_undo;
 		}
 	}
+
+        if (drm_dev_needs_global_mutex(dev))
+               mutex_unlock(&drm_global_mutex);
+
 	return 0;
 
 err_undo:
 	dev->open_count--;
+        if (drm_dev_needs_global_mutex(dev))
+                mutex_unlock(&drm_global_mutex);
 	drm_minor_release(minor);
 	return retcode;
 }
@@ -436,7 +486,8 @@ int drm_release(struct inode *inode, struct file *filp)
 	struct drm_minor *minor = file_priv->minor;
 	struct drm_device *dev = minor->dev;
 
-	mutex_lock(&drm_global_mutex);
+        if (drm_dev_needs_global_mutex(dev))
+                mutex_lock(&drm_global_mutex);
 
 	DRM_DEBUG("open_count = %d\n", dev->open_count);
 
@@ -445,7 +496,8 @@ int drm_release(struct inode *inode, struct file *filp)
 	if (!--dev->open_count)
 		drm_lastclose(dev);
 
-	mutex_unlock(&drm_global_mutex);
+        if (drm_dev_needs_global_mutex(dev))
+                mutex_unlock(&drm_global_mutex);
 
 	drm_minor_release(minor);
 

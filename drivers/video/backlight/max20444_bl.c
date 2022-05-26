@@ -165,6 +165,12 @@ static int max20444_backlight_update_status(struct backlight_device *bl)
 	/* clip upper range */
 	clamp_t(int, brightness, 0, bl->props.max_brightness);
 
+	if (bl->props.state & BL_CORE_SUSPENDED) {
+		dev_info(&max->client->dev,
+			 "Device suspended, not updating backlight\n");
+		return 0;
+	}
+
 	/* Update four channels */
 	for (channel = 1; channel <= MAX_CHANNELS; channel++) {
 		max20444_set_chan_brightness(max, channel, brightness);
@@ -291,4 +297,5 @@ static struct i2c_driver max20444_driver = {
 module_i2c_driver(max20444_driver);
 
 MODULE_DESCRIPTION("Maxim MAX20444 Backlight Driver");
+MODULE_AUTHOR("Tesla OpenSource <opensource@tesla.com>");
 MODULE_LICENSE("GPL v2");

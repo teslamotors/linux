@@ -25,8 +25,10 @@
 #include <drm/drm_drv.h>
 #include <drm/drm_encoder.h>
 #include <drm/drm_file.h>
+#include <drm/drm_managed.h>
 #include <drm/drm_mode_config.h>
 #include <drm/drm_print.h>
+#include <linux/dma-resv.h>
 
 #include "drm_crtc_internal.h"
 #include "drm_internal.h"
@@ -372,8 +374,15 @@ static int drm_mode_create_standard_properties(struct drm_device *dev)
 	return 0;
 }
 
+static void drm_mode_config_init_release(struct drm_device *dev, void *ptr)
+{
+       drm_mode_config_cleanup(dev);
+}
+
+
 /**
- * drm_mode_config_init - initialize DRM mode_configuration structure
+ * drmm_mode_config_init - managed DRM mode_configuration structure
+ *     initialization 
  * @dev: DRM device
  *
  * Initialize @dev's mode_config structure, used for tracking the graphics
@@ -382,9 +391,13 @@ static int drm_mode_create_standard_properties(struct drm_device *dev)
  * Since this initializes the modeset locks, no locking is possible. Which is no
  * problem, since this should happen single threaded at init time. It is the
  * driver's problem to ensure this guarantee.
+ * Cleanup is automatically handled through registering drm_mode_config_cleanup
+ * with drmm_add_action().
+ *
+ * Returns: 0 on success, negative error value on failure.
  *
  */
-void drm_mode_config_init(struct drm_device *dev)
+int drmm_mode_config_init(struct drm_device *dev)
 {
 	mutex_init(&dev->mode_config.mutex);
 	drm_modeset_lock_init(&dev->mode_config.connection_mutex);
@@ -415,8 +428,38 @@ void drm_mode_config_init(struct drm_device *dev)
 	dev->mode_config.num_crtc = 0;
 	dev->mode_config.num_encoder = 0;
 	dev->mode_config.num_total_plane = 0;
+
+        if (IS_ENABLED(CONFIG_LOCKDEP)) {
+                struct drm_modeset_acquire_ctx modeset_ctx;
+                struct ww_acquire_ctx resv_ctx;
+                struct dma_resv resv;
+                int ret;
+
+                dma_resv_init(&resv);
+
+                drm_modeset_acquire_init(&modeset_ctx, 0);
+                ret = drm_modeset_lock(&dev->mode_config.connection_mutex,
+                                       &modeset_ctx);
+                if (ret == -EDEADLK)
+                        ret = drm_modeset_backoff(&modeset_ctx);
+
+                ww_acquire_init(&resv_ctx, &reservation_ww_class);
+                ret = dma_resv_lock(&resv, &resv_ctx);
+                if (ret == -EDEADLK)
+                        dma_resv_lock_slow(&resv, &resv_ctx);
+
+                dma_resv_unlock(&resv);
+                ww_acquire_fini(&resv_ctx);
+
+                drm_modeset_drop_locks(&modeset_ctx);
+                drm_modeset_acquire_fini(&modeset_ctx);
+                dma_resv_fini(&resv);
+        }
+	return drmm_add_action_or_reset(dev, drm_mode_config_init_release,
+			NULL);
+
 }
-EXPORT_SYMBOL(drm_mode_config_init);
+EXPORT_SYMBOL(drmm_mode_config_init);
 
 /**
  * drm_mode_config_cleanup - free up DRM mode_config info
@@ -506,3 +549,22 @@ void drm_mode_config_cleanup(struct drm_device *dev)
 	drm_modeset_lock_fini(&dev->mode_config.connection_mutex);
 }
 EXPORT_SYMBOL(drm_mode_config_cleanup);
+
+/*
+ * For some reason we want the encoder itself included in
+ * possible_clones. Make life easy for drivers by allowing them
+ * to leave possible_clones unset if no cloning is possible.
+ */
+static void fixup_encoder_possible_clones(struct drm_encoder *encoder)
+{
+       if (encoder->possible_clones == 0)
+               encoder->possible_clones = drm_encoder_mask(encoder);
+}
+
+void drm_mode_config_validate(struct drm_device *dev)
+{
+       struct drm_encoder *encoder;
+
+       drm_for_each_encoder(encoder, dev)
+               fixup_encoder_possible_clones(encoder);
+}

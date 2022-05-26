@@ -148,13 +148,17 @@ static DEVICE_ATTR(mem_info_vis_vram_used, S_IRUGO,
 static DEVICE_ATTR(mem_info_vram_vendor, S_IRUGO,
 		   amdgpu_mem_info_vram_vendor, NULL);
 
-static const struct attribute *amdgpu_vram_mgr_attributes[] = {
+static struct attribute *amdgpu_vram_mgr_attributes[] = {
 	&dev_attr_mem_info_vram_total.attr,
 	&dev_attr_mem_info_vis_vram_total.attr,
 	&dev_attr_mem_info_vram_used.attr,
 	&dev_attr_mem_info_vis_vram_used.attr,
 	&dev_attr_mem_info_vram_vendor.attr,
 	NULL
+};
+
+const struct attribute_group amdgpu_vram_mgr_attr_group = {
+	.attrs = amdgpu_vram_mgr_attributes
 };
 
 /**
@@ -167,9 +171,7 @@ static const struct attribute *amdgpu_vram_mgr_attributes[] = {
 static int amdgpu_vram_mgr_init(struct ttm_mem_type_manager *man,
 				unsigned long p_size)
 {
-	struct amdgpu_device *adev = amdgpu_ttm_adev(man->bdev);
 	struct amdgpu_vram_mgr *mgr;
-	int ret;
 
 	mgr = kzalloc(sizeof(*mgr), GFP_KERNEL);
 	if (!mgr)
@@ -178,11 +180,6 @@ static int amdgpu_vram_mgr_init(struct ttm_mem_type_manager *man,
 	drm_mm_init(&mgr->mm, 0, p_size);
 	spin_lock_init(&mgr->lock);
 	man->priv = mgr;
-
-	/* Add the two VRAM-related sysfs files */
-	ret = sysfs_create_files(&adev->dev->kobj, amdgpu_vram_mgr_attributes);
-	if (ret)
-		DRM_ERROR("Failed to register sysfs\n");
 
 	return 0;
 }
@@ -197,7 +194,6 @@ static int amdgpu_vram_mgr_init(struct ttm_mem_type_manager *man,
  */
 static int amdgpu_vram_mgr_fini(struct ttm_mem_type_manager *man)
 {
-	struct amdgpu_device *adev = amdgpu_ttm_adev(man->bdev);
 	struct amdgpu_vram_mgr *mgr = man->priv;
 
 	spin_lock(&mgr->lock);
@@ -205,7 +201,6 @@ static int amdgpu_vram_mgr_fini(struct ttm_mem_type_manager *man)
 	spin_unlock(&mgr->lock);
 	kfree(mgr);
 	man->priv = NULL;
-	sysfs_remove_files(&adev->dev->kobj, amdgpu_vram_mgr_attributes);
 	return 0;
 }
 
@@ -295,13 +290,13 @@ static int amdgpu_vram_mgr_new(struct ttm_mem_type_manager *man,
 			       const struct ttm_place *place,
 			       struct ttm_mem_reg *mem)
 {
+	unsigned long lpfn, num_nodes, pages_per_node, pages_left, pages;
 	struct amdgpu_device *adev = amdgpu_ttm_adev(man->bdev);
+	uint64_t vis_usage = 0, mem_bytes, max_bytes;
 	struct amdgpu_vram_mgr *mgr = man->priv;
 	struct drm_mm *mm = &mgr->mm;
-	struct drm_mm_node *nodes;
 	enum drm_mm_insert_mode mode;
-	unsigned long lpfn, num_nodes, pages_per_node, pages_left;
-	uint64_t vis_usage = 0, mem_bytes, max_bytes;
+	struct drm_mm_node *nodes;
 	unsigned i;
 	int r;
 
@@ -329,9 +324,10 @@ static int amdgpu_vram_mgr_new(struct ttm_mem_type_manager *man,
 		pages_per_node = HPAGE_PMD_NR;
 #else
 		/* default to 2MB */
-		pages_per_node = (2UL << (20UL - PAGE_SHIFT));
+		pages_per_node = 2UL << (20UL - PAGE_SHIFT);
 #endif
-		pages_per_node = max((uint32_t)pages_per_node, mem->page_alignment);
+		pages_per_node = max_t(uint32_t, pages_per_node,
+				       mem->page_alignment);
 		num_nodes = DIV_ROUND_UP(mem->num_pages, pages_per_node);
 	}
 
@@ -349,46 +345,45 @@ static int amdgpu_vram_mgr_new(struct ttm_mem_type_manager *man,
 	mem->start = 0;
 	pages_left = mem->num_pages;
 
+	/* Limit maximum size to 2GB due to SG table limitations */
+	pages = min(pages_left, 2UL << (30 - PAGE_SHIFT));
+
+	i = 0;
 	spin_lock(&mgr->lock);
-	for (i = 0; pages_left >= pages_per_node; ++i) {
-		unsigned long pages = rounddown_pow_of_two(pages_left);
-
-		r = drm_mm_insert_node_in_range(mm, &nodes[i], pages,
-						pages_per_node, 0,
-						place->fpfn, lpfn,
-						mode);
-		if (unlikely(r))
-			break;
-
-		vis_usage += amdgpu_vram_mgr_vis_size(adev, &nodes[i]);
-		amdgpu_vram_mgr_virt_start(mem, &nodes[i]);
-		pages_left -= pages;
-	}
-
-	for (; pages_left; ++i) {
-		unsigned long pages = min(pages_left, pages_per_node);
+	while (pages_left) {
 		uint32_t alignment = mem->page_alignment;
 
-		if (pages == pages_per_node)
+		if (pages >= pages_per_node)
 			alignment = pages_per_node;
 
-		r = drm_mm_insert_node_in_range(mm, &nodes[i],
-						pages, alignment, 0,
-						place->fpfn, lpfn,
-						mode);
-		if (unlikely(r))
+		r = drm_mm_insert_node_in_range(mm, &nodes[i], pages, alignment,
+						0, place->fpfn, lpfn, mode);
+		if (unlikely(r)) {
+			if (pages > pages_per_node) {
+				if (is_power_of_2(pages))
+					pages = pages / 2;
+				else
+					pages = rounddown_pow_of_two(pages);
+				continue;
+			}
 			goto error;
+		}
 
 		vis_usage += amdgpu_vram_mgr_vis_size(adev, &nodes[i]);
 		amdgpu_vram_mgr_virt_start(mem, &nodes[i]);
 		pages_left -= pages;
+		++i;
+
+		if (pages > pages_left)
+			pages = pages_left;
 	}
 	spin_unlock(&mgr->lock);
 
+	if (i == 1)
+		mem->placement |= TTM_PL_FLAG_CONTIGUOUS;
+
 	atomic64_add(vis_usage, &mgr->vis_usage);
-
 	mem->mm_node = nodes;
-
 	return 0;
 
 error:

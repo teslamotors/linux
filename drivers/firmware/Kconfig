@@ -77,6 +77,17 @@ config ARM_SDE_INTERFACE
 	  standard for registering callbacks from the platform firmware
 	  into the OS. This is typically used to implement RAS notifications.
 
+config COREBOOT_PSTORE
+	tristate "pstore/ramoops region passed in via coreboot tables"
+	depends on X86
+	select GOOGLE_COREBOOT_TABLE
+	help
+	  If coreboot reserved a pstore region for pstore/ramoops usage,
+	  make use of it as a ramoops device.
+
+	  Enabling this will automatically enable support for probing
+	  information from coreboot tables.
+
 config EDD
 	tristate "BIOS Enhanced Disk Drive calls determine boot disk"
 	depends on X86

@@ -54,17 +54,17 @@
 #define HSA_DBG_TRAP_DEBUG_WATCH_MASK_LO_BIT			0x00000004
 #define HSA_DBG_TRAP_DEBUG_WATCH_MASK_HI_BIT			(29 << 4)
 
-#define HSA_CAP_SRAM_EDCSUPPORTED		0x00080000
+#define HSA_CAP_RESERVED_WAS_SRAM_EDCSUPPORTED	0x00080000 /* Old buggy user mode depends on this being 0 */
 #define HSA_CAP_MEM_EDCSUPPORTED		0x00100000
 #define HSA_CAP_RASEVENTNOTIFY			0x00200000
 #define HSA_CAP_ASIC_REVISION_MASK		0x03c00000
 #define HSA_CAP_ASIC_REVISION_SHIFT		22
+#define HSA_CAP_SRAM_EDCSUPPORTED		0x04000000
 
-#define HSA_CAP_RESERVED			0xfc078000
+#define HSA_CAP_RESERVED			0xf80f8000
 
 struct kfd_node_properties {
 	uint64_t hive_id;
-	uint64_t unique_id;
 	uint32_t cpu_cores_count;
 	uint32_t simd_count;
 	uint32_t mem_banks_count;

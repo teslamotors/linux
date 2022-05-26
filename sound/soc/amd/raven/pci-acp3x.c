@@ -28,6 +28,7 @@ static int snd_acp3x_probe(struct pci_dev *pci,
 	struct platform_device_info pdevinfo;
 	unsigned int irqflags;
 
+	irqflags = IRQF_SHARED;
 	if (pci_enable_device(pci)) {
 		dev_err(&pci->dev, "pci_enable_device failed\n");
 		return -ENODEV;
@@ -45,8 +46,6 @@ static int snd_acp3x_probe(struct pci_dev *pci,
 		ret = -ENOMEM;
 		goto release_regions;
 	}
-
-	irqflags = IRQF_SHARED;
 
 	addr = pci_resource_start(pci, 0);
 	adata->acp3x_base = ioremap(addr, pci_resource_len(pci, 0));

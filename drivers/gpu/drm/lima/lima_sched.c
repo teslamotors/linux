@@ -285,7 +285,7 @@ static void lima_sched_handle_error_task(struct lima_sched_pipe *pipe,
 	drm_sched_start(&pipe->base, true);
 }
 
-static void lima_sched_timedout_job(struct drm_sched_job *job)
+static enum drm_gpu_sched_stat lima_sched_timedout_job(struct drm_sched_job *job)
 {
 	struct lima_sched_pipe *pipe = to_lima_pipe(job->sched);
 	struct lima_sched_task *task = to_lima_task(job);
@@ -293,6 +293,7 @@ static void lima_sched_timedout_job(struct drm_sched_job *job)
 	DRM_ERROR("lima job timeout\n");
 
 	lima_sched_handle_error_task(pipe, task);
+	return DRM_GPU_SCHED_STAT_NOMINAL;
 }
 
 static void lima_sched_free_job(struct drm_sched_job *job)

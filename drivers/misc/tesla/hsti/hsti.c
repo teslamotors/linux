@@ -96,5 +96,6 @@ static void __exit hsti_exit(void)
 module_init(hsti_init);
 module_exit(hsti_exit);
 
+MODULE_AUTHOR("Tesla OpenSource <opensource@tesla.com>");
 MODULE_DESCRIPTION("AMD Hardware Security Test Interface sysfs driver.");
 MODULE_LICENSE("GPL v2");

@@ -30,6 +30,7 @@
 #include <linux/idr.h>
 
 #include <drm/amdgpu_drm.h>
+#include <drm/drm_drv.h>
 #include "amdgpu.h"
 #include "amdgpu_trace.h"
 #include "amdgpu_amdkfd.h"
@@ -90,13 +91,13 @@ struct amdgpu_prt_cb {
 static inline void amdgpu_vm_eviction_lock(struct amdgpu_vm *vm)
 {
 	mutex_lock(&vm->eviction_lock);
-	vm->saved_flags = memalloc_nofs_save();
+	vm->saved_flags = memalloc_noreclaim_save();
 }
 
 static inline int amdgpu_vm_eviction_trylock(struct amdgpu_vm *vm)
 {
 	if (mutex_trylock(&vm->eviction_lock)) {
-		vm->saved_flags = memalloc_nofs_save();
+		vm->saved_flags = memalloc_noreclaim_save();
 		return 1;
 	}
 	return 0;
@@ -104,7 +105,7 @@ static inline int amdgpu_vm_eviction_trylock(struct amdgpu_vm *vm)
 
 static inline void amdgpu_vm_eviction_unlock(struct amdgpu_vm *vm)
 {
-	memalloc_nofs_restore(vm->saved_flags);
+	memalloc_noreclaim_restore(vm->saved_flags);
 	mutex_unlock(&vm->eviction_lock);
 }
 
@@ -690,6 +691,11 @@ int amdgpu_vm_validate_pt_bos(struct amdgpu_device *adev, struct amdgpu_vm *vm,
 		r = validate(param, bo);
 		if (r)
 			return r;
+		if (bo->shadow) {
+			r = validate(param, bo->shadow);
+			if (r)
+				return r;
+		}
 
 		if (bo->tbo.type != ttm_bo_type_kernel) {
 			amdgpu_vm_bo_moved(bo_base);
@@ -846,34 +852,60 @@ static int amdgpu_vm_clear_bo(struct amdgpu_device *adev,
 }
 
 /**
- * amdgpu_vm_bo_param - fill in parameters for PD/PT allocation
+ * amdgpu_vm_pt_create - create bo for PD/PT
  *
  * @adev: amdgpu_device pointer
  * @vm: requesting vm
  * @level: the page table level
  * @immediate: use a immediate update
- * @bp: resulting BO allocation parameters
+ * @bo: pointer to the buffer object pointer
  */
-static void amdgpu_vm_bo_param(struct amdgpu_device *adev, struct amdgpu_vm *vm,
+static int amdgpu_vm_pt_create(struct amdgpu_device *adev,
+			       struct amdgpu_vm *vm,
 			       int level, bool immediate,
-			       struct amdgpu_bo_param *bp)
+			       struct amdgpu_bo **bo)
 {
-	memset(bp, 0, sizeof(*bp));
+	struct amdgpu_bo_param bp;
+	int r;
 
-	bp->size = amdgpu_vm_bo_size(adev, level);
-	bp->byte_align = AMDGPU_GPU_PAGE_SIZE;
-	bp->domain = AMDGPU_GEM_DOMAIN_VRAM;
-	bp->domain = amdgpu_bo_get_preferred_pin_domain(adev, bp->domain);
-	bp->flags = AMDGPU_GEM_CREATE_VRAM_CONTIGUOUS |
+	memset(&bp, 0, sizeof(bp));
+
+	bp.size = amdgpu_vm_bo_size(adev, level);
+	bp.byte_align = AMDGPU_GPU_PAGE_SIZE;
+	bp.domain = AMDGPU_GEM_DOMAIN_VRAM;
+	bp.domain = amdgpu_bo_get_preferred_pin_domain(adev, bp.domain);
+	bp.flags = AMDGPU_GEM_CREATE_VRAM_CONTIGUOUS |
 		AMDGPU_GEM_CREATE_CPU_GTT_USWC;
+	bp.bo_ptr_size = sizeof(struct amdgpu_bo);
 	if (vm->use_cpu_for_update)
-		bp->flags |= AMDGPU_GEM_CREATE_CPU_ACCESS_REQUIRED;
-	else if (!vm->root.base.bo || vm->root.base.bo->shadow)
-		bp->flags |= AMDGPU_GEM_CREATE_SHADOW;
-	bp->type = ttm_bo_type_kernel;
-	bp->no_wait_gpu = immediate;
+		bp.flags |= AMDGPU_GEM_CREATE_CPU_ACCESS_REQUIRED;
+
+	bp.type = ttm_bo_type_kernel;
+	bp.no_wait_gpu = immediate;
 	if (vm->root.base.bo)
-		bp->resv = vm->root.base.bo->tbo.base.resv;
+		bp.resv = vm->root.base.bo->tbo.base.resv;
+
+	r = amdgpu_bo_create(adev, &bp, bo);
+	if (r)
+		return r;
+
+	if (vm->is_compute_context && (adev->flags & AMD_IS_APU))
+		return 0;
+
+	if (!bp.resv)
+		WARN_ON(dma_resv_lock((*bo)->tbo.base.resv,
+				      NULL));
+	r = amdgpu_bo_create_shadow(adev, bp.size, *bo);
+
+	if (!bp.resv)
+		dma_resv_unlock((*bo)->tbo.base.resv);
+
+	if (r) {
+		amdgpu_bo_unref(bo);
+		return r;
+	}
+
+	return 0;
 }
 
 /**
@@ -896,7 +928,6 @@ static int amdgpu_vm_alloc_pts(struct amdgpu_device *adev,
 			       bool immediate)
 {
 	struct amdgpu_vm_pt *entry = cursor->entry;
-	struct amdgpu_bo_param bp;
 	struct amdgpu_bo *pt;
 	int r;
 
@@ -914,9 +945,7 @@ static int amdgpu_vm_alloc_pts(struct amdgpu_device *adev,
 	if (entry->base.bo)
 		return 0;
 
-	amdgpu_vm_bo_param(adev, vm, cursor->level, immediate, &bp);
-
-	r = amdgpu_bo_create(adev, &bp, &pt);
+	r = amdgpu_vm_pt_create(adev, vm, cursor->level, immediate, &pt);
 	if (r)
 		return r;
 
@@ -1602,7 +1631,11 @@ static int amdgpu_vm_bo_update_mapping(struct amdgpu_device *adev,
 	struct amdgpu_vm_update_params params;
 	enum amdgpu_sync_mode sync_mode;
 	uint64_t pfn;
-	int r;
+
+        int r, idx;
+
+        if (!drm_dev_enter(&adev->ddev, &idx))
+                return -ENOENT;
 
 	memset(&params, 0, sizeof(params));
 	params.adev = adev;
@@ -1724,6 +1757,8 @@ static int amdgpu_vm_bo_update_mapping(struct amdgpu_device *adev,
 
 error_unlock:
 	amdgpu_vm_eviction_unlock(vm);
+
+        drm_dev_exit(idx);
 	return r;
 }
 
@@ -1733,6 +1768,7 @@ error_unlock:
  * @adev: amdgpu_device pointer
  * @bo_va: requested BO and VM object
  * @clear: if true clear the entries
+ * @table_freed: return true if page table is freed
  *
  * Fill in the page table entries for @bo_va.
  *
@@ -2789,7 +2825,6 @@ long amdgpu_vm_wait_idle(struct amdgpu_vm *vm, long timeout)
  *
  * @adev: amdgpu_device pointer
  * @vm: requested vm
- * @vm_context: Indicates if it GFX or Compute context
  * @pasid: Process address space identifier
  *
  * Init @vm fields.
@@ -2797,10 +2832,8 @@ long amdgpu_vm_wait_idle(struct amdgpu_vm *vm, long timeout)
  * Returns:
  * 0 for success, error for failure.
  */
-int amdgpu_vm_init(struct amdgpu_device *adev, struct amdgpu_vm *vm,
-		   int vm_context, unsigned int pasid)
+int amdgpu_vm_init(struct amdgpu_device *adev, struct amdgpu_vm *vm, u32 pasid)
 {
-	struct amdgpu_bo_param bp;
 	struct amdgpu_bo *root;
 	int r, i;
 
@@ -2832,16 +2865,9 @@ int amdgpu_vm_init(struct amdgpu_device *adev, struct amdgpu_vm *vm,
 	vm->pte_support_ats = false;
 	vm->is_compute_context = false;
 
-	if (vm_context == AMDGPU_VM_CONTEXT_COMPUTE) {
-		vm->use_cpu_for_update = !!(adev->vm_manager.vm_update_mode &
-						AMDGPU_VM_USE_CPU_FOR_COMPUTE);
+	vm->use_cpu_for_update = !!(adev->vm_manager.vm_update_mode &
+				    AMDGPU_VM_USE_CPU_FOR_GFX);
 
-		if (adev->asic_type == CHIP_RAVEN)
-			vm->pte_support_ats = true;
-	} else {
-		vm->use_cpu_for_update = !!(adev->vm_manager.vm_update_mode &
-						AMDGPU_VM_USE_CPU_FOR_GFX);
-	}
 	DRM_DEBUG_DRIVER("VM update mode is %s\n",
 			 vm->use_cpu_for_update ? "CPU" : "SDMA");
 	WARN_ONCE((vm->use_cpu_for_update &&
@@ -2858,10 +2884,8 @@ int amdgpu_vm_init(struct amdgpu_device *adev, struct amdgpu_vm *vm,
 	mutex_init(&vm->eviction_lock);
 	vm->evicting = false;
 
-	amdgpu_vm_bo_param(adev, vm, adev->vm_manager.root_level, false, &bp);
-	if (vm_context == AMDGPU_VM_CONTEXT_COMPUTE)
-		bp.flags &= ~AMDGPU_GEM_CREATE_SHADOW;
-	r = amdgpu_bo_create(adev, &bp, &root);
+	r = amdgpu_vm_pt_create(adev, vm, adev->vm_manager.root_level,
+				false, &root);
 	if (r)
 		goto error_free_delayed;
 
@@ -3164,6 +3188,12 @@ void amdgpu_vm_manager_init(struct amdgpu_device *adev)
 {
 	unsigned i;
 
+	/* Concurrent flushes are only possible starting with Vega10 and
+	 * are broken on Navi10 and Navi14.
+	 */
+	adev->vm_manager.concurrent_flush = !(adev->asic_type < CHIP_VEGA10 ||
+					      adev->asic_type == CHIP_NAVI10 ||
+					      adev->asic_type == CHIP_NAVI14);
 	amdgpu_vmid_mgr_init(adev);
 
 	adev->vm_manager.fence_context =
@@ -3317,7 +3347,7 @@ bool amdgpu_vm_handle_fault(struct amdgpu_device *adev, unsigned int pasid,
 	struct amdgpu_bo *root;
 	uint64_t value, flags;
 	struct amdgpu_vm *vm;
-	long r;
+	int r;
 
 	spin_lock(&adev->vm_manager.pasid_lock);
 	vm = idr_find(&adev->vm_manager.pasid_idr, pasid);
@@ -3366,6 +3396,12 @@ bool amdgpu_vm_handle_fault(struct amdgpu_device *adev, unsigned int pasid,
 		value = 0;
 	}
 
+	r = dma_resv_reserve_shared(root->tbo.base.resv, 1);
+	if (r) {
+		pr_debug("failed %d to reserve fence slot\n", r);
+		goto error_unlock;
+	}
+
 	r = amdgpu_vm_bo_update_mapping(adev, vm, true, false, NULL, addr,
 					addr, flags, value, NULL, NULL,
 					NULL, 0);
@@ -3377,7 +3413,7 @@ bool amdgpu_vm_handle_fault(struct amdgpu_device *adev, unsigned int pasid,
 error_unlock:
 	amdgpu_bo_unreserve(root);
 	if (r < 0)
-		DRM_ERROR("Can't handle page fault (%ld)\n", r);
+		DRM_ERROR("Can't handle page fault (%d)\n", r);
 
 error_unref:
 	amdgpu_bo_unref(&root);

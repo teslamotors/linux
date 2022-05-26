@@ -8,6 +8,7 @@
 #include "include/i2caux_interface.h"
 #include "link_hwss.h"
 #include "hw_sequencer.h"
+#include "link_enc_cfg.h"
 #include "dc_link_dp.h"
 #include "dc_link_ddc.h"
 #include "dm_helpers.h"
@@ -99,7 +100,7 @@ void dp_enable_link_phy(
 	enum clock_source_id clock_source,
 	const struct dc_link_settings *link_settings)
 {
-	struct link_encoder *link_enc = link->link_enc;
+	struct link_encoder *link_enc;
 	struct dc  *dc = link->ctx->dc;
 	struct dmcu *dmcu = dc->res_pool->dmcu;
 
@@ -108,6 +109,13 @@ void dp_enable_link_phy(
 	struct clock_source *dp_cs =
 			link->dc->res_pool->dp_clock_source;
 	unsigned int i;
+
+	/* Link should always be assigned encoder when en-/disabling. */
+	if (link->is_dig_mapping_flexible && dc->res_pool->funcs->link_encs_assign)
+		link_enc = link_enc_cfg_get_link_enc_used_by_link(link->dc->current_state, link);
+	else
+		link_enc = link->link_enc;
+	ASSERT(link_enc);
 
 	if (link->connector_signal == SIGNAL_TYPE_EDP) {
 		link->dc->hwss.edp_power_control(link, true);
@@ -231,6 +239,14 @@ void dp_disable_link_phy(struct dc_link *link, enum signal_type signal)
 {
 	struct dc  *dc = link->ctx->dc;
 	struct dmcu *dmcu = dc->res_pool->dmcu;
+	struct link_encoder *link_enc;
+
+	/* Link should always be assigned encoder when en-/disabling. */
+	if (link->is_dig_mapping_flexible && dc->res_pool->funcs->link_encs_assign)
+		link_enc = link_enc_cfg_get_link_enc_used_by_link(link->dc->current_state, link);
+	else
+		link_enc = link->link_enc;
+	ASSERT(link_enc);
 
 	if (!link->wa_flags.dp_keep_receiver_powered)
 		dp_receiver_power_ctrl(link, false);
@@ -238,13 +254,13 @@ void dp_disable_link_phy(struct dc_link *link, enum signal_type signal)
 	if (signal == SIGNAL_TYPE_EDP) {
 		if (link->dc->hwss.edp_backlight_control)
 			link->dc->hwss.edp_backlight_control(link, false);
-		link->link_enc->funcs->disable_output(link->link_enc, signal);
+		link_enc->funcs->disable_output(link_enc, signal);
 		link->dc->hwss.edp_power_control(link, false);
 	} else {
 		if (dmcu != NULL && dmcu->funcs->lock_phy)
 			dmcu->funcs->lock_phy(dmcu);
 
-		link->link_enc->funcs->disable_output(link->link_enc, signal);
+		link_enc->funcs->disable_output(link_enc, signal);
 
 		if (dmcu != NULL && dmcu->funcs->unlock_phy)
 			dmcu->funcs->unlock_phy(dmcu);
@@ -306,7 +322,7 @@ void dp_set_hw_lane_settings(
 {
 	struct link_encoder *encoder = link->link_enc;
 
-	if (link->lttpr_non_transparent_mode && !is_immediate_downstream(link, offset))
+	if ((link->lttpr_mode == LTTPR_MODE_NON_TRANSPARENT) && !is_immediate_downstream(link, offset))
 		return;
 
 	/* call Encoder to set lane settings */
@@ -320,7 +336,16 @@ void dp_set_hw_test_pattern(
 	uint32_t custom_pattern_size)
 {
 	struct encoder_set_dp_phy_pattern_param pattern_param = {0};
-	struct link_encoder *encoder = link->link_enc;
+	struct link_encoder *encoder;
+
+	/* Access link encoder based on whether it is statically
+	 * or dynamically assigned to a link.
+	 */
+	if (link->is_dig_mapping_flexible &&
+			link->dc->res_pool->funcs->link_encs_assign)
+		encoder = link_enc_cfg_get_link_enc_used_by_link(link->dc->current_state, link);
+	else
+		encoder = link->link_enc;
 
 	pattern_param.dp_phy_pattern = test_pattern;
 	pattern_param.custom_pattern = custom_pattern;
@@ -372,7 +397,8 @@ void dp_retrain_link_dp_test(struct dc_link *link,
 					skip_video_pattern,
 					LINK_TRAINING_ATTEMPTS,
 					&pipes[i],
-					SIGNAL_TYPE_DISPLAY_PORT);
+					SIGNAL_TYPE_DISPLAY_PORT,
+					false);
 
 			link->dc->hwss.enable_stream(&pipes[i]);
 
@@ -420,7 +446,7 @@ static void dsc_optc_config_log(struct display_stream_compressor *dsc,
 	DC_LOG_DSC("\tslice_width %d", config->slice_width);
 }
 
-static bool dp_set_dsc_on_rx(struct pipe_ctx *pipe_ctx, bool enable)
+bool dp_set_dsc_on_rx(struct pipe_ctx *pipe_ctx, bool enable)
 {
 	struct dc *dc = pipe_ctx->stream->ctx->dc;
 	struct dc_stream_state *stream = pipe_ctx->stream;
@@ -530,7 +556,7 @@ bool dp_set_dsc_enable(struct pipe_ctx *pipe_ctx, bool enable)
 		goto out;
 
 	if (enable) {
-		if (dp_set_dsc_on_rx(pipe_ctx, true)) {
+		{
 			dp_set_dsc_on_stream(pipe_ctx, true);
 			result = true;
 		}

@@ -405,7 +405,6 @@ static void vgem_release(struct drm_device *dev)
 	struct vgem_device *vgem = container_of(dev, typeof(*vgem), drm);
 
 	platform_device_unregister(vgem->platform);
-	drm_dev_fini(&vgem->drm);
 
 	kfree(vgem);
 }
@@ -471,7 +470,6 @@ static int __init vgem_init(void)
 	return 0;
 
 out_fini:
-	drm_dev_fini(&vgem_device->drm);
 out_unregister:
 	platform_device_unregister(vgem_device->platform);
 out_free:

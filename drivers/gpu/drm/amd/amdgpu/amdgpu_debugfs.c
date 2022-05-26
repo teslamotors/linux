@@ -36,6 +36,7 @@
 #include "amdgpu_dm_debugfs.h"
 #include "amdgpu_ras.h"
 #include "amdgpu_rap.h"
+#include "amdgpu_securedisplay.h"
 #include "amdgpu_fw_attestation.h"
 
 /**
@@ -1030,7 +1031,7 @@ err:
 }
 
 /**
- * amdgpu_debugfs_regs_gfxoff_write - Enable/disable GFXOFF
+ * amdgpu_debugfs_gfxoff_write - Enable/disable GFXOFF
  *
  * @f: open file handle
  * @buf: User buffer to write data from
@@ -1081,7 +1082,7 @@ static ssize_t amdgpu_debugfs_gfxoff_write(struct file *f, const char __user *bu
 
 
 /**
- * amdgpu_debugfs_regs_gfxoff_status - read gfxoff status
+ * amdgpu_debugfs_gfxoff_read - read gfxoff status
  *
  * @f: open file handle
  * @buf: User buffer to store read data in
@@ -1228,7 +1229,6 @@ int amdgpu_debugfs_regs_init(struct amdgpu_device *adev)
 					  adev, debugfs_regs[i]);
 		if (!i && !IS_ERR_OR_NULL(ent))
 			i_size_write(ent->d_inode, adev->rmmio_size);
-		adev->debugfs_regs[i] = ent;
 	}
 
 	return 0;
@@ -1583,30 +1583,29 @@ static int amdgpu_debugfs_sclk_set(void *data, u64 val)
 	return 0;
 }
 
-DEFINE_SIMPLE_ATTRIBUTE(fops_ib_preempt, NULL,
+DEFINE_DEBUGFS_ATTRIBUTE(fops_ib_preempt, NULL,
 			amdgpu_debugfs_ib_preempt, "%llu\n");
 
-DEFINE_SIMPLE_ATTRIBUTE(fops_sclk_set, NULL,
+DEFINE_DEBUGFS_ATTRIBUTE(fops_sclk_set, NULL,
 			amdgpu_debugfs_sclk_set, "%llu\n");
 
 int amdgpu_debugfs_init(struct amdgpu_device *adev)
 {
+	struct dentry *ent;
 	int r, i;
 
-	adev->debugfs_preempt =
-		debugfs_create_file("amdgpu_preempt_ib", 0600,
-				    adev_to_drm(adev)->primary->debugfs_root, adev,
-				    &fops_ib_preempt);
-	if (!(adev->debugfs_preempt)) {
+	ent = debugfs_create_file("amdgpu_preempt_ib", 0600,
+				  adev_to_drm(adev)->primary->debugfs_root, adev,
+				  &fops_ib_preempt);
+	if (!ent) {
 		DRM_ERROR("unable to create amdgpu_preempt_ib debugsfs file\n");
 		return -EIO;
 	}
 
-	adev->smu.debugfs_sclk =
-		debugfs_create_file("amdgpu_force_sclk", 0200,
-				    adev_to_drm(adev)->primary->debugfs_root, adev,
-				    &fops_sclk_set);
-	if (!(adev->smu.debugfs_sclk)) {
+	ent = debugfs_create_file("amdgpu_force_sclk", 0200,
+				  adev_to_drm(adev)->primary->debugfs_root, adev,
+				  &fops_sclk_set);
+	if (!ent) {
 		DRM_ERROR("unable to create amdgpu_set_sclk debugsfs file\n");
 		return -EIO;
 	}
@@ -1618,11 +1617,7 @@ int amdgpu_debugfs_init(struct amdgpu_device *adev)
 		return r;
 	}
 
-	r = amdgpu_debugfs_pm_init(adev);
-	if (r) {
-		DRM_ERROR("Failed to register debugfs file for dpm!\n");
-		return r;
-	}
+	amdgpu_debugfs_pm_init(adev);
 
 	if (amdgpu_debugfs_sa_init(adev)) {
 		dev_err(adev->dev, "failed to register debugfs file for SA\n");
@@ -1644,10 +1639,8 @@ int amdgpu_debugfs_init(struct amdgpu_device *adev)
 		DRM_ERROR("registering firmware debugfs failed (%d).\n", r);
 
 #if defined(CONFIG_DRM_AMD_DC)
-	if (amdgpu_device_has_dc_support(adev)) {
-		if (dtn_debugfs_init(adev))
-			DRM_ERROR("amdgpu: failed initialize dtn debugfs support.\n");
-	}
+	if (amdgpu_device_has_dc_support(adev))
+		dtn_debugfs_init(adev);
 #endif
 
 	for (i = 0; i < AMDGPU_MAX_RINGS; ++i) {
@@ -1666,6 +1659,8 @@ int amdgpu_debugfs_init(struct amdgpu_device *adev)
 	amdgpu_debugfs_autodump_init(adev);
 
 	amdgpu_rap_debugfs_init(adev);
+
+	amdgpu_securedisplay_debugfs_init(adev);
 
 	amdgpu_fw_attestation_debugfs_init(adev);
 

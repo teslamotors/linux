@@ -620,6 +620,13 @@ int ttm_bo_device_init(struct ttm_bo_device *bdev,
 void ttm_bo_unmap_virtual(struct ttm_buffer_object *bo);
 
 /**
+ * ttm_bo_unmap_virtual_address_space
+ *
+ * @bdev: tear down all the virtual mappings for this device
+ */
+void ttm_bo_unmap_virtual_address_space(struct ttm_bo_device *bdev);
+
+/**
  * ttm_bo_unmap_virtual
  *
  * @bo: tear down the virtual mappings for this BO
@@ -788,6 +795,19 @@ static inline void ttm_bo_unreserve(struct ttm_buffer_object *bo)
 		ttm_bo_move_to_lru_tail(bo, NULL);
 	spin_unlock(&bo->bdev->glob->lru_lock);
 	dma_resv_unlock(bo->base.resv);
+}
+
+/**
+ * ttm_mem_reg_to_bo
+ *
+ * @mem: A pointer to a struct ttm_mem_reg.
+ *
+ * Returns corresponding buffer object of the @mem.
+ */
+static inline
+struct ttm_buffer_object *ttm_mem_reg_to_bo(struct ttm_mem_reg *mem)
+{
+	return container_of(mem, struct ttm_buffer_object, mem);
 }
 
 /*

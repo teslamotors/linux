@@ -128,6 +128,10 @@ bool dal_hw_factory_init(
 #if defined(CONFIG_DRM_AMD_DC_DCN3_02)
 	case DCN_VERSION_3_02:
 #endif
+	case DCN_VERSION_3_03:
+#if defined(CONFIG_DRM_AMD_DC_DCN3_1)
+	case DCN_VERSION_3_1:
+#endif
 		dal_hw_factory_dcn30_init(factory);
 		return true;
 #endif
@@ -135,18 +139,4 @@ bool dal_hw_factory_init(
 		ASSERT_CRITICAL(false);
 		return false;
 	}
-}
-
-void dal_hw_factory_destroy(
-	struct dc_context *ctx,
-	struct hw_factory **factory)
-{
-	if (!factory || !*factory) {
-		BREAK_TO_DEBUGGER();
-		return;
-	}
-
-	kfree(*factory);
-
-	*factory = NULL;
 }

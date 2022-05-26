@@ -222,13 +222,11 @@ void aa_free_profile(struct aa_profile *profile)
 	aa_free_file_rules(&profile->file);
 	aa_free_cap_rules(&profile->caps);
 	aa_free_rlimit_rules(&profile->rlimits);
+	kzfree(profile->net_compat);
 
 	for (i = 0; i < profile->xattr_count; i++)
 		kzfree(profile->xattrs[i]);
 	kzfree(profile->xattrs);
-	for (i = 0; i < profile->secmark_count; i++)
-		kzfree(profile->secmark[i].label);
-	kzfree(profile->secmark);
 	kzfree(profile->dirname);
 	aa_put_dfa(profile->xmatch);
 	aa_put_dfa(profile->policy.dfa);
@@ -266,7 +264,7 @@ struct aa_profile *aa_alloc_profile(const char *hname, struct aa_proxy *proxy,
 
 	if (!aa_policy_init(&profile->base, NULL, hname, gfp))
 		goto fail;
-	if (!aa_label_init(&profile->label, 1, gfp))
+	if (!aa_label_init(&profile->label, 1))
 		goto fail;
 
 	/* update being set needed by fs interface */

@@ -49,10 +49,6 @@ struct amdgpu_mman {
 	bool				initialized;
 	void __iomem			*aper_base_kaddr;
 
-#if defined(CONFIG_DEBUG_FS)
-	struct dentry			*debugfs_entries[8];
-#endif
-
 	/* buffer handling */
 	const struct amdgpu_buffer_funcs	*buffer_funcs;
 	struct amdgpu_ring			*buffer_funcs_ring;
@@ -67,6 +63,10 @@ struct amdgpu_mman {
 	uint64_t		stolen_extended_size;
 	struct amdgpu_bo	*stolen_extended_memory;
 	bool			keep_stolen_vga_memory;
+
+	struct amdgpu_bo	*stolen_reserved_memory;
+	uint64_t		stolen_reserved_offset;
+	uint64_t		stolen_reserved_size;
 
 	/* discovery */
 	uint8_t				*discovery_bin;
@@ -98,7 +98,6 @@ uint64_t amdgpu_vram_mgr_usage(struct ttm_mem_type_manager *man);
 uint64_t amdgpu_vram_mgr_vis_usage(struct ttm_mem_type_manager *man);
 
 int amdgpu_ttm_init(struct amdgpu_device *adev);
-void amdgpu_ttm_late_init(struct amdgpu_device *adev);
 void amdgpu_ttm_fini(struct amdgpu_device *adev);
 void amdgpu_ttm_set_buffer_funcs_status(struct amdgpu_device *adev,
 					bool enable);

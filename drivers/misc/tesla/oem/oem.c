@@ -86,5 +86,6 @@ static void __exit oem_exit(void)
 module_init(oem_init);
 module_exit(oem_exit);
 
+MODULE_AUTHOR("Tesla OpenSource <opensource@tesla.com>");
 MODULE_DESCRIPTION("AMD OEM-specific fuses sysfs driver.");
 MODULE_LICENSE("GPL v2");

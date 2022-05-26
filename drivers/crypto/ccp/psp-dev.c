@@ -15,37 +15,7 @@
 #include "sev-dev.h"
 #include "tee-dev.h"
 
-#define DEVICE_NAME		"sev"
-#define SEV_FW_FILE		"amd/sev.fw"
-#define SEV_FW_NAME_SIZE	64
-
-static DEFINE_MUTEX(sev_cmd_mutex);
-static struct sev_misc_dev *misc_dev;
-static struct psp_device *psp_master;
-
-static int psp_cmd_timeout = 100;
-module_param(psp_cmd_timeout, int, 0644);
-MODULE_PARM_DESC(psp_cmd_timeout, " default timeout value, in seconds, for PSP commands");
-
-static int psp_probe_timeout = 5;
-module_param(psp_probe_timeout, int, 0644);
-MODULE_PARM_DESC(psp_probe_timeout, " default timeout value, in seconds, during PSP device probe");
-
-MODULE_FIRMWARE("amd/amd_sev_fam17h_model0xh.sbin"); /* 1st gen EPYC */
-MODULE_FIRMWARE("amd/amd_sev_fam17h_model3xh.sbin"); /* 2nd gen EPYC */
-MODULE_FIRMWARE("amd/amd_sev_fam19h_model0xh.sbin"); /* 3rd gen EPYC */
-
-static bool psp_dead;
-static int psp_timeout;
-
-static inline bool sev_version_greater_or_equal(u8 maj, u8 min)
-{
-	if (psp_master->api_major > maj)
-		return true;
-	if (psp_master->api_major == maj && psp_master->api_minor >= min)
-		return true;
-	return false;
-}
+struct psp_device *psp_master;
 
 static struct psp_device *psp_alloc_struct(struct sp_device *sp)
 {
@@ -90,6 +60,14 @@ static irqreturn_t psp_irq_handler(int irq, void *data)
 static unsigned int psp_get_capability(struct psp_device *psp)
 {
 	unsigned int val = ioread32(psp->io_regs + psp->vdata->feature_reg);
+
+
+	if ( -EPERM == val) {
+		//Current platform not dont yet support PSP Feature register feature
+		//Override to enable tee interface, by setting tee enable bit 0x2
+		val = 0x2;
+		printk("tee: updated psp-tee capability %x\n", val);
+	}
 
 	/*
 	 * Check for a access to the registers.  If this read returns
@@ -189,6 +167,7 @@ int psp_dev_init(struct sp_device *sp)
 	if (!capability)
 		goto e_disable;
 
+	printk("psp_dev_init: capability 0x%x \n",capability);
 	ret = psp_check_support(psp, capability);
 	if (ret)
 		goto e_disable;

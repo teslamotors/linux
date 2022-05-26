@@ -24,9 +24,9 @@ const static enum dc_post_cursor2 static_pc[] = {
 	POST_CURSOR2_LEVEL3
 };
 
-#define STATIC_VS(x) &static_vs[x]
-#define STATIC_PE(x) &static_pe[x]
-#define STATIC_PC(x) &static_pc[x]
+#define STATIC_VS(x) (enum dc_voltage_swing *) (&static_vs[x])
+#define STATIC_PE(x) (enum dc_pre_emphasis *) (&static_pe[x])
+#define STATIC_PC(x) (enum dc_post_cursor2 *) (&static_pc[x])
 
 
 #ifndef CONFIG_DRM_AMD_DC_LINK_TRAIN_OVERRIDE

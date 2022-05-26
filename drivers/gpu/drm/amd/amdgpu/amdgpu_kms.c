@@ -29,6 +29,7 @@
 #include "amdgpu.h"
 #include <drm/drm_debugfs.h>
 #include <drm/amdgpu_drm.h>
+#include <drm/drm_drv.h>
 #include "amdgpu_sched.h"
 #include "amdgpu_uvd.h"
 #include "amdgpu_vce.h"
@@ -93,8 +94,11 @@ void amdgpu_driver_unload_kms(struct drm_device *dev)
 		pm_runtime_forbid(dev->dev);
 	}
 
+	if (amdgpu_acpi_smart_shift_update(dev, AMDGPU_SS_DRV_UNLOAD))
+		DRM_WARN("smart shift update failed\n");
+
 	amdgpu_acpi_fini(adev);
-	amdgpu_device_fini(adev);
+	amdgpu_device_fini_early(adev);
 }
 
 void amdgpu_register_gpu_instance(struct amdgpu_device *adev)
@@ -134,6 +138,7 @@ void amdgpu_register_gpu_instance(struct amdgpu_device *adev)
 int amdgpu_driver_load_kms(struct amdgpu_device *adev, unsigned long flags)
 {
 	struct drm_device *dev;
+	struct pci_dev *parent;
 	int r, acpi_status;
 
 	dev = adev_to_drm(adev);
@@ -144,6 +149,9 @@ int amdgpu_driver_load_kms(struct amdgpu_device *adev, unsigned long flags)
 	    ((flags & AMD_IS_APU) == 0) &&
 	    !pci_is_thunderbolt_attached(dev->pdev))
 		flags |= AMD_IS_PX;
+
+	parent = pci_upstream_bridge(adev->pdev);
+	adev->has_pr3 = parent ? pci_pr3_present(parent) : false;
 
 	/* amdgpu_device_init should report only fatal error
 	 * like memory allocation failure or iomapping failure,
@@ -157,20 +165,19 @@ int amdgpu_driver_load_kms(struct amdgpu_device *adev, unsigned long flags)
 		goto out;
 	}
 
-	if (amdgpu_device_supports_boco(dev) &&
-	    (amdgpu_runtime_pm != 0)) { /* enable runpm by default for boco */
+	if (amdgpu_device_supports_px(dev) &&
+	    (amdgpu_runtime_pm != 0)) { /* enable runpm by default for atpx */
 		adev->runpm = true;
+		dev_info(adev->dev, "Using ATPX for runtime pm\n");
+	} else if (amdgpu_device_supports_boco(dev) &&
+		   (amdgpu_runtime_pm != 0)) { /* enable runpm by default for boco */
+		adev->runpm = true;
+		dev_info(adev->dev, "Using BOCO for runtime pm\n");
 	} else if (amdgpu_device_supports_baco(dev) &&
 		   (amdgpu_runtime_pm != 0)) {
 		switch (adev->asic_type) {
-#ifdef CONFIG_DRM_AMDGPU_CIK
-		case CHIP_BONAIRE:
-		case CHIP_HAWAII:
-#endif
 		case CHIP_VEGA20:
 		case CHIP_ARCTURUS:
-		case CHIP_SIENNA_CICHLID:
-		case CHIP_NAVY_FLOUNDER:
 			/* enable runpm if runpm=1 */
 			if (amdgpu_runtime_pm > 0)
 				adev->runpm = true;
@@ -181,10 +188,12 @@ int amdgpu_driver_load_kms(struct amdgpu_device *adev, unsigned long flags)
 				adev->runpm = true;
 			break;
 		default:
-			/* enable runpm on VI+ */
+			/* enable runpm on CI+ */
 			adev->runpm = true;
 			break;
 		}
+		if (adev->runpm)
+			dev_info(adev->dev, "Using BACO for runtime pm\n");
 	}
 
 	/* Call ACPI methods: require modeset init
@@ -197,15 +206,22 @@ int amdgpu_driver_load_kms(struct amdgpu_device *adev, unsigned long flags)
 
 	if (adev->runpm) {
 		/* only need to skip on ATPX */
-		if (amdgpu_device_supports_boco(dev) &&
-		    !amdgpu_is_atpx_hybrid())
+		if (amdgpu_device_supports_px(dev))
 			dev_pm_set_driver_flags(dev->dev, DPM_FLAG_NEVER_SKIP);
+		/* we want direct complete for BOCO */
+		if (amdgpu_device_supports_boco(dev))
+			dev_pm_set_driver_flags(dev->dev, DPM_FLAG_SMART_PREPARE |
+						DPM_FLAG_SMART_SUSPEND |
+						DPM_FLAG_MAY_SKIP_RESUME);		
 		pm_runtime_use_autosuspend(dev->dev);
 		pm_runtime_set_autosuspend_delay(dev->dev, 5000);
 		pm_runtime_allow(dev->dev);
 		pm_runtime_mark_last_busy(dev->dev);
 		pm_runtime_put_autosuspend(dev->dev);
 	}
+
+	if (amdgpu_acpi_smart_shift_update(dev, AMDGPU_SS_DRV_LOAD))
+		DRM_WARN("smart shift update failed\n");
 
 out:
 	if (r) {
@@ -283,21 +299,29 @@ static int amdgpu_firmware_info(struct drm_amdgpu_info_firmware *fw_info,
 		break;
 	case AMDGPU_INFO_FW_TA:
 		switch (query_fw->index) {
-		case 0:
+		case TA_FW_TYPE_PSP_XGMI:
 			fw_info->ver = adev->psp.ta_fw_version;
 			fw_info->feature = adev->psp.ta_xgmi_ucode_version;
 			break;
-		case 1:
+		case TA_FW_TYPE_PSP_RAS:
 			fw_info->ver = adev->psp.ta_fw_version;
 			fw_info->feature = adev->psp.ta_ras_ucode_version;
 			break;
-		case 2:
+		case TA_FW_TYPE_PSP_HDCP:
 			fw_info->ver = adev->psp.ta_fw_version;
 			fw_info->feature = adev->psp.ta_hdcp_ucode_version;
 			break;
-		case 3:
+		case TA_FW_TYPE_PSP_DTM:
 			fw_info->ver = adev->psp.ta_fw_version;
 			fw_info->feature = adev->psp.ta_dtm_ucode_version;
+			break;
+		case TA_FW_TYPE_PSP_RAP:
+			fw_info->ver = adev->psp.ta_fw_version;
+			fw_info->feature = adev->psp.ta_rap_ucode_version;
+			break;
+		case TA_FW_TYPE_PSP_SECUREDISPLAY:
+			fw_info->ver = adev->psp.ta_fw_version;
+			fw_info->feature = adev->psp.ta_securedisplay_ucode_version;
 			break;
 		default:
 			return -EINVAL;
@@ -789,9 +813,9 @@ static int amdgpu_info_ioctl(struct drm_device *dev, void *data, struct drm_file
 			dev_info->high_va_offset = AMDGPU_GMC_HOLE_END;
 			dev_info->high_va_max = AMDGPU_GMC_HOLE_END | vm_size;
 		}
-		dev_info->virtual_address_alignment = max((int)PAGE_SIZE, AMDGPU_GPU_PAGE_SIZE);
+		dev_info->virtual_address_alignment = max_t(u32, PAGE_SIZE, AMDGPU_GPU_PAGE_SIZE);
 		dev_info->pte_fragment_size = (1 << adev->vm_manager.fragment_size) * AMDGPU_GPU_PAGE_SIZE;
-		dev_info->gart_page_size = AMDGPU_GPU_PAGE_SIZE;
+		dev_info->gart_page_size = max_t(u32, PAGE_SIZE, AMDGPU_GPU_PAGE_SIZE);
 		dev_info->cu_active_number = adev->gfx.cu_info.number;
 		dev_info->cu_ao_mask = adev->gfx.cu_info.ao_cu_mask;
 		dev_info->ce_ram_size = adev->gfx.ce_ram_size;
@@ -860,6 +884,21 @@ static int amdgpu_info_ioctl(struct drm_device *dev, void *data, struct drm_file
 			return copy_to_user(out, bios,
 					    min((size_t)size, (size_t)(bios_size - bios_offset)))
 					? -EFAULT : 0;
+		}
+		case AMDGPU_INFO_VBIOS_INFO: {
+			struct drm_amdgpu_info_vbios vbios_info = {};
+			struct atom_context *atom_context;
+
+			atom_context = adev->mode_info.atom_context;
+			memcpy(vbios_info.name, atom_context->name, sizeof(atom_context->name));
+			memcpy(vbios_info.vbios_pn, atom_context->vbios_pn, sizeof(atom_context->vbios_pn));
+			vbios_info.version = atom_context->version;
+			memcpy(vbios_info.vbios_ver_str, atom_context->vbios_ver_str,
+						sizeof(atom_context->vbios_ver_str));
+			memcpy(vbios_info.date, atom_context->date, sizeof(atom_context->date));
+
+			return copy_to_user(out, &vbios_info,
+						min((size_t)size, sizeof(vbios_info))) ? -EFAULT : 0;
 		}
 		default:
 			DRM_DEBUG_KMS("Invalid request %d\n",
@@ -1001,11 +1040,68 @@ static int amdgpu_info_ioctl(struct drm_device *dev, void *data, struct drm_file
 
 		if (!ras)
 			return -EINVAL;
-		ras_mask = (uint64_t)ras->supported << 32 | ras->features;
+		ras_mask = (uint64_t)adev->ras_enabled << 32 | ras->features;
 
 		return copy_to_user(out, &ras_mask,
 				min_t(u64, size, sizeof(ras_mask))) ?
 			-EFAULT : 0;
+	}
+	case AMDGPU_INFO_VIDEO_CAPS: {
+		const struct amdgpu_video_codecs *codecs;
+		struct drm_amdgpu_info_video_caps *caps;
+		int r;
+
+		switch (info->video_cap.type) {
+		case AMDGPU_INFO_VIDEO_CAPS_DECODE:
+			r = amdgpu_asic_query_video_codecs(adev, false, &codecs);
+			if (r)
+				return -EINVAL;
+			break;
+		case AMDGPU_INFO_VIDEO_CAPS_ENCODE:
+			r = amdgpu_asic_query_video_codecs(adev, true, &codecs);
+			if (r)
+				return -EINVAL;
+			break;
+		default:
+			DRM_DEBUG_KMS("Invalid request %d\n",
+				      info->video_cap.type);
+			return -EINVAL;
+		}
+
+		caps = kzalloc(sizeof(*caps), GFP_KERNEL);
+		if (!caps)
+			return -ENOMEM;
+
+		for (i = 0; i < codecs->codec_count; i++) {
+			int idx = codecs->codec_array[i].codec_type;
+
+			switch (idx) {
+			case AMDGPU_INFO_VIDEO_CAPS_CODEC_IDX_MPEG2:
+			case AMDGPU_INFO_VIDEO_CAPS_CODEC_IDX_MPEG4:
+			case AMDGPU_INFO_VIDEO_CAPS_CODEC_IDX_VC1:
+			case AMDGPU_INFO_VIDEO_CAPS_CODEC_IDX_MPEG4_AVC:
+			case AMDGPU_INFO_VIDEO_CAPS_CODEC_IDX_HEVC:
+			case AMDGPU_INFO_VIDEO_CAPS_CODEC_IDX_JPEG:
+			case AMDGPU_INFO_VIDEO_CAPS_CODEC_IDX_VP9:
+			case AMDGPU_INFO_VIDEO_CAPS_CODEC_IDX_AV1:
+				caps->codec_info[idx].valid = 1;
+				caps->codec_info[idx].max_width =
+					codecs->codec_array[i].max_width;
+				caps->codec_info[idx].max_height =
+					codecs->codec_array[i].max_height;
+				caps->codec_info[idx].max_pixels_per_frame =
+					codecs->codec_array[i].max_pixels_per_frame;
+				caps->codec_info[idx].max_level =
+					codecs->codec_array[i].max_level;
+				break;
+			default:
+				break;
+			}
+		}
+		r = copy_to_user(out, caps,
+				 min((size_t)size, sizeof(*caps))) ? -EFAULT : 0;
+		kfree(caps);
+		return r;
 	}
 	default:
 		DRM_DEBUG_KMS("Invalid request %d\n", info->query);
@@ -1072,7 +1168,8 @@ int amdgpu_driver_open_kms(struct drm_device *dev, struct drm_file *file_priv)
 		dev_warn(adev->dev, "No more PASIDs available!");
 		pasid = 0;
 	}
-	r = amdgpu_vm_init(adev, &fpriv->vm, AMDGPU_VM_CONTEXT_GFX, pasid);
+
+	r = amdgpu_vm_init(adev, &fpriv->vm, pasid);
 	if (r)
 		goto error_pasid;
 
@@ -1182,6 +1279,14 @@ void amdgpu_driver_postclose_kms(struct drm_device *dev,
 
 	pm_runtime_mark_last_busy(dev->dev);
 	pm_runtime_put_autosuspend(dev->dev);
+}
+
+void amdgpu_driver_release_kms (struct drm_device *dev)
+{
+       struct amdgpu_device *adev = drm_to_adev(dev);
+
+       amdgpu_device_fini_late(adev);
+       pci_set_drvdata(adev->pdev, NULL);
 }
 
 /*
@@ -1326,6 +1431,17 @@ static int amdgpu_debugfs_firmware_info(struct seq_file *m, void *data)
 	struct atom_context *ctx = adev->mode_info.atom_context;
 	int ret, i;
 
+	static const char *ta_fw_name[TA_FW_TYPE_MAX_INDEX] = {
+#define TA_FW_NAME(type) [TA_FW_TYPE_PSP_##type] = #type
+		TA_FW_NAME(XGMI),
+		TA_FW_NAME(RAS),
+		TA_FW_NAME(HDCP),
+		TA_FW_NAME(DTM),
+		TA_FW_NAME(RAP),
+		TA_FW_NAME(SECUREDISPLAY),
+#undef TA_FW_NAME
+	};
+
 	/* VCE */
 	query_fw.fw_type = AMDGPU_INFO_FW_VCE;
 	ret = amdgpu_firmware_info(&fw_info, &query_fw, adev);
@@ -1443,31 +1559,14 @@ static int amdgpu_debugfs_firmware_info(struct seq_file *m, void *data)
 		   fw_info.feature, fw_info.ver);
 
 	query_fw.fw_type = AMDGPU_INFO_FW_TA;
-	for (i = 0; i < 4; i++) {
+	for (i = TA_FW_TYPE_PSP_XGMI; i < TA_FW_TYPE_MAX_INDEX; i++) {
 		query_fw.index = i;
 		ret = amdgpu_firmware_info(&fw_info, &query_fw, adev);
 		if (ret)
 			continue;
-		switch (query_fw.index) {
-		case 0:
-			seq_printf(m, "TA %s feature version: 0x%08x, firmware version: 0x%08x\n",
-					"RAS", fw_info.feature, fw_info.ver);
-			break;
-		case 1:
-			seq_printf(m, "TA %s feature version: 0x%08x, firmware version: 0x%08x\n",
-					"XGMI", fw_info.feature, fw_info.ver);
-			break;
-		case 2:
-			seq_printf(m, "TA %s feature version: 0x%08x, firmware version: 0x%08x\n",
-					"HDCP", fw_info.feature, fw_info.ver);
-			break;
-		case 3:
-			seq_printf(m, "TA %s feature version: 0x%08x, firmware version: 0x%08x\n",
-					"DTM", fw_info.feature, fw_info.ver);
-			break;
-		default:
-			return -EINVAL;
-		}
+
+		seq_printf(m, "TA %s feature version: 0x%08x, firmware version: 0x%08x\n",
+			   ta_fw_name[i], fw_info.feature, fw_info.ver);
 	}
 
 	/* SMC */

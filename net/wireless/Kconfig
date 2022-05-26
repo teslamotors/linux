@@ -1,6 +1,14 @@
 # SPDX-License-Identifier: GPL-2.0-only
+menu "Expert wireless options"
+	visible if EXPERT
+
 config WIRELESS_EXT
-	bool
+	bool "Wireless extension"
+
+config WEXT_PRIV
+	bool "iwpriv support"
+
+endmenu
 
 config WEXT_CORE
 	def_bool y
@@ -12,9 +20,6 @@ config WEXT_PROC
 	depends on WEXT_CORE
 
 config WEXT_SPY
-	bool
-
-config WEXT_PRIV
 	bool
 
 config CFG80211

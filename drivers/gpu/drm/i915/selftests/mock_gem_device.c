@@ -83,7 +83,6 @@ static void mock_device_release(struct drm_device *dev)
 
 	drm_mode_config_cleanup(&i915->drm);
 
-	drm_dev_fini(&i915->drm);
 	put_device(&i915->drm.pdev->dev);
 }
 
@@ -230,7 +229,6 @@ err_unlock:
 	destroy_workqueue(i915->wq);
 err_drv:
 	drm_mode_config_cleanup(&i915->drm);
-	drm_dev_fini(&i915->drm);
 put_device:
 	put_device(&pdev->dev);
 err:

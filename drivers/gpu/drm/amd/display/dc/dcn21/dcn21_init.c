@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 Advanced Micro Devices, Inc.
+ * Copyright 2016-2020 Advanced Micro Devices, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -99,6 +99,8 @@ static const struct hw_sequencer_funcs dcn21_funcs = {
 #endif
 	.is_abm_supported = dcn21_is_abm_supported,
 	.set_disp_pattern_generator = dcn20_set_disp_pattern_generator,
+	.get_dcc_en_bits = dcn10_get_dcc_en_bits,
+	.update_visual_confirm_color = dcn20_update_visual_confirm_color,
 };
 
 static const struct hwseq_private_funcs dcn21_private_funcs = {
@@ -132,8 +134,6 @@ static const struct hwseq_private_funcs dcn21_private_funcs = {
 #else
 	.dsc_pg_control = NULL,
 #endif
-	.get_surface_visual_confirm_color = dcn10_get_surface_visual_confirm_color,
-	.get_hdr_visual_confirm_color = dcn10_get_hdr_visual_confirm_color,
 	.set_hdr_multiplier = dcn10_set_hdr_multiplier,
 	.verify_allow_pstate_change_high = dcn10_verify_allow_pstate_change_high,
 	.s0i3_golden_init_wa = dcn21_s0i3_golden_init_wa,

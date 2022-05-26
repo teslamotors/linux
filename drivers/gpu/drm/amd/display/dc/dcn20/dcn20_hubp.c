@@ -435,6 +435,7 @@ void hubp2_program_pixel_format(
 	if (format == SURFACE_PIXEL_FORMAT_GRPH_ABGR8888
 			|| format == SURFACE_PIXEL_FORMAT_GRPH_ABGR2101010
 			|| format == SURFACE_PIXEL_FORMAT_GRPH_ABGR2101010_XR_BIAS
+			|| format == SURFACE_PIXEL_FORMAT_GRPH_ABGR16161616
 			|| format == SURFACE_PIXEL_FORMAT_GRPH_ABGR16161616F) {
 		red_bar = 2;
 		blue_bar = 3;
@@ -467,8 +468,9 @@ void hubp2_program_pixel_format(
 				SURFACE_PIXEL_FORMAT, 10);
 		break;
 	case SURFACE_PIXEL_FORMAT_GRPH_ARGB16161616:
+	case SURFACE_PIXEL_FORMAT_GRPH_ABGR16161616: /*we use crossbar already*/
 		REG_UPDATE(DCSURF_SURFACE_CONFIG,
-				SURFACE_PIXEL_FORMAT, 22);
+				SURFACE_PIXEL_FORMAT, 26); /* ARGB16161616_UNORM */
 		break;
 	case SURFACE_PIXEL_FORMAT_GRPH_ARGB16161616F:
 	case SURFACE_PIXEL_FORMAT_GRPH_ABGR16161616F:/*we use crossbar already*/
@@ -1606,6 +1608,9 @@ static struct hubp_funcs dcn20_hubp_funcs = {
 	.hubp_set_flip_control_surface_gsl = hubp2_set_flip_control_surface_gsl,
 	.hubp_init = hubp1_init,
 	.validate_dml_output = hubp2_validate_dml_output,
+	.hubp_in_blank = hubp1_in_blank,
+	.hubp_soft_reset = hubp1_soft_reset,
+	.hubp_set_flip_int = hubp1_set_flip_int,
 };
 
 

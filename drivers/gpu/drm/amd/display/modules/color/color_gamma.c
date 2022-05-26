@@ -30,6 +30,14 @@
 #include "opp.h"
 #include "color_gamma.h"
 
+/* When calculating LUT values the first region and at least one subsequent
+ * region are calculated with full precision. These defines are a demarcation
+ * of where the second region starts and ends.
+ * These are hardcoded values to avoid recalculating them in loops.
+ */
+#define PRECISE_LUT_REGION_START 224
+#define PRECISE_LUT_REGION_END 239
+
 static struct hw_x_point coordinates_x[MAX_HW_POINTS + 2];
 
 // these are helpers for calculations to reduce stack usage
@@ -346,7 +354,13 @@ static struct fixed31_32 translate_from_linear_space(
 					dc_fixpt_recip(args->gamma));
 		}
 		scratch_1 = dc_fixpt_add(one, args->a3);
-		if (cal_buffer->buffer_index < 16)
+		/* In the first region (first 16 points) and in the
+		 * region delimited by START/END we calculate with
+		 * full precision to avoid error accumulation. 
+		 */
+		if ((cal_buffer->buffer_index >= PRECISE_LUT_REGION_START &&
+			cal_buffer->buffer_index <= PRECISE_LUT_REGION_END) ||
+			(cal_buffer->buffer_index < 16))
 			scratch_2 = dc_fixpt_pow(args->arg,
 					dc_fixpt_recip(args->gamma));
 		else
@@ -397,9 +411,7 @@ static struct fixed31_32 translate_from_linear_space_long(
 					dc_fixpt_recip(args->gamma))),
 					args->a2);
 	else
-		return dc_fixpt_mul(
-			args->arg,
-			args->a1);
+		return dc_fixpt_mul(args->arg, args->a1);
 }
 
 static struct fixed31_32 calculate_gamma22(struct fixed31_32 arg, bool use_eetf, struct calculate_buffer *cal_buffer)
@@ -717,7 +729,6 @@ static struct fixed31_32 calculate_mapped_value(
 		BREAK_TO_DEBUGGER();
 		result = dc_fixpt_zero;
 	} else {
-		BREAK_TO_DEBUGGER();
 		result = dc_fixpt_one;
 	}
 
@@ -931,7 +942,7 @@ static void hermite_spline_eetf(struct fixed31_32 input_x,
 static bool build_freesync_hdr(struct pwl_float_data_ex *rgb_regamma,
 		uint32_t hw_points_num,
 		const struct hw_x_point *coordinate_x,
-		const struct freesync_hdr_tf_params *fs_params,
+		const struct hdr_tm_params *fs_params,
 		struct calculate_buffer *cal_buffer)
 {
 	uint32_t i;
@@ -976,6 +987,7 @@ static bool build_freesync_hdr(struct pwl_float_data_ex *rgb_regamma,
 		cal_buffer->buffer_index = 0; // see var definition for more info
 	rgb += 32; // first 32 points have problems with fixed point, too small
 	coord_x += 32;
+
 	for (i = 32; i <= hw_points_num; i++) {
 		if (!is_clipped) {
 			if (use_eetf) {
@@ -2015,7 +2027,7 @@ rgb_user_alloc_fail:
 static bool calculate_curve(enum dc_transfer_func_predefined trans,
 				struct dc_transfer_func_distributed_points *points,
 				struct pwl_float_data_ex *rgb_regamma,
-				const struct freesync_hdr_tf_params *fs_params,
+				const struct hdr_tm_params *fs_params,
 				uint32_t sdr_ref_white_level,
 				struct calculate_buffer *cal_buffer)
 {
@@ -2094,7 +2106,7 @@ static bool calculate_curve(enum dc_transfer_func_predefined trans,
 
 bool mod_color_calculate_regamma_params(struct dc_transfer_func *output_tf,
 		const struct dc_gamma *ramp, bool mapUserRamp, bool canRomBeUsed,
-		const struct freesync_hdr_tf_params *fs_params,
+		const struct hdr_tm_params *fs_params,
 		struct calculate_buffer *cal_buffer)
 {
 	struct dc_transfer_func_distributed_points *tf_pts = &output_tf->tf_pts;

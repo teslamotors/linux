@@ -3303,6 +3303,12 @@ static void xgbe_enable_tx(struct xgbe_prv_data *pdata)
 static void xgbe_disable_tx(struct xgbe_prv_data *pdata)
 {
 	unsigned int i;
+	int ret;
+
+	/* Flush Tx queues */
+	ret = xgbe_flush_tx_queues(pdata);
+	if (ret)
+		netdev_err(pdata->netdev, "error flushing TX queues\n");
 
 	/* Prepare for Tx DMA channel stop */
 	for (i = 0; i < pdata->tx_q_count; i++)

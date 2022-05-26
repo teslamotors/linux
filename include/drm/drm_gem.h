@@ -297,6 +297,8 @@ struct drm_gem_object {
 	 *
 	 */
 	const struct drm_gem_object_funcs *funcs;
+
+	struct page *dummy_page;
 };
 
 /**

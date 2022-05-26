@@ -22,7 +22,7 @@
 
 #include "kfd_priv.h"
 #include "kfd_events.h"
-#include "kfd_debug_events.h"
+#include "kfd_debug.h"
 #include "soc15_int.h"
 #include "kfd_device_queue_manager.h"
 

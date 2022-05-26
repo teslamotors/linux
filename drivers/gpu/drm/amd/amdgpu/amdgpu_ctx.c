@@ -72,7 +72,8 @@ static int amdgpu_ctx_priority_permit(struct drm_file *filp,
 static int amdgpu_ctx_init(struct amdgpu_device *adev,
 			   enum drm_sched_priority priority,
 			   struct drm_file *filp,
-			   struct amdgpu_ctx *ctx)
+			   struct amdgpu_ctx *ctx,
+			   uint32_t flags)
 {
 	unsigned num_entities = amdgpu_ctx_total_num_entities();
 	unsigned i, j, k;
@@ -122,6 +123,9 @@ static int amdgpu_ctx_init(struct amdgpu_device *adev,
 	ctx->vram_lost_counter = atomic_read(&adev->vram_lost_counter);
 	ctx->init_priority = priority;
 	ctx->override_priority = DRM_SCHED_PRIORITY_UNSET;
+
+	if (flags & AMDGPU_CTX_ALLOC_FLAGS_SECURE)
+		ctx->is_secure = true;
 
 	for (i = 0; i < AMDGPU_HW_IP_NUM; ++i) {
 		struct amdgpu_ring *rings[AMDGPU_MAX_RINGS];
@@ -266,7 +270,7 @@ static int amdgpu_ctx_alloc(struct amdgpu_device *adev,
 			    struct amdgpu_fpriv *fpriv,
 			    struct drm_file *filp,
 			    enum drm_sched_priority priority,
-			    uint32_t *id)
+			    uint32_t *id, uint32_t flags)
 {
 	struct amdgpu_ctx_mgr *mgr = &fpriv->ctx_mgr;
 	struct amdgpu_ctx *ctx;
@@ -285,7 +289,7 @@ static int amdgpu_ctx_alloc(struct amdgpu_device *adev,
 	}
 
 	*id = (uint32_t)r;
-	r = amdgpu_ctx_init(adev, priority, filp, ctx);
+	r = amdgpu_ctx_init(adev, priority, filp, ctx, flags);
 	if (r) {
 		idr_remove(&mgr->ctx_handles, *id);
 		*id = 0;
@@ -359,10 +363,13 @@ static int amdgpu_ctx_query(struct amdgpu_device *adev,
 	return 0;
 }
 
+#define AMDGPU_RAS_COUNTE_DELAY_MS 3000
+
 static int amdgpu_ctx_query2(struct amdgpu_device *adev,
-	struct amdgpu_fpriv *fpriv, uint32_t id,
-	union drm_amdgpu_ctx_out *out)
+			     struct amdgpu_fpriv *fpriv, uint32_t id,
+			     union drm_amdgpu_ctx_out *out)
 {
+	struct amdgpu_ras *con = amdgpu_ras_get_context(adev);
 	struct amdgpu_ctx *ctx;
 	struct amdgpu_ctx_mgr *mgr;
 
@@ -389,6 +396,30 @@ static int amdgpu_ctx_query2(struct amdgpu_device *adev,
 	if (atomic_read(&ctx->guilty))
 		out->state.flags |= AMDGPU_CTX_QUERY2_FLAGS_GUILTY;
 
+	if (adev->ras_enabled && con) {
+		/* Return the cached values in O(1),
+		 * and schedule delayed work to cache
+		 * new vaues.
+		 */
+		int ce_count, ue_count;
+
+		ce_count = atomic_read(&con->ras_ce_count);
+		ue_count = atomic_read(&con->ras_ue_count);
+
+		if (ce_count != ctx->ras_counter_ce) {
+			ctx->ras_counter_ce = ce_count;
+			out->state.flags |= AMDGPU_CTX_QUERY2_FLAGS_RAS_CE;
+		}
+
+		if (ue_count != ctx->ras_counter_ue) {
+			ctx->ras_counter_ue = ue_count;
+			out->state.flags |= AMDGPU_CTX_QUERY2_FLAGS_RAS_UE;
+		}
+
+		schedule_delayed_work(&con->ras_counte_delay_work,
+				      msecs_to_jiffies(AMDGPU_RAS_COUNTE_DELAY_MS));
+	}
+
 	mutex_unlock(&mgr->lock);
 	return 0;
 }
@@ -404,6 +435,12 @@ int amdgpu_ctx_ioctl(struct drm_device *dev, void *data,
 	struct amdgpu_device *adev = drm_to_adev(dev);
 	struct amdgpu_fpriv *fpriv = filp->driver_priv;
 
+	if (amdgpu_is_tmz(adev) &&
+	    (args->in.flags & AMDGPU_CTX_ALLOC_FLAGS_SECURE)) {
+		DRM_ERROR("Cannot allocate secure context while tmz is disabled\n");
+		return -EINVAL;
+	}
+
 	r = 0;
 	id = args->in.ctx_id;
 	priority = amdgpu_to_sched_priority(args->in.priority);
@@ -415,7 +452,8 @@ int amdgpu_ctx_ioctl(struct drm_device *dev, void *data,
 
 	switch (args->in.op) {
 	case AMDGPU_CTX_OP_ALLOC_CTX:
-		r = amdgpu_ctx_alloc(adev, fpriv, filp, priority, &id);
+		r = amdgpu_ctx_alloc(adev, fpriv, filp, priority,
+				     &id, args->in.flags);
 		args->out.alloc.ctx_id = id;
 		break;
 	case AMDGPU_CTX_OP_FREE_CTX:

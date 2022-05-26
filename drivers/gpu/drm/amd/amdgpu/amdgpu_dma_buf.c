@@ -37,6 +37,7 @@
 #include <drm/amdgpu_drm.h>
 #include <linux/dma-buf.h>
 #include <linux/dma-fence-array.h>
+#include <linux/pm_runtime.h>
 
 /**
  * amdgpu_gem_prime_get_sg_table - &drm_driver.gem_prime_get_sg_table
@@ -179,6 +180,7 @@ err_fences_put:
 }
 
 /**
+ * amdgpu_dma_buf_map - &dma_buf_ops.map_dma_buf implementation
  * amdgpu_dma_buf_map_attach - &dma_buf_ops.attach implementation
  * @dma_buf: Shared DMA buffer
  * @attach: DMA-buf attachment
@@ -349,50 +351,48 @@ struct dma_buf *amdgpu_gem_prime_export(struct drm_gem_object *gobj,
 }
 
 /**
- * amdgpu_gem_prime_import_sg_table - &drm_driver.gem_prime_import_sg_table
- * implementation
+ * amdgpu_dma_buf_create_obj - create BO for DMA-buf import
  * @dev: DRM device
- * @attach: DMA-buf attachment
- * @sg: Scatter/gather table
+ * @dma_buf: DMA-buf
  *
- * Imports shared DMA buffer memory exported by another device.
+ * Creates an empty SG BO for DMA-buf import.
  *
  * Returns:
  * A new GEM BO of the given DRM device, representing the memory
  * described by the given DMA-buf attachment and scatter/gather table.
  */
-struct drm_gem_object *
-amdgpu_gem_prime_import_sg_table(struct drm_device *dev,
-				 struct dma_buf_attachment *attach,
-				 struct sg_table *sg)
+static struct drm_gem_object *
+amdgpu_dma_buf_create_obj(struct drm_device *dev, struct dma_buf *dma_buf)
 {
-	struct dma_resv *resv = attach->dmabuf->resv;
+	struct dma_resv *resv = dma_buf->resv;
 	struct amdgpu_device *adev = drm_to_adev(dev);
+	struct drm_gem_object *gobj;
 	struct amdgpu_bo *bo;
-	struct amdgpu_bo_param bp;
+	uint64_t flags = 0;
 	int ret;
 
-	memset(&bp, 0, sizeof(bp));
-	bp.size = attach->dmabuf->size;
-	bp.byte_align = PAGE_SIZE;
-	bp.domain = AMDGPU_GEM_DOMAIN_CPU;
-	bp.flags = 0;
-	bp.type = ttm_bo_type_sg;
-	bp.resv = resv;
 	dma_resv_lock(resv, NULL);
-	ret = amdgpu_bo_create(adev, &bp, &bo);
+
+	if (dma_buf->ops == &amdgpu_dmabuf_ops) {
+		struct amdgpu_bo *other = gem_to_amdgpu_bo(dma_buf->priv);
+
+		flags |= other->flags & AMDGPU_GEM_CREATE_CPU_GTT_USWC;
+	}
+
+	ret = amdgpu_gem_object_create(adev, dma_buf->size, PAGE_SIZE,
+					AMDGPU_GEM_DOMAIN_CPU, flags,
+					ttm_bo_type_sg, resv, &gobj);			
 	if (ret)
 		goto error;
 
-	bo->tbo.sg = sg;
-	bo->tbo.ttm->sg = sg;
+	bo = gem_to_amdgpu_bo(gobj);
 	bo->allowed_domains = AMDGPU_GEM_DOMAIN_GTT;
 	bo->preferred_domains = AMDGPU_GEM_DOMAIN_GTT;
-	if (attach->dmabuf->ops != &amdgpu_dmabuf_ops)
+	if (dma_buf->ops != &amdgpu_dmabuf_ops)
 		bo->prime_shared_count = 1;
 
 	dma_resv_unlock(resv);
-	return &bo->tbo.base;
+	return gobj;
 
 error:
 	dma_resv_unlock(resv);
@@ -400,19 +400,86 @@ error:
 }
 
 /**
+ * amdgpu_dma_buf_move_notify - &attach.move_notify implementation
+ *
+ * @attach: the DMA-buf attachment
+ *
+ * Invalidate the DMA-buf attachment, making sure that the we re-create the
+ * mapping before the next use.
+ */
+static void
+amdgpu_dma_buf_move_notify(struct dma_buf_attachment *attach)
+{
+	struct drm_gem_object *obj = attach->importer_priv;
+	struct ww_acquire_ctx *ticket = dma_resv_locking_ctx(obj->resv);
+	struct amdgpu_bo *bo = gem_to_amdgpu_bo(obj);
+	struct amdgpu_device *adev = amdgpu_ttm_adev(bo->tbo.bdev);
+	struct ttm_operation_ctx ctx = { false, false };
+	struct ttm_placement placement = {};
+	struct amdgpu_vm_bo_base *bo_base;
+	int r;
+
+	if (bo->tbo.mem.mem_type == TTM_PL_SYSTEM)
+		return;
+
+	r = ttm_bo_validate(&bo->tbo, &placement, &ctx);
+	if (r) {
+		DRM_ERROR("Failed to invalidate DMA-buf import (%d))\n", r);
+		return;
+	}
+
+	for (bo_base = bo->vm_bo; bo_base; bo_base = bo_base->next) {
+		struct amdgpu_vm *vm = bo_base->vm;
+		struct dma_resv *resv = vm->root.base.bo->tbo.base.resv;
+
+		if (ticket) {
+			/* When we get an error here it means that somebody
+			 * else is holding the VM lock and updating page tables
+			 * So we can just continue here.
+			 */
+			r = dma_resv_lock(resv, ticket);
+			if (r)
+				continue;
+
+		} else {
+			/* TODO: This is more problematic and we actually need
+			 * to allow page tables updates without holding the
+			 * lock.
+			 */
+			if (!dma_resv_trylock(resv))
+				continue;
+		}
+
+		r = amdgpu_vm_clear_freed(adev, vm, NULL);
+		if (!r)
+			r = amdgpu_vm_handle_moved(adev, vm);
+
+		if (r && r != -EBUSY)
+			DRM_ERROR("Failed to invalidate VM page tables (%d))\n",
+				  r);
+
+		dma_resv_unlock(resv);
+	}
+}
+
+static const struct dma_buf_attach_ops amdgpu_dma_buf_attach_ops = {
+	.move_notify = amdgpu_dma_buf_move_notify
+};
+
+/**
  * amdgpu_gem_prime_import - &drm_driver.gem_prime_import implementation
  * @dev: DRM device
  * @dma_buf: Shared DMA buffer
  *
- * The main work is done by the &drm_gem_prime_import helper, which in turn
- * uses &amdgpu_gem_prime_import_sg_table.
+ * Import a dma_buf into a the driver and potentially create a new GEM object.
  *
  * Returns:
  * GEM BO representing the shared DMA buffer for the given device.
  */
 struct drm_gem_object *amdgpu_gem_prime_import(struct drm_device *dev,
-					    struct dma_buf *dma_buf)
+					       struct dma_buf *dma_buf)
 {
+	struct dma_buf_attachment *attach;
 	struct drm_gem_object *obj;
 
 	if (dma_buf->ops == &amdgpu_dmabuf_ops) {
@@ -427,5 +494,18 @@ struct drm_gem_object *amdgpu_gem_prime_import(struct drm_device *dev,
 		}
 	}
 
-	return drm_gem_prime_import(dev, dma_buf);
+	obj = amdgpu_dma_buf_create_obj(dev, dma_buf);
+	if (IS_ERR(obj))
+		return obj;
+
+	attach = dma_buf_dynamic_attach(dma_buf, dev->dev,
+					&amdgpu_dma_buf_attach_ops, obj);
+	if (IS_ERR(attach)) {
+		drm_gem_object_put(obj);
+		return ERR_CAST(attach);
+	}
+
+	get_dma_buf(dma_buf);
+	obj->import_attach = attach;
+	return obj;
 }

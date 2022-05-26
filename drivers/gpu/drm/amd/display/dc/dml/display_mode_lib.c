@@ -41,6 +41,11 @@
 #include "dml_logger.h"
 #endif
 
+#ifdef CONFIG_DRM_AMD_DC_DCN3_1
+#include "dcn31/display_mode_vba_31.h"
+#include "dcn31/display_rq_dlg_calc_31.h"
+#endif
+
 #if defined(CONFIG_DRM_AMD_DC_DCN2_0)
 const struct dml_funcs dml20_funcs = {
 	.validate = dml20_ModeSupportAndSystemConfigurationFull,
@@ -48,6 +53,14 @@ const struct dml_funcs dml20_funcs = {
 	.rq_dlg_get_dlg_reg = dml20_rq_dlg_get_dlg_reg,
 	.rq_dlg_get_rq_reg = dml20_rq_dlg_get_rq_reg
 };
+#if defined(CONFIG_DRM_AMD_DC_DCN3_1)
+const struct dml_funcs dml31_funcs = {
+	.validate = dml31_ModeSupportAndSystemConfigurationFull,
+	.recalculate = dml31_recalculate,
+	.rq_dlg_get_dlg_reg = dml31_rq_dlg_get_dlg_reg,
+	.rq_dlg_get_rq_reg = dml31_rq_dlg_get_rq_reg
+};
+#endif
 
 const struct dml_funcs dml20v2_funcs = {
 	.validate = dml20v2_ModeSupportAndSystemConfigurationFull,
@@ -99,6 +112,12 @@ void dml_init_instance(struct display_mode_lib *lib,
 #if defined(CONFIG_DRM_AMD_DC_DCN3_0)
 	case DML_PROJECT_DCN30:
 		lib->funcs = dml30_funcs;
+		break;
+#endif
+#if defined(CONFIG_DRM_AMD_DC_DCN3_1)
+	case DML_PROJECT_DCN31:
+	case DML_PROJECT_DCN31_FPGA:
+		lib->funcs = dml31_funcs;
 		break;
 #endif
 
@@ -243,7 +262,7 @@ void dml_log_pipe_params(
 		dml_print("DML PARAMS: PIPE [%d] DISPLAY OUTPUT PARAMS:\n", i);
 		dml_print("DML PARAMS:     output_type                = %d\n", dout->output_type);
 		dml_print("DML PARAMS:     output_format              = %d\n", dout->output_format);
-		dml_print("DML PARAMS:     output_bpc                 = %d\n", dout->output_bpc);
+		dml_print("DML PARAMS:     dsc_input_bpc              = %d\n", dout->dsc_input_bpc);
 		dml_print("DML PARAMS:     output_bpp                 = %3.4f\n", dout->output_bpp);
 		dml_print("DML PARAMS:     dp_lanes                   = %d\n", dout->dp_lanes);
 		dml_print("DML PARAMS:     dsc_enable                 = %d\n", dout->dsc_enable);

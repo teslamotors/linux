@@ -200,6 +200,12 @@ static inline bool drm_sched_invalidate_job(struct drm_sched_job *s_job,
 	return (s_job && atomic_inc_return(&s_job->karma) > threshold);
 }
 
+enum drm_gpu_sched_stat {
+	DRM_GPU_SCHED_STAT_NONE, /* Reserve 0 */
+	DRM_GPU_SCHED_STAT_NOMINAL,
+	DRM_GPU_SCHED_STAT_ENODEV,
+};
+
 /**
  * struct drm_sched_backend_ops
  *
@@ -224,10 +230,16 @@ struct drm_sched_backend_ops {
 	struct dma_fence *(*run_job)(struct drm_sched_job *sched_job);
 
 	/**
-         * @timedout_job: Called when a job has taken too long to execute,
-         * to trigger GPU recovery.
+	 * @timedout_job: Called when a job has taken too long to execute,
+	 * to trigger GPU recovery.
+	 *
+	 * Return DRM_GPU_SCHED_STAT_NOMINAL, when all is normal,
+	 * and the underlying driver has started or completed recovery.
+	 *
+	 * Return DRM_GPU_SCHED_STAT_ENODEV, if the device is no longer
+	 * available, i.e. has been unplugged.
 	 */
-	void (*timedout_job)(struct drm_sched_job *sched_job);
+	enum drm_gpu_sched_stat (*timedout_job)(struct drm_sched_job *sched_job);
 
 	/**
          * @free_job: Called once the job's finished fence has been signaled
@@ -293,12 +305,19 @@ void drm_sched_fini(struct drm_gpu_scheduler *sched);
 int drm_sched_job_init(struct drm_sched_job *job,
 		       struct drm_sched_entity *entity,
 		       void *owner);
+void drm_sched_entity_modify_sched(struct drm_sched_entity *entity,
+				    struct drm_gpu_scheduler **sched_list,
+                                   unsigned int num_sched_list);
+
 void drm_sched_job_cleanup(struct drm_sched_job *job);
 void drm_sched_wakeup(struct drm_gpu_scheduler *sched);
 void drm_sched_stop(struct drm_gpu_scheduler *sched, struct drm_sched_job *bad);
 void drm_sched_start(struct drm_gpu_scheduler *sched, bool full_recovery);
 void drm_sched_resubmit_jobs(struct drm_gpu_scheduler *sched);
+void drm_sched_resubmit_jobs_ext(struct drm_gpu_scheduler *sched, int max);
 void drm_sched_increase_karma(struct drm_sched_job *bad);
+void drm_sched_reset_karma(struct drm_sched_job *bad);
+void drm_sched_increase_karma_ext(struct drm_sched_job *bad, int type);
 bool drm_sched_dependency_optimized(struct dma_fence* fence,
 				    struct drm_sched_entity *entity);
 void drm_sched_fault(struct drm_gpu_scheduler *sched);

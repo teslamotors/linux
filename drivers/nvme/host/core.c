@@ -21,6 +21,7 @@
 #include <linux/nvme_ioctl.h>
 #include <linux/t10-pi.h>
 #include <linux/pm_qos.h>
+#include <linux/notifier.h>
 #include <asm/unaligned.h>
 
 #include "nvme.h"
@@ -2243,9 +2244,11 @@ int nvme_enable_ctrl(struct nvme_ctrl *ctrl)
 }
 EXPORT_SYMBOL_GPL(nvme_enable_ctrl);
 
-int nvme_shutdown_ctrl(struct nvme_ctrl *ctrl)
+static int do_nvme_shutdown_ctrl(struct nvme_ctrl *ctrl, bool in_panic)
 {
-	unsigned long timeout = jiffies + (ctrl->shutdown_timeout * HZ);
+	unsigned long timeout_jiffies = jiffies + (ctrl->shutdown_timeout * HZ);
+	unsigned long timeout_ms = ctrl->shutdown_timeout * 1000;
+	const unsigned long poll_ms = 100;
 	u32 csts;
 	int ret;
 
@@ -2260,17 +2263,33 @@ int nvme_shutdown_ctrl(struct nvme_ctrl *ctrl)
 		if ((csts & NVME_CSTS_SHST_MASK) == NVME_CSTS_SHST_CMPLT)
 			break;
 
-		msleep(100);
-		if (fatal_signal_pending(current))
-			return -EINTR;
-		if (time_after(jiffies, timeout)) {
-			dev_err(ctrl->device,
-				"Device shutdown incomplete; abort shutdown\n");
-			return -ENODEV;
+		if (in_panic) {
+			mdelay(poll_ms);
+
+			if (timeout_ms < poll_ms)
+				goto timeout;
+
+			timeout_ms -= poll_ms;
+		} else {
+			msleep(poll_ms);
+			if (fatal_signal_pending(current))
+				return -EINTR;
+
+			if (time_after(jiffies, timeout_jiffies))
+				goto timeout;
 		}
 	}
 
 	return ret;
+
+timeout:
+	dev_err(ctrl->device, "Device shutdown incomplete; abort shutdown\n");
+	return -ENODEV;
+}
+
+int nvme_shutdown_ctrl(struct nvme_ctrl *ctrl)
+{
+	return do_nvme_shutdown_ctrl(ctrl, false);
 }
 EXPORT_SYMBOL_GPL(nvme_shutdown_ctrl);
 
@@ -4407,6 +4426,29 @@ static inline void _nvme_check_size(void)
 	BUILD_BUG_ON(sizeof(struct nvme_directive_cmd) != 64);
 }
 
+/* try shutting down NVMe on panic to mitigate risk of bricking drive */
+static int nvme_panic_notifier(struct notifier_block *nb,
+				  unsigned long code, void *msg)
+{
+	struct nvme_subsystem *subsys;
+	struct nvme_ctrl *ctrl;
+
+	list_for_each_entry(subsys, &nvme_subsystems, entry) {
+		if (!kref_get_unless_zero(&subsys->ref))
+			continue;
+		list_for_each_entry(ctrl, &subsys->ctrls, subsys_entry) {
+			if (ctrl == NULL)
+				continue;
+			do_nvme_shutdown_ctrl(ctrl, true);
+		}
+	}
+
+	return 0;
+}
+
+static struct notifier_block nvme_panic_nb = {
+	.notifier_call = nvme_panic_notifier,
+};
 
 static int __init nvme_core_init(void)
 {
@@ -4445,6 +4487,11 @@ static int __init nvme_core_init(void)
 		result = PTR_ERR(nvme_subsys_class);
 		goto destroy_class;
 	}
+
+	if (atomic_notifier_chain_register(&panic_notifier_list,
+					   &nvme_panic_nb) != 0)
+		printk(KERN_WARNING "unable to install nvme panic handler\n");
+
 	return 0;
 
 destroy_class:
@@ -4463,6 +4510,7 @@ out:
 
 static void __exit nvme_core_exit(void)
 {
+	(void) atomic_notifier_chain_unregister(&panic_notifier_list, &nvme_panic_nb);
 	class_destroy(nvme_subsys_class);
 	class_destroy(nvme_class);
 	unregister_chrdev_region(nvme_chr_devt, NVME_MINORS);

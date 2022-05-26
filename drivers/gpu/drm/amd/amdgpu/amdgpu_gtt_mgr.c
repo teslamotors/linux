@@ -90,7 +90,6 @@ static int amdgpu_gtt_mgr_init(struct ttm_mem_type_manager *man,
 	struct amdgpu_device *adev = amdgpu_ttm_adev(man->bdev);
 	struct amdgpu_gtt_mgr *mgr;
 	uint64_t start, size;
-	int ret;
 
 	mgr = kzalloc(sizeof(*mgr), GFP_KERNEL);
 	if (!mgr)
@@ -102,17 +101,6 @@ static int amdgpu_gtt_mgr_init(struct ttm_mem_type_manager *man,
 	spin_lock_init(&mgr->lock);
 	atomic64_set(&mgr->available, p_size);
 	man->priv = mgr;
-
-	ret = device_create_file(adev->dev, &dev_attr_mem_info_gtt_total);
-	if (ret) {
-		DRM_ERROR("Failed to create device file mem_info_gtt_total\n");
-		return ret;
-	}
-	ret = device_create_file(adev->dev, &dev_attr_mem_info_gtt_used);
-	if (ret) {
-		DRM_ERROR("Failed to create device file mem_info_gtt_used\n");
-		return ret;
-	}
 
 	return 0;
 }
@@ -127,16 +115,12 @@ static int amdgpu_gtt_mgr_init(struct ttm_mem_type_manager *man,
  */
 static int amdgpu_gtt_mgr_fini(struct ttm_mem_type_manager *man)
 {
-	struct amdgpu_device *adev = amdgpu_ttm_adev(man->bdev);
 	struct amdgpu_gtt_mgr *mgr = man->priv;
 	spin_lock(&mgr->lock);
 	drm_mm_takedown(&mgr->mm);
 	spin_unlock(&mgr->lock);
 	kfree(mgr);
 	man->priv = NULL;
-
-	device_remove_file(adev->dev, &dev_attr_mem_info_gtt_total);
-	device_remove_file(adev->dev, &dev_attr_mem_info_gtt_used);
 
 	return 0;
 }
@@ -346,6 +330,16 @@ static void amdgpu_gtt_mgr_debug(struct ttm_mem_type_manager *man,
 		   man->size, (u64)atomic64_read(&mgr->available),
 		   amdgpu_gtt_mgr_usage(man) >> 20);
 }
+
+static struct attribute *amdgpu_gtt_mgr_attributes[] = {
+	&dev_attr_mem_info_gtt_total.attr,
+	&dev_attr_mem_info_gtt_used.attr,
+	NULL
+};
+
+const struct attribute_group amdgpu_gtt_mgr_attr_group = {
+	.attrs = amdgpu_gtt_mgr_attributes
+};
 
 const struct ttm_mem_type_manager_func amdgpu_gtt_mgr_func = {
 	.init = amdgpu_gtt_mgr_init,

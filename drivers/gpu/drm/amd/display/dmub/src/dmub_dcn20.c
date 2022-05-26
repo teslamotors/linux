@@ -81,6 +81,13 @@ static inline void dmub_dcn20_translate_addr(const union dmub_addr *addr_in,
 	addr_out->quad_part = addr_in->quad_part - fb_base + fb_offset;
 }
 
+bool dmub_dcn20_use_cached_inbox(struct dmub_srv *dmub)
+{
+	/* Cached inbox is not supported in this fw version range */
+	return !(dmub->fw_version >= DMUB_FW_VERSION(1, 0, 0) &&
+		 dmub->fw_version <= DMUB_FW_VERSION(1, 10, 0));
+}
+
 void dmub_dcn20_reset(struct dmub_srv *dmub)
 {
 	union dmub_gpint_data_register cmd;
@@ -128,6 +135,8 @@ void dmub_dcn20_reset(struct dmub_srv *dmub)
 	REG_UPDATE(MMHUBBUB_SOFT_RESET, DMUIF_SOFT_RESET, 1);
 	REG_WRITE(DMCUB_INBOX1_RPTR, 0);
 	REG_WRITE(DMCUB_INBOX1_WPTR, 0);
+	REG_WRITE(DMCUB_OUTBOX1_RPTR, 0);
+	REG_WRITE(DMCUB_OUTBOX1_WPTR, 0);
 	REG_WRITE(DMCUB_SCRATCH0, 0);
 }
 
@@ -216,7 +225,7 @@ void dmub_dcn20_setup_windows(struct dmub_srv *dmub,
 	dmub_dcn20_translate_addr(&cw4->offset, fb_base, fb_offset, &offset);
 
 	/* New firmware can support CW4. */
-	if (dmub->fw_version > DMUB_FW_VERSION(1, 0, 10)) {
+	if (dmub_dcn20_use_cached_inbox(dmub)) {
 		REG_WRITE(DMCUB_REGION3_CW4_OFFSET, offset.u.low_part);
 		REG_WRITE(DMCUB_REGION3_CW4_OFFSET_HIGH, offset.u.high_part);
 		REG_WRITE(DMCUB_REGION3_CW4_BASE_ADDRESS, cw4->region.base);
@@ -241,6 +250,13 @@ void dmub_dcn20_setup_windows(struct dmub_srv *dmub,
 		  DMCUB_REGION3_CW5_TOP_ADDRESS, cw5->region.top,
 		  DMCUB_REGION3_CW5_ENABLE, 1);
 
+	REG_WRITE(DMCUB_REGION5_OFFSET, offset.u.low_part);
+	REG_WRITE(DMCUB_REGION5_OFFSET_HIGH, offset.u.high_part);
+	REG_SET_2(DMCUB_REGION5_TOP_ADDRESS, 0,
+		  DMCUB_REGION5_TOP_ADDRESS,
+		  cw5->region.top - cw5->region.base - 1,
+		  DMCUB_REGION5_ENABLE, 1);
+
 	dmub_dcn20_translate_addr(&cw6->offset, fb_base, fb_offset, &offset);
 
 	REG_WRITE(DMCUB_REGION3_CW6_OFFSET, offset.u.low_part);
@@ -255,7 +271,7 @@ void dmub_dcn20_setup_mailbox(struct dmub_srv *dmub,
 			      const struct dmub_region *inbox1)
 {
 	/* New firmware can support CW4 for the inbox. */
-	if (dmub->fw_version > DMUB_FW_VERSION(1, 0, 10))
+	if (dmub_dcn20_use_cached_inbox(dmub))
 		REG_WRITE(DMCUB_INBOX1_BASE_ADDRESS, inbox1->base);
 	else
 		REG_WRITE(DMCUB_INBOX1_BASE_ADDRESS, 0x80000000);
@@ -271,6 +287,54 @@ uint32_t dmub_dcn20_get_inbox1_rptr(struct dmub_srv *dmub)
 void dmub_dcn20_set_inbox1_wptr(struct dmub_srv *dmub, uint32_t wptr_offset)
 {
 	REG_WRITE(DMCUB_INBOX1_WPTR, wptr_offset);
+}
+
+void dmub_dcn20_setup_out_mailbox(struct dmub_srv *dmub,
+			      const struct dmub_region *outbox1)
+{
+	/* New firmware can support CW4 for the outbox. */
+	if (dmub_dcn20_use_cached_inbox(dmub))
+		REG_WRITE(DMCUB_OUTBOX1_BASE_ADDRESS, outbox1->base);
+	else
+		REG_WRITE(DMCUB_OUTBOX1_BASE_ADDRESS, 0x80002000);
+
+	REG_WRITE(DMCUB_OUTBOX1_SIZE, outbox1->top - outbox1->base);
+}
+
+uint32_t dmub_dcn20_get_outbox1_wptr(struct dmub_srv *dmub)
+{
+	/**
+	 * outbox1 wptr register is accessed without locks (dal & dc)
+	 * and to be called only by dmub_srv_stat_get_notification()
+	 */
+	return REG_READ(DMCUB_OUTBOX1_WPTR);
+}
+
+void dmub_dcn20_set_outbox1_rptr(struct dmub_srv *dmub, uint32_t rptr_offset)
+{
+	/**
+	 * outbox1 rptr register is accessed without locks (dal & dc)
+	 * and to be called only by dmub_srv_stat_get_notification()
+	 */
+	REG_WRITE(DMCUB_OUTBOX1_RPTR, rptr_offset);
+}
+
+void dmub_dcn20_setup_outbox0(struct dmub_srv *dmub,
+			      const struct dmub_region *outbox0)
+{
+	REG_WRITE(DMCUB_OUTBOX0_BASE_ADDRESS, outbox0->base);
+
+	REG_WRITE(DMCUB_OUTBOX0_SIZE, outbox0->top - outbox0->base);
+}
+
+uint32_t dmub_dcn20_get_outbox0_wptr(struct dmub_srv *dmub)
+{
+	return REG_READ(DMCUB_OUTBOX0_WPTR);
+}
+
+void dmub_dcn20_set_outbox0_rptr(struct dmub_srv *dmub, uint32_t rptr_offset)
+{
+	REG_WRITE(DMCUB_OUTBOX0_RPTR, rptr_offset);
 }
 
 bool dmub_dcn20_is_hw_init(struct dmub_srv *dmub)
@@ -321,7 +385,7 @@ union dmub_fw_boot_status dmub_dcn20_get_fw_boot_status(struct dmub_srv *dmub)
 	return status;
 }
 
-void dmub_dcn20_enable_dmub_boot_options(struct dmub_srv *dmub)
+void dmub_dcn20_enable_dmub_boot_options(struct dmub_srv *dmub, const struct dmub_srv_hw_params *params)
 {
 	union dmub_fw_boot_options boot_options = {0};
 
@@ -334,4 +398,9 @@ void dmub_dcn20_skip_dmub_panel_power_sequence(struct dmub_srv *dmub, bool skip)
 	boot_options.all = REG_READ(DMCUB_SCRATCH14);
 	boot_options.bits.skip_phy_init_panel_sequence = skip;
 	REG_WRITE(DMCUB_SCRATCH14, boot_options.all);
+}
+
+uint32_t dmub_dcn20_get_current_time(struct dmub_srv *dmub)
+{
+	return REG_READ(DMCUB_TIMER_CURRENT);
 }

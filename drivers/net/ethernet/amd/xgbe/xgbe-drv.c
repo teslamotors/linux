@@ -157,6 +157,7 @@ MODULE_PARM_DESC(ecc_ded_period, " ECC detected error period (in seconds)");
 static int xgbe_one_poll(struct napi_struct *, int);
 static int xgbe_all_poll(struct napi_struct *, int);
 static void xgbe_stop(struct xgbe_prv_data *);
+static int xgbe_tx_poll(struct xgbe_channel *channel);
 
 static void *xgbe_alloc_node(size_t size, int node)
 {
@@ -1461,6 +1462,10 @@ static void xgbe_stop(struct xgbe_prv_data *pdata)
 
 	xgbe_napi_disable(pdata, 1);
 
+	for (i = 0; i < pdata->tx_q_count; i++) {
+		channel = pdata->channel[i];
+		xgbe_tx_poll(channel);
+	}
 	hw_if->exit(pdata);
 
 	for (i = 0; i < pdata->channel_count; i++) {
@@ -2768,10 +2773,13 @@ read_again:
 			len += buf2_len;
 
 			if (buf2_len > rdata->rx.buf.dma_len) {
-				/* Hardware inconsistency within the descriptors
+				/*
+				 * Hardware inconsistency within the descriptors
 				 * that has resulted in a length underflow.
 				 */
 				error = 1;
+				netdev_warn_once(netdev, "Bogus descriptor, "
+						 "skipping packet\n");
 				goto skip_data;
 			}
 

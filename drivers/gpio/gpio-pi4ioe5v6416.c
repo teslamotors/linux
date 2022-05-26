@@ -46,6 +46,11 @@
 #define PI4IO16_RESET_DELAY_MS 1
 
 /*
+ * Robustify the link since gpio is critical. Retry multiple times on failures.
+ */
+#define I2C_READ_RETRIES 5
+
+/*
  * 0<->GPIOF_DIR_OUT
  * 1<->GPIOF_DIR_IN
  */
@@ -96,7 +101,7 @@ static bool pi4io16_volatile_reg(struct device *dev, unsigned int reg)
 	return false;
 }
 
-static const struct regmap_config pi4io16_regmap = {
+static const struct regmap_config pi4io16_regmap_config = {
 	.reg_bits = 8,
 	.val_bits = 8,
 	.max_register = PI4IO16_OUTPUT_CONFIG,
@@ -116,6 +121,62 @@ struct pi4io16_priv {
 	uint16_t irq_mask;
 #endif
 };
+
+static int pi4io_byte_reg_read(void *context, unsigned int reg,
+				      unsigned int *val)
+{
+	struct device *dev = context;
+	struct i2c_client *i2c = to_i2c_client(dev);
+	int ret;
+	int retries = I2C_READ_RETRIES;
+
+	if (reg > 0xff)
+		return -EINVAL;
+
+	do {
+		ret = i2c_smbus_read_byte_data(i2c, reg);
+	} while (ret < 0 && retries-- > 0);
+
+	if (ret < 0)
+		return ret;
+
+	*val = ret;
+
+	return 0;
+}
+
+static int pi4io_byte_reg_write(void *context, unsigned int reg,
+				unsigned int val)
+{
+	struct device *dev = context;
+	struct i2c_client *i2c = to_i2c_client(dev);
+	int ret;
+	int retries = I2C_READ_RETRIES;
+
+	if (val > 0xff || reg > 0xff)
+		return -EINVAL;
+
+	do {
+		ret = i2c_smbus_write_byte_data(i2c, reg, val);
+	} while (ret != 0 && retries-- > 0);
+
+	return ret;
+}
+
+static struct regmap_bus pi4io_regmap_bus = {
+	.reg_write = pi4io_byte_reg_write,
+	.reg_read = pi4io_byte_reg_read,
+};
+
+static struct regmap* pi4io16_setup_regmap(struct i2c_client *i2c)
+{
+	if (!i2c_check_functionality(i2c->adapter,
+				    I2C_FUNC_SMBUS_BYTE_DATA)) {
+		return ERR_PTR(-ENOTSUPP);
+	}
+	return devm_regmap_init(&i2c->dev, &pi4io_regmap_bus, &i2c->dev,
+				&pi4io16_regmap_config);
+}
 
 static int pi4io16_gpio_get_direction(struct gpio_chip *chip, unsigned offset)
 {
@@ -584,7 +645,13 @@ static int pi4io16_probe(struct i2c_client *client,
 	i2c_set_clientdata(client, pi4io);
 	pi4io->i2c = client;
 
-	pi4io->regmap = devm_regmap_init_i2c(client, &pi4io16_regmap);
+	pi4io->regmap = pi4io16_setup_regmap(client);
+	if (IS_ERR(pi4io->regmap)) {
+		ret = PTR_ERR(pi4io->regmap);
+		dev_err(&client->dev, "Failed to init register map: %d\n",
+			ret);
+		return ret;
+	}
 
 	ret = pi4io16_reset_setup(pi4io);
 	if (ret < 0) {
@@ -669,5 +736,6 @@ static void __exit pi4io16_exit(void)
 
 module_exit(pi4io16_exit);
 
+MODULE_AUTHOR("Tesla OpenSource <opensource@tesla.com>");
 MODULE_DESCRIPTION("PI4IOE5V6416 16-bit I2C GPIO expander driver");
 MODULE_LICENSE("GPL v2");

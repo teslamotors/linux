@@ -44,15 +44,13 @@
 
 #include <linux/device.h>
 #include <linux/export.h>
-#include <linux/pid.h>
 #include <linux/err.h>
 #include <linux/slab.h>
 #include <linux/scatterlist.h>
 #include <linux/module.h>
-#include <drm/amd_rdma.h>
 
 #include "kfd_priv.h"
-
+#include "amdgpu_amdkfd.h"
 
 
 /* ----------------------- PeerDirect interface ------------------------------*/
@@ -134,78 +132,147 @@ static void* (*pfn_ib_register_peer_memory_client)(struct peer_memory_client
 							*invalidate_callback);
 
 static void (*pfn_ib_unregister_peer_memory_client)(void *reg_handle);
-
-static const struct amd_rdma_interface *rdma_interface;
+static int (*pfn_ib_invalidate_peer_memory)(void *reg_handle,
+					    void *core_context);
 
 static void *ib_reg_handle;
 
 struct amd_mem_context {
+	struct list_head callback_node;
+
 	uint64_t	va;
 	uint64_t	size;
-	struct pid	*pid;
+	struct kfd_process *kfd_proc;
+	struct kfd_bo	*buf_obj;
 
-	struct amd_p2p_info  *p2p_info;
+	struct sg_table *pages;
 
-	/* Flag that free callback was called */
-	int free_callback_called;
+	struct task_struct *in_free_callback;
 
 	/* Context received from PeerDirect call */
 	void *core_context;
 };
 
-static void free_callback(void *client_priv)
+static void put_pages_helper(struct amd_mem_context *mem_context)
 {
-	struct amd_mem_context *mem_context =
-		(struct amd_mem_context *)client_priv;
+	if (mem_context->pages) {
+		struct kfd_bo *buf_obj = mem_context->buf_obj;
+
+		amdgpu_amdkfd_gpuvm_unpin_put_sg_table(buf_obj->mem,
+						       mem_context->pages);
+		mem_context->pages = NULL;
+		kfd_dec_compute_active(buf_obj->dev);
+	}
+
+	if (mem_context->buf_obj) {
+		list_del(&mem_context->callback_node);
+		mem_context->buf_obj = NULL;
+	}
+}
+
+static void free_callback(struct amd_mem_context *mem_context)
+{
+	int ret;
 
 	pr_debug("Client context: 0x%p\n", mem_context);
 
-	if (!mem_context) {
-		pr_warn("Invalid client context\n");
+	if (!mem_context || !mem_context->kfd_proc || !mem_context->buf_obj) {
+		WARN(1, "Invalid client context\n");
 		return;
+	}
+
+	/* avoid recursive locking of process->mutex in put_pages */
+	mem_context->in_free_callback = current;
+	ret = pfn_ib_invalidate_peer_memory(ib_reg_handle,
+					    mem_context->core_context);
+	mem_context->in_free_callback = NULL;
+
+	if (ret) {
+		pr_debug("ib_invalidate_peer_memory failed: %d\n", ret);
+	} else {
+		pr_debug("ib_invalidate_peer_memory ok\n");
+		/* At this point the dma_unmap and put_page functions
+		 * should have been called already.
+		 */
+		if (!WARN_ONCE(mem_context->pages, "put_pages was not called"))
+			return;
 	}
 
 	pr_debug("IBCore context: 0x%p\n", mem_context->core_context);
 
-	/* amdkfd will free resources when we return from this callback.
-	 * Set flag to inform that there is nothing to do on "put_pages", etc.
+	/* Assume IBcore was concurrently trying to call put_pages and
+	 * we got the kfd_proc->mutex first. Unpin the memory and take
+	 * the mem_context off the callback list of the BO that's going
+	 * away. Let the other call that is in flight take care of the
+	 * kfd_proc reference.
 	 */
-	WRITE_ONCE(mem_context->free_callback_called, 1);
+	put_pages_helper(mem_context);
+}
+
+void run_rdma_free_callback(struct kfd_bo *buf_obj)
+{
+	struct amd_mem_context *tmp, *mem_context;
+
+	list_for_each_entry_safe(mem_context, tmp,
+			&buf_obj->cb_data_head, callback_node)
+		free_callback(mem_context);
+}
+
+/* Workaround: Mellanox peerdirect driver expects sg lists at
+ * page granularity. This causes failures when an application tries
+ * to register size < PAGE_SIZE or addr starts at some offset. Fix
+ * it by aligning the size to page size and addr to page boundary.
+ */
+static void align_addr_size(unsigned long *addr, size_t *size)
+{
+	unsigned long end = ALIGN(*addr + *size, PAGE_SIZE);
+
+	*addr = ALIGN_DOWN(*addr, PAGE_SIZE);
+	*size = end - *addr;
 }
 
 static int amd_acquire(unsigned long addr, size_t size,
 			void *peer_mem_private_data,
 			char *peer_mem_name, void **client_context)
 {
-	int ret;
+	struct kfd_process *p;
+	struct kfd_bo *buf_obj;
 	struct amd_mem_context *mem_context;
-	struct pid *pid;
 
-	/* Get pointer to structure describing current process */
-	pid = get_task_pid(current, PIDTYPE_PID);
-	pr_debug("addr: %#lx, size: %#lx, pid: 0x%p\n",
-		 addr, size, pid);
-
-	/* Check if address is handled by AMD GPU driver */
-	ret = rdma_interface->is_gpu_address(addr, pid);
-	if (!ret) {
-		pr_debug("Not a GPU Address\n");
+	p = kfd_get_process(current);
+	if (!p) {
+		pr_debug("Not a KFD process\n");
 		return 0;
+	}
+
+	align_addr_size(&addr, &size);
+
+	mutex_lock(&p->mutex);
+	buf_obj = kfd_process_find_bo_from_interval(p, addr,
+			addr + size - 1);
+	if (!buf_obj) {
+		pr_debug("Cannot find a kfd_bo for the range\n");
+		goto out_unlock;
 	}
 
 	/* Initialize context used for operation with given address */
 	mem_context = kzalloc(sizeof(*mem_context), GFP_KERNEL);
 	if (!mem_context)
-		return 0;
+		goto out_unlock;
 
-	mem_context->free_callback_called = 0;
+	pr_debug("addr: %#lx, size: %#lx, pid: %d\n",
+		 addr, size, p->lead_thread->pid);
+
 	mem_context->va   = addr;
 	mem_context->size = size;
 
-	/* Save PID. It is guaranteed that the function will be
-	 * called in the correct process context as opposite to others.
-	 */
-	mem_context->pid  = pid;
+	mem_context->buf_obj = buf_obj;
+	list_add(&mem_context->callback_node, &buf_obj->cb_data_head);
+
+	mem_context->kfd_proc = p;
+	kref_get(&p->ref);
+
+	mutex_unlock(&p->mutex);
 
 	pr_debug("Client context: 0x%p\n", mem_context);
 
@@ -216,6 +283,10 @@ static int amd_acquire(unsigned long addr, size_t size,
 	 * by AMD GPU driver
 	 */
 	return 1;
+
+out_unlock:
+	mutex_unlock(&p->mutex);
+	return 0;
 }
 
 static int amd_get_pages(unsigned long addr, size_t size, int write, int force,
@@ -223,19 +294,25 @@ static int amd_get_pages(unsigned long addr, size_t size, int write, int force,
 			  void *client_context, void *core_context)
 {
 	int ret;
-	unsigned long page_size;
 	struct amd_mem_context *mem_context =
 		(struct amd_mem_context *)client_context;
+	struct kfd_process *p = mem_context->kfd_proc;
+	struct kfd_bo *buf_obj = mem_context->buf_obj;
+	struct kfd_dev *dev = buf_obj->dev;
+	struct sg_table *sg_table_tmp;
+	unsigned long offset;
+
+	align_addr_size(&addr, &size);
 
 	pr_debug("addr: %#lx, size: %#lx, core_context: 0x%p\n",
 		 addr, size, core_context);
 
-	if (!mem_context) {
+	if (!mem_context || !mem_context->kfd_proc || !mem_context->buf_obj) {
 		pr_warn("Invalid client context");
 		return -EINVAL;
 	}
 
-	pr_debug("pid: 0x%p\n", mem_context->pid);
+	pr_debug("pid: %d\n", p->lead_thread->pid);
 
 
 	if (addr != mem_context->va) {
@@ -250,31 +327,37 @@ static int amd_get_pages(unsigned long addr, size_t size, int write, int force,
 		return -EINVAL;
 	}
 
-	/* Workaround: Mellanox peerdirect driver expects sg lists at
-	page granularity. This causes failures when an application tries
-	to register size < page_size or addr starts at some offset. Fix
-	it by aligning the size to page size and addr to page boundary.
-	*/
-	rdma_interface->get_page_size(addr, size, mem_context->pid,
-				      &page_size);
+	mutex_lock(&p->mutex);
 
-	ret = rdma_interface->get_pages(
-					ALIGN_DOWN(addr, page_size),
-					ALIGN(size, page_size),
-					mem_context->pid,
-					&mem_context->p2p_info,
-					free_callback,
-					mem_context);
-
-	if (ret || !mem_context->p2p_info) {
-		pr_err("Could not rdma::get_pages failure: %d\n", ret);
-		return ret;
+	/* Check if the memory was freed concurrently before we got the
+	 * process lock.
+	 */
+	if (!mem_context->buf_obj) {
+		ret = -EINVAL;
+		goto out_unlock;
 	}
+
+	offset = addr - buf_obj->it.start;
+	ret = amdgpu_amdkfd_gpuvm_pin_get_sg_table(dev->kgd, buf_obj->mem,
+			offset, size, &sg_table_tmp);
+	if (ret) {
+		pr_err("amdgpu_amdkfd_gpuvm_pin_get_sg_table failed.\n");
+		goto out_unlock;
+	}
+
+	mem_context->pages = sg_table_tmp;
+
+	kfd_inc_compute_active(buf_obj->dev);
+	mutex_unlock(&p->mutex);
 
 	mem_context->core_context = core_context;
 
 	/* Note: At this stage it is OK not to fill sg_table */
 	return 0;
+
+out_unlock:
+	mutex_unlock(&p->mutex);
+	return ret;
 }
 
 
@@ -306,21 +389,21 @@ static int amd_dma_map(struct sg_table *sg_head, void *client_context,
 	pr_debug("Client context: 0x%p, sg_head: 0x%p\n",
 			client_context, sg_head);
 
-	pr_debug("pid: 0x%p, address: %#llx, size: %#llx\n",
-			mem_context->pid,
+	pr_debug("pid: %d, address: %#llx, size: %#llx\n",
+			mem_context->kfd_proc->lead_thread->pid,
 			mem_context->va,
 			mem_context->size);
 
-	if (!mem_context->p2p_info) {
+	if (!mem_context->pages) {
 		pr_err("No sg table were allocated\n");
 		return -EINVAL;
 	}
 
 	/* Copy information about previosly allocated sg_table */
-	*sg_head = *mem_context->p2p_info->pages;
+	*sg_head = *mem_context->pages;
 
 	/* Return number of pages */
-	*nmap = mem_context->p2p_info->pages->nents;
+	*nmap = mem_context->pages->nents;
 
 	return 0;
 }
@@ -334,8 +417,8 @@ static int amd_dma_unmap(struct sg_table *sg_head, void *client_context,
 	pr_debug("Client context: 0x%p, sg_table: 0x%p\n",
 			client_context, sg_head);
 
-	pr_debug("pid: 0x%p, address: %#llx, size: %#llx\n",
-			mem_context->pid,
+	pr_debug("pid: %d, address: %#llx, size: %#llx\n",
+			mem_context->kfd_proc->lead_thread->pid,
 			mem_context->va,
 			mem_context->size);
 
@@ -345,66 +428,32 @@ static int amd_dma_unmap(struct sg_table *sg_head, void *client_context,
 
 static void amd_put_pages(struct sg_table *sg_head, void *client_context)
 {
-	int ret = 0;
 	struct amd_mem_context *mem_context =
 		(struct amd_mem_context *)client_context;
 
 	pr_debug("Client context: 0x%p, sg_head: 0x%p\n",
 			client_context, sg_head);
-	pr_debug("pid: 0x%p, address: %#llx, size: %#llx\n",
-			mem_context->pid,
+	pr_debug("pid: %d, address: %#llx, size: %#llx\n",
+			mem_context->kfd_proc->lead_thread->pid,
 			mem_context->va,
 			mem_context->size);
 
-	pr_debug("mem_context->p2p_info 0x%p\n",
-				mem_context->p2p_info);
+	/* avoid recursive locking if current thread is in free_callback */
+	if (mem_context->in_free_callback != current)
+		mutex_lock(&mem_context->kfd_proc->mutex);
 
-	if (mem_context->free_callback_called) {
-		READ_ONCE(mem_context->free_callback_called);
-		pr_debug("Free callback was called\n");
-		return;
-	}
+	put_pages_helper(mem_context);
 
-	if (mem_context->p2p_info) {
-		ret = rdma_interface->put_pages(&mem_context->p2p_info);
-		mem_context->p2p_info = NULL;
+	if (mem_context->in_free_callback != current)
+		mutex_unlock(&mem_context->kfd_proc->mutex);
 
-		if (ret)
-			pr_err("Failure: %d (callback status %d)\n",
-					ret, mem_context->free_callback_called);
-	} else
-		pr_err("Pointer to p2p info is null\n");
+	kfd_unref_process(mem_context->kfd_proc);
+	mem_context->kfd_proc = NULL;
 }
 
 static unsigned long amd_get_page_size(void *client_context)
 {
-	unsigned long page_size;
-	int result;
-	struct amd_mem_context *mem_context =
-		(struct amd_mem_context *)client_context;
-
-	pr_debug("Client context: 0x%p\n", client_context);
-	pr_debug("pid: 0x%p, address: %#llx, size: %#llx\n",
-			mem_context->pid,
-			mem_context->va,
-			mem_context->size);
-
-
-	result = rdma_interface->get_page_size(
-				mem_context->va,
-				mem_context->size,
-				mem_context->pid,
-				&page_size);
-
-	if (result) {
-		pr_err("Could not get page size. %d\n", result);
-		/* If we failed to get page size then do not know what to do.
-		 * Let's return some default value
-		 */
-		return PAGE_SIZE;
-	}
-
-	return page_size;
+	return PAGE_SIZE;
 }
 
 static void amd_release(void *client_context)
@@ -413,10 +462,12 @@ static void amd_release(void *client_context)
 		(struct amd_mem_context *)client_context;
 
 	pr_debug("Client context: 0x%p\n", client_context);
-	pr_debug("pid: 0x%p, address: %#llx, size: %#llx\n",
-			mem_context->pid,
+	pr_debug("pid: %d, address: %#llx, size: %#llx\n",
+			mem_context->kfd_proc->lead_thread->pid,
 			mem_context->va,
 			mem_context->size);
+
+	WARN_ONCE(mem_context->kfd_proc, "put_pages was not called");
 
 	kfree(mem_context);
 }
@@ -442,8 +493,6 @@ static struct peer_memory_client amd_mem_client = {
  */
 void kfd_init_peer_direct(void)
 {
-	int result;
-
 	if (pfn_ib_unregister_peer_memory_client) {
 		pr_debug("PeerDirect support was already initialized\n");
 		return;
@@ -467,20 +516,13 @@ void kfd_init_peer_direct(void)
 		return;
 	}
 
-	result = amdkfd_query_rdma_interface(&rdma_interface);
-
-	if (result < 0) {
-		pr_err("Cannot get RDMA Interface (result = %d)\n", result);
-		return;
-	}
-
 	strcpy(amd_mem_client.name,    AMD_PEER_BRIDGE_DRIVER_NAME);
 	strcpy(amd_mem_client.version, AMD_PEER_BRIDGE_DRIVER_VERSION);
 
 	ib_reg_handle = pfn_ib_register_peer_memory_client(&amd_mem_client,
-							   NULL);
+						&pfn_ib_invalidate_peer_memory);
 
-	if (!ib_reg_handle) {
+	if (!ib_reg_handle || !pfn_ib_invalidate_peer_memory) {
 		pr_err("Cannot register peer memory client\n");
 		/* Do cleanup */
 		kfd_close_peer_direct();
@@ -510,6 +552,7 @@ void kfd_close_peer_direct(void)
 	/* Reset pointers to be safe */
 	pfn_ib_unregister_peer_memory_client = NULL;
 	pfn_ib_register_peer_memory_client   = NULL;
+	pfn_ib_invalidate_peer_memory = NULL;
 	ib_reg_handle = NULL;
 }
 

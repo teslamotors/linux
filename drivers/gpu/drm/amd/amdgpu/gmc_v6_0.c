@@ -346,6 +346,7 @@ static int gmc_v6_0_mc_init(struct amdgpu_device *adev)
 		adev->gmc.gart_size = (u64)amdgpu_gart_size << 20;
 	}
 
+	adev->gmc.gart_size += adev->pm.smu_prv_buffer_size;
 	gmc_v6_0_vram_gtt_location(adev, &adev->gmc);
 
 	return 0;
@@ -790,8 +791,6 @@ static int gmc_v6_0_early_init(void *handle)
 static int gmc_v6_0_late_init(void *handle)
 {
 	struct amdgpu_device *adev = (struct amdgpu_device *)handle;
-
-	amdgpu_bo_late_init(adev);
 
 	if (amdgpu_vm_fault_stop != AMDGPU_VM_FAULT_STOP_ALWAYS)
 		return amdgpu_irq_get(adev, &adev->gmc.vm_fault, 0);

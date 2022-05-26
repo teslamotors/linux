@@ -107,7 +107,8 @@ struct amdgpu_fence_driver {
 };
 
 int amdgpu_fence_driver_init(struct amdgpu_device *adev);
-void amdgpu_fence_driver_fini(struct amdgpu_device *adev);
+void amdgpu_fence_driver_fini_early(struct amdgpu_device *adev);
+void amdgpu_fence_driver_fini_late(struct amdgpu_device *adev);
 void amdgpu_fence_driver_force_completion(struct amdgpu_ring *ring);
 
 int amdgpu_fence_driver_init_ring(struct amdgpu_ring *ring,
@@ -193,13 +194,11 @@ struct amdgpu_ring_funcs {
 					uint32_t ref, uint32_t mask);
 	void (*emit_frame_cntl)(struct amdgpu_ring *ring, bool start,
 				bool secure);
-	/* priority functions */
-	void (*set_priority) (struct amdgpu_ring *ring,
-			      enum drm_sched_priority priority);
 	/* Try to soft recover the ring to make the fence signal */
 	void (*soft_recovery)(struct amdgpu_ring *ring, unsigned vmid);
 	int (*preempt_ib)(struct amdgpu_ring *ring);
 	void (*emit_mem_sync)(struct amdgpu_ring *ring);
+	void (*emit_wave_limit)(struct amdgpu_ring *ring, bool enable);
 };
 
 struct amdgpu_ring {
@@ -245,11 +244,8 @@ struct amdgpu_ring {
 	struct dma_fence	*vmid_wait;
 	bool			has_compute_vm_bug;
 	bool			no_scheduler;
+	int			hw_prio;
 
-	atomic_t		num_jobs[DRM_SCHED_PRIORITY_MAX];
-	struct mutex		priority_mutex;
-	/* protected by priority_mutex */
-	int			priority;
 
 #if defined(CONFIG_DEBUG_FS)
 	struct dentry *ent;
@@ -286,10 +282,6 @@ void amdgpu_ring_insert_nop(struct amdgpu_ring *ring, uint32_t count);
 void amdgpu_ring_generic_pad_ib(struct amdgpu_ring *ring, struct amdgpu_ib *ib);
 void amdgpu_ring_commit(struct amdgpu_ring *ring);
 void amdgpu_ring_undo(struct amdgpu_ring *ring);
-void amdgpu_ring_priority_get(struct amdgpu_ring *ring,
-			      enum drm_sched_priority priority);
-void amdgpu_ring_priority_put(struct amdgpu_ring *ring,
-			      enum drm_sched_priority priority);
 int amdgpu_ring_init(struct amdgpu_device *adev, struct amdgpu_ring *ring,
 		     unsigned int ring_size, struct amdgpu_irq_src *irq_src,
 		     unsigned int irq_type, unsigned int prio);

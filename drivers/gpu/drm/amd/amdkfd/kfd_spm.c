@@ -208,7 +208,7 @@ static int kfd_acquire_spm(struct kfd_process_device *pdd, struct kgd_dev *kgd)
 	if (ret)
 		goto alloc_gtt_mem_failure;
 
-	ret =  amdgpu_amdkfd_rlc_spm_acquire(kgd, pdd->vm,
+	ret =  amdgpu_amdkfd_rlc_spm_acquire(kgd, pdd->drm_priv,
 			pdd->spm_cntr->gpu_addr, pdd->spm_cntr->ring_size);
 
 	/*
@@ -259,7 +259,7 @@ static int kfd_release_spm(struct kfd_process_device *pdd, struct kgd_dev *kgd)
 	flush_work(&pdd->spm_work);
 	wake_up_all(&pdd->spm_cntr->spm_buf_wq);
 
-	amdgpu_amdkfd_rlc_spm_release(kgd, pdd->vm);
+	amdgpu_amdkfd_rlc_spm_release(kgd, pdd->drm_priv);
 	amdgpu_amdkfd_free_gtt_mem(kgd, pdd->spm_cntr->spm_obj);
 
 	spin_lock_irqsave(&pdd->spm_irq_lock, flags);

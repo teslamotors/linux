@@ -82,6 +82,12 @@ CFLAGS_REMOVE_$(AMDDALPATH)/drivers/gpu/drm/amd/display/dc/dml/dcn30/display_mod
 CFLAGS_REMOVE_$(AMDDALPATH)/drivers/gpu/drm/amd/display/dc/dml/dcn30/display_rq_dlg_calc_30.o := $(dml_rcflags)
 CFLAGS_REMOVE_$(AMDDALPATH)/drivers/gpu/drm/amd/display/dc/dml/display_mode_lib.o := $(dml_rcflags)
 endif
+ifdef CONFIG_DRM_AMD_DC_DCN3_1
+CFLAGS_$(AMDDALPATH)/dc/dml/dcn31/display_mode_vba_31.o := $(dml_ccflags) -Wframe-larger-than=2048
+CFLAGS_$(AMDDALPATH)/dc/dml/dcn31/display_rq_dlg_calc_31.o := $(dml_ccflags)
+CFLAGS_REMOVE_$(AMDDALPATH)/dc/dml/dcn31/display_mode_vba_31.o := $(dml_rcflags)
+CFLAGS_REMOVE_$(AMDDALPATH)/dc/dml/dcn31/display_rq_dlg_calc_31.o := $(dml_rcflags)
+endif
 CFLAGS_$(AMDDALPATH)/dc/dml/dml1_display_rq_dlg_calc.o := $(dml_ccflags)
 CFLAGS_$(AMDDALPATH)/dc/dml/display_rq_dlg_helpers.o := $(dml_ccflags)
 CFLAGS_REMOVE_$(AMDDALPATH)/dc/dml/dml1_display_rq_dlg_calc.o := $(dml_rcflags)
@@ -99,6 +105,9 @@ endif
 
 ifdef CONFIG_DRM_AMD_DC_DCN3_0
 DML += dcn30/display_mode_vba_30.o dcn30/display_rq_dlg_calc_30.o
+ifdef CONFIG_DRM_AMD_DC_DCN3_1
+DML += dcn31/display_mode_vba_31.o dcn31/display_rq_dlg_calc_31.o
+endif
 endif
 
 AMD_DAL_DML = $(addprefix $(AMDDALPATH)/dc/dml/,$(DML))

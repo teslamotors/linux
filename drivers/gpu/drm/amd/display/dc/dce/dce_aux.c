@@ -31,6 +31,8 @@
 #include "dce_aux.h"
 #include "dce/dce_11_0_sh_mask.h"
 #include "dm_event_log.h"
+#include "dm_helpers.h"
+#include "dmub/inc/dmub_cmd.h"
 
 #define CTX \
 	aux110->base.ctx
@@ -324,7 +326,7 @@ static int read_channel_reply(struct dce_aux *engine, uint32_t size,
 	return 0;
 }
 
-static enum aux_channel_operation_result get_channel_status(
+static enum aux_return_code_type get_channel_status(
 	struct dce_aux *engine,
 	uint8_t *returned_bytes)
 {
@@ -335,7 +337,7 @@ static enum aux_channel_operation_result get_channel_status(
 	if (returned_bytes == NULL) {
 		/*caller pass NULL pointer*/
 		ASSERT_CRITICAL(false);
-		return AUX_CHANNEL_OPERATION_FAILED_REASON_UNKNOWN;
+		return AUX_RET_ERROR_UNKNOWN;
 	}
 	*returned_bytes = 0;
 
@@ -346,7 +348,7 @@ static enum aux_channel_operation_result get_channel_status(
 	value = REG_READ(AUX_SW_STATUS);
 	/* in case HPD is LOW, exit AUX transaction */
 	if ((value & AUX_SW_STATUS__AUX_SW_HPD_DISCON_MASK))
-		return AUX_CHANNEL_OPERATION_FAILED_HPD_DISCON;
+		return AUX_RET_ERROR_HPD_DISCON;
 
 	/* Note that the following bits are set in 'status.bits'
 	 * during CTS 4.2.1.2 (FW 3.3.1):
@@ -359,14 +361,14 @@ static enum aux_channel_operation_result get_channel_status(
 	if (value & AUX_SW_STATUS__AUX_SW_DONE_MASK) {
 		if ((value & AUX_SW_STATUS__AUX_SW_RX_TIMEOUT_STATE_MASK) ||
 			(value & AUX_SW_STATUS__AUX_SW_RX_TIMEOUT_MASK))
-			return AUX_CHANNEL_OPERATION_FAILED_TIMEOUT;
+			return AUX_RET_ERROR_TIMEOUT;
 
 		else if ((value & AUX_SW_STATUS__AUX_SW_RX_INVALID_STOP_MASK) ||
 			(value & AUX_SW_STATUS__AUX_SW_RX_RECV_NO_DET_MASK) ||
 			(value &
 				AUX_SW_STATUS__AUX_SW_RX_RECV_INVALID_H_MASK) ||
 			(value & AUX_SW_STATUS__AUX_SW_RX_RECV_INVALID_L_MASK))
-			return AUX_CHANNEL_OPERATION_FAILED_INVALID_REPLY;
+			return AUX_RET_ERROR_INVALID_REPLY;
 
 		*returned_bytes = get_reg_field_value(value,
 				AUX_SW_STATUS,
@@ -374,24 +376,18 @@ static enum aux_channel_operation_result get_channel_status(
 
 		if (*returned_bytes == 0)
 			return
-			AUX_CHANNEL_OPERATION_FAILED_INVALID_REPLY;
+			AUX_RET_ERROR_INVALID_REPLY;
 		else {
 			*returned_bytes -= 1;
-			return AUX_CHANNEL_OPERATION_SUCCEEDED;
+			return AUX_RET_SUCCESS;
 		}
 	} else {
 		/*time_elapsed >= aux_engine->timeout_period
 		 *  AUX_SW_STATUS__AUX_SW_HPD_DISCON = at this point
 		 */
 		ASSERT_CRITICAL(false);
-		return AUX_CHANNEL_OPERATION_FAILED_TIMEOUT;
+		return AUX_RET_ERROR_TIMEOUT;
 	}
-}
-
-enum i2caux_engine_type get_engine_type(
-		const struct dce_aux *engine)
-{
-	return I2CAUX_ENGINE_TYPE_AUX;
 }
 
 static bool acquire(
@@ -547,7 +543,7 @@ static enum i2caux_transaction_action i2caux_action_from_payload(struct aux_payl
 
 int dce_aux_transfer_raw(struct ddc_service *ddc,
 		struct aux_payload *payload,
-		enum aux_channel_operation_result *operation_result)
+		enum aux_return_code_type *operation_result)
 {
 	struct ddc *ddc_pin = ddc->ddc_pin;
 	struct dce_aux *aux_engine;
@@ -562,7 +558,7 @@ int dce_aux_transfer_raw(struct ddc_service *ddc,
 
 	aux_engine = ddc->ctx->dc->res_pool->engines[ddc_pin->pin_data->en];
 	if (!acquire(aux_engine, ddc_pin)) {
-		*operation_result = AUX_CHANNEL_OPERATION_FAILED_ENGINE_ACQUIRE;
+		*operation_result = AUX_RET_ERROR_ENGINE_ACQUIRE;
 		return -1;
 	}
 
@@ -581,8 +577,9 @@ int dce_aux_transfer_raw(struct ddc_service *ddc,
 	submit_channel_request(aux_engine, &aux_req);
 	*operation_result = get_channel_status(aux_engine, &returned_bytes);
 
-	if (*operation_result == AUX_CHANNEL_OPERATION_SUCCEEDED) {
-		int bytes_replied = 0;
+	if (*operation_result == AUX_RET_SUCCESS) {
+		int __maybe_unused bytes_replied = 0;
+
 		bytes_replied = read_channel_reply(aux_engine, payload->length,
 					 payload->data, payload->reply,
 					 &status);
@@ -598,6 +595,25 @@ int dce_aux_transfer_raw(struct ddc_service *ddc,
 	return res;
 }
 
+int dce_aux_transfer_dmub_raw(struct ddc_service *ddc,
+		struct aux_payload *payload,
+		enum aux_return_code_type *operation_result)
+{
+	struct ddc *ddc_pin = ddc->ddc_pin;
+
+	if (ddc_pin != NULL) {
+		struct dce_aux *aux_engine = ddc->ctx->dc->res_pool->engines[ddc_pin->pin_data->en];
+		/* XXX: Workaround to configure ddc channels for aux transactions */
+		if (!acquire(aux_engine, ddc_pin)) {
+			*operation_result = AUX_RET_ERROR_ENGINE_ACQUIRE;
+			return -1;
+		}
+		release_engine(aux_engine);
+	}
+
+	return dm_helper_dmub_aux_transfer_sync(ddc->ctx, ddc->link, payload, operation_result);
+}
+
 #define AUX_MAX_RETRIES 7
 #define AUX_MAX_DEFER_RETRIES 7
 #define AUX_MAX_I2C_DEFER_RETRIES 7
@@ -610,7 +626,7 @@ bool dce_aux_transfer_with_retries(struct ddc_service *ddc,
 	int i, ret = 0;
 	uint8_t reply;
 	bool payload_reply = true;
-	enum aux_channel_operation_result operation_result;
+	enum aux_return_code_type operation_result;
 	bool retry_on_defer = false;
 
 	int aux_ack_retries = 0,
@@ -626,8 +642,9 @@ bool dce_aux_transfer_with_retries(struct ddc_service *ddc,
 
 	for (i = 0; i < AUX_MAX_RETRIES; i++) {
 		ret = dce_aux_transfer_raw(ddc, payload, &operation_result);
+
 		switch (operation_result) {
-		case AUX_CHANNEL_OPERATION_SUCCEEDED:
+		case AUX_RET_SUCCESS:
 			aux_timeout_retries = 0;
 			aux_invalid_reply_retries = 0;
 
@@ -673,14 +690,14 @@ bool dce_aux_transfer_with_retries(struct ddc_service *ddc,
 			}
 			break;
 
-		case AUX_CHANNEL_OPERATION_FAILED_INVALID_REPLY:
+		case AUX_RET_ERROR_INVALID_REPLY:
 			if (++aux_invalid_reply_retries >= AUX_MAX_INVALID_REPLY_RETRIES)
 				goto fail;
 			else
 				udelay(400);
 			break;
 
-		case AUX_CHANNEL_OPERATION_FAILED_TIMEOUT:
+		case AUX_RET_ERROR_TIMEOUT:
 			// Check whether a DEFER had occurred before the timeout.
 			// If so, treat timeout as a DEFER.
 			if (retry_on_defer) {
@@ -702,9 +719,9 @@ bool dce_aux_transfer_with_retries(struct ddc_service *ddc,
 			}
 			break;
 
-		case AUX_CHANNEL_OPERATION_FAILED_HPD_DISCON:
-		case AUX_CHANNEL_OPERATION_FAILED_ENGINE_ACQUIRE:
-		case AUX_CHANNEL_OPERATION_FAILED_REASON_UNKNOWN:
+		case AUX_RET_ERROR_HPD_DISCON:
+		case AUX_RET_ERROR_ENGINE_ACQUIRE:
+		case AUX_RET_ERROR_UNKNOWN:
 		default:
 			goto fail;
 		}

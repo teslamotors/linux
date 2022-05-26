@@ -36,7 +36,7 @@
 #include "cik_regs.h"
 #include "kfd_kernel_queue.h"
 #include "amdgpu_amdkfd.h"
-#include "kfd_debug_events.h"
+#include "kfd_debug.h"
 
 /* Size of the per-pipe EOP queue */
 #define CIK_HPD_EOP_BYTES_LOG2 11
@@ -77,8 +77,8 @@ enum KFD_MQD_TYPE get_mqd_type_from_queue_type(enum kfd_queue_type type)
 static bool is_pipe_enabled(struct device_queue_manager *dqm, int mec, int pipe)
 {
 	int i;
-	int pipe_offset = mec * dqm->dev->shared_resources.num_pipe_per_mec
-		+ pipe * dqm->dev->shared_resources.num_queue_per_pipe;
+	int pipe_offset = (mec * dqm->dev->shared_resources.num_pipe_per_mec
+		+ pipe) * dqm->dev->shared_resources.num_queue_per_pipe;
 
 	/* queue is available for KFD usage if bit is 1 */
 	for (i = 0; i <  dqm->dev->shared_resources.num_queue_per_pipe; ++i)
@@ -726,7 +726,7 @@ static void resume_single_queue(struct device_queue_manager *dqm,
 
 	pdd = qpd_to_pdd(qpd);
 	/* Retrieve PD base */
-	pd_base = amdgpu_amdkfd_gpuvm_get_process_page_dir(pdd->vm);
+	pd_base = amdgpu_amdkfd_gpuvm_get_process_page_dir(pdd->drm_priv);
 
 	pr_debug("Restoring from suspend PASID %u queue [%i]\n",
 			    pdd->process->pasid,
@@ -813,7 +813,7 @@ static int evict_process_queues_cpsch(struct device_queue_manager *dqm,
 	 * all VMs for all devices and has no VMs itself.
 	 * Skip queue eviction on process eviction.
 	 */
-	if (!pdd->vm)
+	if (!pdd->drm_priv)
 		goto out;
 
 	pr_debug_ratelimited("Evicting PASID 0x%x queues\n",
@@ -859,7 +859,7 @@ static int restore_process_queues_nocpsch(struct device_queue_manager *dqm,
 
 	pdd = qpd_to_pdd(qpd);
 	/* Retrieve PD base */
-	pd_base = amdgpu_amdkfd_gpuvm_get_process_page_dir(pdd->vm);
+	pd_base = amdgpu_amdkfd_gpuvm_get_process_page_dir(pdd->drm_priv);
 
 	dqm_lock(dqm);
 	if (WARN_ON_ONCE(!qpd->evicted)) /* already restored, do nothing */
@@ -953,14 +953,14 @@ static int restore_process_queues_cpsch(struct device_queue_manager *dqm,
 	 * all VMs for all devices and has no VMs itself.
 	 * Skip queue restore on process restore.
 	 */
-	if (!pdd->vm)
+	if (!pdd->drm_priv)
 		goto vm_not_acquired;
 
 	pr_debug_ratelimited("Restoring PASID 0x%x queues\n",
 			    pdd->process->pasid);
 
 	/* Update PD Base in QPD */
-	qpd->page_table_base = amdgpu_amdkfd_gpuvm_get_process_page_dir(pdd->vm);
+	qpd->page_table_base = amdgpu_amdkfd_gpuvm_get_process_page_dir(pdd->drm_priv);
 	pr_debug("Updated PD address to 0x%llx\n", qpd->page_table_base);
 
 	/* activate all active queues on the qpd */
@@ -1005,7 +1005,7 @@ static int register_process(struct device_queue_manager *dqm,
 
 	pdd = qpd_to_pdd(qpd);
 	/* Retrieve PD base */
-	pd_base = amdgpu_amdkfd_gpuvm_get_process_page_dir(pdd->vm);
+	pd_base = amdgpu_amdkfd_gpuvm_get_process_page_dir(pdd->drm_priv);
 
 	dqm_lock(dqm);
 	list_add(&n->list, &dqm->queues);
@@ -1285,6 +1285,8 @@ static int initialize_cpsch(struct device_queue_manager *dqm)
 	else
 		dqm->xgmi_sdma_bitmap = (BIT_ULL(num_xgmi_sdma_queues) - 1);
 
+	dqm->trap_debug_vmid = 0;
+
 	INIT_WORK(&dqm->hw_exception_work, kfd_process_hw_exception);
 
 	if (dqm->dev->kfd2kgd->get_iq_wait_times)
@@ -1316,7 +1318,7 @@ static int start_cpsch(struct device_queue_manager *dqm)
 	if (retval)
 		goto fail_allocate_vidmem;
 
-	dqm->fence_addr = dqm->fence_mem->cpu_ptr;
+	dqm->fence_addr = (uint64_t *)dqm->fence_mem->cpu_ptr;
 	dqm->fence_gpu_addr = dqm->fence_mem->gpu_addr;
 
 	init_interrupts(dqm);
@@ -1495,8 +1497,8 @@ out:
 	return retval;
 }
 
-int amdkfd_fence_wait_timeout(unsigned int *fence_addr,
-				unsigned int fence_value,
+int amdkfd_fence_wait_timeout(uint64_t *fence_addr,
+				uint64_t fence_value,
 				unsigned int timeout_ms)
 {
 	unsigned long end_jiffies = msecs_to_jiffies(timeout_ms) + jiffies;
@@ -1549,6 +1551,7 @@ static int unmap_queues_cpsch(struct device_queue_manager *dqm,
 				uint32_t grace_period)
 {
 	int retval = 0;
+	struct mqd_manager *mqd_mgr;
 
 	if (!dqm->sched_running)
 		return 0;
@@ -1590,6 +1593,22 @@ static int unmap_queues_cpsch(struct device_queue_manager *dqm,
 		if (pm_update_grace_period(&dqm->packets,
 					USE_DEFAULT_GRACE_PERIOD))
 			pr_err("Failed to reset grace period\n");
+	}
+
+	/* In the current MEC firmware implementation, if compute queue
+	 * doesn't response to the preemption request in time, HIQ will
+	 * abandon the unmap request without returning any timeout error
+	 * to driver. Instead, MEC firmware will log the doorbell of the
+	 * unresponding compute queue to HIQ.MQD.queue_doorbell_id fields.
+	 * To make sure the queue unmap was successful, driver need to
+	 * check those fields
+	 */
+	mqd_mgr = dqm->mqd_mgrs[KFD_MQD_TYPE_HIQ];
+	if (mqd_mgr->read_doorbell_id(dqm->packets.priv_queue->queue->mqd)) {
+		pr_err("HIQ MQD's queue_doorbell_id0 is not 0, Queue preemption time out\n");
+		while (halt_if_hws_hang)
+			schedule();
+		return -ETIME;
 	}
 
 	pm_release_ib(&dqm->packets);
@@ -1795,26 +1814,6 @@ static bool set_cache_memory_policy(struct device_queue_manager *dqm,
 out:
 	dqm_unlock(dqm);
 	return retval;
-}
-
-static int set_trap_handler(struct device_queue_manager *dqm,
-				struct qcm_process_device *qpd,
-				uint64_t tba_addr,
-				uint64_t tma_addr)
-{
-	uint64_t *tma;
-
-	if (dqm->dev->cwsr_enabled) {
-		/* Jump from CWSR trap handler to user trap */
-		tma = (uint64_t *)(qpd->cwsr_kaddr + KFD_CWSR_TMA_OFFSET);
-		tma[0] = tba_addr;
-		tma[1] = tma_addr;
-	} else {
-		qpd->tba_addr = tba_addr;
-		qpd->tma_addr = tma_addr;
-	}
-
-	return 0;
 }
 
 static int process_termination_nocpsch(struct device_queue_manager *dqm,
@@ -2063,7 +2062,6 @@ struct device_queue_manager *device_queue_manager_init(struct kfd_dev *dev)
 		dqm->ops.create_kernel_queue = create_kernel_queue_cpsch;
 		dqm->ops.destroy_kernel_queue = destroy_kernel_queue_cpsch;
 		dqm->ops.set_cache_memory_policy = set_cache_memory_policy;
-		dqm->ops.set_trap_handler = set_trap_handler;
 		dqm->ops.process_termination = process_termination_cpsch;
 		dqm->ops.evict_process_queues = evict_process_queues_cpsch;
 		dqm->ops.restore_process_queues = restore_process_queues_cpsch;
@@ -2082,7 +2080,6 @@ struct device_queue_manager *device_queue_manager_init(struct kfd_dev *dev)
 		dqm->ops.initialize = initialize_nocpsch;
 		dqm->ops.uninitialize = uninitialize;
 		dqm->ops.set_cache_memory_policy = set_cache_memory_policy;
-		dqm->ops.set_trap_handler = set_trap_handler;
 		dqm->ops.process_termination = process_termination_nocpsch;
 		dqm->ops.evict_process_queues = evict_process_queues_nocpsch;
 		dqm->ops.restore_process_queues =
@@ -2122,6 +2119,7 @@ struct device_queue_manager *device_queue_manager_init(struct kfd_dev *dev)
 	case CHIP_RAVEN:
 	case CHIP_RENOIR:
 	case CHIP_ARCTURUS:
+	case CHIP_ALDEBARAN:
 		device_queue_manager_init_v9(&dqm->asic_ops);
 		break;
 	case CHIP_NAVI10:
@@ -2131,6 +2129,8 @@ struct device_queue_manager *device_queue_manager_init(struct kfd_dev *dev)
 	case CHIP_NAVY_FLOUNDER:
 	case CHIP_VANGOGH:
 	case CHIP_DIMGREY_CAVEFISH:
+	case CHIP_BEIGE_GOBY:
+	case CHIP_YELLOW_CARP:
 		device_queue_manager_init_v10_navi10(&dqm->asic_ops);
 		break;
 	default:
@@ -2323,7 +2323,7 @@ void copy_context_work_handler (struct work_struct *work)
 {
 	struct copy_context_work_handler_workarea *workarea;
 	struct mqd_manager *mqd_mgr;
-	struct kfd_process_device *pdd;
+	int i;
 	struct queue *q;
 	struct mm_struct *mm;
 	struct kfd_process *p;
@@ -2336,7 +2336,8 @@ void copy_context_work_handler (struct work_struct *work)
 	p = workarea->p;
 	mm = get_task_mm(p->lead_thread);
 	use_mm(mm);
-	list_for_each_entry(pdd, &p->per_device_data, per_device_list) {
+	for (i = 0; i < p->n_pdds; i++) {
+		struct kfd_process_device *pdd = p->pdds[i];
 		struct device_queue_manager *dqm = pdd->dev->dqm;
 		struct qcm_process_device *qpd = &pdd->qpd;
 
@@ -2370,13 +2371,14 @@ int resume_queues(struct kfd_process *p,
 		uint32_t flags,
 		uint32_t *queue_ids)
 {
-	struct kfd_process_device *pdd;
+	int i;
 	int total_resumed = 0;
 
 	/* mask all queues as invalid.  unmask per successful request */
 	q_array_invalidate(num_queues, queue_ids);
 
-	list_for_each_entry(pdd, &p->per_device_data, per_device_list) {
+	for (i = 0; i < p->n_pdds; i++) {
+		struct kfd_process_device *pdd = p->pdds[i];
 		struct device_queue_manager *dqm = pdd->dev->dqm;
 		struct qcm_process_device *qpd = &pdd->qpd;
 		struct queue *q;
@@ -2437,13 +2439,14 @@ int suspend_queues(struct kfd_process *p,
 			uint32_t flags,
 			uint32_t *queue_ids)
 {
-	struct kfd_process_device *pdd;
+	int i;
 	int total_suspended = 0;
 
 	/* mask all queues as invalid.  umask on successful request */
 	q_array_invalidate(num_queues, queue_ids);
 
-	list_for_each_entry(pdd, &p->per_device_data, per_device_list) {
+	for (i = 0; i < p->n_pdds; i++) {
+		struct kfd_process_device *pdd = p->pdds[i];
 		struct device_queue_manager *dqm = pdd->dev->dqm;
 		struct qcm_process_device *qpd = &pdd->qpd;
 		struct queue *q;

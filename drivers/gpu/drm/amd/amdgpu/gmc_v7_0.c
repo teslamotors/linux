@@ -414,6 +414,7 @@ static int gmc_v7_0_mc_init(struct amdgpu_device *adev)
 		adev->gmc.gart_size = (u64)amdgpu_gart_size << 20;
 	}
 
+	adev->gmc.gart_size += adev->pm.smu_prv_buffer_size;
 	gmc_v7_0_vram_gtt_location(adev, &adev->gmc);
 
 	return 0;
@@ -515,7 +516,7 @@ static void gmc_v7_0_get_vm_pte(struct amdgpu_device *adev,
 }
 
 /**
- * gmc_v8_0_set_fault_enable_default - update VM fault handling
+ * gmc_v7_0_set_fault_enable_default - update VM fault handling
  *
  * @adev: amdgpu_device pointer
  * @value: true redirects VM faults to the default page
@@ -960,8 +961,6 @@ static int gmc_v7_0_early_init(void *handle)
 static int gmc_v7_0_late_init(void *handle)
 {
 	struct amdgpu_device *adev = (struct amdgpu_device *)handle;
-
-	amdgpu_bo_late_init(adev);
 
 	if (amdgpu_vm_fault_stop != AMDGPU_VM_FAULT_STOP_ALWAYS)
 		return amdgpu_irq_get(adev, &adev->gmc.vm_fault, 0);

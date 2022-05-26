@@ -311,8 +311,6 @@ out:
 
 static void label_destroy(struct aa_label *label)
 {
-	struct aa_label *tmp;
-
 	AA_BUG(!label);
 
 	if (!label_isprofile(label)) {
@@ -332,10 +330,6 @@ static void label_destroy(struct aa_label *label)
 		rcu_assign_pointer(label->proxy->label, NULL);
 
 	aa_free_secid(label->secid);
-
-	tmp = rcu_dereference_protected(label->proxy->label, true);
-	if (tmp == label)
-		rcu_assign_pointer(label->proxy->label, NULL);
 
 	aa_put_proxy(label->proxy);
 	label->proxy = (struct aa_proxy *) PROXY_POISON + 1;
@@ -398,12 +392,13 @@ static void label_free_or_put_new(struct aa_label *label, struct aa_label *new)
 		aa_put_label(new);
 }
 
-bool aa_label_init(struct aa_label *label, int size, gfp_t gfp)
+bool aa_label_init(struct aa_label *label, int size)
 {
 	AA_BUG(!label);
 	AA_BUG(size < 1);
 
-	if (aa_alloc_secid(label, gfp) < 0)
+	label->secid = aa_alloc_secid();
+	if (label->secid == AA_SECID_INVALID)
 		return false;
 
 	label->size = size;			/* doesn't include null */
@@ -436,7 +431,7 @@ struct aa_label *aa_label_alloc(int size, struct aa_proxy *proxy, gfp_t gfp)
 	if (!new)
 		goto fail;
 
-	if (!aa_label_init(new, size, gfp))
+	if (!aa_label_init(new, size))
 		goto fail;
 
 	if (!proxy) {

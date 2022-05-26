@@ -102,6 +102,9 @@ struct clk_limit_table_entry {
 	unsigned int dppclk_mhz;
 	unsigned int phyclk_mhz;
 #endif
+#ifdef CONFIG_DRM_AMD_DC_DCN3_1
+	unsigned int wck_ratio;
+#endif
 };
 
 /* This table is contiguous */
@@ -283,18 +286,10 @@ struct clk_mgr_funcs {
 	/* Get current memclk states from PMFW, update relevant structures */
 	void (*get_memclk_states_from_smu)(struct clk_mgr *clk_mgr);
 #endif
+	/* Get SMU present */
+	bool (*is_smu_present)(struct clk_mgr *clk_mgr);
 };
 
-#ifdef CONFIG_DRM_AMD_DC_DCN3_01
-struct dpm_clocks;
-struct wartermarks;
-
-struct smu_watermark_set {
-	struct watermarks *wm_set;
-	union large_integer mc_address;
-};
-
-#endif
 
 struct clk_mgr {
 	struct dc_context *ctx;
@@ -311,9 +306,6 @@ struct clk_mgr {
 	struct clk_bw_params *bw_params;
 #endif
 	struct pp_smu_wm_range_sets ranges;
-#ifdef CONFIG_DRM_AMD_DC_DCN3_01
-	struct smu_watermark_set smu_wm_set;
-#endif
 };
 
 /* forward declarations */

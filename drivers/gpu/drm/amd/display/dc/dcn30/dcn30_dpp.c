@@ -245,7 +245,8 @@ static void dpp3_cnv_setup (
 		select = INPUT_CSC_SELECT_ICSC;
 		break;
 	case SURFACE_PIXEL_FORMAT_GRPH_ARGB16161616:
-		pixel_format = 22;
+	case SURFACE_PIXEL_FORMAT_GRPH_ABGR16161616:
+		pixel_format = 26; /* ARGB16161616_UNORM */
 		break;
 	case SURFACE_PIXEL_FORMAT_GRPH_ARGB16161616F:
 		pixel_format = 24;
@@ -718,7 +719,7 @@ bool dpp3_program_blnd_lut(
 		next_mode = LUT_RAM_B;
 
 	dpp3_power_on_blnd_lut(dpp_base, true);
-	dpp3_configure_blnd_lut(dpp_base, next_mode == LUT_RAM_A ? true:false);
+	dpp3_configure_blnd_lut(dpp_base, next_mode == LUT_RAM_A);
 
 	if (next_mode == LUT_RAM_A)
 		dpp3_program_blnd_luta_settings(dpp_base, params);
@@ -1136,7 +1137,7 @@ bool dpp3_program_shaper(
 	else
 		next_mode = LUT_RAM_A;
 
-	dpp3_configure_shaper_lut(dpp_base, next_mode == LUT_RAM_A ? true:false);
+	dpp3_configure_shaper_lut(dpp_base, next_mode == LUT_RAM_A);
 
 	if (next_mode == LUT_RAM_A)
 		dpp3_program_shaper_luta_settings(dpp_base, params);
@@ -1449,7 +1450,8 @@ bool dpp3_construct(
 	dpp->lb_pixel_depth_supported =
 		LB_PIXEL_DEPTH_18BPP |
 		LB_PIXEL_DEPTH_24BPP |
-		LB_PIXEL_DEPTH_30BPP;
+		LB_PIXEL_DEPTH_30BPP |
+		LB_PIXEL_DEPTH_36BPP;
 
 	dpp->lb_bits_per_entry = LB_BITS_PER_ENTRY;
 	dpp->lb_memory_size = LB_TOTAL_NUMBER_OF_ENTRIES; /*0x1404*/

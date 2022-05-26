@@ -456,7 +456,7 @@ static void dce_v6_0_program_fmt(struct drm_encoder *encoder)
 }
 
 /**
- * cik_get_number_of_dram_channels - get the number of dram channels
+ * si_get_number_of_dram_channels - get the number of dram channels
  *
  * @adev: amdgpu_device pointer
  *
@@ -2765,7 +2765,11 @@ static int dce_v6_0_hw_fini(void *handle)
 static int dce_v6_0_suspend(void *handle)
 {
 	struct amdgpu_device *adev = (struct amdgpu_device *)handle;
+	int r;
 
+	r = amdgpu_display_suspend_helper(adev);
+	if (r)
+		return r;
 	adev->mode_info.bl_level =
 		amdgpu_atombios_encoder_get_backlight_level_from_reg(adev);
 
@@ -2789,8 +2793,10 @@ static int dce_v6_0_resume(void *handle)
 		amdgpu_display_backlight_set_level(adev, adev->mode_info.bl_encoder,
 						    bl_level);
 	}
+	if (ret)
+		return ret;
 
-	return ret;
+	return amdgpu_display_resume_helper(adev);
 }
 
 static bool dce_v6_0_is_idle(void *handle)

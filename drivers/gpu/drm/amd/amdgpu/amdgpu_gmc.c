@@ -31,6 +31,61 @@
 #include "amdgpu_ras.h"
 #include "amdgpu_xgmi.h"
 
+#include <drm/drm_drv.h>
+
+/**
+ * amdgpu_gmc_pdb0_alloc - allocate vram for pdb0
+ *
+ * @adev: amdgpu_device pointer
+ *
+ * Allocate video memory for pdb0 and map it for CPU access
+ * Returns 0 for success, error for failure.
+ */
+int amdgpu_gmc_pdb0_alloc(struct amdgpu_device *adev)
+{
+	int r;
+	struct amdgpu_bo_param bp;
+	u64 vram_size = adev->gmc.xgmi.node_segment_size * adev->gmc.xgmi.num_physical_nodes;
+	uint32_t pde0_page_shift = adev->gmc.vmid0_page_table_block_size + 21;
+	uint32_t npdes = (vram_size + (1ULL << pde0_page_shift) -1) >> pde0_page_shift;
+
+	memset(&bp, 0, sizeof(bp));
+	bp.size = PAGE_ALIGN((npdes + 1) * 8);
+	bp.byte_align = PAGE_SIZE;
+	bp.domain = AMDGPU_GEM_DOMAIN_VRAM;
+	bp.flags = AMDGPU_GEM_CREATE_CPU_ACCESS_REQUIRED |
+		AMDGPU_GEM_CREATE_VRAM_CONTIGUOUS;
+	bp.type = ttm_bo_type_kernel;
+	bp.resv = NULL;
+	bp.bo_ptr_size = sizeof(struct amdgpu_bo);
+
+	r = amdgpu_bo_create(adev, &bp, &adev->gmc.pdb0_bo);
+	if (r)
+		return r;
+
+	r = amdgpu_bo_reserve(adev->gmc.pdb0_bo, false);
+	if (unlikely(r != 0))
+		goto bo_reserve_failure;
+
+	r = amdgpu_bo_pin(adev->gmc.pdb0_bo, AMDGPU_GEM_DOMAIN_VRAM);
+	if (r)
+		goto bo_pin_failure;
+	r = amdgpu_bo_kmap(adev->gmc.pdb0_bo, &adev->gmc.ptr_pdb0);
+	if (r)
+		goto bo_kmap_failure;
+
+	amdgpu_bo_unreserve(adev->gmc.pdb0_bo);
+	return 0;
+
+bo_kmap_failure:
+	amdgpu_bo_unpin(adev->gmc.pdb0_bo);
+bo_pin_failure:
+	amdgpu_bo_unreserve(adev->gmc.pdb0_bo);
+bo_reserve_failure:
+	amdgpu_bo_unref(&adev->gmc.pdb0_bo);
+	return r;
+}
+
 /**
  * amdgpu_gmc_get_pde_for_bo - get the PDE for a BO
  *
@@ -100,6 +155,10 @@ int amdgpu_gmc_set_pte_pde(struct amdgpu_device *adev, void *cpu_pt_addr,
 {
 	void __iomem *ptr = (void *)cpu_pt_addr;
 	uint64_t value;
+	int idx;
+
+	if (!drm_dev_enter(&adev->ddev, &idx))
+		return 0;
 
 	/*
 	 * The following is for PTE only. GART does not have PDEs.
@@ -107,6 +166,9 @@ int amdgpu_gmc_set_pte_pde(struct amdgpu_device *adev, void *cpu_pt_addr,
 	value = addr & 0x0000FFFFFFFFF000ULL;
 	value |= flags;
 	writeq(value, ptr + (gpu_page_idx * 8));
+
+	drm_dev_exit(idx);
+
 	return 0;
 }
 
@@ -162,6 +224,39 @@ void amdgpu_gmc_vram_location(struct amdgpu_device *adev, struct amdgpu_gmc *mc,
 			mc->vram_end, mc->real_vram_size >> 20);
 }
 
+/** amdgpu_gmc_sysvm_location - place vram and gart in sysvm aperture
+ *
+ * @adev: amdgpu device structure holding all necessary information
+ * @mc: memory controller structure holding memory information
+ *
+ * This function is only used if use GART for FB translation. In such
+ * case, we use sysvm aperture (vmid0 page tables) for both vram
+ * and gart (aka system memory) access.
+ *
+ * GPUVM (and our organization of vmid0 page tables) require sysvm
+ * aperture to be placed at a location aligned with 8 times of native
+ * page size. For example, if vm_context0_cntl.page_table_block_size
+ * is 12, then native page size is 8G (2M*2^12), sysvm should start
+ * with a 64G aligned address. For simplicity, we just put sysvm at
+ * address 0. So vram start at address 0 and gart is right after vram.
+ */
+void amdgpu_gmc_sysvm_location(struct amdgpu_device *adev, struct amdgpu_gmc *mc)
+{
+	u64 hive_vram_start = 0;
+	u64 hive_vram_end = mc->xgmi.node_segment_size * mc->xgmi.num_physical_nodes - 1;
+	mc->vram_start = mc->xgmi.node_segment_size * mc->xgmi.physical_node_id;
+	mc->vram_end = mc->vram_start + mc->xgmi.node_segment_size - 1;
+	mc->gart_start = hive_vram_end + 1;
+	mc->gart_end = mc->gart_start + mc->gart_size - 1;
+	mc->fb_start = hive_vram_start;
+	mc->fb_end = hive_vram_end;
+	dev_info(adev->dev, "VRAM: %lluM 0x%016llX - 0x%016llX (%lluM used)\n",
+			mc->mc_vram_size >> 20, mc->vram_start,
+			mc->vram_end, mc->real_vram_size >> 20);
+	dev_info(adev->dev, "GART: %lluM 0x%016llX - 0x%016llX\n",
+			mc->gart_size >> 20, mc->gart_start, mc->gart_end);
+}
+
 /**
  * amdgpu_gmc_gart_location - try to find GART location
  *
@@ -169,7 +264,6 @@ void amdgpu_gmc_vram_location(struct amdgpu_device *adev, struct amdgpu_gmc *mc,
  * @mc: memory controller structure holding memory information
  *
  * Function will place try to place GART before or after VRAM.
- *
  * If GART size is bigger than space left then we ajust GART size.
  * Thus function will never fails.
  */
@@ -179,8 +273,6 @@ void amdgpu_gmc_gart_location(struct amdgpu_device *adev, struct amdgpu_gmc *mc)
 	u64 size_af, size_bf;
 	/*To avoid the hole, limit the max mc address to AMDGPU_GMC_HOLE_START*/
 	u64 max_mc_address = min(adev->gmc.mc_mask, AMDGPU_GMC_HOLE_START - 1);
-
-	mc->gart_size += adev->pm.smu_prv_buffer_size;
 
 	/* VCE doesn't like it when BOs cross a 4GB segment, so align
 	 * the GART base on a 4GB boundary as well.
@@ -254,6 +346,17 @@ void amdgpu_gmc_agp_location(struct amdgpu_device *adev, struct amdgpu_gmc *mc)
 }
 
 /**
+ * amdgpu_gmc_fault_key - get hask key from vm fault address and pasid
+ *
+ * @addr: 48 bit physical address, page aligned (36 significant bits)
+ * @pasid: 16 bit process address space identifier
+ */
+static inline uint64_t amdgpu_gmc_fault_key(uint64_t addr, uint16_t pasid)
+{
+	return addr << 4 | pasid;
+}
+
+/**
  * amdgpu_gmc_filter_faults - filter VM faults
  *
  * @adev: amdgpu device structure
@@ -269,8 +372,7 @@ bool amdgpu_gmc_filter_faults(struct amdgpu_device *adev, uint64_t addr,
 			      uint16_t pasid, uint64_t timestamp)
 {
 	struct amdgpu_gmc *gmc = &adev->gmc;
-
-	uint64_t stamp, key = addr << 4 | pasid;
+	uint64_t stamp, key = amdgpu_gmc_fault_key(addr, pasid);
 	struct amdgpu_gmc_fault *fault;
 	uint32_t hash;
 
@@ -286,7 +388,7 @@ bool amdgpu_gmc_filter_faults(struct amdgpu_device *adev, uint64_t addr,
 	while (fault->timestamp >= stamp) {
 		uint64_t tmp;
 
-		if (fault->key == key)
+		if (atomic64_read(&fault->key) == key)
 			return true;
 
 		tmp = fault->timestamp;
@@ -299,7 +401,7 @@ bool amdgpu_gmc_filter_faults(struct amdgpu_device *adev, uint64_t addr,
 
 	/* Add the fault to the ring */
 	fault = &gmc->fault_ring[gmc->last_fault];
-	fault->key = key;
+	atomic64_set(&fault->key, key);
 	fault->timestamp = timestamp;
 
 	/* And update the hash */
@@ -308,30 +410,91 @@ bool amdgpu_gmc_filter_faults(struct amdgpu_device *adev, uint64_t addr,
 	return false;
 }
 
+/**
+ * amdgpu_gmc_filter_faults_remove - remove address from VM faults filter
+ *
+ * @adev: amdgpu device structure
+ * @addr: address of the VM fault
+ * @pasid: PASID of the process causing the fault
+ *
+ * Remove the address from fault filter, then future vm fault on this address
+ * will pass to retry fault handler to recover.
+ */
+void amdgpu_gmc_filter_faults_remove(struct amdgpu_device *adev, uint64_t addr,
+				     uint16_t pasid)
+{
+	struct amdgpu_gmc *gmc = &adev->gmc;
+	uint64_t key = amdgpu_gmc_fault_key(addr, pasid);
+	struct amdgpu_gmc_fault *fault;
+	uint32_t hash;
+	uint64_t tmp;
+
+	hash = hash_64(key, AMDGPU_GMC_FAULT_HASH_ORDER);
+	fault = &gmc->fault_ring[gmc->fault_hash[hash].idx];
+	do {
+		if (atomic64_cmpxchg(&fault->key, key, 0) == key)
+			break;
+
+		tmp = fault->timestamp;
+		fault = &gmc->fault_ring[fault->next];
+	} while (fault->timestamp < tmp);
+}
+
 int amdgpu_gmc_ras_late_init(struct amdgpu_device *adev)
 {
 	int r;
 
-	if (adev->umc.funcs && adev->umc.funcs->ras_late_init) {
-		r = adev->umc.funcs->ras_late_init(adev);
+	if (adev->umc.ras_funcs &&
+	    adev->umc.ras_funcs->ras_late_init) {
+		r = adev->umc.ras_funcs->ras_late_init(adev);
 		if (r)
 			return r;
 	}
 
-	if (adev->mmhub.funcs && adev->mmhub.funcs->ras_late_init) {
-		r = adev->mmhub.funcs->ras_late_init(adev);
+	if (adev->mmhub.ras_funcs &&
+	    adev->mmhub.ras_funcs->ras_late_init) {
+		r = adev->mmhub.ras_funcs->ras_late_init(adev);
 		if (r)
 			return r;
 	}
 
-	return amdgpu_xgmi_ras_late_init(adev);
+	if (!adev->gmc.xgmi.connected_to_cpu)
+		adev->gmc.xgmi.ras_funcs = &xgmi_ras_funcs;
+
+	if (adev->gmc.xgmi.ras_funcs &&
+	    adev->gmc.xgmi.ras_funcs->ras_late_init) {
+		r = adev->gmc.xgmi.ras_funcs->ras_late_init(adev);
+		if (r)
+			return r;
+	}
+
+	if (adev->hdp.ras_funcs &&
+	    adev->hdp.ras_funcs->ras_late_init) {
+		r = adev->hdp.ras_funcs->ras_late_init(adev);
+		if (r)
+			return r;
+	}
+
+	return 0;
 }
 
 void amdgpu_gmc_ras_fini(struct amdgpu_device *adev)
 {
-	amdgpu_umc_ras_fini(adev);
-	amdgpu_mmhub_ras_fini(adev);
-	amdgpu_xgmi_ras_fini(adev);
+	if (adev->umc.ras_funcs &&
+	    adev->umc.ras_funcs->ras_fini)
+		adev->umc.ras_funcs->ras_fini(adev);
+
+	if (adev->mmhub.ras_funcs &&
+	    adev->mmhub.ras_funcs->ras_fini)
+		adev->mmhub.ras_funcs->ras_fini(adev);
+
+	if (adev->gmc.xgmi.ras_funcs &&
+	    adev->gmc.xgmi.ras_funcs->ras_fini)
+		adev->gmc.xgmi.ras_funcs->ras_fini(adev);
+
+	if (adev->hdp.ras_funcs &&
+	    adev->hdp.ras_funcs->ras_fini)
+		adev->hdp.ras_funcs->ras_fini(adev);
 }
 
 	/*
@@ -378,7 +541,7 @@ int amdgpu_gmc_allocate_vm_inv_eng(struct amdgpu_device *adev)
 }
 
 /**
- * amdgpu_tmz_set -- check and set if a device supports TMZ
+ * amdgpu_gmc_tmz_set -- check and set if a device supports TMZ
  * @adev: amdgpu_device pointer
  *
  * Check and set if an the device @adev supports Trusted Memory
@@ -389,6 +552,16 @@ void amdgpu_gmc_tmz_set(struct amdgpu_device *adev)
 	switch (adev->asic_type) {
 	case CHIP_RAVEN:
 	case CHIP_RENOIR:
+		if (amdgpu_tmz == 0) {
+			adev->gmc.tmz_enabled = false;
+			dev_info(adev->dev,
+				 "Trusted Memory Zone (TMZ) feature disabled (cmd line)\n");
+		} else {
+			adev->gmc.tmz_enabled = true;
+			dev_info(adev->dev,
+				 "Trusted Memory Zone (TMZ) feature enabled\n");
+		}
+		break;
 	case CHIP_NAVI10:
 	case CHIP_NAVI14:
 	case CHIP_NAVI12:
@@ -414,7 +587,7 @@ void amdgpu_gmc_tmz_set(struct amdgpu_device *adev)
 }
 
 /**
- * amdgpu_noretry_set -- set per asic noretry defaults
+ * amdgpu_gmc_noretry_set -- set per asic noretry defaults
  * @adev: amdgpu_device pointer
  *
  * Set a per asic default for the no-retry parameter.
@@ -432,6 +605,9 @@ void amdgpu_gmc_noretry_set(struct amdgpu_device *adev)
 	case CHIP_SIENNA_CICHLID:
 	case CHIP_NAVY_FLOUNDER:
 	case CHIP_DIMGREY_CAVEFISH:
+	case CHIP_ARCTURUS:
+	case CHIP_ALDEBARAN:
+	case CHIP_BEIGE_GOBY:
 		/*
 		 * noretry = 0 will cause kfd page fault tests fail
 		 * for some ASICs, so set default to 1 for these ASICs.
@@ -472,13 +648,18 @@ void amdgpu_gmc_set_vm_fault_masks(struct amdgpu_device *adev, int hub_type,
 	for (i = 0; i < 16; i++) {
 		reg = hub->vm_context0_cntl + hub->ctx_distance * i;
 
-		tmp = RREG32(reg);
+		tmp = (hub_type == AMDGPU_GFXHUB_0) ?
+			RREG32_SOC15_IP(GC, reg) :
+			RREG32_SOC15_IP(MMHUB, reg);
+
 		if (enable)
 			tmp |= hub->vm_cntx_cntl_vm_fault;
 		else
 			tmp &= ~hub->vm_cntx_cntl_vm_fault;
 
-		WREG32(reg, tmp);
+		(hub_type == AMDGPU_GFXHUB_0) ?
+			WREG32_SOC15_IP(GC, reg, tmp) :
+			WREG32_SOC15_IP(MMHUB, reg, tmp);
 	}
 }
 
@@ -505,10 +686,15 @@ void amdgpu_gmc_get_vbios_allocations(struct amdgpu_device *adev)
 		break;
 	}
 
-	if (!amdgpu_device_ip_get_ip_block(adev, AMD_IP_BLOCK_TYPE_DCE))
+	if (amdgpu_sriov_vf(adev) ||
+	    !amdgpu_device_ip_get_ip_block(adev, AMD_IP_BLOCK_TYPE_DCE)) {
 		size = 0;
-	else
+	} else {
 		size = amdgpu_gmc_get_vbios_fb_size(adev);
+
+		if (adev->mman.keep_stolen_vga_memory)
+			size = max(size, (unsigned)AMDGPU_VBIOS_VGA_ALLOCATION);
+	}
 
 	/* set to 0 if the pre-OS buffer uses up most of vram */
 	if ((adev->gmc.real_vram_size - size) < (8 * 1024 * 1024))
@@ -520,5 +706,111 @@ void amdgpu_gmc_get_vbios_allocations(struct amdgpu_device *adev)
 	} else {
 		adev->mman.stolen_vga_size = size;
 		adev->mman.stolen_extended_size = 0;
+	}
+}
+
+/**
+ * amdgpu_gmc_init_pdb0 - initialize PDB0
+ *
+ * @adev: amdgpu_device pointer
+ *
+ * This function is only used when GART page table is used
+ * for FB address translatioin. In such a case, we construct
+ * a 2-level system VM page table: PDB0->PTB, to cover both
+ * VRAM of the hive and system memory.
+ *
+ * PDB0 is static, initialized once on driver initialization.
+ * The first n entries of PDB0 are used as PTE by setting
+ * P bit to 1, pointing to VRAM. The n+1'th entry points
+ * to a big PTB covering system memory.
+ *
+ */
+void amdgpu_gmc_init_pdb0(struct amdgpu_device *adev)
+{
+	int i;
+	uint64_t flags = adev->gart.gart_pte_flags; //TODO it is UC. explore NC/RW?
+	/* Each PDE0 (used as PTE) covers (2^vmid0_page_table_block_size)*2M
+	 */
+	u64 vram_size = adev->gmc.xgmi.node_segment_size * adev->gmc.xgmi.num_physical_nodes;
+	u64 pde0_page_size = (1ULL<<adev->gmc.vmid0_page_table_block_size)<<21;
+	u64 vram_addr = adev->vm_manager.vram_base_offset -
+		adev->gmc.xgmi.physical_node_id * adev->gmc.xgmi.node_segment_size;
+	u64 vram_end = vram_addr + vram_size;
+	u64 gart_ptb_gpu_pa = amdgpu_gmc_vram_pa(adev, adev->gart.bo);
+
+	flags |= AMDGPU_PTE_VALID | AMDGPU_PTE_READABLE;
+	flags |= AMDGPU_PTE_WRITEABLE;
+	flags |= AMDGPU_PTE_SNOOPED;
+	flags |= AMDGPU_PTE_FRAG((adev->gmc.vmid0_page_table_block_size + 9*1));
+	flags |= AMDGPU_PDE_PTE;
+
+	/* The first n PDE0 entries are used as PTE,
+	 * pointing to vram
+	 */
+	for (i = 0; vram_addr < vram_end; i++, vram_addr += pde0_page_size)
+		amdgpu_gmc_set_pte_pde(adev, adev->gmc.ptr_pdb0, i, vram_addr, flags);
+
+	/* The n+1'th PDE0 entry points to a huge
+	 * PTB who has more than 512 entries each
+	 * pointing to a 4K system page
+	 */
+	flags = AMDGPU_PTE_VALID;
+	flags |= AMDGPU_PDE_BFS(0) | AMDGPU_PTE_SNOOPED;
+	/* Requires gart_ptb_gpu_pa to be 4K aligned */
+	amdgpu_gmc_set_pte_pde(adev, adev->gmc.ptr_pdb0, i, gart_ptb_gpu_pa, flags);
+}
+
+/**
+ * amdgpu_gmc_vram_mc2pa - calculate vram buffer's physical address from MC
+ * address
+ *
+ * @adev: amdgpu_device pointer
+ * @mc_addr: MC address of buffer
+ */
+uint64_t amdgpu_gmc_vram_mc2pa(struct amdgpu_device *adev, uint64_t mc_addr)
+{
+	return mc_addr - adev->gmc.vram_start + adev->vm_manager.vram_base_offset;
+}
+
+/**
+ * amdgpu_gmc_vram_pa - calculate vram buffer object's physical address from
+ * GPU's view
+ *
+ * @adev: amdgpu_device pointer
+ * @bo: amdgpu buffer object
+ */
+uint64_t amdgpu_gmc_vram_pa(struct amdgpu_device *adev, struct amdgpu_bo *bo)
+{
+	return amdgpu_gmc_vram_mc2pa(adev, amdgpu_bo_gpu_offset(bo));
+}
+
+/**
+ * amdgpu_gmc_vram_cpu_pa - calculate vram buffer object's physical address
+ * from CPU's view
+ *
+ * @adev: amdgpu_device pointer
+ * @bo: amdgpu buffer object
+ */
+uint64_t amdgpu_gmc_vram_cpu_pa(struct amdgpu_device *adev, struct amdgpu_bo *bo)
+{
+	return amdgpu_bo_gpu_offset(bo) - adev->gmc.vram_start + adev->gmc.aper_base;
+}
+
+void amdgpu_gmc_get_reserved_allocation(struct amdgpu_device *adev)
+{
+	/* Some ASICs need to reserve a region of video memory to avoid access
+	 * from driver */
+	adev->mman.stolen_reserved_offset = 0;
+	adev->mman.stolen_reserved_size = 0;
+
+	switch (adev->asic_type) {
+	case CHIP_YELLOW_CARP:
+		if (amdgpu_discovery == 0) {
+			adev->mman.stolen_reserved_offset = 0x1ffb0000;
+			adev->mman.stolen_reserved_size = 64 * PAGE_SIZE;
+		}
+		break;
+	default:
+		break;
 	}
 }

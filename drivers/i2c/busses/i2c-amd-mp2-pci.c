@@ -205,6 +205,7 @@ void amd_mp2_process_event(struct amd_i2c_common *i2c_common)
 }
 EXPORT_SYMBOL_GPL(amd_mp2_process_event);
 
+static unsigned long unhandled_irqs = 0;
 static irqreturn_t amd_mp2_irq_isr(int irq, void *dev)
 {
 	struct amd_mp2_dev *privdata = dev;
@@ -236,10 +237,21 @@ static irqreturn_t amd_mp2_irq_isr(int irq, void *dev)
 		val = readl(privdata->mmio + AMD_P2C_MSG_INTEN);
 		if (val != 0) {
 			writel(0, privdata->mmio + AMD_P2C_MSG_INTEN);
-			dev_warn(ndev_dev(privdata),
+			dev_warn_ratelimited(ndev_dev(privdata),
 				 "received irq without message\n");
-			ret = IRQ_HANDLED;
+		} else {
+			if ((++unhandled_irqs % 1000) == 0)
+				dev_warn_ratelimited(ndev_dev(privdata),
+						     "%lu unhandled irqs\n",
+						     unhandled_irqs);
 		}
+
+		/*
+		 * Block kernel from disabling IRQ due to spurious interrupts.
+		 * These accumulate over time and the available documentation
+		 * provides no explanation on their origin.
+		 */
+		ret = IRQ_HANDLED;
 	}
 
 	return ret;

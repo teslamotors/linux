@@ -90,11 +90,32 @@ config DRM_AMD_DC_SI
 	  by default. This includes Tahiti, Pitcairn, Cape Verde, Oland.
 	  Hainan is not supported by AMD DC and it has no physical DCE6.
 
+config DRM_AMD_DC_DCN3_1
+        bool "DCN 3.1 family"
+        depends on DRM_AMD_DC_DCN1_0
+        help
+            Choose this option if you want to have
+            DCN3.1 family support for display engine
+
 config DEBUG_KERNEL_DC
 	bool "Enable kgdb break in DC"
 	depends on DRM_AMD_DC
 	depends on KGDB
 	help
 	  Choose this option if you want to hit kdgb_break in assert.
+
+config DRM_AMD_SECURE_DISPLAY
+        bool "Enable secure display support"
+        default n
+        depends on DEBUG_FS
+        depends on DRM_AMD_DC_DCN2_1
+        help
+            Choose this option if you want to
+            support secure display
+
+            This option enables the calculation
+            of crc of specific region via debugfs.
+            Cooperate with specific DMCU FW.
+
 
 endmenu

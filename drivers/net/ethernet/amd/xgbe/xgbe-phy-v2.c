@@ -124,9 +124,6 @@
 #include "xgbe.h"
 #include "xgbe-common.h"
 
-static int autoneg = 0;
-module_param(autoneg, int, S_IWUSR | S_IRUGO);
-MODULE_PARM_DESC(autoneg, " Enable/disable autonegotiation support (0=disable, 1=enable (or any non-zero value))");
 #define XGBE_PHY_PORT_SPEED_100		BIT(0)
 #define XGBE_PHY_PORT_SPEED_1000	BIT(1)
 #define XGBE_PHY_PORT_SPEED_2500	BIT(2)
@@ -174,6 +171,7 @@ enum xgbe_port_mode {
 	XGBE_PORT_MODE_10GBASE_T,
 	XGBE_PORT_MODE_10GBASE_R,
 	XGBE_PORT_MODE_SFP,
+	XGBE_PORT_MODE_BACKPLANE_NO_AUTONEG,
 	XGBE_PORT_MODE_MAX,
 };
 
@@ -1009,7 +1007,7 @@ static int xgbe_phy_find_phy_device(struct xgbe_prv_data *pdata)
 	pdata->an_again = 0;
 
 	/* For SFP, only use an external PHY if available */
-	if (phy_data->port_mode == XGBE_PORT_MODE_SFP) {
+	if ((phy_data->port_mode == XGBE_PORT_MODE_SFP) || (phy_data->port_mode == XGBE_PORT_MODE_BACKPLANE_NO_AUTONEG)) {
 		force_mdio_mv_bp_con = 0;
 	    	if(!phy_data->sfp_phy_avail)
 			return 0;
@@ -1677,6 +1675,7 @@ static enum xgbe_mode xgbe_phy_an73_redrv_outcome(struct xgbe_prv_data *pdata)
 	if (ad_reg & 0x80) {
 		switch (phy_data->port_mode) {
 		case XGBE_PORT_MODE_BACKPLANE:
+		case XGBE_PORT_MODE_BACKPLANE_NO_AUTONEG:
 			mode = XGBE_MODE_KR;
 			break;
 		default:
@@ -1686,6 +1685,7 @@ static enum xgbe_mode xgbe_phy_an73_redrv_outcome(struct xgbe_prv_data *pdata)
 	} else if (ad_reg & 0x20) {
 		switch (phy_data->port_mode) {
 		case XGBE_PORT_MODE_BACKPLANE:
+		case XGBE_PORT_MODE_BACKPLANE_NO_AUTONEG:
 			mode = XGBE_MODE_KX_1000;
 			break;
 		case XGBE_PORT_MODE_1000BASE_X:
@@ -1825,6 +1825,7 @@ static void xgbe_phy_an_advertising(struct xgbe_prv_data *pdata,
 
 	switch (phy_data->port_mode) {
 	case XGBE_PORT_MODE_BACKPLANE:
+	case XGBE_PORT_MODE_BACKPLANE_NO_AUTONEG:
 		XGBE_SET_ADV(dlks, 10000baseKR_Full);
 		break;
 	case XGBE_PORT_MODE_BACKPLANE_2500:
@@ -1910,9 +1911,6 @@ static enum xgbe_an_mode xgbe_phy_an_mode(struct xgbe_prv_data *pdata)
 {
 	struct xgbe_phy_data *phy_data = pdata->phy_data;
 
-	if (!autoneg)
-		return XGBE_AN_MODE_NONE;
-
 	/* A KR re-driver will always require CL73 AN */
 	if (phy_data->redrv)
 		return XGBE_AN_MODE_CL73_REDRV;
@@ -1920,6 +1918,7 @@ static enum xgbe_an_mode xgbe_phy_an_mode(struct xgbe_prv_data *pdata)
 	switch (phy_data->port_mode) {
 	case XGBE_PORT_MODE_BACKPLANE:
 		return XGBE_AN_MODE_CL73;
+	case XGBE_PORT_MODE_BACKPLANE_NO_AUTONEG:
 	case XGBE_PORT_MODE_BACKPLANE_2500:
 		return XGBE_AN_MODE_NONE;
 	case XGBE_PORT_MODE_1000BASE_T:
@@ -2015,25 +2014,11 @@ static void xgbe_phy_rx_reset(struct xgbe_prv_data *pdata)
 	}
 }
 
-static void xgbe_phy_pll_ctrl(struct xgbe_prv_data *pdata, bool enable)
-{
-	XMDIO_WRITE_BITS(pdata, MDIO_MMD_PMAPMD, MDIO_VEND2_PMA_MISC_CTRL0,
-			 XGBE_PMA_PLL_CTRL_MASK,
-			 enable ? XGBE_PMA_PLL_CTRL_ENABLE
-				: XGBE_PMA_PLL_CTRL_DISABLE);
-
-	/* Wait for command to complete */
-	usleep_range(100, 200);
-}
-
 static void xgbe_phy_perform_ratechange(struct xgbe_prv_data *pdata,
 					unsigned int cmd, unsigned int sub_cmd)
 {
 	unsigned int s0 = 0;
 	unsigned int wait;
-
-	/* Disable PLL re-initialization during FW command processing */
-	xgbe_phy_pll_ctrl(pdata, false);
 
 	/* Log if a previous command did not complete */
 	if (XP_IOREAD_BITS(pdata, XP_DRIVER_INT_RO, STATUS)) {
@@ -2055,7 +2040,7 @@ static void xgbe_phy_perform_ratechange(struct xgbe_prv_data *pdata,
 	wait = XGBE_RATECHANGE_COUNT;
 	while (wait--) {
 		if (!XP_IOREAD_BITS(pdata, XP_DRIVER_INT_RO, STATUS))
-			goto reenable_pll;
+			return;
 
 		usleep_range(1000, 2000);
 	}
@@ -2065,10 +2050,6 @@ static void xgbe_phy_perform_ratechange(struct xgbe_prv_data *pdata,
 
 	/* Reset on error */
 	xgbe_phy_rx_reset(pdata);
-
-reenable_pll:
-	/* Enable PLL re-initialization */
-	xgbe_phy_pll_ctrl(pdata, true);
 }
 
 static void xgbe_phy_rrc(struct xgbe_prv_data *pdata)
@@ -2246,6 +2227,7 @@ static enum xgbe_mode xgbe_phy_switch_mode(struct xgbe_prv_data *pdata)
 
 	switch (phy_data->port_mode) {
 	case XGBE_PORT_MODE_BACKPLANE:
+	case XGBE_PORT_MODE_BACKPLANE_NO_AUTONEG:
 		return xgbe_phy_switch_bp_mode(pdata);
 	case XGBE_PORT_MODE_BACKPLANE_2500:
 		return xgbe_phy_switch_bp_2500_mode(pdata);
@@ -2341,6 +2323,7 @@ static enum xgbe_mode xgbe_phy_get_mode(struct xgbe_prv_data *pdata,
 
 	switch (phy_data->port_mode) {
 	case XGBE_PORT_MODE_BACKPLANE:
+	case XGBE_PORT_MODE_BACKPLANE_NO_AUTONEG:
 		return xgbe_phy_get_bp_mode(speed);
 	case XGBE_PORT_MODE_BACKPLANE_2500:
 		return xgbe_phy_get_bp_2500_mode(speed);
@@ -2516,6 +2499,7 @@ static bool xgbe_phy_use_mode(struct xgbe_prv_data *pdata, enum xgbe_mode mode)
 
 	switch (phy_data->port_mode) {
 	case XGBE_PORT_MODE_BACKPLANE:
+	case XGBE_PORT_MODE_BACKPLANE_NO_AUTONEG:
 		return xgbe_phy_use_bp_mode(pdata, mode);
 	case XGBE_PORT_MODE_BACKPLANE_2500:
 		return xgbe_phy_use_bp_2500_mode(pdata, mode);
@@ -2605,6 +2589,7 @@ static bool xgbe_phy_valid_speed(struct xgbe_prv_data *pdata, int speed)
 
 	switch (phy_data->port_mode) {
 	case XGBE_PORT_MODE_BACKPLANE:
+	case XGBE_PORT_MODE_BACKPLANE_NO_AUTONEG:
 		return xgbe_phy_valid_speed_bp_mode(speed);
 	case XGBE_PORT_MODE_BACKPLANE_2500:
 		return xgbe_phy_valid_speed_bp_2500_mode(speed);
@@ -2902,6 +2887,7 @@ static bool xgbe_phy_port_mode_mismatch(struct xgbe_prv_data *pdata)
 
 	switch (phy_data->port_mode) {
 	case XGBE_PORT_MODE_BACKPLANE:
+	case XGBE_PORT_MODE_BACKPLANE_NO_AUTONEG:
 		if ((phy_data->port_speeds & XGBE_PHY_PORT_SPEED_1000) ||
 		    (phy_data->port_speeds & XGBE_PHY_PORT_SPEED_10000))
 			return false;
@@ -2954,6 +2940,7 @@ static bool xgbe_phy_conn_type_mismatch(struct xgbe_prv_data *pdata)
 
 	switch (phy_data->port_mode) {
 	case XGBE_PORT_MODE_BACKPLANE:
+	case XGBE_PORT_MODE_BACKPLANE_NO_AUTONEG:
 	case XGBE_PORT_MODE_BACKPLANE_2500:
 		if (phy_data->conn_type == XGBE_CONN_TYPE_BACKPLANE)
 			return false;
@@ -3269,8 +3256,9 @@ static int xgbe_phy_init(struct xgbe_prv_data *pdata)
 	switch (phy_data->port_mode) {
 	/* Backplane support */
 	case XGBE_PORT_MODE_BACKPLANE:
-		if (autoneg)
-			XGBE_SET_SUP(lks, Autoneg);
+		XGBE_SET_SUP(lks, Autoneg);
+		fallthrough;
+	case XGBE_PORT_MODE_BACKPLANE_NO_AUTONEG:
 		XGBE_SET_SUP(lks, Pause);
 		XGBE_SET_SUP(lks, Asym_Pause);
 		XGBE_SET_SUP(lks, Backplane);
@@ -3299,8 +3287,7 @@ static int xgbe_phy_init(struct xgbe_prv_data *pdata)
 
 	/* MDIO 1GBase-T support */
 	case XGBE_PORT_MODE_1000BASE_T:
-		if (autoneg)
-			XGBE_SET_SUP(lks, Autoneg);
+		XGBE_SET_SUP(lks, Autoneg);
 		XGBE_SET_SUP(lks, Pause);
 		XGBE_SET_SUP(lks, Asym_Pause);
 		XGBE_SET_SUP(lks, TP);
@@ -3318,8 +3305,7 @@ static int xgbe_phy_init(struct xgbe_prv_data *pdata)
 
 	/* MDIO Base-X support */
 	case XGBE_PORT_MODE_1000BASE_X:
-		if (autoneg)
-			XGBE_SET_SUP(lks, Autoneg);
+		XGBE_SET_SUP(lks, Autoneg);
 		XGBE_SET_SUP(lks, Pause);
 		XGBE_SET_SUP(lks, Asym_Pause);
 		XGBE_SET_SUP(lks, FIBRE);
@@ -3331,8 +3317,7 @@ static int xgbe_phy_init(struct xgbe_prv_data *pdata)
 
 	/* MDIO NBase-T support */
 	case XGBE_PORT_MODE_NBASE_T:
-		if (autoneg)
-			XGBE_SET_SUP(lks, Autoneg);
+		XGBE_SET_SUP(lks, Autoneg);
 		XGBE_SET_SUP(lks, Pause);
 		XGBE_SET_SUP(lks, Asym_Pause);
 		XGBE_SET_SUP(lks, TP);
@@ -3354,8 +3339,7 @@ static int xgbe_phy_init(struct xgbe_prv_data *pdata)
 
 	/* 10GBase-T support */
 	case XGBE_PORT_MODE_10GBASE_T:
-		if (autoneg)
-			XGBE_SET_SUP(lks, Autoneg);
+		XGBE_SET_SUP(lks, Autoneg);
 		XGBE_SET_SUP(lks, Pause);
 		XGBE_SET_SUP(lks, Asym_Pause);
 		XGBE_SET_SUP(lks, TP);
@@ -3377,8 +3361,7 @@ static int xgbe_phy_init(struct xgbe_prv_data *pdata)
 
 	/* 10GBase-R support */
 	case XGBE_PORT_MODE_10GBASE_R:
-		if (autoneg)
-			XGBE_SET_SUP(lks, Autoneg);
+		XGBE_SET_SUP(lks, Autoneg);
 		XGBE_SET_SUP(lks, Pause);
 		XGBE_SET_SUP(lks, Asym_Pause);
 		XGBE_SET_SUP(lks, FIBRE);

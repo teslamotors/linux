@@ -150,76 +150,6 @@ void amdgpu_ring_undo(struct amdgpu_ring *ring)
 }
 
 /**
- * amdgpu_ring_priority_put - restore a ring's priority
- *
- * @ring: amdgpu_ring structure holding the information
- * @priority: target priority
- *
- * Release a request for executing at @priority
- */
-void amdgpu_ring_priority_put(struct amdgpu_ring *ring,
-			      enum drm_sched_priority priority)
-{
-	int i;
-
-	if (!ring->funcs->set_priority)
-		return;
-
-	if (atomic_dec_return(&ring->num_jobs[priority]) > 0)
-		return;
-
-	/* no need to restore if the job is already at the lowest priority */
-	if (priority == DRM_SCHED_PRIORITY_NORMAL)
-		return;
-
-	mutex_lock(&ring->priority_mutex);
-	/* something higher prio is executing, no need to decay */
-	if (ring->priority > priority)
-		goto out_unlock;
-
-	/* decay priority to the next level with a job available */
-	for (i = priority; i >= DRM_SCHED_PRIORITY_MIN; i--) {
-		if (i == DRM_SCHED_PRIORITY_NORMAL
-				|| atomic_read(&ring->num_jobs[i])) {
-			ring->priority = i;
-			ring->funcs->set_priority(ring, i);
-			break;
-		}
-	}
-
-out_unlock:
-	mutex_unlock(&ring->priority_mutex);
-}
-
-/**
- * amdgpu_ring_priority_get - change the ring's priority
- *
- * @ring: amdgpu_ring structure holding the information
- * @priority: target priority
- *
- * Request a ring's priority to be raised to @priority (refcounted).
- */
-void amdgpu_ring_priority_get(struct amdgpu_ring *ring,
-			      enum drm_sched_priority priority)
-{
-	if (!ring->funcs->set_priority)
-		return;
-
-	if (atomic_inc_return(&ring->num_jobs[priority]) <= 0)
-		return;
-
-	mutex_lock(&ring->priority_mutex);
-	if (priority <= ring->priority)
-		goto out_unlock;
-
-	ring->priority = priority;
-	ring->funcs->set_priority(ring, priority);
-
-out_unlock:
-	mutex_unlock(&ring->priority_mutex);
-}
-
-/**
  * amdgpu_ring_init - init driver ring struct.
  *
  * @adev: amdgpu_device pointer
@@ -228,6 +158,7 @@ out_unlock:
  * @irq_src: interrupt source to use for this ring
  * @irq_type: interrupt type to use for this ring
  * @hw_prio: ring priority (NORMAL/HIGH)
+ * @sched_score: optional score atomic shared with other schedulers
  *
  * Initialize the driver information for the selected ring (all asics).
  * Returns 0 on success, error on failure.
@@ -236,7 +167,7 @@ int amdgpu_ring_init(struct amdgpu_device *adev, struct amdgpu_ring *ring,
 		     unsigned int max_dw, struct amdgpu_irq_src *irq_src,
 		     unsigned int irq_type, unsigned int hw_prio)
 {
-	int r, i;
+	int r;
 	int sched_hw_submission = amdgpu_sched_hw_submission;
 	u32 *num_sched;
 	u32 hw_ip;
@@ -328,8 +259,7 @@ int amdgpu_ring_init(struct amdgpu_device *adev, struct amdgpu_ring *ring,
 	}
 
 	ring->max_dw = max_dw;
-	ring->priority = DRM_SCHED_PRIORITY_NORMAL;
-	mutex_init(&ring->priority_mutex);
+	ring->hw_prio = hw_prio;
 
 	if (ring->funcs->type >= AMDGPU_RING_TYPE_GFX &&
 	    ring->funcs->type <= AMDGPU_RING_TYPE_VCN_JPEG &&
@@ -339,9 +269,6 @@ int amdgpu_ring_init(struct amdgpu_device *adev, struct amdgpu_ring *ring,
 		adev->gpu_sched[hw_ip][hw_prio].sched[(*num_sched)++] =
 			&ring->sched;
 	}
-
-	for (i = 0; i < DRM_SCHED_PRIORITY_MAX; ++i)
-		atomic_set(&ring->num_jobs[i], 0);
 
 	return 0;
 }

@@ -113,6 +113,12 @@ enum h_timing_div_mode {
 #endif
 };
 
+enum timing_synchronization_type {
+	NOT_SYNCHRONIZABLE,
+	TIMING_SYNCHRONIZABLE,
+	VBLANK_SYNCHRONIZABLE
+};
+
 struct crc_params {
 	/* Regions used to calculate CRC*/
 	uint16_t windowa_x_start;
@@ -173,6 +179,9 @@ struct timing_generator_funcs {
 
 	bool (*enable_crtc)(struct timing_generator *tg);
 	bool (*disable_crtc)(struct timing_generator *tg);
+#if defined(CONFIG_DRM_AMD_DC_DCN3_1)
+	bool (*immediate_disable_crtc)(struct timing_generator *tg);
+#endif
 	bool (*is_counter_moving)(struct timing_generator *tg);
 	void (*get_position)(struct timing_generator *tg,
 				struct crtc_position *position);
@@ -196,6 +205,7 @@ struct timing_generator_funcs {
 	void (*set_blank)(struct timing_generator *tg,
 					bool enable_blanking);
 	bool (*is_blanked)(struct timing_generator *tg);
+	bool (*is_locked)(struct timing_generator *tg);
 	void (*set_overscan_blank_color) (struct timing_generator *tg, const struct tg_color *color);
 	void (*set_blank_color)(struct timing_generator *tg, const struct tg_color *color);
 	void (*set_colors)(struct timing_generator *tg,
@@ -224,6 +234,8 @@ struct timing_generator_funcs {
 	void (*enable_advanced_request)(struct timing_generator *tg,
 					bool enable, const struct dc_crtc_timing *timing);
 	void (*set_drr)(struct timing_generator *tg, const struct drr_params *params);
+	void (*set_vtotal_min_max)(struct timing_generator *optc, int vtotal_min, int vtotal_max);
+	void (*get_last_used_drr_vtotal)(struct timing_generator *optc, uint32_t *refresh_rate);
 	void (*set_static_screen_control)(struct timing_generator *tg,
 						uint32_t event_triggers,
 						uint32_t num_frames);
@@ -281,7 +293,7 @@ struct timing_generator_funcs {
 			struct dc_crtc_timing *hw_crtc_timing);
 
 	void (*set_vtg_params)(struct timing_generator *optc,
-			const struct dc_crtc_timing *dc_crtc_timing);
+			const struct dc_crtc_timing *dc_crtc_timing, bool program_fp2);
 
 #ifdef CONFIG_DRM_AMD_DC_DCN2_0
 #ifdef CONFIG_DRM_AMD_DC_DSC_SUPPORT
@@ -306,6 +318,12 @@ struct timing_generator_funcs {
 			uint32_t window_start, uint32_t window_end);
 	void (*set_vtotal_change_limit)(struct timing_generator *optc,
 			uint32_t limit);
+	void (*align_vblanks)(struct timing_generator *master_optc,
+			struct timing_generator *slave_optc,
+			uint32_t master_pixel_clock_100Hz,
+			uint32_t slave_pixel_clock_100Hz,
+			uint8_t master_clock_divider,
+			uint8_t slave_clock_divider);	
 #endif
 };
 

@@ -142,7 +142,9 @@ struct drm_encoder {
 	 * the bits for all &drm_crtc objects this encoder can be connected to
 	 * before calling drm_encoder_init().
 	 *
-	 * In reality almost every driver gets this wrong.
+         * As an exception to the above rule if the driver doesn't implement
+         * any cloning it can leave @possible_clones set to 0. The core will
+         * automagically fix this up by setting the bit for the encoder itself.
 	 *
 	 * Note that since CRTC objects can't be hotplugged the assigned indices
 	 * are stable and hence known before registering all objects.

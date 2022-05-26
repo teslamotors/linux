@@ -525,8 +525,6 @@ static ssize_t node_show(struct kobject *kobj, struct attribute *attr,
 			dev->node_props.num_sdma_queues_per_engine);
 	sysfs_show_32bit_prop(buffer, offs, "num_cp_queues",
 			dev->node_props.num_cp_queues);
-	sysfs_show_64bit_prop(buffer, offs, "unique_id",
-			dev->node_props.unique_id);
 
 	if (dev->gpu) {
 		log_max_watch_addr =
@@ -572,6 +570,9 @@ static ssize_t node_show(struct kobject *kobj, struct attribute *attr,
 				      dev->node_props.debug_prop);
 		sysfs_show_32bit_prop(buffer, offs, "sdma_fw_version",
 				      dev->gpu->sdma_fw_version);
+		sysfs_show_64bit_prop(buffer, offs, "unique_id",
+				      amdgpu_amdkfd_get_unique_id(dev->gpu->kgd));
+
 	}
 
 	return sysfs_show_32bit_prop(buffer, offs, "max_engine_clk_ccompute",
@@ -1296,40 +1297,78 @@ static void kfd_fill_mem_clk_max_info(struct kfd_topology_device *dev)
 		mem->mem_clk_max = local_mem_info.mem_clk_max;
 }
 
+static void kfd_set_iolink_no_atomics(struct kfd_topology_device *dev,
+					struct kfd_topology_device *target_gpu_dev,
+					struct kfd_iolink_properties *link)
+{
+	/* xgmi always supports atomics between links. */
+	if (link->iolink_type == CRAT_IOLINK_TYPE_XGMI)
+		return;
+
+	/* check pcie support to set cpu(dev) flags for target_gpu_dev link. */
+	if (target_gpu_dev) {
+		uint32_t cap;
+
+		pcie_capability_read_dword(target_gpu_dev->gpu->pdev,
+				PCI_EXP_DEVCAP2, &cap);
+
+		if (!(cap & (PCI_EXP_DEVCAP2_ATOMIC_COMP32 |
+			     PCI_EXP_DEVCAP2_ATOMIC_COMP64)))
+			link->flags |= CRAT_IOLINK_FLAGS_NO_ATOMICS_32_BIT |
+				CRAT_IOLINK_FLAGS_NO_ATOMICS_64_BIT;
+	/* set gpu (dev) flags. */
+	} else {
+		if (!dev->gpu->pci_atomic_requested ||
+				dev->gpu->device_info->asic_family ==
+							CHIP_HAWAII)
+			link->flags |= CRAT_IOLINK_FLAGS_NO_ATOMICS_32_BIT |
+				CRAT_IOLINK_FLAGS_NO_ATOMICS_64_BIT;
+	}
+}
+
 static void kfd_fill_iolink_non_crat_info(struct kfd_topology_device *dev)
 {
-	struct kfd_iolink_properties *link, *cpu_link;
+	struct kfd_iolink_properties *link, *inbound_link;
+	struct kfd_topology_device *peer_dev;
+	struct kfd_iolink_properties  *cpu_link;
 	struct kfd_topology_device *cpu_dev;
-	uint32_t cap;
 	uint32_t cpu_flag = CRAT_IOLINK_FLAGS_ENABLED;
 	uint32_t flag = CRAT_IOLINK_FLAGS_ENABLED;
 
 	if (!dev || !dev->gpu)
 		return;
 
-	pcie_capability_read_dword(dev->gpu->pdev,
-			PCI_EXP_DEVCAP2, &cap);
-
-	if (!(cap & (PCI_EXP_DEVCAP2_ATOMIC_COMP32 |
-		     PCI_EXP_DEVCAP2_ATOMIC_COMP64)))
-		cpu_flag |= CRAT_IOLINK_FLAGS_NO_ATOMICS_32_BIT |
-			CRAT_IOLINK_FLAGS_NO_ATOMICS_64_BIT;
-
-	if (!dev->gpu->pci_atomic_requested ||
-	    dev->gpu->device_info->asic_family == CHIP_HAWAII)
-		flag |= CRAT_IOLINK_FLAGS_NO_ATOMICS_32_BIT |
-			CRAT_IOLINK_FLAGS_NO_ATOMICS_64_BIT;
-
 	/* GPU only creates direct links so apply flags setting to all */
 	list_for_each_entry(link, &dev->io_link_props, list) {
-		link->flags = flag;
+		link->flags = CRAT_IOLINK_FLAGS_ENABLED;
+		kfd_set_iolink_no_atomics(dev, NULL, link);
+		peer_dev = kfd_topology_device_by_proximity_domain(
+				link->node_to);
+
+		if (!peer_dev)
+			continue;
+
+		list_for_each_entry(inbound_link, &peer_dev->io_link_props,
+									list) {
+			if (inbound_link->node_to != link->node_from)
+				continue;
+
+			inbound_link->flags = CRAT_IOLINK_FLAGS_ENABLED;
+			kfd_set_iolink_no_atomics(peer_dev, dev, inbound_link);
+		}
+	}
+
+	/* Create CPU<->GPU indirect links so apply flags setting to all */
+	list_for_each_entry(link, &dev->p2p_link_props, list) {
 		cpu_dev = kfd_topology_device_by_proximity_domain(
 				link->node_to);
-		if (cpu_dev) {
+		if (cpu_dev && !cpu_dev->gpu) {
 			list_for_each_entry(cpu_link,
-					    &cpu_dev->io_link_props, list)
-				if (cpu_link->node_to == link->node_from)
+					    &cpu_dev->p2p_link_props, list)
+				if (cpu_link->node_to == link->node_from) {
+					link->flags = flag;
 					cpu_link->flags = cpu_flag;
+				}
 		}
 	}
 }
@@ -1358,6 +1397,85 @@ static int kfd_build_p2p_node_entry(struct kfd_topology_device *dev,
 		return ret;
 
 	return 0;
+}
+
+static int kfd_create_in_direct_link_prop(struct kfd_topology_device *kdev, int gpu_node)
+{
+	struct kfd_iolink_properties *props = NULL, *props2 = NULL;
+	struct kfd_iolink_properties *gpu_link, *cpu_link;
+	struct kfd_topology_device *cpu_dev;
+	int ret = 0;
+	int i, num_cpu;
+
+	num_cpu = 0;
+	list_for_each_entry(cpu_dev, &topology_device_list, list) {
+		if (cpu_dev->gpu)
+			break;
+		num_cpu++;
+	}
+
+	gpu_link = list_first_entry(&kdev->io_link_props,
+					struct kfd_iolink_properties, list);
+	if (!gpu_link)
+		return -ENOMEM;
+
+	for (i = 0; i < num_cpu; i++) {
+		/* CPU <--> GPU */
+		if (gpu_link->node_to == i)
+			continue;
+
+		/* find CPU <-->  CPU links */
+		cpu_dev = kfd_topology_device_by_proximity_domain(i);
+		if (cpu_dev) {
+			list_for_each_entry(cpu_link,
+					&cpu_dev->io_link_props, list) {
+				if (cpu_link->node_to == gpu_link->node_to)
+					break;
+			}
+		}
+
+		if (cpu_link->node_to != gpu_link->node_to)
+			return -ENOMEM;
+
+		/* CPU <--> CPU <--> GPU, GPU node*/
+		props = kfd_alloc_struct(props);
+		if (!props)
+			return -ENOMEM;
+
+		memcpy(props, gpu_link, sizeof(struct kfd_iolink_properties));
+		props->weight = gpu_link->weight + cpu_link->weight;
+		props->min_latency = gpu_link->min_latency + cpu_link->min_latency;
+		props->max_latency = gpu_link->max_latency + cpu_link->max_latency;
+		props->min_bandwidth = min(gpu_link->min_bandwidth, cpu_link->min_bandwidth);
+		props->max_bandwidth = min(gpu_link->max_bandwidth, cpu_link->max_bandwidth);
+
+		props->node_from = gpu_node;
+		props->node_to = i;
+		kdev->node_props.p2p_links_count++;
+		list_add_tail(&props->list, &kdev->p2p_link_props);
+		ret = kfd_build_p2p_node_entry(kdev, props);
+		if (ret < 0)
+			return ret;
+
+		/* for small Bar, no CPU --> GPU in-direct links */
+		if (kfd_dev_is_large_bar(kdev->gpu)) {
+			/* CPU <--> CPU <--> GPU, CPU node*/
+			props2 = kfd_alloc_struct(props2);
+			if (!props2)
+				return -ENOMEM;
+
+			memcpy(props2, props, sizeof(struct kfd_iolink_properties));
+			props2->node_from = i;
+			props2->node_to = gpu_node;
+			props2->kobj = NULL;
+			cpu_dev->node_props.p2p_links_count++;
+			list_add_tail(&props2->list, &cpu_dev->p2p_link_props);
+			ret = kfd_build_p2p_node_entry(cpu_dev, props2);
+			if (ret < 0)
+				return ret;
+		}
+	}
+	return ret;
 }
 
 static int kfd_add_peer_prop(struct kfd_topology_device *kdev,
@@ -1439,6 +1557,13 @@ static int kfd_dev_create_p2p_links(void)
 
 	k--;
 	i = 0;
+
+	/* create in-direct links */
+	ret = kfd_create_in_direct_link_prop(new_dev, k);
+	if (ret < 0)
+		goto out;
+
+	/* create p2p links */
 	list_for_each_entry(dev, &topology_device_list, list) {
 		if (dev == new_dev)
 			break;
@@ -1578,7 +1703,6 @@ int kfd_topology_add_device(struct kfd_dev *gpu)
 		dev->gpu->dqm->sched_policy != KFD_SCHED_POLICY_NO_HWS) ?
 		amdgpu_amdkfd_get_num_gws(dev->gpu->kgd) : 0;
 	dev->node_props.num_cp_queues = get_cp_queues_num(dev->gpu->dqm);
-	dev->node_props.unique_id = amdgpu_amdkfd_get_unique_id(dev->gpu->kgd);
 
 	kfd_fill_mem_clk_max_info(dev);
 	kfd_fill_iolink_non_crat_info(dev);
@@ -1608,6 +1732,7 @@ int kfd_topology_add_device(struct kfd_dev *gpu)
 	case CHIP_RAVEN:
 	case CHIP_RENOIR:
 	case CHIP_ARCTURUS:
+	case CHIP_ALDEBARAN:
 	case CHIP_NAVI10:
 	case CHIP_NAVI12:
 	case CHIP_NAVI14:
@@ -1615,6 +1740,8 @@ int kfd_topology_add_device(struct kfd_dev *gpu)
 	case CHIP_NAVY_FLOUNDER:
 	case CHIP_VANGOGH:
 	case CHIP_DIMGREY_CAVEFISH:
+	case CHIP_BEIGE_GOBY:
+	case CHIP_YELLOW_CARP:
 		dev->node_props.capability |= ((HSA_CAP_DOORBELL_TYPE_2_0 <<
 			HSA_CAP_DOORBELL_TYPE_TOTALBITS_SHIFT) &
 			HSA_CAP_DOORBELL_TYPE_TOTALBITS_MASK);
@@ -1655,13 +1782,13 @@ int kfd_topology_add_device(struct kfd_dev *gpu)
 	adev = (struct amdgpu_device *)(dev->gpu->kgd);
 	/* kfd only concerns sram ecc on GFX and HBM ecc on UMC */
 	dev->node_props.capability |=
-		((adev->ras_features & BIT(AMDGPU_RAS_BLOCK__GFX)) != 0) ?
+		((adev->ras_enabled & BIT(AMDGPU_RAS_BLOCK__GFX)) != 0) ?
 		HSA_CAP_SRAM_EDCSUPPORTED : 0;
-	dev->node_props.capability |= ((adev->ras_features & BIT(AMDGPU_RAS_BLOCK__UMC)) != 0) ?
+	dev->node_props.capability |= ((adev->ras_enabled & BIT(AMDGPU_RAS_BLOCK__UMC)) != 0) ?
 		HSA_CAP_MEM_EDCSUPPORTED : 0;
 
 	if (adev->asic_type != CHIP_VEGA10)
-		dev->node_props.capability |= (adev->ras_features != 0) ?
+		dev->node_props.capability |= (adev->ras_enabled != 0) ?
 			HSA_CAP_RASEVENTNOTIFY : 0;
 
 	kfd_debug_print_topology();

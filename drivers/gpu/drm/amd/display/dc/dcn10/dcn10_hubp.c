@@ -245,6 +245,7 @@ void hubp1_program_pixel_format(
 	if (format == SURFACE_PIXEL_FORMAT_GRPH_ABGR8888
 			|| format == SURFACE_PIXEL_FORMAT_GRPH_ABGR2101010
 			|| format == SURFACE_PIXEL_FORMAT_GRPH_ABGR2101010_XR_BIAS
+			|| format == SURFACE_PIXEL_FORMAT_GRPH_ABGR16161616
 			|| format == SURFACE_PIXEL_FORMAT_GRPH_ABGR16161616F) {
 		red_bar = 2;
 		blue_bar = 3;
@@ -277,8 +278,9 @@ void hubp1_program_pixel_format(
 				SURFACE_PIXEL_FORMAT, 10);
 		break;
 	case SURFACE_PIXEL_FORMAT_GRPH_ARGB16161616:
+	case SURFACE_PIXEL_FORMAT_GRPH_ABGR16161616: /*we use crossbar already*/
 		REG_UPDATE(DCSURF_SURFACE_CONFIG,
-				SURFACE_PIXEL_FORMAT, 22);
+				SURFACE_PIXEL_FORMAT, 26); /* ARGB16161616_UNORM */
 		break;
 	case SURFACE_PIXEL_FORMAT_GRPH_ARGB16161616F:
 	case SURFACE_PIXEL_FORMAT_GRPH_ABGR16161616F:/*we use crossbar already*/
@@ -1230,6 +1232,14 @@ void hubp1_cursor_set_position(
 	/* TODO Handle surface pixel formats other than 4:4:4 */
 }
 
+/**
+ * hubp1_clk_cntl - Disable or enable clocks for DCHUBP
+ *
+ * @hubp: hubp struct reference.
+ * @enable: Set true for enabling gate clock.
+ *
+ * When enabling/disabling DCHUBP clock, we affect dcfclk/dppclk.
+ */
 void hubp1_clk_cntl(struct hubp *hubp, bool enable)
 {
 	struct dcn10_hubp *hubp1 = TO_DCN10_HUBP(hubp);
@@ -1243,6 +1253,37 @@ void hubp1_vtg_sel(struct hubp *hubp, uint32_t otg_inst)
 	struct dcn10_hubp *hubp1 = TO_DCN10_HUBP(hubp);
 
 	REG_UPDATE(DCHUBP_CNTL, HUBP_VTG_SEL, otg_inst);
+}
+
+bool hubp1_in_blank(struct hubp *hubp)
+{
+	uint32_t in_blank;
+	struct dcn10_hubp *hubp1 = TO_DCN10_HUBP(hubp);
+
+	REG_GET(DCHUBP_CNTL, HUBP_IN_BLANK, &in_blank);
+	return in_blank ? true : false;
+}
+
+void hubp1_soft_reset(struct hubp *hubp, bool reset)
+{
+	struct dcn10_hubp *hubp1 = TO_DCN10_HUBP(hubp);
+
+	REG_UPDATE(DCHUBP_CNTL, HUBP_DISABLE, reset ? 1 : 0);
+}
+
+/**
+ * hubp1_set_flip_int - Enable surface flip interrupt
+ *
+ * @hubp: hubp struct reference.
+ */
+void hubp1_set_flip_int(struct hubp *hubp)
+{
+	struct dcn10_hubp *hubp1 = TO_DCN10_HUBP(hubp);
+
+	REG_UPDATE(DCSURF_SURFACE_FLIP_INTERRUPT,
+		SURFACE_FLIP_INT_MASK, 1);
+
+	return;
 }
 
 void hubp1_init(struct hubp *hubp)
@@ -1278,6 +1319,9 @@ static const struct hubp_funcs dcn10_hubp_funcs = {
 	.dmdata_set_attributes = NULL,
 	.dmdata_load = NULL,
 #endif
+	.hubp_soft_reset = hubp1_soft_reset,
+	.hubp_in_blank = hubp1_in_blank,
+	.hubp_set_flip_int = hubp1_set_flip_int,
 };
 
 /*****************************************/

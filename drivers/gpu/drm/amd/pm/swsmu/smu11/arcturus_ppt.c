@@ -142,6 +142,7 @@ static const struct cmn2asic_msg_mapping arcturus_message_map[SMU_MSG_MAX_COUNT]
 	MSG_MAP(GmiPwrDnControl,		     PPSMC_MSG_GmiPwrDnControl,			0),
 	MSG_MAP(ReadSerialNumTop32,		     PPSMC_MSG_ReadSerialNumTop32,		1),
 	MSG_MAP(ReadSerialNumBottom32,		     PPSMC_MSG_ReadSerialNumBottom32,		1),
+	MSG_MAP(LightSBR,			     PPSMC_MSG_LightSBR,			0),
 };
 
 static const struct cmn2asic_mapping arcturus_clk_map[SMU_CLK_COUNT] = {
@@ -236,7 +237,7 @@ static int arcturus_tables_init(struct smu_context *smu)
 		return -ENOMEM;
 	smu_table->metrics_time = 0;
 
-	smu_table->gpu_metrics_table_size = sizeof(struct gpu_metrics_v1_0);
+	smu_table->gpu_metrics_table_size = sizeof(struct gpu_metrics_v1_1);
 	smu_table->gpu_metrics_table = kzalloc(smu_table->gpu_metrics_table_size, GFP_KERNEL);
 	if (!smu_table->gpu_metrics_table) {
 		kfree(smu_table->metrics_table);
@@ -379,16 +380,31 @@ static int arcturus_set_default_dpm_table(struct smu_context *smu)
 	return 0;
 }
 
-static int arcturus_check_powerplay_table(struct smu_context *smu)
+static void arcturus_check_bxco_support(struct smu_context *smu)
 {
 	struct smu_table_context *table_context = &smu->smu_table;
 	struct smu_11_0_powerplay_table *powerplay_table =
 		table_context->power_play_table;
 	struct smu_baco_context *smu_baco = &smu->smu_baco;
+	struct amdgpu_device *adev = smu->adev;
+	uint32_t val;
 
 	if (powerplay_table->platform_caps & SMU_11_0_PP_PLATFORM_CAP_BACO ||
-	    powerplay_table->platform_caps & SMU_11_0_PP_PLATFORM_CAP_MACO)
-		smu_baco->platform_support = true;
+	    powerplay_table->platform_caps & SMU_11_0_PP_PLATFORM_CAP_MACO) {
+		val = RREG32_SOC15(NBIO, 0, mmRCC_BIF_STRAP0);
+		smu_baco->platform_support =
+			(val & RCC_BIF_STRAP0__STRAP_PX_CAPABLE_MASK) ? true :
+									false;
+	}
+}
+
+static int arcturus_check_powerplay_table(struct smu_context *smu)
+{
+	struct smu_table_context *table_context = &smu->smu_table;
+	struct smu_11_0_powerplay_table *powerplay_table =
+		table_context->power_play_table;
+
+	arcturus_check_bxco_support(smu);
 
 	table_context->thermal_controller_type =
 		powerplay_table->thermal_controller_type;
@@ -821,6 +837,52 @@ static int arcturus_print_clk_levels(struct smu_context *smu,
 				now) ? "*" : ""));
 		break;
 
+	case SMU_VCLK:
+		ret = arcturus_get_current_clk_freq_by_table(smu, SMU_VCLK, &now);
+		if (ret) {
+			dev_err(smu->adev->dev, "Attempt to get current vclk Failed!");
+			return ret;
+		}
+
+		single_dpm_table = &(dpm_context->dpm_tables.vclk_table);
+		ret = arcturus_get_clk_table(smu, &clocks, single_dpm_table);
+		if (ret) {
+			dev_err(smu->adev->dev, "Attempt to get vclk levels Failed!");
+			return ret;
+		}
+
+		for (i = 0; i < single_dpm_table->count; i++)
+			size += sprintf(buf + size, "%d: %uMhz %s\n",
+				i, single_dpm_table->dpm_levels[i].value,
+				(clocks.num_levels == 1) ? "*" :
+				(arcturus_freqs_in_same_level(
+				clocks.data[i].clocks_in_khz / 1000,
+				now) ? "*" : ""));
+		break;
+
+	case SMU_DCLK:
+		ret = arcturus_get_current_clk_freq_by_table(smu, SMU_DCLK, &now);
+		if (ret) {
+			dev_err(smu->adev->dev, "Attempt to get current dclk Failed!");
+			return ret;
+		}
+
+		single_dpm_table = &(dpm_context->dpm_tables.dclk_table);
+		ret = arcturus_get_clk_table(smu, &clocks, single_dpm_table);
+		if (ret) {
+			dev_err(smu->adev->dev, "Attempt to get dclk levels Failed!");
+			return ret;
+		}
+
+		for (i = 0; i < single_dpm_table->count; i++)
+			size += sprintf(buf + size, "%d: %uMhz %s\n",
+				i, single_dpm_table->dpm_levels[i].value,
+				(clocks.num_levels == 1) ? "*" :
+				(arcturus_freqs_in_same_level(
+				clocks.data[i].clocks_in_khz / 1000,
+				now) ? "*" : ""));
+		break;
+
 	case SMU_PCIE:
 		gen_speed = smu_v11_0_get_current_pcie_link_speed_level(smu);
 		lane_width = smu_v11_0_get_current_pcie_link_width_level(smu);
@@ -1080,15 +1142,27 @@ static int arcturus_read_sensor(struct smu_context *smu,
 	return ret;
 }
 
-static int arcturus_get_fan_speed_rpm(struct smu_context *smu,
-				      uint32_t *speed)
+static int arcturus_get_fan_speed_percent(struct smu_context *smu,
+					  uint32_t *speed)
 {
+	int ret;
+	u32 rpm;
+
 	if (!speed)
 		return -EINVAL;
 
-	return arcturus_get_smu_metrics_data(smu,
-					     METRICS_CURR_FANSPEED,
-					     speed);
+	switch (smu_v11_0_get_fan_control_mode(smu)) {
+	case AMD_FAN_CTRL_AUTO:
+		ret = arcturus_get_smu_metrics_data(smu,
+						    METRICS_CURR_FANSPEED,
+						    &rpm);
+		if (!ret && smu->fan_max_rpm)
+			*speed = rpm * 100 / smu->fan_max_rpm;
+		return ret;
+	default:
+		*speed = smu->user_dpm_profile.fan_speed_percent;
+		return 0;
+	}
 }
 
 static int arcturus_get_fan_parameters(struct smu_context *smu)
@@ -1116,7 +1190,7 @@ static int arcturus_get_power_limit(struct smu_context *smu)
 		power_limit =
 			pptable->SocketPowerLimitAc[PPT_THROTTLER_PPT0];
 	}
-	smu->current_power_limit = power_limit;
+	smu->current_power_limit = smu->default_power_limit = power_limit;
 
 	if (smu->od_enabled) {
 		od_percent = le32_to_cpu(powerplay_table->overdrive_table.max[SMU_11_0_ODSETTING_POWERPERCENTAGE]);
@@ -1310,7 +1384,7 @@ static int arcturus_set_power_profile_mode(struct smu_context *smu,
 						       CMN2ASIC_MAPPING_WORKLOAD,
 						       profile_mode);
 	if (workload_type < 0) {
-		dev_err(smu->adev->dev, "Unsupported power profile mode %d on arcturus\n", profile_mode);
+		dev_dbg(smu->adev->dev, "Unsupported power profile mode %d on arcturus\n", profile_mode);
 		return -EINVAL;
 	}
 
@@ -1953,8 +2027,12 @@ static int arcturus_i2c_write_data(struct i2c_adapter *control,
 static int arcturus_i2c_xfer(struct i2c_adapter *i2c_adap,
 			      struct i2c_msg *msgs, int num)
 {
+	struct amdgpu_device *adev = to_amdgpu_device(i2c_adap);
 	uint32_t  i, j, ret, data_size, data_chunk_size, next_eeprom_addr = 0;
 	uint8_t *data_ptr, data_chunk[MAX_SW_I2C_COMMANDS] = { 0 };
+
+	if (!adev->pm.dpm_enabled)
+		return -EBUSY;
 
 	for (i = 0; i < num; i++) {
 		/*
@@ -2088,18 +2166,6 @@ static void arcturus_get_unique_id(struct smu_context *smu)
 	sprintf(adev->serial, "%llx", id);
 }
 
-static bool arcturus_is_baco_supported(struct smu_context *smu)
-{
-	struct amdgpu_device *adev = smu->adev;
-	uint32_t val;
-
-	if (!smu_v11_0_baco_is_support(smu) || amdgpu_sriov_vf(adev))
-		return false;
-
-	val = RREG32_SOC15(NBIO, 0, mmRCC_BIF_STRAP0);
-	return (val & RCC_BIF_STRAP0__STRAP_PX_CAPABLE_MASK) ? true : false;
-}
-
 static int arcturus_set_df_cstate(struct smu_context *smu,
 				  enum pp_df_cstate state)
 {
@@ -2199,7 +2265,7 @@ static void arcturus_log_thermal_throttling_event(struct smu_context *smu)
 	kgd2kfd_smi_event_throttle(smu->adev->kfd.dev, throttler_status);
 }
 
-static int arcturus_get_current_pcie_link_speed(struct smu_context *smu)
+static uint16_t arcturus_get_current_pcie_link_speed(struct smu_context *smu)
 {
 	struct amdgpu_device *adev = smu->adev;
 	uint32_t esm_ctrl;
@@ -2207,7 +2273,7 @@ static int arcturus_get_current_pcie_link_speed(struct smu_context *smu)
 	/* TODO: confirm this on real target */
 	esm_ctrl = RREG32_PCIE(smnPCIE_ESM_CTRL);
 	if ((esm_ctrl >> 15) & 0x1FFFF)
-		return (((esm_ctrl >> 8) & 0x3F) + 128);
+		return (uint16_t)(((esm_ctrl >> 8) & 0x3F) + 128);
 
 	return smu_v11_0_get_current_pcie_link_speed(smu);
 }
@@ -2216,8 +2282,8 @@ static ssize_t arcturus_get_gpu_metrics(struct smu_context *smu,
 					void **table)
 {
 	struct smu_table_context *smu_table = &smu->smu_table;
-	struct gpu_metrics_v1_0 *gpu_metrics =
-		(struct gpu_metrics_v1_0 *)smu_table->gpu_metrics_table;
+	struct gpu_metrics_v1_1 *gpu_metrics =
+		(struct gpu_metrics_v1_1 *)smu_table->gpu_metrics_table;
 	SmuMetrics_t metrics;
 	int ret = 0;
 
@@ -2227,7 +2293,7 @@ static ssize_t arcturus_get_gpu_metrics(struct smu_context *smu,
 	if (ret)
 		return ret;
 
-	smu_v11_0_init_gpu_metrics_v1_0(gpu_metrics);
+	smu_cmn_init_soft_gpu_metrics(gpu_metrics, 1, 1);
 
 	gpu_metrics->temperature_edge = metrics.TemperatureEdge;
 	gpu_metrics->temperature_hotspot = metrics.TemperatureHotspot;
@@ -2264,9 +2330,11 @@ static ssize_t arcturus_get_gpu_metrics(struct smu_context *smu,
 	gpu_metrics->pcie_link_speed =
 			arcturus_get_current_pcie_link_speed(smu);
 
+	gpu_metrics->system_clock_counter = ktime_get_boottime_ns();
+
 	*table = (void *)gpu_metrics;
 
-	return sizeof(struct gpu_metrics_v1_0);
+	return sizeof(struct gpu_metrics_v1_1);
 }
 
 static const struct pptable_funcs arcturus_ppt_funcs = {
@@ -2281,7 +2349,7 @@ static const struct pptable_funcs arcturus_ppt_funcs = {
 	.print_clk_levels = arcturus_print_clk_levels,
 	.force_clk_levels = arcturus_force_clk_levels,
 	.read_sensor = arcturus_read_sensor,
-	.get_fan_speed_rpm = arcturus_get_fan_speed_rpm,
+	.get_fan_speed_percent = arcturus_get_fan_speed_percent,
 	.get_power_profile_mode = arcturus_get_power_profile_mode,
 	.set_power_profile_mode = arcturus_set_power_profile_mode,
 	.set_performance_level = arcturus_set_performance_level,
@@ -2326,13 +2394,13 @@ static const struct pptable_funcs arcturus_ppt_funcs = {
 	.display_clock_voltage_request = smu_v11_0_display_clock_voltage_request,
 	.get_fan_control_mode = smu_v11_0_get_fan_control_mode,
 	.set_fan_control_mode = smu_v11_0_set_fan_control_mode,
-	.set_fan_speed_rpm = smu_v11_0_set_fan_speed_rpm,
+	.set_fan_speed_percent = smu_v11_0_set_fan_speed_percent,
 	.set_xgmi_pstate = smu_v11_0_set_xgmi_pstate,
 	.gfx_off_control = smu_v11_0_gfx_off_control,
 	.register_irq_handler = smu_v11_0_register_irq_handler,
 	.set_azalia_d3_pme = smu_v11_0_set_azalia_d3_pme,
 	.get_max_sustainable_clocks_by_dc = smu_v11_0_get_max_sustainable_clocks_by_dc,
-	.baco_is_support= arcturus_is_baco_supported,
+	.baco_is_support = smu_v11_0_baco_is_support,
 	.baco_get_state = smu_v11_0_baco_get_state,
 	.baco_set_state = smu_v11_0_baco_set_state,
 	.baco_enter = smu_v11_0_baco_enter,
@@ -2349,6 +2417,8 @@ static const struct pptable_funcs arcturus_ppt_funcs = {
 	.deep_sleep_control = smu_v11_0_deep_sleep_control,
 	.get_fan_parameters = arcturus_get_fan_parameters,
 	.interrupt_work = smu_v11_0_interrupt_work,
+	.set_light_sbr = smu_v11_0_set_light_sbr,
+	.set_mp1_state = smu_cmn_set_mp1_state,
 };
 
 void arcturus_set_ppt_funcs(struct smu_context *smu)

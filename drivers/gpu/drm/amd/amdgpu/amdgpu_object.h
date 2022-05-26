@@ -34,9 +34,13 @@
 #define AMDGPU_BO_INVALID_OFFSET	LONG_MAX
 #define AMDGPU_BO_MAX_PLACEMENTS	3
 
+#define to_amdgpu_bo_user(abo) container_of((abo), struct amdgpu_bo_user, bo)
+#define to_amdgpu_bo_vm(abo) container_of((abo), struct amdgpu_bo_vm, bo)
+
 struct amdgpu_bo_param {
 	unsigned long			size;
 	int				byte_align;
+	u32				bo_ptr_size;
 	u32				domain;
 	u32				preferred_domain;
 	u64				flags;
@@ -108,6 +112,23 @@ struct amdgpu_bo {
 	};
 
 	struct kgd_mem                  *kfd_bo;
+
+        struct list_head                bo;
+};
+
+struct amdgpu_bo_user {
+	struct amdgpu_bo		bo;
+	u64				tiling_flags;
+	u64				metadata_flags;
+	void				*metadata;
+	u32				metadata_size;
+
+};
+
+struct amdgpu_bo_vm {
+	struct amdgpu_bo		bo;
+	struct amdgpu_bo		*shadow;
+	struct amdgpu_vm_pt             entries[];
 };
 
 static inline struct amdgpu_bo *ttm_to_amdgpu_bo(struct ttm_buffer_object *tbo)
@@ -240,6 +261,22 @@ static inline bool amdgpu_bo_encrypted(struct amdgpu_bo *bo)
 	return bo->flags & AMDGPU_GEM_CREATE_ENCRYPTED;
 }
 
+/**
+ * amdgpu_bo_shadowed - check if the BO is shadowed
+ *
+ * @bo: BO to be tested.
+ *
+ * Returns:
+ * NULL if not shadowed or else return a BO pointer.
+ */
+static inline struct amdgpu_bo *amdgpu_bo_shadowed(struct amdgpu_bo *bo)
+{
+	if (bo->tbo.type == ttm_bo_type_kernel)
+		return to_amdgpu_bo_vm(bo)->shadow;
+
+	return NULL;
+}
+
 bool amdgpu_bo_is_amdgpu_bo(struct ttm_buffer_object *bo);
 void amdgpu_bo_placement_from_domain(struct amdgpu_bo *abo, u32 domain);
 
@@ -257,8 +294,17 @@ int amdgpu_bo_create_kernel(struct amdgpu_device *adev,
 int amdgpu_bo_create_kernel_at(struct amdgpu_device *adev,
 			       uint64_t offset, uint64_t size, uint32_t domain,
 			       struct amdgpu_bo **bo_ptr, void **cpu_addr);
+int amdgpu_bo_create_user(struct amdgpu_device *adev,
+			  struct amdgpu_bo_param *bp,
+			  struct amdgpu_bo_user **ubo_ptr);
+int amdgpu_bo_create_vm(struct amdgpu_device *adev,
+			struct amdgpu_bo_param *bp,
+			struct amdgpu_bo_vm **ubo_ptr);
 void amdgpu_bo_free_kernel(struct amdgpu_bo **bo, u64 *gpu_addr,
 			   void **cpu_addr);
+int amdgpu_bo_create_shadow(struct amdgpu_device *adev,
+			    unsigned long size,
+			    struct amdgpu_bo *bo);
 int amdgpu_bo_kmap(struct amdgpu_bo *bo, void **ptr);
 void *amdgpu_bo_kptr(struct amdgpu_bo *bo);
 void amdgpu_bo_kunmap(struct amdgpu_bo *bo);
@@ -270,10 +316,7 @@ int amdgpu_bo_pin_restricted(struct amdgpu_bo *bo, u32 domain,
 int amdgpu_bo_unpin(struct amdgpu_bo *bo);
 int amdgpu_bo_evict_vram(struct amdgpu_device *adev);
 int amdgpu_bo_init(struct amdgpu_device *adev);
-int amdgpu_bo_late_init(struct amdgpu_device *adev);
 void amdgpu_bo_fini(struct amdgpu_device *adev);
-int amdgpu_bo_fbdev_mmap(struct amdgpu_bo *bo,
-				struct vm_area_struct *vma);
 int amdgpu_bo_set_tiling_flags(struct amdgpu_bo *bo, u64 tiling_flags);
 void amdgpu_bo_get_tiling_flags(struct amdgpu_bo *bo, u64 *tiling_flags);
 int amdgpu_bo_set_metadata (struct amdgpu_bo *bo, void *metadata,
@@ -294,6 +337,7 @@ int amdgpu_bo_sync_wait_resv(struct amdgpu_device *adev, struct dma_resv *resv,
 int amdgpu_bo_sync_wait(struct amdgpu_bo *bo, void *owner, bool intr);
 u64 amdgpu_bo_gpu_offset(struct amdgpu_bo *bo);
 int amdgpu_bo_validate(struct amdgpu_bo *bo);
+void amdgpu_bo_add_to_shadow_list(struct amdgpu_bo *bo);
 int amdgpu_bo_restore_shadow(struct amdgpu_bo *shadow,
 			     struct dma_fence **fence);
 uint32_t amdgpu_bo_get_preferred_pin_domain(struct amdgpu_device *adev,

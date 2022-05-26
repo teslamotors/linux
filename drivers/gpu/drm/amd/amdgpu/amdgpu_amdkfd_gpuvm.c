@@ -26,11 +26,13 @@
 #include <linux/sched/task.h>
 #include <drm/drmP.h>
 #include "amdgpu_object.h"
+#include "amdgpu_gem.h"
 #include "amdgpu_vm.h"
 #include "amdgpu_amdkfd.h"
 #include "amdgpu_dma_buf.h"
 #include "kfd_ipc.h"
 #include <uapi/linux/kfd_ioctl.h>
+#include "amdgpu_xgmi.h"
 
 /* BO flag to indicate a KFD userptr BO */
 #define AMDGPU_AMDKFD_USERPTR_BO (1ULL << 63)
@@ -68,16 +70,16 @@ static inline struct amdgpu_device *get_amdgpu_device(struct kgd_dev *kgd)
 	return (struct amdgpu_device *)kgd;
 }
 
-static bool check_if_add_bo_to_vm(struct amdgpu_vm *avm,
+static bool kfd_mem_is_attached(struct amdgpu_vm *avm,
 		struct kgd_mem *mem)
 {
-	struct kfd_bo_va_list *entry;
+	struct kfd_mem_attachment *entry;
 
-	list_for_each_entry(entry, &mem->bo_va_list, bo_list)
+	list_for_each_entry(entry, &mem->attachments, list)
 		if (entry->bo_va->base.vm == avm)
-			return false;
+			return true;
 
-	return true;
+	return false;
 }
 
 /* Set memory usage limits. Current, limits are
@@ -90,7 +92,7 @@ void amdgpu_amdkfd_gpuvm_init_mem_limits(void)
 	uint64_t mem;
 
 	si_meminfo(&si);
-	mem = si.totalram - si.totalhigh;
+	mem = si.freeram - si.freehigh;
 	mem *= si.mem_unit;
 
 	spin_lock_init(&kfd_mem_limit.mem_limit_lock);
@@ -263,7 +265,7 @@ static int amdgpu_amdkfd_remove_eviction_fence(struct amdgpu_bo *bo,
 	preempt_enable();
 
 	/* Drop the references to the removed fences or move them to ef_list */
-	for (i = j, k = 0; i < old->shared_count; ++i) {
+	for (i = j; i < old->shared_count; ++i) {
 		struct dma_fence *f;
 
 		f = rcu_dereference_protected(new->shared[i],
@@ -393,7 +395,10 @@ static uint64_t get_pte_flags(struct amdgpu_device *adev, struct kgd_mem *mem)
 {
 	struct amdgpu_device *bo_adev = amdgpu_ttm_adev(mem->bo->tbo.bdev);
 	bool coherent = mem->alloc_flags & KFD_IOC_ALLOC_MEM_FLAGS_COHERENT;
+	bool uncached = mem->alloc_flags & KFD_IOC_ALLOC_MEM_FLAGS_UNCACHED;
 	uint32_t mapping_flags;
+	uint64_t pte_flags;
+	bool snoop = false;
 
 	mapping_flags = AMDGPU_VM_PAGE_READABLE;
 	if (mem->alloc_flags & KFD_IOC_ALLOC_MEM_FLAGS_WRITABLE)
@@ -414,15 +419,41 @@ static uint64_t get_pte_flags(struct amdgpu_device *adev, struct kgd_mem *mem)
 				AMDGPU_VM_MTYPE_UC : AMDGPU_VM_MTYPE_NC;
 		}
 		break;
+	case CHIP_ALDEBARAN:
+		if (coherent && uncached) {
+			if (adev->gmc.xgmi.connected_to_cpu ||
+				!(mem->alloc_flags & KFD_IOC_ALLOC_MEM_FLAGS_VRAM))
+				snoop = true;
+			mapping_flags |= AMDGPU_VM_MTYPE_UC;
+		} else if (mem->alloc_flags & KFD_IOC_ALLOC_MEM_FLAGS_VRAM) {
+			if (bo_adev == adev) {
+				mapping_flags |= coherent ?
+					AMDGPU_VM_MTYPE_CC : AMDGPU_VM_MTYPE_RW;
+				if (adev->gmc.xgmi.connected_to_cpu)
+					snoop = true;
+			} else {
+				mapping_flags |= AMDGPU_VM_MTYPE_UC;
+				if (amdgpu_xgmi_same_hive(adev, bo_adev))
+					snoop = true;
+			}
+		} else {
+			snoop = true;
+			mapping_flags |= coherent ?
+				AMDGPU_VM_MTYPE_UC : AMDGPU_VM_MTYPE_NC;
+		}
+		break;
 	default:
 		mapping_flags |= coherent ?
 			AMDGPU_VM_MTYPE_UC : AMDGPU_VM_MTYPE_NC;
 	}
 
-	return amdgpu_gem_va_map_flags(adev, mapping_flags);
+	pte_flags = amdgpu_gem_va_map_flags(adev, mapping_flags);
+	pte_flags |= snoop ? AMDGPU_PTE_SNOOPED : 0;
+
+	return pte_flags;
 }
 
-/* add_bo_to_vm - Add a BO to a VM
+/* kfd_mem_attach - Add a BO to a VM
  *
  * Everything that needs to bo done only once when a BO is first added
  * to a VM. It can later be mapped and unmapped many times without
@@ -434,75 +465,89 @@ static uint64_t get_pte_flags(struct amdgpu_device *adev, struct kgd_mem *mem)
  * 4. Alloc page tables and directories if needed
  * 4a.  Validate new page tables and directories
  */
-static int add_bo_to_vm(struct amdgpu_device *adev, struct kgd_mem *mem,
-		struct amdgpu_vm *vm, bool is_aql,
-		struct kfd_bo_va_list **p_bo_va_entry)
+static int kfd_mem_attach(struct amdgpu_device *adev, struct kgd_mem *mem,
+		struct amdgpu_vm *vm, bool is_aql)
 {
-	int ret;
-	struct kfd_bo_va_list *bo_va_entry;
-	struct amdgpu_bo *bo = mem->bo;
+	unsigned long bo_size = mem->bo->tbo.base.size;	
 	uint64_t va = mem->va;
-	struct list_head *list_bo_va = &mem->bo_va_list;
-	unsigned long bo_size = bo->tbo.mem.size;
+	struct kfd_mem_attachment *attachment[2] = {NULL, NULL};
+	struct amdgpu_bo *bo[2] = {NULL, NULL};
+	int i, ret;
 
 	if (!va) {
 		pr_err("Invalid VA when adding BO to VM\n");
 		return -EINVAL;
 	}
 
-	if (is_aql)
+	for (i = 0; i <= is_aql; i++) {
+		attachment[i] = kzalloc(sizeof(*attachment[i]), GFP_KERNEL);
+		if (unlikely(!attachment[i])) {
+			ret = -ENOMEM;
+			goto unwind;
+		}
+
+		pr_debug("\t add VA 0x%llx - 0x%llx to vm %p\n", va,
+			 va + bo_size, vm);
+
+		/* FIXME: For now all attachments use the same BO. This is
+		 * incorrect because one BO can only have one DMA mapping
+		 * for one GPU. We need one BO per GPU, e.g. a DMABuf
+		 * import with dynamic attachment. This will be addressed
+		 * one BO-type at a time in subsequent patches.
+		 */
+		bo[i] = mem->bo;
+		drm_gem_object_get(&bo[i]->tbo.base);
+
+		/* Add BO to VM internal data structures */
+		attachment[i]->bo_va = amdgpu_vm_bo_add(adev, vm, bo[i]);
+		if (unlikely(!attachment[i]->bo_va)) {
+			ret = -ENOMEM;
+			pr_err("Failed to add BO object to VM. ret == %d\n",
+			       ret);
+			goto unwind;
+		}
+
+		attachment[i]->va = va;
+		attachment[i]->pte_flags = get_pte_flags(adev, mem);
+		attachment[i]->adev = adev;
+		list_add(&attachment[i]->list, &mem->attachments);
+
 		va += bo_size;
-
-	bo_va_entry = kzalloc(sizeof(*bo_va_entry), GFP_KERNEL);
-	if (!bo_va_entry)
-		return -ENOMEM;
-
-	pr_debug("\t add VA 0x%llx - 0x%llx to vm %p\n", va,
-			va + bo_size, vm);
-
-	/* Add BO to VM internal data structures*/
-	bo_va_entry->bo_va = amdgpu_vm_bo_add(adev, vm, bo);
-	if (!bo_va_entry->bo_va) {
-		ret = -EINVAL;
-		pr_err("Failed to add BO object to VM. ret == %d\n",
-				ret);
-		goto err_vmadd;
 	}
-
-	bo_va_entry->va = va;
-	bo_va_entry->pte_flags = get_pte_flags(adev, mem);
-	bo_va_entry->kgd_dev = (void *)adev;
-	list_add(&bo_va_entry->bo_list, list_bo_va);
-
-	if (p_bo_va_entry)
-		*p_bo_va_entry = bo_va_entry;
-
 	/* Allocate validate page tables if needed */
 	ret = vm_validate_pt_pd_bos(vm);
-	if (ret) {
+	if (unlikely(ret)) {
 		pr_err("validate_pt_pd_bos() failed\n");
-		goto err_alloc_pts;
+		goto unwind;
 	}
 
 	return 0;
+unwind:
+	for (; i >= 0; i--) {
+		if (!attachment[i])
+			continue;
+		if (attachment[i]->bo_va) {
+			amdgpu_vm_bo_rmv(adev, attachment[i]->bo_va);
+			list_del(&attachment[i]->list);
+		}
+		if (bo[i])
+			drm_gem_object_put(&bo[i]->tbo.base);
+		kfree(attachment[i]);
+	}
 
-err_alloc_pts:
-	amdgpu_vm_bo_rmv(adev, bo_va_entry->bo_va);
-	list_del(&bo_va_entry->bo_list);
-err_vmadd:
-	kfree(bo_va_entry);
 	return ret;
 }
 
-static void remove_bo_from_vm(struct amdgpu_device *adev,
-		struct kfd_bo_va_list *entry, unsigned long size)
+static void kfd_mem_detach(struct kfd_mem_attachment *attachment)
 {
-	pr_debug("\t remove VA 0x%llx - 0x%llx in entry %p\n",
-			entry->va,
-			entry->va + size, entry);
-	amdgpu_vm_bo_rmv(adev, entry->bo_va);
-	list_del(&entry->bo_list);
-	kfree(entry);
+	struct amdgpu_bo *bo = attachment->bo_va->base.bo;
+
+	pr_debug("\t remove VA 0x%llx in entry %p\n",
+			attachment->va, attachment);
+	amdgpu_vm_bo_rmv(attachment->adev, attachment->bo_va);
+	drm_gem_object_put(&bo->tbo.base);
+	list_del(&attachment->list);
+	kfree(attachment);
 }
 
 static void add_kgd_mem_to_kfd_bo_list(struct kgd_mem *mem,
@@ -678,7 +723,7 @@ static int reserve_bo_and_cond_vms(struct kgd_mem *mem,
 				struct bo_vm_reservation_context *ctx)
 {
 	struct amdgpu_bo *bo = mem->bo;
-	struct kfd_bo_va_list *entry;
+	struct kfd_mem_attachment *entry;
 	unsigned int i;
 	int ret;
 
@@ -690,7 +735,7 @@ static int reserve_bo_and_cond_vms(struct kgd_mem *mem,
 	INIT_LIST_HEAD(&ctx->list);
 	INIT_LIST_HEAD(&ctx->duplicates);
 
-	list_for_each_entry(entry, &mem->bo_va_list, bo_list) {
+	list_for_each_entry(entry, &mem->attachments, list) {
 		if ((vm && vm != entry->bo_va->base.vm) ||
 			(entry->is_mapped != map_type
 			&& map_type != BO_VM_ALL))
@@ -712,7 +757,7 @@ static int reserve_bo_and_cond_vms(struct kgd_mem *mem,
 	list_add(&ctx->kfd_bo.tv.head, &ctx->list);
 
 	i = 0;
-	list_for_each_entry(entry, &mem->bo_va_list, bo_list) {
+	list_for_each_entry(entry, &mem->attachments, list) {
 		if ((vm && vm != entry->bo_va->base.vm) ||
 			(entry->is_mapped != map_type
 			&& map_type != BO_VM_ALL))
@@ -767,7 +812,7 @@ static int unreserve_bo_and_vms(struct bo_vm_reservation_context *ctx,
 }
 
 static int unmap_bo_from_gpuvm(struct amdgpu_device *adev,
-				struct kfd_bo_va_list *entry,
+				struct kfd_mem_attachment *entry,
 				struct amdgpu_sync *sync)
 {
 	struct amdgpu_bo_va *bo_va = entry->bo_va;
@@ -783,7 +828,7 @@ static int unmap_bo_from_gpuvm(struct amdgpu_device *adev,
 }
 
 static int update_gpuvm_pte(struct amdgpu_device *adev,
-		struct kfd_bo_va_list *entry,
+		struct kfd_mem_attachment *entry,
 		struct amdgpu_sync *sync)
 {
 	int ret;
@@ -800,7 +845,7 @@ static int update_gpuvm_pte(struct amdgpu_device *adev,
 }
 
 static int map_bo_to_gpuvm(struct amdgpu_device *adev,
-		struct kfd_bo_va_list *entry, struct amdgpu_sync *sync,
+		struct kfd_mem_attachment *entry, struct amdgpu_sync *sync,
 		bool no_update_pte)
 {
 	int ret;
@@ -911,6 +956,13 @@ static int process_update_pds(struct amdkfd_process_info *process_info,
 	return 0;
 }
 
+static struct amdgpu_vm *drm_priv_to_vm(struct drm_file *drm_priv)
+{
+	struct amdgpu_fpriv *fpriv = drm_priv->driver_priv;
+
+	return &fpriv->vm;
+}
+
 static int init_kfd_vm(struct amdgpu_vm *vm, void **process_info,
 		       struct dma_fence **ef)
 {
@@ -997,51 +1049,20 @@ create_evict_fence_fail:
 	return ret;
 }
 
-int amdgpu_amdkfd_gpuvm_create_process_vm(struct kgd_dev *kgd, unsigned int pasid,
-					  void **vm, void **process_info,
-					  struct dma_fence **ef)
-{
-	struct amdgpu_device *adev = get_amdgpu_device(kgd);
-	struct amdgpu_vm *new_vm;
-	int ret;
-
-	new_vm = kzalloc(sizeof(*new_vm), GFP_KERNEL);
-	if (!new_vm)
-		return -ENOMEM;
-
-	/* Initialize AMDGPU part of the VM */
-	ret = amdgpu_vm_init(adev, new_vm, AMDGPU_VM_CONTEXT_COMPUTE, pasid);
-	if (ret) {
-		pr_err("Failed init vm ret %d\n", ret);
-		goto amdgpu_vm_init_fail;
-	}
-
-	/* Initialize KFD part of the VM and process info */
-	ret = init_kfd_vm(new_vm, process_info, ef);
-	if (ret)
-		goto init_kfd_vm_fail;
-
-	*vm = (void *) new_vm;
-
-	return 0;
-
-init_kfd_vm_fail:
-	amdgpu_vm_fini(adev, new_vm);
-amdgpu_vm_init_fail:
-	kfree(new_vm);
-	return ret;
-}
-
 int amdgpu_amdkfd_gpuvm_acquire_process_vm(struct kgd_dev *kgd,
 					   struct file *filp, unsigned int pasid,
-					   void **vm, void **process_info,
+					   void **process_info,
 					   struct dma_fence **ef)
 {
 	struct amdgpu_device *adev = get_amdgpu_device(kgd);
-	struct drm_file *drm_priv = filp->private_data;
-	struct amdgpu_fpriv *drv_priv = drm_priv->driver_priv;
-	struct amdgpu_vm *avm = &drv_priv->vm;
+	struct amdgpu_fpriv *drv_priv;
+	struct amdgpu_vm *avm;
 	int ret;
+
+	ret = amdgpu_file_to_fpriv(filp, &drv_priv);
+	if (ret)
+		return ret;
+	avm = &drv_priv->vm;	
 
 	/* Already a compute VM? */
 	if (avm->process_info)
@@ -1057,7 +1078,7 @@ int amdgpu_amdkfd_gpuvm_acquire_process_vm(struct kgd_dev *kgd,
 	if (ret)
 		return ret;
 
-	*vm = (void *)avm;
+	amdgpu_vm_set_task_info(avm);
 
 	return 0;
 }
@@ -1098,30 +1119,17 @@ void amdgpu_amdkfd_gpuvm_destroy_cb(struct amdgpu_device *adev,
 	}
 }
 
-void amdgpu_amdkfd_gpuvm_destroy_process_vm(struct kgd_dev *kgd, void *vm)
+void amdgpu_amdkfd_gpuvm_release_process_vm(struct kgd_dev *kgd, void *drm_priv)
 {
 	struct amdgpu_device *adev = get_amdgpu_device(kgd);
-	struct amdgpu_vm *avm = (struct amdgpu_vm *)vm;
+	struct amdgpu_vm *avm;
 
-	if (WARN_ON(!kgd || !vm))
+	if (WARN_ON(!kgd || !drm_priv))
 		return;
 
-	pr_debug("Destroying process vm %p\n", vm);
+	avm = drm_priv_to_vm(drm_priv);
 
-	/* Release the VM context */
-	amdgpu_vm_fini(adev, avm);
-	kfree(vm);
-}
-
-void amdgpu_amdkfd_gpuvm_release_process_vm(struct kgd_dev *kgd, void *vm)
-{
-	struct amdgpu_device *adev = get_amdgpu_device(kgd);
-	struct amdgpu_vm *avm = (struct amdgpu_vm *)vm;
-
-	if (WARN_ON(!kgd || !vm))
-		return;
-
-	pr_debug("Releasing process vm %p\n", vm);
+	pr_debug("Releasing process vm %p\n", avm);
 
 	/* The original pasid of amdgpu vm has already been
 	 * released during making a amdgpu vm to a compute vm
@@ -1132,9 +1140,9 @@ void amdgpu_amdkfd_gpuvm_release_process_vm(struct kgd_dev *kgd, void *vm)
 	amdgpu_vm_release_compute(adev, avm);
 }
 
-uint64_t amdgpu_amdkfd_gpuvm_get_process_page_dir(void *vm)
+uint64_t amdgpu_amdkfd_gpuvm_get_process_page_dir(void *drm_priv)
 {
-	struct amdgpu_vm *avm = (struct amdgpu_vm *)vm;
+	struct amdgpu_vm *avm = drm_priv_to_vm(drm_priv);
 	struct amdgpu_bo *pd = avm->root.base.bo;
 	struct amdgpu_device *adev = amdgpu_ttm_adev(pd->tbo.bdev);
 
@@ -1145,15 +1153,15 @@ uint64_t amdgpu_amdkfd_gpuvm_get_process_page_dir(void *vm)
 
 int amdgpu_amdkfd_gpuvm_alloc_memory_of_gpu(
 		struct kgd_dev *kgd, uint64_t va, uint64_t size,
-		void *vm, struct sg_table *sg, struct kgd_mem **mem,
+		void *drm_priv, struct sg_table *sg, struct kgd_mem **mem,
 		uint64_t *offset, uint32_t flags)
 {
 	struct amdgpu_device *adev = get_amdgpu_device(kgd);
-	struct amdgpu_vm *avm = (struct amdgpu_vm *)vm;
+	struct amdgpu_vm *avm = drm_priv_to_vm(drm_priv);
 	enum ttm_bo_type bo_type = ttm_bo_type_device;
 	uint64_t user_addr = 0;
 	struct amdgpu_bo *bo;
-	struct amdgpu_bo_param bp;
+	struct drm_gem_object *gobj;
 	u32 domain, alloc_domain;
 	u64 alloc_flags;
 	int ret;
@@ -1205,7 +1213,7 @@ int amdgpu_amdkfd_gpuvm_alloc_memory_of_gpu(
 		ret = -ENOMEM;
 		goto err;
 	}
-	INIT_LIST_HEAD(&(*mem)->bo_va_list);
+	INIT_LIST_HEAD(&(*mem)->attachments);
 	mutex_init(&(*mem)->lock);
 	(*mem)->aql_queue = !!(flags & KFD_IOC_ALLOC_MEM_FLAGS_AQL_QUEUE_MEM);
 
@@ -1223,26 +1231,26 @@ int amdgpu_amdkfd_gpuvm_alloc_memory_of_gpu(
 	size = ALIGN(size, PAGE_SIZE);
 	ret = amdgpu_amdkfd_reserve_mem_limit(adev, size, alloc_domain, !!sg);
 	if (ret) {
-		pr_debug("Insufficient system memory\n");
+		pr_debug("Insufficient memory\n");
 		goto err_reserve_limit;
 	}
 
 	pr_debug("\tcreate BO VA 0x%llx size 0x%llx domain %s\n",
 			va, size, domain_string(alloc_domain));
 
-	memset(&bp, 0, sizeof(bp));
-	bp.size = size;
-	bp.byte_align = 1;
-	bp.domain = alloc_domain;
-	bp.flags = alloc_flags;
-	bp.type = bo_type;
-	bp.resv = NULL;
-	ret = amdgpu_bo_create(adev, &bp, &bo);
+	ret = amdgpu_gem_object_create(adev, size, 1, alloc_domain, alloc_flags,
+				       bo_type, NULL, &gobj);
 	if (ret) {
 		pr_debug("Failed to create BO on domain %s. ret %d\n",
-				domain_string(alloc_domain), ret);
+			 domain_string(alloc_domain), ret);
 		goto err_bo_create;
 	}
+	ret = drm_vma_node_allow(&gobj->vma_node, drm_priv);
+	if (ret) {
+		pr_debug("Failed to allow vma node access. ret %d\n", ret);
+		goto err_node_allow;
+	}
+	bo = gem_to_amdgpu_bo(gobj);
 	if (bo_type == ttm_bo_type_sg) {
 		bo->tbo.sg = sg;
 		bo->tbo.ttm->sg = sg;
@@ -1271,6 +1279,8 @@ int amdgpu_amdkfd_gpuvm_alloc_memory_of_gpu(
 
 allocate_init_user_pages_failed:
 	remove_kgd_mem_from_kfd_bo_list(*mem, avm->process_info);
+	drm_vma_node_revoke(&gobj->vma_node, drm_priv);
+err_node_allow:
 	amdgpu_bo_unref(&bo);
 	/* Don't unreserve system mem limit twice */
 	goto err_reserve_limit;
@@ -1288,11 +1298,12 @@ err:
 }
 
 int amdgpu_amdkfd_gpuvm_free_memory_of_gpu(
-		struct kgd_dev *kgd, struct kgd_mem *mem, uint64_t *size)
+		struct kgd_dev *kgd, struct kgd_mem *mem, void *drm_priv,
+		uint64_t *size)
 {
 	struct amdkfd_process_info *process_info = mem->process_info;
 	unsigned long bo_size = mem->bo->tbo.mem.size;
-	struct kfd_bo_va_list *entry, *tmp;
+	struct kfd_mem_attachment *entry, *tmp;
 	struct bo_vm_reservation_context ctx;
 	struct ttm_validate_buffer *bo_list_entry;
 	unsigned int mapped_to_gpu_memory;
@@ -1336,9 +1347,8 @@ int amdgpu_amdkfd_gpuvm_free_memory_of_gpu(
 		mem->va + bo_size * (1 + mem->aql_queue));
 
 	/* Remove from VM internal data structures */
-	list_for_each_entry_safe(entry, tmp, &mem->bo_va_list, bo_list)
-		remove_bo_from_vm((struct amdgpu_device *)entry->kgd_dev,
-				entry, bo_size);
+	list_for_each_entry_safe(entry, tmp, &mem->attachments, list)
+		kfd_mem_detach(entry);
 
 	ret = unreserve_bo_and_vms(&ctx, false, false);
 
@@ -1368,6 +1378,7 @@ int amdgpu_amdkfd_gpuvm_free_memory_of_gpu(
 	kfd_ipc_obj_put(&mem->ipc_obj);
 
 	/* Free the BO*/
+	drm_vma_node_revoke(&mem->bo->tbo.base.vma_node, drm_priv);
 	drm_gem_object_put_unlocked(&mem->bo->tbo.base);
 	mutex_destroy(&mem->lock);
 	kfree(mem);
@@ -1376,17 +1387,15 @@ int amdgpu_amdkfd_gpuvm_free_memory_of_gpu(
 }
 
 int amdgpu_amdkfd_gpuvm_map_memory_to_gpu(
-		struct kgd_dev *kgd, struct kgd_mem *mem, void *vm)
+		struct kgd_dev *kgd, struct kgd_mem *mem, void *drm_priv)
 {
 	struct amdgpu_device *adev = get_amdgpu_device(kgd);
-	struct amdgpu_vm *avm = (struct amdgpu_vm *)vm;
+	struct amdgpu_vm *avm = drm_priv_to_vm(drm_priv);
 	int ret;
 	struct amdgpu_bo *bo;
 	uint32_t domain;
-	struct kfd_bo_va_list *entry;
+	struct kfd_mem_attachment *entry;
 	struct bo_vm_reservation_context ctx;
-	struct kfd_bo_va_list *bo_va_entry = NULL;
-	struct kfd_bo_va_list *bo_va_entry_aql = NULL;
 	unsigned long bo_size;
 	bool is_invalid_userptr = false;
 
@@ -1420,9 +1429,9 @@ int amdgpu_amdkfd_gpuvm_map_memory_to_gpu(
 	pr_debug("Map VA 0x%llx - 0x%llx to vm %p domain %s\n",
 			mem->va,
 			mem->va + bo_size * (1 + mem->aql_queue),
-			vm, domain_string(domain));
+			avm, domain_string(domain));
 
-	ret = reserve_bo_and_vm(mem, vm, &ctx);
+	ret = reserve_bo_and_vm(mem, avm, &ctx);
 	if (unlikely(ret))
 		goto out;
 
@@ -1435,21 +1444,14 @@ int amdgpu_amdkfd_gpuvm_map_memory_to_gpu(
 	    bo->tbo.mem.mem_type == TTM_PL_SYSTEM)
 		is_invalid_userptr = true;
 
-	if (check_if_add_bo_to_vm(avm, mem)) {
-		ret = add_bo_to_vm(adev, mem, avm, false,
-				&bo_va_entry);
+	if (!kfd_mem_is_attached(avm, mem)) {
+		ret = kfd_mem_attach(adev, mem, avm, mem->aql_queue);
 		if (ret)
-			goto add_bo_to_vm_failed;
-		if (mem->aql_queue) {
-			ret = add_bo_to_vm(adev, mem, avm,
-					true, &bo_va_entry_aql);
-			if (ret)
-				goto add_bo_to_vm_failed_aql;
-		}
+			goto attach_failed;
 	} else {
 		ret = vm_validate_pt_pd_bos(avm);
 		if (unlikely(ret))
-			goto add_bo_to_vm_failed;
+			goto attach_failed;
 	}
 
 	if (mem->mapped_to_gpu_memory == 0 &&
@@ -1465,30 +1467,30 @@ int amdgpu_amdkfd_gpuvm_map_memory_to_gpu(
 		}
 	}
 
-	list_for_each_entry(entry, &mem->bo_va_list, bo_list) {
-		if (entry->bo_va->base.vm == vm && !entry->is_mapped) {
-			pr_debug("\t map VA 0x%llx - 0x%llx in entry %p\n",
-					entry->va, entry->va + bo_size,
-					entry);
+	list_for_each_entry(entry, &mem->attachments, list) {
+		if (entry->bo_va->base.vm != avm || entry->is_mapped)
+			continue;
 
-			ret = map_bo_to_gpuvm(adev, entry, ctx.sync,
-					      is_invalid_userptr);
-			if (ret) {
-				pr_err("Failed to map bo to gpuvm\n");
-				goto map_bo_to_gpuvm_failed;
-			}
+		pr_debug("\t map VA 0x%llx - 0x%llx in entry %p\n",
+			 entry->va, entry->va + bo_size, entry);
 
-			ret = vm_update_pds(vm, ctx.sync);
-			if (ret) {
-				pr_err("Failed to update page directories\n");
-				goto map_bo_to_gpuvm_failed;
-			}
-
-			entry->is_mapped = true;
-			mem->mapped_to_gpu_memory++;
-			pr_debug("\t INC mapping count %d\n",
-					mem->mapped_to_gpu_memory);
+		ret = map_bo_to_gpuvm(adev, entry, ctx.sync,
+				      is_invalid_userptr);
+		if (ret) {
+			pr_err("Failed to map bo to gpuvm\n");
+			goto map_bo_to_gpuvm_failed;
 		}
+
+		ret = vm_update_pds(avm, ctx.sync);
+		if (ret) {
+			pr_err("Failed to update page directories\n");
+			goto map_bo_to_gpuvm_failed;
+		}
+
+		entry->is_mapped = true;
+		mem->mapped_to_gpu_memory++;
+		pr_debug("\t INC mapping count %d\n",
+			 mem->mapped_to_gpu_memory);
 	}
 
 	if (!amdgpu_ttm_tt_get_usermm(bo->tbo.ttm) && !bo->pin_count)
@@ -1500,12 +1502,7 @@ int amdgpu_amdkfd_gpuvm_map_memory_to_gpu(
 	goto out;
 
 map_bo_to_gpuvm_failed:
-	if (bo_va_entry_aql)
-		remove_bo_from_vm(adev, bo_va_entry_aql, bo_size);
-add_bo_to_vm_failed_aql:
-	if (bo_va_entry)
-		remove_bo_from_vm(adev, bo_va_entry, bo_size);
-add_bo_to_vm_failed:
+attach_failed:
 	unreserve_bo_and_vms(&ctx, false, false);
 out:
 	mutex_unlock(&mem->process_info->lock);
@@ -1514,19 +1511,20 @@ out:
 }
 
 int amdgpu_amdkfd_gpuvm_unmap_memory_from_gpu(
-		struct kgd_dev *kgd, struct kgd_mem *mem, void *vm)
+		struct kgd_dev *kgd, struct kgd_mem *mem, void *drm_priv)
 {
 	struct amdgpu_device *adev = get_amdgpu_device(kgd);
-	struct amdkfd_process_info *process_info =
-		((struct amdgpu_vm *)vm)->process_info;
+
+	struct amdgpu_vm *avm = drm_priv_to_vm(drm_priv);
+	struct amdkfd_process_info *process_info = avm->process_info;	
 	unsigned long bo_size = mem->bo->tbo.mem.size;
-	struct kfd_bo_va_list *entry;
+	struct kfd_mem_attachment *entry;
 	struct bo_vm_reservation_context ctx;
 	int ret;
 
 	mutex_lock(&mem->lock);
 
-	ret = reserve_bo_and_cond_vms(mem, vm, BO_VM_MAPPED, &ctx);
+	ret = reserve_bo_and_cond_vms(mem, avm, BO_VM_MAPPED, &ctx);
 	if (unlikely(ret))
 		goto out;
 	/* If no VMs were reserved, it means the BO wasn't actually mapped */
@@ -1535,35 +1533,33 @@ int amdgpu_amdkfd_gpuvm_unmap_memory_from_gpu(
 		goto unreserve_out;
 	}
 
-	ret = vm_validate_pt_pd_bos((struct amdgpu_vm *)vm);
+	ret = vm_validate_pt_pd_bos(avm);
 	if (unlikely(ret))
 		goto unreserve_out;
 
 	pr_debug("Unmap VA 0x%llx - 0x%llx from vm %p\n",
 		mem->va,
 		mem->va + bo_size * (1 + mem->aql_queue),
-		vm);
+		avm);
 
-	list_for_each_entry(entry, &mem->bo_va_list, bo_list) {
-		if (entry->bo_va->base.vm == vm && entry->is_mapped) {
-			pr_debug("\t unmap VA 0x%llx - 0x%llx from entry %p\n",
-					entry->va,
-					entry->va + bo_size,
-					entry);
+	list_for_each_entry(entry, &mem->attachments, list) {
+		if (entry->bo_va->base.vm != avm || !entry->is_mapped)
+			continue;
 
-			ret = unmap_bo_from_gpuvm(adev, entry, ctx.sync);
-			if (ret == 0) {
-				entry->is_mapped = false;
-			} else {
-				pr_err("failed to unmap VA 0x%llx\n",
-						mem->va);
-				goto unreserve_out;
-			}
+		pr_debug("\t unmap VA 0x%llx - 0x%llx from entry %p\n",
+			 entry->va, entry->va + bo_size, entry);
 
-			mem->mapped_to_gpu_memory--;
-			pr_debug("\t DEC mapping count %d\n",
-					mem->mapped_to_gpu_memory);
+		ret = unmap_bo_from_gpuvm(adev, entry, ctx.sync);
+		if (ret == 0) {
+			entry->is_mapped = false;
+		} else {
+			pr_err("failed to unmap VA 0x%llx\n", mem->va);
+			goto unreserve_out;
 		}
+
+		mem->mapped_to_gpu_memory--;
+		pr_debug("\t DEC mapping count %d\n",
+			 mem->mapped_to_gpu_memory);
 	}
 
 	/* If BO is unmapped from all VMs, unfence it. It can be evicted if
@@ -1826,14 +1822,15 @@ void amdgpu_amdkfd_gpuvm_unpin_put_sg_table(
 int amdgpu_amdkfd_gpuvm_import_dmabuf(struct kgd_dev *kgd,
 				      struct dma_buf *dma_buf,
 				      struct kfd_ipc_obj *ipc_obj,
-				      uint64_t va, void *vm,
+				      uint64_t va, void *drm_priv,
 				      struct kgd_mem **mem, uint64_t *size,
 				      uint64_t *mmap_offset)
 {
 	struct amdgpu_device *adev = (struct amdgpu_device *)kgd;
+	struct amdgpu_vm *avm = drm_priv_to_vm(drm_priv);
 	struct drm_gem_object *obj;
 	struct amdgpu_bo *bo;
-	struct amdgpu_vm *avm = (struct amdgpu_vm *)vm;
+	int ret;
 
 	if (dma_buf->ops != &amdgpu_dmabuf_ops)
 		/* Can't handle non-graphics buffers */
@@ -1854,13 +1851,19 @@ int amdgpu_amdkfd_gpuvm_import_dmabuf(struct kgd_dev *kgd,
 	if (!*mem)
 		return -ENOMEM;
 
+	ret = drm_vma_node_allow(&obj->vma_node, drm_priv);
+	if (ret) {
+		kfree(mem);
+		return ret;
+	}
+
 	if (size)
 		*size = amdgpu_bo_size(bo);
 
 	if (mmap_offset)
 		*mmap_offset = amdgpu_bo_mmap_offset(bo);
 
-	INIT_LIST_HEAD(&(*mem)->bo_va_list);
+	INIT_LIST_HEAD(&(*mem)->attachments);
 	mutex_init(&(*mem)->lock);
 
 	if (bo->kfd_bo)
@@ -1887,7 +1890,7 @@ int amdgpu_amdkfd_gpuvm_import_dmabuf(struct kgd_dev *kgd,
 	return 0;
 }
 
-int amdgpu_amdkfd_gpuvm_export_ipc_obj(struct kgd_dev *kgd, void *vm,
+int amdgpu_amdkfd_gpuvm_export_ipc_obj(struct kgd_dev *kgd, void *drm_priv,
 				       struct kgd_mem *mem,
 				       struct kfd_ipc_obj **ipc_obj)
 {
@@ -1895,7 +1898,7 @@ int amdgpu_amdkfd_gpuvm_export_ipc_obj(struct kgd_dev *kgd, void *vm,
 	struct dma_buf *dmabuf;
 	int r = 0;
 
-	if (!kgd || !vm || !mem)
+	if (!kgd || !drm_priv || !mem)
 		return -EINVAL;
 
 	adev = get_amdgpu_device(kgd);
@@ -2088,7 +2091,7 @@ static int validate_invalid_user_pages(struct amdkfd_process_info *process_info)
 	list_for_each_entry_safe(mem, tmp_mem,
 				 &process_info->userptr_inval_list,
 				 validate_list.head) {
-		struct kfd_bo_va_list *bo_va_entry;
+		struct kfd_mem_attachment *attachment;
 
 		bo = mem->bo;
 
@@ -2111,13 +2114,13 @@ static int validate_invalid_user_pages(struct amdkfd_process_info *process_info)
 		 * VM faults if the GPU tries to access the invalid
 		 * memory.
 		 */
-		list_for_each_entry(bo_va_entry, &mem->bo_va_list, bo_list) {
-			if (!bo_va_entry->is_mapped)
+		list_for_each_entry(attachment, &mem->attachments, list) {
+			if (!attachment->is_mapped)
 				continue;
 
 			ret = update_gpuvm_pte((struct amdgpu_device *)
-					       bo_va_entry->kgd_dev,
-					       bo_va_entry, &sync);
+					       attachment->adev,
+					       attachment, &sync);
 			if (ret) {
 				pr_err("%s: update PTE failed\n", __func__);
 				/* make sure this gets validated again */
@@ -2298,7 +2301,7 @@ int amdgpu_amdkfd_gpuvm_restore_process_bos(void *info, struct dma_fence **ef)
 
 		struct amdgpu_bo *bo = mem->bo;
 		uint32_t domain = mem->domain;
-		struct kfd_bo_va_list *bo_va_entry;
+		struct kfd_mem_attachment *attachment;
 
 		total_size += amdgpu_bo_size(bo);
 
@@ -2318,11 +2321,9 @@ int amdgpu_amdkfd_gpuvm_restore_process_bos(void *info, struct dma_fence **ef)
 			pr_debug("Memory eviction: Sync BO fence failed. Try again\n");
 			goto validate_map_fail;
 		}
-		list_for_each_entry(bo_va_entry, &mem->bo_va_list,
-				    bo_list) {
+		list_for_each_entry(attachment, &mem->attachments, list) {
 			ret = update_gpuvm_pte((struct amdgpu_device *)
-					      bo_va_entry->kgd_dev,
-					      bo_va_entry,
+					      attachment->adev, attachment,
 					      &sync_obj);
 			if (ret) {
 				pr_debug("Memory eviction: update PTE failed. Try again\n");
@@ -2397,7 +2398,7 @@ int amdgpu_amdkfd_add_gws_to_process(void *info, void *gws, struct kgd_mem **mem
 		return -ENOMEM;
 
 	mutex_init(&(*mem)->lock);
-	INIT_LIST_HEAD(&(*mem)->bo_va_list);
+	INIT_LIST_HEAD(&(*mem)->attachments);
 	(*mem)->bo = amdgpu_bo_ref(gws_bo);
 	(*mem)->domain = AMDGPU_GEM_DOMAIN_GWS;
 	(*mem)->process_info = process_info;

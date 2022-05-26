@@ -46,6 +46,7 @@ struct amdgpu_ctx {
 	spinlock_t			ring_lock;
 	struct amdgpu_ctx_entity	*entities[AMDGPU_HW_IP_NUM];
 	bool				preamble_presented;
+	bool				is_secure;
 	enum drm_sched_priority		init_priority;
 	enum drm_sched_priority		override_priority;
 	struct mutex			lock;

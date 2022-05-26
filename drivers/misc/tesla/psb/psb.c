@@ -124,5 +124,6 @@ static void __exit psb_exit(void)
 module_init(psb_init);
 module_exit(psb_exit);
 
+MODULE_AUTHOR("Tesla OpenSource <opensource@tesla.com>");
 MODULE_DESCRIPTION("AMD Platform Secure Boot sysfs driver.");
 MODULE_LICENSE("GPL v2");

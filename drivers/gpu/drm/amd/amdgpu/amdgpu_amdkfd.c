@@ -47,15 +47,11 @@ int amdgpu_amdkfd_init(void)
 	int ret;
 
 	si_meminfo(&si);
-	amdgpu_amdkfd_total_mem_size = si.totalram - si.totalhigh;
+	amdgpu_amdkfd_total_mem_size = si.freeram - si.freehigh;
 	amdgpu_amdkfd_total_mem_size *= si.mem_unit;
 
-#ifdef CONFIG_HSA_AMD
 	ret = kgd2kfd_init();
 	amdgpu_amdkfd_gpuvm_init_mem_limits();
-#else
-	ret = -ENOENT;
-#endif
 	kfd_initialized = !ret;
 
 	return ret;
@@ -172,11 +168,12 @@ void amdgpu_amdkfd_device_init(struct amdgpu_device *adev)
 					adev->doorbell_index.last_non_cp;
 		}
 
-		kgd2kfd_device_init(adev->kfd.dev, adev_to_drm(adev), &gpu_resources);
+		adev->kfd.init_complete = kgd2kfd_device_init(adev->kfd.dev,
+						adev_to_drm(adev), &gpu_resources);
 	}
 }
 
-void amdgpu_amdkfd_device_fini(struct amdgpu_device *adev)
+void amdgpu_amdkfd_device_fini_sw(struct amdgpu_device *adev)
 {
 	if (adev->kfd.dev) {
 		kgd2kfd_device_exit(adev->kfd.dev);
@@ -197,12 +194,12 @@ void amdgpu_amdkfd_suspend(struct amdgpu_device *adev, bool run_pm)
 		kgd2kfd_suspend(adev->kfd.dev, run_pm);
 }
 
-int amdgpu_amdkfd_resume(struct amdgpu_device *adev, bool run_pm)
+int amdgpu_amdkfd_resume(struct amdgpu_device *adev, bool run_pm, bool sync)
 {
 	int r = 0;
 
 	if (adev->kfd.dev)
-		r = kgd2kfd_resume(adev->kfd.dev, run_pm);
+		r = kgd2kfd_resume(adev->kfd.dev, run_pm, sync);
 
 	return r;
 }
@@ -263,6 +260,7 @@ int amdgpu_amdkfd_alloc_gtt_mem(struct kgd_dev *kgd, size_t size,
 		bp.flags = 0;
 	bp.type = ttm_bo_type_kernel;
 	bp.resv = NULL;
+	bp.bo_ptr_size = sizeof(struct amdgpu_bo);
 
 	if (cp_mqd_gfx9)
 		bp.flags |= AMDGPU_GEM_CREATE_CP_MQD_GFX9;
@@ -334,6 +332,7 @@ int amdgpu_amdkfd_alloc_gws(struct kgd_dev *kgd, size_t size,
 {
 	struct amdgpu_device *adev = (struct amdgpu_device *)kgd;
 	struct amdgpu_bo *bo = NULL;
+	struct amdgpu_bo_user *ubo;
 	struct amdgpu_bo_param bp;
 	int r;
 
@@ -344,14 +343,16 @@ int amdgpu_amdkfd_alloc_gws(struct kgd_dev *kgd, size_t size,
 	bp.flags = AMDGPU_GEM_CREATE_NO_CPU_ACCESS;
 	bp.type = ttm_bo_type_device;
 	bp.resv = NULL;
+	bp.bo_ptr_size = sizeof(struct amdgpu_bo);
 
-	r = amdgpu_bo_create(adev, &bp, &bo);
+	r = amdgpu_bo_create_user(adev, &bp, &ubo);
 	if (r) {
 		dev_err(adev->dev,
 			"failed to allocate gws BO for amdkfd (%d)\n", r);
 		return r;
 	}
 
+	bo = &ubo->bo;
 	*mem_obj = bo;
 	return 0;
 }
@@ -515,8 +516,6 @@ int amdgpu_amdkfd_get_dmabuf_info(struct kgd_dev *kgd, int dma_buf_fd,
 		*dma_buf_kgd = (struct kgd_dev *)adev;
 	if (bo_size)
 		*bo_size = amdgpu_bo_size(bo);
-	if (metadata_size)
-		*metadata_size = bo->metadata_size;
 	if (metadata_buffer)
 		r = amdgpu_bo_get_metadata(bo, metadata_buffer, buffer_size,
 					   metadata_size, &metadata_flags);
@@ -658,13 +657,6 @@ void amdgpu_amdkfd_set_compute_idle(struct kgd_dev *kgd, bool idle)
 {
 	struct amdgpu_device *adev = (struct amdgpu_device *)kgd;
 
-	/* Temp workaround to fix the soft hang observed in certain compute
-	 * applications if GFXOFF is enabled.
-	 */
-	if (adev->asic_type == CHIP_SIENNA_CICHLID) {
-		pr_debug("GFXOFF is %s\n", idle ? "enabled" : "disabled");
-		amdgpu_gfx_off_ctrl(adev, idle);
-	}
 	amdgpu_dpm_switch_power_profile(adev,
 					PP_SMC_POWER_PROFILE_COMPUTE,
 					!idle);
@@ -717,86 +709,3 @@ void amdgpu_amdkfd_debug_mem_fence(struct kgd_dev *kgd)
 {
 	amdgpu_asic_flush_hdp((struct amdgpu_device *) kgd, NULL);
 }
-
-#ifndef CONFIG_HSA_AMD
-bool amdkfd_fence_check_mm(struct dma_fence *f, struct mm_struct *mm)
-{
-	return false;
-}
-
-void amdgpu_amdkfd_unreserve_memory_limit(struct amdgpu_bo *bo)
-{
-}
-
-int amdgpu_amdkfd_remove_fence_on_pt_pd_bos(struct amdgpu_bo *bo)
-{
-	return 0;
-}
-
-void amdgpu_amdkfd_gpuvm_destroy_cb(struct amdgpu_device *adev,
-					struct amdgpu_vm *vm)
-{
-}
-
-struct amdgpu_amdkfd_fence *to_amdgpu_amdkfd_fence(struct dma_fence *f)
-{
-	return NULL;
-}
-
-int amdgpu_amdkfd_evict_userptr(struct kgd_mem *mem, struct mm_struct *mm)
-{
-	return 0;
-}
-
-struct kfd_dev *kgd2kfd_probe(struct kgd_dev *kgd, struct pci_dev *pdev,
-			      unsigned int asic_type, bool vf)
-{
-	return NULL;
-}
-
-bool kgd2kfd_device_init(struct kfd_dev *kfd,
-			 struct drm_device *ddev,
-			 const struct kgd2kfd_shared_resources *gpu_resources)
-{
-	return false;
-}
-
-void kgd2kfd_device_exit(struct kfd_dev *kfd)
-{
-}
-
-void kgd2kfd_exit(void)
-{
-}
-
-void kgd2kfd_suspend(struct kfd_dev *kfd, bool run_pm)
-{
-}
-
-int kgd2kfd_resume(struct kfd_dev *kfd, bool run_pm)
-{
-	return 0;
-}
-
-int kgd2kfd_pre_reset(struct kfd_dev *kfd)
-{
-	return 0;
-}
-
-int kgd2kfd_post_reset(struct kfd_dev *kfd)
-{
-	return 0;
-}
-
-void kgd2kfd_interrupt(struct kfd_dev *kfd, const void *ih_ring_entry)
-{
-}
-
-void kgd2kfd_set_sram_ecc_flag(struct kfd_dev *kfd)
-{
-}
-
-void kgd2kfd_smi_event_throttle(struct kfd_dev *kfd, uint32_t throttle_bitmask)
-{
-}
-#endif

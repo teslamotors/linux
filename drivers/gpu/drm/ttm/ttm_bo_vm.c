@@ -35,6 +35,8 @@
 #include <drm/ttm/ttm_bo_driver.h>
 #include <drm/ttm/ttm_placement.h>
 #include <drm/drm_vma_manager.h>
+#include <drm/drm_drv.h>
+#include <drm/drm_file.h>
 #include <linux/mm.h>
 #include <linux/pfn_t.h>
 #include <linux/rbtree.h>
@@ -120,183 +122,234 @@ static vm_fault_t ttm_bo_vm_fault(struct vm_fault *vmf)
 	int err;
 	int i;
 	vm_fault_t ret = VM_FAULT_NOPAGE;
+
 	unsigned long address = vmf->address;
 	struct ttm_mem_type_manager *man =
 		&bdev->man[bo->mem.mem_type];
 	struct vm_area_struct cvma;
 
-	/*
-	 * Work around locking order reversal in fault / nopfn
-	 * between mmap_sem and bo_reserve: Perform a trylock operation
-	 * for reserve, and if it fails, retry the fault after waiting
-	 * for the buffer to become unreserved.
-	 */
-	if (unlikely(!dma_resv_trylock(bo->base.resv))) {
-		if (vmf->flags & FAULT_FLAG_ALLOW_RETRY) {
-			if (!(vmf->flags & FAULT_FLAG_RETRY_NOWAIT)) {
-				ttm_bo_get(bo);
-				up_read(&vmf->vma->vm_mm->mmap_sem);
-				(void) ttm_bo_wait_unreserved(bo);
-				ttm_bo_put(bo);
+        int idx;
+        struct drm_device *ddev = bo->base.dev;
+
+        if (drm_dev_enter(ddev, &idx)) {
+
+		/*
+		 * Work around locking order reversal in fault / nopfn
+		 * between mmap_sem and bo_reserve: Perform a trylock operation
+		 * for reserve, and if it fails, retry the fault after waiting
+		 * for the buffer to become unreserved.
+		 */
+		if (unlikely(!dma_resv_trylock(bo->base.resv))) {
+			if (vmf->flags & FAULT_FLAG_ALLOW_RETRY) {
+				if (!(vmf->flags & FAULT_FLAG_RETRY_NOWAIT)) {
+					ttm_bo_get(bo);
+					up_read(&vmf->vma->vm_mm->mmap_sem);
+					(void) ttm_bo_wait_unreserved(bo);
+					ttm_bo_put(bo);
+				}
+
+				ret =  VM_FAULT_RETRY;
+				goto exit;
 			}
 
-			return VM_FAULT_RETRY;
+			/*
+			 * If we'd want to change locking order to
+			 * mmap_sem -> bo::reserve, we'd use a blocking reserve here
+			 * instead of retrying the fault...
+			 */
+			ret = VM_FAULT_NOPAGE;
+			goto exit;
 		}
 
 		/*
-		 * If we'd want to change locking order to
-		 * mmap_sem -> bo::reserve, we'd use a blocking reserve here
-		 * instead of retrying the fault...
+		 * Refuse to fault imported pages. This should be handled
+		 * (if at all) by redirecting mmap to the exporter.
 		 */
-		return VM_FAULT_NOPAGE;
-	}
-
-	/*
-	 * Refuse to fault imported pages. This should be handled
-	 * (if at all) by redirecting mmap to the exporter.
-	 */
-	if (bo->ttm && (bo->ttm->page_flags & TTM_PAGE_FLAG_SG)) {
-		ret = VM_FAULT_SIGBUS;
-		goto out_unlock;
-	}
-
-	if (bdev->driver->fault_reserve_notify) {
-		struct dma_fence *moving = dma_fence_get(bo->moving);
-
-		err = bdev->driver->fault_reserve_notify(bo);
-		switch (err) {
-		case 0:
-			break;
-		case -EBUSY:
-		case -ERESTARTSYS:
-			ret = VM_FAULT_NOPAGE;
-			goto out_unlock;
-		default:
+		if (bo->ttm && (bo->ttm->page_flags & TTM_PAGE_FLAG_SG)) {
 			ret = VM_FAULT_SIGBUS;
 			goto out_unlock;
 		}
 
-		if (bo->moving != moving) {
-			spin_lock(&bdev->glob->lru_lock);
-			ttm_bo_move_to_lru_tail(bo, NULL);
-			spin_unlock(&bdev->glob->lru_lock);
+		if (bdev->driver->fault_reserve_notify) {
+			struct dma_fence *moving = dma_fence_get(bo->moving);
+
+			err = bdev->driver->fault_reserve_notify(bo);
+			switch (err) {
+			case 0:
+				break;
+			case -EBUSY:
+			case -ERESTARTSYS:
+				ret = VM_FAULT_NOPAGE;
+				goto out_unlock;
+			default:
+				ret = VM_FAULT_SIGBUS;
+				goto out_unlock;
+			}	
+
+			if (bo->moving != moving) {
+				spin_lock(&bdev->glob->lru_lock);
+				ttm_bo_move_to_lru_tail(bo, NULL);
+				spin_unlock(&bdev->glob->lru_lock);
+			}
+			dma_fence_put(moving);
+		}	
+
+		/*
+		 * Wait for buffer data in transit, due to a pipelined
+		 * move.
+		 */
+		ret = ttm_bo_vm_fault_idle(bo, vmf);
+		if (unlikely(ret != 0)) {
+			if (ret == VM_FAULT_RETRY &&
+			    !(vmf->flags & FAULT_FLAG_RETRY_NOWAIT)) {
+				/* The BO has already been unreserved. */
+				goto exit;
+			}
+
+			goto out_unlock;
 		}
-		dma_fence_put(moving);
-	}
 
-	/*
-	 * Wait for buffer data in transit, due to a pipelined
-	 * move.
-	 */
-	ret = ttm_bo_vm_fault_idle(bo, vmf);
-	if (unlikely(ret != 0)) {
-		if (ret == VM_FAULT_RETRY &&
-		    !(vmf->flags & FAULT_FLAG_RETRY_NOWAIT)) {
-			/* The BO has already been unreserved. */
-			return ret;
+		err = ttm_mem_io_lock(man, true);
+		if (unlikely(err != 0)) {
+			ret = VM_FAULT_NOPAGE;
+			goto out_unlock;
 		}
+		err = ttm_mem_io_reserve_vm(bo);
+		if (unlikely(err != 0)) {
+			ret = VM_FAULT_SIGBUS;
+			goto out_io_unlock;
+		}	
 
-		goto out_unlock;
-	}
+		page_offset = ((address - vma->vm_start) >> PAGE_SHIFT) +
+				vma->vm_pgoff - drm_vma_node_start(&bo->base.vma_node);
+		page_last = vma_pages(vma) + vma->vm_pgoff -
+				drm_vma_node_start(&bo->base.vma_node);
 
-	err = ttm_mem_io_lock(man, true);
-	if (unlikely(err != 0)) {
-		ret = VM_FAULT_NOPAGE;
-		goto out_unlock;
-	}
-	err = ttm_mem_io_reserve_vm(bo);
-	if (unlikely(err != 0)) {
-		ret = VM_FAULT_SIGBUS;
-		goto out_io_unlock;
-	}
-
-	page_offset = ((address - vma->vm_start) >> PAGE_SHIFT) +
-		vma->vm_pgoff - drm_vma_node_start(&bo->base.vma_node);
-	page_last = vma_pages(vma) + vma->vm_pgoff -
-		drm_vma_node_start(&bo->base.vma_node);
-
-	if (unlikely(page_offset >= bo->num_pages)) {
-		ret = VM_FAULT_SIGBUS;
-		goto out_io_unlock;
-	}
-
-	/*
-	 * Make a local vma copy to modify the page_prot member
-	 * and vm_flags if necessary. The vma parameter is protected
-	 * by mmap_sem in write mode.
-	 */
-	cvma = *vma;
-	cvma.vm_page_prot = vm_get_page_prot(cvma.vm_flags);
-
-	if (bo->mem.bus.is_iomem) {
-		cvma.vm_page_prot = ttm_io_prot(bo->mem.placement,
-						cvma.vm_page_prot);
-	} else {
-		struct ttm_operation_ctx ctx = {
-			.interruptible = false,
-			.no_wait_gpu = false,
-			.flags = TTM_OPT_FLAG_FORCE_ALLOC
-
-		};
-
-		ttm = bo->ttm;
-		cvma.vm_page_prot = ttm_io_prot(bo->mem.placement,
-						cvma.vm_page_prot);
-
-		/* Allocate all page at once, most common usage */
-		if (ttm_tt_populate(ttm, &ctx)) {
-			ret = VM_FAULT_OOM;
+		if (unlikely(page_offset >= bo->num_pages)) {
+			ret = VM_FAULT_SIGBUS;
 			goto out_io_unlock;
 		}
-	}
 
-	/*
-	 * Speculatively prefault a number of pages. Only error on
-	 * first page.
-	 */
-	for (i = 0; i < TTM_BO_VM_NUM_PREFAULT; ++i) {
+		/*
+		 * Make a local vma copy to modify the page_prot member
+		 * and vm_flags if necessary. The vma parameter is protected
+		 * by mmap_sem in write mode.
+		 */
+		cvma = *vma;
+		cvma.vm_page_prot = vm_get_page_prot(cvma.vm_flags);
+
 		if (bo->mem.bus.is_iomem) {
-			/* Iomem should not be marked encrypted */
-			cvma.vm_page_prot = pgprot_decrypted(cvma.vm_page_prot);
-			pfn = ttm_bo_io_mem_pfn(bo, page_offset);
+			cvma.vm_page_prot = ttm_io_prot(bo->mem.placement,
+						cvma.vm_page_prot);
 		} else {
-			page = ttm->pages[page_offset];
-			if (unlikely(!page && i == 0)) {
+			struct ttm_operation_ctx ctx = {
+				.interruptible = false,
+				.no_wait_gpu = false,
+				.flags = TTM_OPT_FLAG_FORCE_ALLOC
+
+			};
+
+			ttm = bo->ttm;
+			cvma.vm_page_prot = ttm_io_prot(bo->mem.placement,
+						cvma.vm_page_prot);
+
+			/* Allocate all page at once, most common usage */
+			if (ttm_tt_populate(ttm, &ctx)) {
 				ret = VM_FAULT_OOM;
 				goto out_io_unlock;
-			} else if (unlikely(!page)) {
-				break;
 			}
-			page->index = drm_vma_node_start(&bo->base.vma_node) +
-				page_offset;
-			pfn = page_to_pfn(page);
-		}
+		}	
 
-		if (vma->vm_flags & VM_MIXEDMAP)
-			ret = vmf_insert_mixed(&cvma, address,
+		/*
+		 * Speculatively prefault a number of pages. Only error on
+		 * first page.
+		 */
+		for (i = 0; i < TTM_BO_VM_NUM_PREFAULT; ++i) {
+			if (bo->mem.bus.is_iomem) {
+				/* Iomem should not be marked encrypted */
+				cvma.vm_page_prot = pgprot_decrypted(cvma.vm_page_prot);
+				pfn = ttm_bo_io_mem_pfn(bo, page_offset);
+			} else {
+				page = ttm->pages[page_offset];
+				if (unlikely(!page && i == 0)) {
+					ret = VM_FAULT_OOM;
+					goto out_io_unlock;
+				} else if (unlikely(!page)) {
+					break;
+				}
+				page->index = drm_vma_node_start(&bo->base.vma_node) +
+						page_offset;
+				pfn = page_to_pfn(page);
+			}
+
+			if (vma->vm_flags & VM_MIXEDMAP)
+				ret = vmf_insert_mixed(&cvma, address,
 					__pfn_to_pfn_t(pfn, PFN_DEV | (bo->ssg_can_map ? PFN_MAP : 0)));
-		else
-			ret = vmf_insert_pfn(&cvma, address, pfn);
-
-		/* Never error on prefaulted PTEs */
-		if (unlikely((ret & VM_FAULT_ERROR))) {
-			if (i == 0)
-				goto out_io_unlock;
 			else
+				ret = vmf_insert_pfn(&cvma, address, pfn);
+
+			/* Never error on prefaulted PTEs */
+			if (unlikely((ret & VM_FAULT_ERROR))) {
+				if (i == 0)
+					goto out_io_unlock;
+				else
+					break;
+			}
+
+			address += PAGE_SIZE;
+			if (unlikely(++page_offset >= page_last))
 				break;
 		}
-
-		address += PAGE_SIZE;
-		if (unlikely(++page_offset >= page_last))
-			break;
-	}
-	ret = VM_FAULT_NOPAGE;
+		ret = VM_FAULT_NOPAGE;
 out_io_unlock:
-	ttm_mem_io_unlock(man);
+		ttm_mem_io_unlock(man);
 out_unlock:
-	dma_resv_unlock(bo->base.resv);
-	return ret;
+		dma_resv_unlock(bo->base.resv);
+
+exit:
+	        drm_dev_exit(idx);
+		return ret;
+	} else {
+                struct drm_file *file = NULL;
+                struct page *dummy_page = NULL;
+                int handle;	
+
+                /* We are faulting on imported BO from dma_buf */
+                if (bo->base.dma_buf && bo->base.import_attach) {
+                        dummy_page = bo->base.dummy_page;
+                /* We are faulting on non imported BO, find drm_file owning the BO*/
+                } else {
+                        struct drm_gem_object *gobj;
+ 
+                        mutex_lock(&ddev->filelist_mutex);
+                        list_for_each_entry(file, &ddev->filelist, lhead) {
+                                spin_lock(&file->table_lock);
+                                idr_for_each_entry(&file->object_idr, gobj, handle) {
+                                        if (gobj == &bo->base) {
+                                                dummy_page = file->dummy_page;
+                                                break;
+                                        }
+                                }
+                                spin_unlock(&file->table_lock);
+                        }
+                        mutex_unlock(&ddev->filelist_mutex);
+                }
+ 
+                if (dummy_page) {
+                        /*
+                         * Let do_fault complete the PTE install e.t.c using vmf->page
+                         *
+                         * TODO - should i call free_page somewhere ?
+                         */
+                        get_page(dummy_page);
+                        vmf->page = dummy_page;
+                        return 0;
+                } else {
+                        return VM_FAULT_SIGSEGV;
+                }
+       }
 }
+
 
 static void ttm_bo_vm_open(struct vm_area_struct *vma)
 {

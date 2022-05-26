@@ -23,7 +23,6 @@
  *
  */
 
-#include <linux/version.h>
 #include <drm/drm_atomic_helper.h>
 #include <drm/drm_dp_mst_helper.h>
 #include "dm_services.h"
@@ -37,6 +36,7 @@
 #include "dc_link_ddc.h"
 
 #include "i2caux_interface.h"
+#include "dmub_cmd.h"
 #if defined(CONFIG_DEBUG_FS)
 #include "amdgpu_dm_debugfs.h"
 #endif
@@ -52,7 +52,7 @@ static ssize_t dm_dp_aux_transfer(struct drm_dp_aux *aux,
 {
 	ssize_t result = 0;
 	struct aux_payload payload;
-	enum aux_channel_operation_result operation_result;
+	enum aux_return_code_type operation_result;
 
 	if (WARN_ON(msg->size > 16))
 		return -E2BIG;
@@ -74,17 +74,19 @@ static ssize_t dm_dp_aux_transfer(struct drm_dp_aux *aux,
 
 	if (result < 0)
 		switch (operation_result) {
-		case AUX_CHANNEL_OPERATION_SUCCEEDED:
+		case AUX_RET_SUCCESS:
 			break;
-		case AUX_CHANNEL_OPERATION_FAILED_HPD_DISCON:
-		case AUX_CHANNEL_OPERATION_FAILED_REASON_UNKNOWN:
+		case AUX_RET_ERROR_HPD_DISCON:
+		case AUX_RET_ERROR_UNKNOWN:
+		case AUX_RET_ERROR_INVALID_OPERATION:
+		case AUX_RET_ERROR_PROTOCOL_ERROR:
 			result = -EIO;
 			break;
-		case AUX_CHANNEL_OPERATION_FAILED_INVALID_REPLY:
-		case AUX_CHANNEL_OPERATION_FAILED_ENGINE_ACQUIRE:
+		case AUX_RET_ERROR_INVALID_REPLY:
+		case AUX_RET_ERROR_ENGINE_ACQUIRE:
 			result = -EBUSY;
 			break;
-		case AUX_CHANNEL_OPERATION_FAILED_TIMEOUT:
+		case AUX_RET_ERROR_TIMEOUT:
 			result = -ETIMEDOUT;
 			break;
 		}
@@ -125,6 +127,8 @@ static bool validate_dsc_caps_on_connector(struct amdgpu_dm_connector *aconnecto
 	struct dc_sink *dc_sink = aconnector->dc_sink;
 	struct drm_dp_mst_port *port = aconnector->port;
 	u8 dsc_caps[16] = { 0 };
+	u8 dsc_branch_dec_caps_raw[3] = { 0 };	// DSC branch decoder caps 0xA0 ~ 0xA2
+	u8 *dsc_branch_dec_caps = NULL;
 
 	aconnector->dsc_aux = drm_dp_mst_dsc_aux_for_port(port);
 #if defined(CONFIG_HP_HOOK_WORKAROUND)
@@ -148,10 +152,14 @@ static bool validate_dsc_caps_on_connector(struct amdgpu_dm_connector *aconnecto
 	if (drm_dp_dpcd_read(aconnector->dsc_aux, DP_DSC_SUPPORT, dsc_caps, 16) < 0)
 		return false;
 
+	if (drm_dp_dpcd_read(aconnector->dsc_aux,
+			DP_DSC_BRANCH_OVERALL_THROUGHPUT_0, dsc_branch_dec_caps_raw, 3) == 3)
+		dsc_branch_dec_caps = dsc_branch_dec_caps_raw;
+
 #ifdef CONFIG_DRM_AMD_DC_DSC_SUPPORT
 	if (!dc_dsc_parse_dsc_dpcd(aconnector->dc_link->ctx->dc,
-				   dsc_caps, NULL,
-				   &dc_sink->dsc_caps.dsc_dec_caps))
+				  dsc_caps, dsc_branch_dec_caps,
+				  &dc_sink->dsc_caps.dsc_dec_caps))
 		return false;
 #endif
 
@@ -197,6 +205,11 @@ static int dm_dp_mst_get_modes(struct drm_connector *connector)
 			(aconnector->edid->extensions + 1) * EDID_LENGTH,
 			&init_params);
 
+		if (!dc_sink) {
+			DRM_ERROR("Unable to add a remote sink\n");
+			return 0;
+		}
+
 		dc_sink->priv = aconnector;
 		/* dc_link_add_remote_sink returns a new reference */
 		aconnector->dc_sink = dc_sink;
@@ -240,6 +253,9 @@ dm_dp_mst_detect(struct drm_connector *connector,
 {
 	struct amdgpu_dm_connector *aconnector = to_amdgpu_dm_connector(connector);
 	struct amdgpu_dm_connector *master = aconnector->mst_port;
+
+	if (drm_connector_is_unregistered(connector))
+		return connector_status_disconnected;
 
 	return drm_dp_mst_detect_port(connector, ctx, &master->mst_mgr,
 				      aconnector->port);
@@ -761,8 +777,8 @@ static bool compute_mst_dsc_configs_for_link(struct drm_atomic_state *state,
 		if (!dc_dsc_compute_bandwidth_range(
 				stream->sink->ctx->dc->res_pool->dscs[0],
 				stream->sink->ctx->dc->debug.dsc_min_slice_height_override,
-				dsc_policy.min_target_bpp,
-				dsc_policy.max_target_bpp,
+				dsc_policy.min_target_bpp * 16,
+				dsc_policy.max_target_bpp * 16,
 				&stream->sink->dsc_caps.dsc_dec_caps,
 				&stream->timing, &params[count].bw_range))
 			params[count].bw_range.stream_kbps = dc_bandwidth_in_kbps_from_timing(&stream->timing);
@@ -851,6 +867,9 @@ bool compute_mst_dsc_configs_for_state(struct drm_atomic_state *state,
 		if (computed_streams[i])
 			continue;
 
+		if (dcn20_remove_stream_from_ctx(stream->ctx->dc, dc_state, stream) != DC_OK)
+			return false;
+
 		mutex_lock(&aconnector->mst_mgr.lock);
 		if (!compute_mst_dsc_configs_for_link(state, dc_state, stream->link)) {
 			mutex_unlock(&aconnector->mst_mgr.lock);
@@ -868,7 +887,8 @@ bool compute_mst_dsc_configs_for_state(struct drm_atomic_state *state,
 		stream = dc_state->streams[i];
 
 		if (stream->timing.flags.DSC == 1)
-			dc_stream_add_dsc_to_resource(stream->ctx->dc, dc_state, stream);
+			if (dc_stream_add_dsc_to_resource(stream->ctx->dc, dc_state, stream) != DC_OK)
+				return false;
 	}
 
 	return true;

@@ -257,8 +257,7 @@ void dcn2_update_clocks(struct clk_mgr *clk_mgr_base,
 			if (update_dppclk || update_dispclk)
 				dcn20_update_clocks_update_dentist(clk_mgr);
 			// always update dtos unless clock is lowered and not safe to lower
-			if (new_clocks->dppclk_khz >= dc->current_state->bw_ctx.bw.dcn.clk.dppclk_khz)
-				dcn20_update_clocks_update_dpp_dto(clk_mgr, context, safe_to_lower);
+			dcn20_update_clocks_update_dpp_dto(clk_mgr, context, safe_to_lower);
 		}
 	}
 
@@ -325,6 +324,10 @@ void dcn2_update_clocks_fpga(struct clk_mgr *clk_mgr,
 	// Both fclk and ref_dppclk run on the same scemi clock.
 	clk_mgr_int->dccg->ref_dppclk = clk_mgr->clks.fclk_khz;
 
+#if defined(CONFIG_DRM_AMD_DC_DCN3_1)
+	/* TODO: set dtbclk in correct place */
+	clk_mgr->clks.dtbclk_en = false;
+#endif
 	dm_set_dcn_clocks(clk_mgr->ctx, &clk_mgr->clks);
 }
 
@@ -362,7 +365,7 @@ void dcn2_read_clocks_from_hw_dentist(struct clk_mgr *clk_mgr_base)
 	REG_GET(DENTIST_DISPCLK_CNTL, DENTIST_DPPCLK_WDIVIDER, &dppclk_wdivider);
 
 	disp_divider = dentist_get_divider_from_did(dispclk_wdivider);
-	dpp_divider = dentist_get_divider_from_did(dispclk_wdivider);
+	dpp_divider = dentist_get_divider_from_did(dppclk_wdivider);
 
 	if (disp_divider && dpp_divider) {
 		/* Calculate the current DFS clock, in kHz.*/

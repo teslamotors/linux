@@ -183,7 +183,7 @@ bool amdgpu_vmid_had_gpu_reset(struct amdgpu_device *adev,
 }
 
 /**
- * amdgpu_vm_grab_idle - grab idle VMID
+ * amdgpu_vmid_grab_idle - grab idle VMID
  *
  * @vm: vm to allocate id for
  * @ring: ring we want to submit job to
@@ -215,7 +215,11 @@ static int amdgpu_vmid_grab_idle(struct amdgpu_vm *vm,
 	/* Check if we have an idle VMID */
 	i = 0;
 	list_for_each_entry((*idle), &id_mgr->ids_lru, list) {
-		fences[i] = amdgpu_sync_peek_fence(&(*idle)->active, ring);
+		/* Don't use per engine and per process VMID at the same time */
+		struct amdgpu_ring *r = adev->vm_manager.concurrent_flush ?
+			NULL : ring;
+
+		fences[i] = amdgpu_sync_peek_fence(&(*idle)->active, r);
 		if (!fences[i])
 			break;
 		++i;
@@ -252,7 +256,7 @@ static int amdgpu_vmid_grab_idle(struct amdgpu_vm *vm,
 }
 
 /**
- * amdgpu_vm_grab_reserved - try to assign reserved VMID
+ * amdgpu_vmid_grab_reserved - try to assign reserved VMID
  *
  * @vm: vm to allocate id for
  * @ring: ring we want to submit job to
@@ -281,7 +285,7 @@ static int amdgpu_vmid_grab_reserved(struct amdgpu_vm *vm,
 	if (updates && (*id)->flushed_updates &&
 	    updates->context == (*id)->flushed_updates->context &&
 	    !dma_fence_is_later(updates, (*id)->flushed_updates))
-	    updates = NULL;
+		updates = NULL;
 
 	if ((*id)->owner != vm->immediate.fence_context ||
 	    job->vm_pd_addr != (*id)->pd_gpu_addr ||
@@ -289,6 +293,10 @@ static int amdgpu_vmid_grab_reserved(struct amdgpu_vm *vm,
 	    ((*id)->last_flush->context != fence_context &&
 	     !dma_fence_is_signaled((*id)->last_flush))) {
 		struct dma_fence *tmp;
+
+		/* Don't use per engine and per process VMID at the same time */
+		if (adev->vm_manager.concurrent_flush)
+			ring = NULL;
 
 		/* to prevent one context starved by another context */
 		(*id)->pd_gpu_addr = 0;
@@ -317,7 +325,7 @@ static int amdgpu_vmid_grab_reserved(struct amdgpu_vm *vm,
 }
 
 /**
- * amdgpu_vm_grab_used - try to reuse a VMID
+ * amdgpu_vmid_grab_used - try to reuse a VMID
  *
  * @vm: vm to allocate id for
  * @ring: ring we want to submit job to
@@ -365,12 +373,7 @@ static int amdgpu_vmid_grab_used(struct amdgpu_vm *vm,
 		if (updates && (!flushed || dma_fence_is_later(updates, flushed)))
 			needs_flush = true;
 
-		/* Concurrent flushes are only possible starting with Vega10 and
-		 * are broken on Navi10 and Navi14.
-		 */
-		if (needs_flush && (adev->asic_type < CHIP_VEGA10 ||
-				    adev->asic_type == CHIP_NAVI10 ||
-				    adev->asic_type == CHIP_NAVI14))
+		if (needs_flush && !adev->vm_manager.concurrent_flush)
 			continue;
 
 		/* Good, we can use this VMID. Remember this submission as
@@ -394,7 +397,7 @@ static int amdgpu_vmid_grab_used(struct amdgpu_vm *vm,
 }
 
 /**
- * amdgpu_vm_grab_id - allocate the next free VMID
+ * amdgpu_vmid_grab - allocate the next free VMID
  *
  * @vm: vm to allocate id for
  * @ring: ring we want to submit job to

@@ -34,6 +34,8 @@
 
 #include <drm/drm.h>
 
+extern unsigned int drm_debug;
+
 /**
  * DOC: print
  *
@@ -271,6 +273,7 @@ static inline struct drm_printer drm_debug_printer(const char *prefix)
 #define DRM_UT_STATE		0x40
 #define DRM_UT_LEASE		0x80
 #define DRM_UT_DP		0x100
+#define DRM_UT_DRMRES           0x200
 
 __printf(3, 4)
 void drm_dev_printk(const struct device *dev, const char *level,
@@ -302,6 +305,9 @@ void drm_err(const char *format, ...);
 	_DRM_PRINTK(_once, NOTICE, fmt, ##__VA_ARGS__)
 #define DRM_WARN_ONCE(fmt, ...)						\
 	_DRM_PRINTK(_once, WARNING, fmt, ##__VA_ARGS__)
+
+#define drm_dbg_drmres(drm, fmt, ...)                                   \
+        drm_dev_dbg((drm)->dev, DRM_UT_DRMRES, fmt, ##__VA_ARGS__)
 
 /**
  * Error output.

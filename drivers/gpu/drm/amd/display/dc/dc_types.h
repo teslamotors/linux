@@ -113,6 +113,7 @@ struct dc_context {
 	struct gpio_service *gpio_service;
 	uint32_t dc_sink_id_count;
 	uint32_t dc_stream_id_count;
+	uint32_t dc_edp_id_count;
 	uint64_t fbc_gpu_addr;
 	struct dc_dmub_srv *dmub_srv;
 
@@ -270,11 +271,6 @@ struct dc_edid_caps {
 	struct dc_panel_patch panel_patch;
 };
 
-struct view {
-	uint32_t width;
-	uint32_t height;
-};
-
 struct dc_mode_flags {
 	/* note: part of refresh rate flag*/
 	uint32_t INTERLACE :1;
@@ -403,7 +399,7 @@ enum dc_connection_type {
 	dc_connection_none,
 	dc_connection_single,
 	dc_connection_mst_branch,
-	dc_connection_active_dongle
+	dc_connection_sst_branch
 };
 
 struct dc_csc_adjustments {
@@ -698,7 +694,8 @@ enum dc_psr_state {
 	PSR_STATE5,
 	PSR_STATE5a,
 	PSR_STATE5b,
-	PSR_STATE5c
+	PSR_STATE5c,
+	PSR_STATE_INVALID = 0xFF
 };
 
 struct psr_config {
@@ -919,6 +916,7 @@ struct dsc_dec_dpcd_caps {
 	uint32_t branch_overall_throughput_0_mps; /* In MPs */
 	uint32_t branch_overall_throughput_1_mps; /* In MPs */
 	uint32_t branch_max_line_width;
+	bool is_dp;
 };
 #endif
 
@@ -948,6 +946,21 @@ enum dc_gpu_mem_alloc_type {
 enum dc_psr_version {
 	DC_PSR_VERSION_1			= 0,
 	DC_PSR_VERSION_UNSUPPORTED		= 0xFFFFFFFF,
+};
+
+/* Possible values of display_endpoint_id.endpoint */
+enum display_endpoint_type {
+	DISPLAY_ENDPOINT_PHY = 0, /* Physical connector. */
+	DISPLAY_ENDPOINT_UNKNOWN = -1
+};
+
+/* Extends graphics_object_id with an additional member 'ep_type' for
+ * distinguishing between physical endpoints (with entries in BIOS connector table) and
+ * logical endpoints.
+ */
+struct display_endpoint_id {
+	struct graphics_object_id link_id;
+	enum display_endpoint_type ep_type;
 };
 
 #endif /* DC_TYPES_H_ */

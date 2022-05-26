@@ -135,7 +135,7 @@ static int kfd_import_dmabuf_create_kfd_bo(struct kfd_dev *dev,
 	}
 
 	r = amdgpu_amdkfd_gpuvm_import_dmabuf(dev->kgd, dmabuf, ipc_obj,
-					va_addr, pdd->vm,
+					va_addr, pdd->drm_priv,
 					(struct kgd_mem **)&mem, &size,
 					mmap_offset);
 	if (r)
@@ -156,7 +156,7 @@ static int kfd_import_dmabuf_create_kfd_bo(struct kfd_dev *dev,
 	return 0;
 
 err_free:
-	amdgpu_amdkfd_gpuvm_free_memory_of_gpu(dev->kgd, (struct kgd_mem *)mem, NULL);
+	amdgpu_amdkfd_gpuvm_free_memory_of_gpu(dev->kgd, (struct kgd_mem *)mem, pdd->drm_priv, NULL);
 err_unlock:
 	mutex_unlock(&p->mutex);
 	dma_buf_put(dmabuf);
@@ -250,7 +250,7 @@ int kfd_ipc_export_as_handle(struct kfd_dev *dev, struct kfd_process *p,
 	}
 	mem = (struct kgd_mem *)kfd_bo->mem;
 
-	r = amdgpu_amdkfd_gpuvm_export_ipc_obj(dev->kgd, pdd->vm, mem,
+	r = amdgpu_amdkfd_gpuvm_export_ipc_obj(dev->kgd, pdd->drm_priv, mem,
 					       &ipc_obj);
 	if (r)
 		return r;
