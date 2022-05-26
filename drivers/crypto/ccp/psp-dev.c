@@ -15,7 +15,37 @@
 #include "sev-dev.h"
 #include "tee-dev.h"
 
-struct psp_device *psp_master;
+#define DEVICE_NAME		"sev"
+#define SEV_FW_FILE		"amd/sev.fw"
+#define SEV_FW_NAME_SIZE	64
+
+static DEFINE_MUTEX(sev_cmd_mutex);
+static struct sev_misc_dev *misc_dev;
+static struct psp_device *psp_master;
+
+static int psp_cmd_timeout = 100;
+module_param(psp_cmd_timeout, int, 0644);
+MODULE_PARM_DESC(psp_cmd_timeout, " default timeout value, in seconds, for PSP commands");
+
+static int psp_probe_timeout = 5;
+module_param(psp_probe_timeout, int, 0644);
+MODULE_PARM_DESC(psp_probe_timeout, " default timeout value, in seconds, during PSP device probe");
+
+MODULE_FIRMWARE("amd/amd_sev_fam17h_model0xh.sbin"); /* 1st gen EPYC */
+MODULE_FIRMWARE("amd/amd_sev_fam17h_model3xh.sbin"); /* 2nd gen EPYC */
+MODULE_FIRMWARE("amd/amd_sev_fam19h_model0xh.sbin"); /* 3rd gen EPYC */
+
+static bool psp_dead;
+static int psp_timeout;
+
+static inline bool sev_version_greater_or_equal(u8 maj, u8 min)
+{
+	if (psp_master->api_major > maj)
+		return true;
+	if (psp_master->api_major == maj && psp_master->api_minor >= min)
+		return true;
+	return false;
+}
 
 static struct psp_device *psp_alloc_struct(struct sp_device *sp)
 {

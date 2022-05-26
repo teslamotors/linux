@@ -260,9 +260,12 @@ int btrfs_copy_root(struct btrfs_trans_handle *trans,
 		ret = btrfs_inc_ref(trans, root, cow, 1);
 	else
 		ret = btrfs_inc_ref(trans, root, cow, 0);
-
-	if (ret)
+	if (ret) {
+		btrfs_tree_unlock(cow);
+		free_extent_buffer(cow);
+		btrfs_abort_transaction(trans, ret);
 		return ret;
+	}
 
 	btrfs_mark_buffer_dirty(cow);
 	*cow_ret = cow;
@@ -1403,8 +1406,30 @@ get_old_root(struct btrfs_root *root, u64 time_seq)
 				   "failed to read tree block %llu from get_old_root",
 				   logical);
 		} else {
+			struct tree_mod_elem *tm2;
+
+			btrfs_tree_read_lock(old);
 			eb = btrfs_clone_extent_buffer(old);
+			/*
+			 * After the lookup for the most recent tree mod operation
+			 * above and before we locked and cloned the extent buffer
+			 * 'old', a new tree mod log operation may have been added.
+			 * So lookup for a more recent one to make sure the number
+			 * of mod log operations we replay is consistent with the
+			 * number of items we have in the cloned extent buffer,
+			 * otherwise we can hit a BUG_ON when rewinding the extent
+			 * buffer.
+			 */
+			tm2 = tree_mod_log_search(fs_info, logical, time_seq);
+			btrfs_tree_read_unlock(old);
 			free_extent_buffer(old);
+			ASSERT(tm2);
+			ASSERT(tm2 == tm || tm2->seq > tm->seq);
+			if (!tm2 || tm2->seq < tm->seq) {
+				free_extent_buffer(eb);
+				return NULL;
+			}
+			tm = tm2;
 		}
 	} else if (old_root) {
 		eb_root_owner = btrfs_header_owner(eb_root);
@@ -2633,11 +2658,8 @@ static struct extent_buffer *btrfs_search_slot_get_root(struct btrfs_root *root,
 {
 	struct btrfs_fs_info *fs_info = root->fs_info;
 	struct extent_buffer *b;
-	int root_lock;
+	int root_lock = 0;
 	int level = 0;
-
-	/* We try very hard to do read locks on the root */
-	root_lock = BTRFS_READ_LOCK;
 
 	if (p->search_commit_root) {
 		/*
@@ -2676,6 +2698,9 @@ static struct extent_buffer *btrfs_search_slot_get_root(struct btrfs_root *root,
 		goto out;
 	}
 
+	/* We try very hard to do read locks on the root */
+	root_lock = BTRFS_READ_LOCK;
+
 	/*
 	 * If the level is set to maximum, we can skip trying to get the read
 	 * lock.
@@ -2702,6 +2727,17 @@ static struct extent_buffer *btrfs_search_slot_get_root(struct btrfs_root *root,
 	level = btrfs_header_level(b);
 
 out:
+	/*
+	 * The root may have failed to write out at some point, and thus is no
+	 * longer valid, return an error in this case.
+	 */
+	if (!extent_buffer_uptodate(b)) {
+		if (root_lock)
+			btrfs_tree_unlock_rw(b, root_lock);
+		free_extent_buffer(b);
+		return ERR_PTR(-EIO);
+	}
+
 	p->nodes[level] = b;
 	if (!p->skip_locking)
 		p->locks[level] = root_lock;
@@ -5207,7 +5243,7 @@ again:
 			slot--;
 		/*
 		 * check this node pointer against the min_trans parameters.
-		 * If it is too old, old, skip to the next one.
+		 * If it is too old, skip to the next one.
 		 */
 		while (slot < nritems) {
 			u64 gen;

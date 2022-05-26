@@ -218,7 +218,7 @@ void amdgpu_bo_placement_from_domain(struct amdgpu_bo *abo, u32 domain)
 		c++;
 	}
 
-	BUG_ON(c >= AMDGPU_BO_MAX_PLACEMENTS);
+	BUG_ON(c > AMDGPU_BO_MAX_PLACEMENTS);
 
 	for (i = 0; i < c; i++)
 		if (flags & AMDGPU_GEM_CREATE_TOP_DOWN)

@@ -65,8 +65,8 @@
 #define EARLY_KASLR	(0)
 #endif
 
-#define EARLY_ENTRIES(vstart, vend, shift) (((vend) >> (shift)) \
-					- ((vstart) >> (shift)) + 1 + EARLY_KASLR)
+#define EARLY_ENTRIES(vstart, vend, shift) \
+	((((vend) - 1) >> (shift)) - ((vstart) >> (shift)) + 1 + EARLY_KASLR)
 
 #define EARLY_PGDS(vstart, vend) (EARLY_ENTRIES(vstart, vend, PGDIR_SHIFT))
 
@@ -88,12 +88,6 @@
 			+ EARLY_PMDS((vstart), (vend)))	/* each PMD needs a next level page table */
 #define INIT_DIR_SIZE (PAGE_SIZE * EARLY_PAGES(KIMAGE_VADDR + TEXT_OFFSET, _end))
 #define IDMAP_DIR_SIZE		(IDMAP_PGTABLE_LEVELS * PAGE_SIZE)
-
-#ifdef CONFIG_ARM64_SW_TTBR0_PAN
-#define RESERVED_TTBR0_SIZE	(PAGE_SIZE)
-#else
-#define RESERVED_TTBR0_SIZE	(0)
-#endif
 
 /* Initial memory map size */
 #if ARM64_SWAPPER_USES_SECTION_MAPS
