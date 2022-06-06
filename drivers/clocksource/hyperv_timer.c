@@ -325,4 +325,3 @@ void __init hv_init_clocksource(void)
 	hv_sched_clock_offset = hyperv_cs->read(hyperv_cs);
 	hv_setup_sched_clock(read_hv_sched_clock_msr);
 }
-EXPORT_SYMBOL_GPL(hv_init_clocksource);
