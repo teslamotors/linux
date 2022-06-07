@@ -2179,7 +2179,7 @@ void bio_clone_blkg_association(struct bio *dst, struct bio *src)
 	rcu_read_lock();
 
 	if (src->bi_blkg)
-		__bio_associate_blkg(dst, src->bi_blkg);
+		bio_associate_blkg_from_css(dst, &bio_blkcg(src)->css);
 
 	rcu_read_unlock();
 }
