@@ -6358,6 +6358,7 @@ static void handle_external_interrupt_irqoff(struct kvm_vcpu *vcpu)
 	);
 
 	kvm_after_interrupt(vcpu);
+	vcpu->arch.at_instruction_boundary = true;
 }
 STACK_FRAME_NON_STANDARD(handle_external_interrupt_irqoff);
 
