@@ -113,7 +113,7 @@ static unsigned long raspberrypi_fw_pll_get_rate(struct clk_hw *hw,
 					 RPI_FIRMWARE_ARM_CLK_ID,
 					 &val);
 	if (ret)
-		return ret;
+		return 0;
 
 	return val * RPI_FIRMWARE_PLLB_ARM_DIV_RATE;
 }
