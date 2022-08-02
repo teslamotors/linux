@@ -92,6 +92,7 @@ ENTRY(vmx_vmexit)
 	pop %_ASM_AX
 .Lvmexit_skip_rsb:
 #endif
+	ISSUE_UNBALANCED_RET_GUARD X86_FEATURE_RSB_VMEXIT_LITE
 	ret
 ENDPROC(vmx_vmexit)
 
