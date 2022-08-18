@@ -825,10 +825,6 @@
 
 	debugpat	[X86] Enable PAT debugging
 
-	decnet.addr=	[HW,NET]
-			Format: <area>[,<node>]
-			See also Documentation/networking/decnet.txt.
-
 	default_hugepagesz=
 			[same as hugepagesz=] The size of the default
 			HugeTLB page size. This is the size represented by
