@@ -1908,6 +1908,9 @@ static int io_poll_add(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 	__poll_t mask;
 	u16 events;
 
+	if (req->file->f_op->may_pollfree)
+		return -EOPNOTSUPP;
+
 	if (unlikely(req->ctx->flags & IORING_SETUP_IOPOLL))
 		return -EINVAL;
 	if (sqe->addr || sqe->ioprio || sqe->off || sqe->len || sqe->buf_index)
