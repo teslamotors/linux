@@ -10,6 +10,7 @@
 #include "capabilities.h"
 #include "ops.h"
 #include "vmcs.h"
+#include "run_flags.h"
 
 extern const u32 vmx_msr_index[];
 extern u64 host_efer;
@@ -336,7 +337,9 @@ void vmx_set_virtual_apic_mode(struct kvm_vcpu *vcpu);
 struct shared_msr_entry *find_msr_entry(struct vcpu_vmx *vmx, u32 msr);
 void pt_update_intercept_for_msr(struct vcpu_vmx *vmx);
 void vmx_update_host_rsp(struct vcpu_vmx *vmx, unsigned long host_rsp);
-bool __vmx_vcpu_run(struct vcpu_vmx *vmx, unsigned long *regs, bool launched);
+unsigned int __vmx_vcpu_run_flags(struct vcpu_vmx *vmx);
+bool __vmx_vcpu_run(struct vcpu_vmx *vmx, unsigned long *regs,
+		    unsigned int flags);
 
 #define POSTED_INTR_ON  0
 #define POSTED_INTR_SN  1
