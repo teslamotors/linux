@@ -1253,6 +1253,7 @@ static const struct {
 	 * Additional individual entries were added after verification.
 	 */
 	{ "Vostro V131",        0x1d },
+	{ "Vostro 5568",        0x29 },
 };
 
 static void register_dell_lis3lv02d_i2c_device(struct i801_priv *priv)
