@@ -3172,6 +3172,7 @@ static int __io_sqe_files_scm(struct io_ring_ctx *ctx, int nr, int offset)
 	}
 
 	skb->sk = sk;
+	skb->scm_io_uring = 1;
 	skb->destructor = io_destruct_skb;
 
 	fpl->user = get_uid(ctx->user);
