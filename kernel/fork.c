@@ -2335,11 +2335,6 @@ struct task_struct *fork_idle(int cpu)
 	return task;
 }
 
-struct mm_struct *copy_init_mm(void)
-{
-	return dup_mm(NULL, &init_mm);
-}
-
 /*
  *  Ok, this is the main fork-routine.
  *
