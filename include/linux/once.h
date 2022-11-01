@@ -64,7 +64,7 @@ void __do_once_slow_done(bool *done, struct static_key_true *once_key,
 #define DO_ONCE_SLOW(func, ...)						     \
 	({								     \
 		bool ___ret = false;					     \
-		static bool __section(".data.once") ___done = false;	     \
+		static bool __section(.data.once) ___done = false;	     \
 		static DEFINE_STATIC_KEY_TRUE(___once_key);		     \
 		if (static_branch_unlikely(&___once_key)) {		     \
 			___ret = __do_once_slow_start(&___done);	     \
