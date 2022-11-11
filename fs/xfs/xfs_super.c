@@ -1228,6 +1228,10 @@ xfs_fs_remount(
 	char			*p;
 	int			error;
 
+	/* version 5 superblocks always support version counters. */
+	if (XFS_SB_VERSION_NUM(&mp->m_sb) == XFS_SB_VERSION_5)
+		*flags |= SB_I_VERSION;
+
 	/* First, check for complete junk; i.e. invalid options */
 	error = xfs_test_remount_options(sb, options);
 	if (error)
