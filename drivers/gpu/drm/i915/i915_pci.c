@@ -418,7 +418,8 @@ static const struct intel_device_info intel_sandybridge_m_gt2_info = {
 	.has_coherent_ggtt = true, \
 	.has_llc = 1, \
 	.has_rc6 = 1, \
-	.has_rc6p = 1, \
+	/* snb does support rc6p, but enabling it causes various issues */ \
+	.has_rc6p = 0, \
 	.has_rps = true, \
 	.ppgtt_type = INTEL_PPGTT_FULL, \
 	.ppgtt_size = 31, \
