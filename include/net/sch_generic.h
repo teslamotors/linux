@@ -1334,4 +1334,11 @@ static inline void skb_tc_reinsert(struct sk_buff *skb, struct tcf_result *res)
 		qstats_overlimit_inc(res->qstats);
 }
 
+/* Make sure qdisc is no longer in SCHED state. */
+static inline void qdisc_synchronize(const struct Qdisc *q)
+{
+	while (test_bit(__QDISC_STATE_SCHED, &q->state))
+		msleep(1);
+}
+
 #endif
