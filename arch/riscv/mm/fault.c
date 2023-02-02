@@ -189,7 +189,7 @@ no_context:
 		(addr < PAGE_SIZE) ? "NULL pointer dereference" :
 		"paging request", addr);
 	die(regs, "Oops");
-	do_exit(SIGKILL);
+	make_task_dead(SIGKILL);
 
 	/*
 	 * We ran out of memory, call the OOM killer, and return the userspace
