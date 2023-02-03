@@ -1037,7 +1037,6 @@ out4:
 	kfree(req->rl_sendbuf);
 out3:
 	kfree(req->rl_rdmabuf);
-	rpcrdma_regbuf_free(req->rl_sendbuf);
 out2:
 	kfree(req);
 out1:
