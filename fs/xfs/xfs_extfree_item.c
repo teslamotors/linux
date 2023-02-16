@@ -639,7 +639,7 @@ xfs_efi_recover(
 
 	set_bit(XFS_EFI_RECOVERED, &efip->efi_flags);
 
-	return xfs_defer_ops_capture_and_commit(tp, capture_list);
+	return xfs_defer_ops_capture_and_commit(tp, NULL, capture_list);
 
 abort_error:
 	xfs_trans_cancel(tp);
