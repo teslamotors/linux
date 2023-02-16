@@ -1920,7 +1920,7 @@ xfs_init_zones(void)
 	if (!xfs_efd_zone)
 		goto out_destroy_buf_item_zone;
 
-	xfs_efi_zone = kmem_zone_init((sizeof(xfs_efi_log_item_t) +
+	xfs_efi_zone = kmem_zone_init((sizeof(struct xfs_efi_log_item) +
 			((XFS_EFI_MAX_FAST_EXTENTS - 1) *
 				sizeof(xfs_extent_t))), "xfs_efi_item");
 	if (!xfs_efi_zone)
