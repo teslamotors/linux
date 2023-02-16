@@ -483,9 +483,10 @@ const struct xfs_defer_op_type xfs_rmap_update_defer_type = {
  */
 int
 xfs_rui_recover(
-	struct xfs_mount		*mp,
-	struct xfs_rui_log_item		*ruip)
+	struct xfs_rui_log_item		*ruip,
+	struct list_head		*capture_list)
 {
+	struct xfs_mount		*mp = ruip->rui_item.li_mountp;
 	int				i;
 	int				error = 0;
 	struct xfs_map_extent		*rmap;
@@ -592,8 +593,7 @@ xfs_rui_recover(
 
 	xfs_rmap_finish_one_cleanup(tp, rcur, error);
 	set_bit(XFS_RUI_RECOVERED, &ruip->rui_flags);
-	error = xfs_trans_commit(tp);
-	return error;
+	return xfs_defer_ops_capture_and_commit(tp, capture_list);
 
 abort_error:
 	xfs_rmap_finish_one_cleanup(tp, rcur, error);
