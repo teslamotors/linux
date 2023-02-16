@@ -139,44 +139,6 @@ xfs_efi_item_release(
 	xfs_efi_release(EFI_ITEM(lip));
 }
 
-static const struct xfs_item_ops xfs_efi_item_ops = {
-	.iop_size	= xfs_efi_item_size,
-	.iop_format	= xfs_efi_item_format,
-	.iop_unpin	= xfs_efi_item_unpin,
-	.iop_release	= xfs_efi_item_release,
-};
-
-
-/*
- * Allocate and initialize an efi item with the given number of extents.
- */
-struct xfs_efi_log_item *
-xfs_efi_init(
-	struct xfs_mount	*mp,
-	uint			nextents)
-
-{
-	struct xfs_efi_log_item	*efip;
-	uint			size;
-
-	ASSERT(nextents > 0);
-	if (nextents > XFS_EFI_MAX_FAST_EXTENTS) {
-		size = (uint)(sizeof(struct xfs_efi_log_item) +
-			((nextents - 1) * sizeof(xfs_extent_t)));
-		efip = kmem_zalloc(size, 0);
-	} else {
-		efip = kmem_zone_zalloc(xfs_efi_zone, 0);
-	}
-
-	xfs_log_item_init(mp, &efip->efi_item, XFS_LI_EFI, &xfs_efi_item_ops);
-	efip->efi_format.efi_nextents = nextents;
-	efip->efi_format.efi_id = (uintptr_t)(void *)efip;
-	atomic_set(&efip->efi_next_extent, 0);
-	atomic_set(&efip->efi_refcount, 2);
-
-	return efip;
-}
-
 /*
  * Copy an EFI format buffer from the given buf, and into the destination
  * EFI format structure.
@@ -644,4 +606,70 @@ xfs_efi_recover(
 abort_error:
 	xfs_trans_cancel(tp);
 	return error;
+}
+
+/* Relog an intent item to push the log tail forward. */
+static struct xfs_log_item *
+xfs_efi_item_relog(
+	struct xfs_log_item		*intent,
+	struct xfs_trans		*tp)
+{
+	struct xfs_efd_log_item		*efdp;
+	struct xfs_efi_log_item		*efip;
+	struct xfs_extent		*extp;
+	unsigned int			count;
+
+	count = EFI_ITEM(intent)->efi_format.efi_nextents;
+	extp = EFI_ITEM(intent)->efi_format.efi_extents;
+
+	tp->t_flags |= XFS_TRANS_DIRTY;
+	efdp = xfs_trans_get_efd(tp, EFI_ITEM(intent), count);
+	efdp->efd_next_extent = count;
+	memcpy(efdp->efd_format.efd_extents, extp, count * sizeof(*extp));
+	set_bit(XFS_LI_DIRTY, &efdp->efd_item.li_flags);
+
+	efip = xfs_efi_init(tp->t_mountp, count);
+	memcpy(efip->efi_format.efi_extents, extp, count * sizeof(*extp));
+	atomic_set(&efip->efi_next_extent, count);
+	xfs_trans_add_item(tp, &efip->efi_item);
+	set_bit(XFS_LI_DIRTY, &efip->efi_item.li_flags);
+	return &efip->efi_item;
+}
+
+static const struct xfs_item_ops xfs_efi_item_ops = {
+	.iop_size	= xfs_efi_item_size,
+	.iop_format	= xfs_efi_item_format,
+	.iop_unpin	= xfs_efi_item_unpin,
+	.iop_release	= xfs_efi_item_release,
+	.iop_relog	= xfs_efi_item_relog,
+};
+
+/*
+ * Allocate and initialize an efi item with the given number of extents.
+ */
+struct xfs_efi_log_item *
+xfs_efi_init(
+	struct xfs_mount	*mp,
+	uint			nextents)
+
+{
+	struct xfs_efi_log_item	*efip;
+	uint			size;
+
+	ASSERT(nextents > 0);
+	if (nextents > XFS_EFI_MAX_FAST_EXTENTS) {
+		size = (uint)(sizeof(struct xfs_efi_log_item) +
+			((nextents - 1) * sizeof(xfs_extent_t)));
+		efip = kmem_zalloc(size, 0);
+	} else {
+		efip = kmem_zone_zalloc(xfs_efi_zone, 0);
+	}
+
+	xfs_log_item_init(mp, &efip->efi_item, XFS_LI_EFI, &xfs_efi_item_ops);
+	efip->efi_format.efi_nextents = nextents;
+	efip->efi_format.efi_id = (uintptr_t)(void *)efip;
+	atomic_set(&efip->efi_next_extent, 0);
+	atomic_set(&efip->efi_refcount, 2);
+
+	return efip;
 }
