@@ -10,6 +10,7 @@ OUTPUT_ARCH(sh:sh5)
 #define LOAD_OFFSET	0
 OUTPUT_ARCH(sh)
 #endif
+#define RUNTIME_DISCARD_EXIT
 
 #include <asm/thread_info.h>
 #include <asm/cache.h>
