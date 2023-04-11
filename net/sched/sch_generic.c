@@ -1116,6 +1116,7 @@ static void attach_default_qdiscs(struct net_device *dev)
 			qdisc->ops->attach(qdisc);
 		}
 	}
+	qdisc = rtnl_dereference(dev->qdisc);
 
 #ifdef CONFIG_NET_SCHED
 	if (qdisc != &noop_qdisc)
