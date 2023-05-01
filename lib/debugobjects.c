@@ -563,6 +563,16 @@ static struct debug_obj *lookup_object_or_alloc(void *addr, struct debug_bucket 
 	return NULL;
 }
 
+static void debug_objects_fill_pool(void)
+{
+	/*
+	 * On RT enabled kernels the pool refill must happen in preemptible
+	 * context:
+	 */
+	if (!IS_ENABLED(CONFIG_PREEMPT_RT) || preemptible())
+		fill_pool();
+}
+
 static void
 __debug_object_init(void *addr, struct debug_obj_descr *descr, int onstack)
 {
@@ -571,7 +581,7 @@ __debug_object_init(void *addr, struct debug_obj_descr *descr, int onstack)
 	struct debug_obj *obj;
 	unsigned long flags;
 
-	fill_pool();
+	debug_objects_fill_pool();
 
 	db = get_bucket((unsigned long) addr);
 
@@ -655,6 +665,8 @@ int debug_object_activate(void *addr, struct debug_obj_descr *descr)
 
 	if (!debug_objects_enabled)
 		return 0;
+
+	debug_objects_fill_pool();
 
 	db = get_bucket((unsigned long) addr);
 
@@ -864,6 +876,8 @@ void debug_object_assert_init(void *addr, struct debug_obj_descr *descr)
 
 	if (!debug_objects_enabled)
 		return;
+
+	debug_objects_fill_pool();
 
 	db = get_bucket((unsigned long) addr);
 
