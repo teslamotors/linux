@@ -3738,9 +3738,6 @@ static void io_cancel_async_work(struct io_ring_ctx *ctx,
 {
 	struct io_kiocb *req;
 
-	if (list_empty(&ctx->task_list))
-		return;
-
 	spin_lock_irq(&ctx->task_lock);
 
 	list_for_each_entry(req, &ctx->task_list, task_list) {
