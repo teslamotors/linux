@@ -551,7 +551,8 @@ static void io_kill_timeout(struct io_kiocb *req)
 		atomic_inc(&req->ctx->cq_timeouts);
 		list_del(&req->list);
 		io_cqring_fill_event(req->ctx, req->user_data, 0);
-		__io_free_req(req);
+		if (refcount_dec_and_test(&req->refs))
+			__io_free_req(req);
 	}
 }
 
