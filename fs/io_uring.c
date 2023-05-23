@@ -2079,12 +2079,12 @@ static int io_timeout(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 	req->sequence -= span;
 add:
 	list_add(&req->list, entry);
-	spin_unlock_irq(&ctx->completion_lock);
 
 	hrtimer_init(&req->timeout.timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	req->timeout.timer.function = io_timeout_fn;
 	hrtimer_start(&req->timeout.timer, timespec64_to_ktime(ts),
 			HRTIMER_MODE_REL);
+	spin_unlock_irq(&ctx->completion_lock);
 	return 0;
 }
 
