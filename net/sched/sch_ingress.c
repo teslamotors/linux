@@ -79,6 +79,9 @@ static int ingress_init(struct Qdisc *sch, struct nlattr *opt,
 	struct ingress_sched_data *q = qdisc_priv(sch);
 	struct net_device *dev = qdisc_dev(sch);
 
+	if (sch->parent != TC_H_INGRESS)
+		return -EOPNOTSUPP;
+
 	net_inc_ingress_queue();
 
 	mini_qdisc_pair_init(&q->miniqp, sch, &dev->miniq_ingress);
@@ -93,6 +96,9 @@ static int ingress_init(struct Qdisc *sch, struct nlattr *opt,
 static void ingress_destroy(struct Qdisc *sch)
 {
 	struct ingress_sched_data *q = qdisc_priv(sch);
+
+	if (sch->parent != TC_H_INGRESS)
+		return;
 
 	tcf_block_put_ext(q->block, sch, &q->block_info);
 	net_dec_ingress_queue();
