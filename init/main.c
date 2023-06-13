@@ -96,7 +96,6 @@
 #include <linux/mem_encrypt.h>
 
 #include <asm/io.h>
-#include <asm/bugs.h>
 #include <asm/setup.h>
 #include <asm/sections.h>
 #include <asm/cacheflush.h>
@@ -774,10 +773,6 @@ asmlinkage __visible void __init start_kernel(void)
 	poking_init();
 
 	arch_cpu_finalize_init();
-	/* Temporary conditional until everything has been converted */
-#ifndef CONFIG_ARCH_HAS_CPU_FINALIZE_INIT
-	check_bugs();
-#endif
 
 	acpi_subsystem_init();
 	arch_post_acpi_subsys_init();
