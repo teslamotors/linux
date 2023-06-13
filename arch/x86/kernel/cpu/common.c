@@ -1364,7 +1364,7 @@ static void __init early_identify_cpu(struct cpuinfo_x86 *c)
 
 	cpu_set_bug_bits(c);
 
-	fpu__init_system(c);
+	fpu__init_system();
 
 #ifdef CONFIG_X86_32
 	/*
