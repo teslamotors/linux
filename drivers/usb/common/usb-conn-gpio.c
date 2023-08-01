@@ -38,6 +38,7 @@ struct usb_conn_info {
 	struct gpio_desc *vbus_gpiod;
 	int id_irq;
 	int vbus_irq;
+	bool initial_detection;
 };
 
 /**
@@ -82,10 +83,12 @@ static void usb_conn_detect_cable(struct work_struct *work)
 	dev_dbg(info->dev, "role %d/%d, gpios: id %d, vbus %d\n",
 		info->last_role, role, id, vbus);
 
-	if (info->last_role == role) {
+	if (!info->initial_detection && info->last_role == role) {
 		dev_warn(info->dev, "repeated role: %d\n", role);
 		return;
 	}
+
+	info->initial_detection = false;
 
 	if (info->last_role == USB_ROLE_HOST)
 		regulator_disable(info->vbus);
@@ -206,6 +209,7 @@ static int usb_conn_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, info);
 
 	/* Perform initial detection */
+	info->initial_detection = true;
 	usb_conn_queue_dwork(info, 0);
 
 	return 0;
