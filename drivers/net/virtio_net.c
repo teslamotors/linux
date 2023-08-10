@@ -3265,8 +3265,6 @@ static int virtnet_probe(struct virtio_device *vdev)
 		}
 	}
 
-	_virtnet_set_queues(vi, vi->curr_queue_pairs);
-
 	/* serialize netdev register + virtio_device_ready() with ndo_open() */
 	rtnl_lock();
 
@@ -3278,6 +3276,8 @@ static int virtnet_probe(struct virtio_device *vdev)
 	}
 
 	virtio_device_ready(vdev);
+
+	_virtnet_set_queues(vi, vi->curr_queue_pairs);
 
 	rtnl_unlock();
 
