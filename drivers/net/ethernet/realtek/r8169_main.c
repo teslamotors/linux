@@ -6031,7 +6031,7 @@ static void rtl_tx(struct net_device *dev, struct rtl8169_private *tp,
 		struct ring_info *tx_skb = tp->tx_skb + entry;
 		u32 status;
 
-		status = le32_to_cpu(tp->TxDescArray[entry].opts1);
+		status = le32_to_cpu(READ_ONCE(tp->TxDescArray[entry].opts1));
 		if (status & DescOwn)
 			break;
 
