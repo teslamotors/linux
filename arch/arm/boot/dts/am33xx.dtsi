@@ -259,11 +259,10 @@
 			ranges = <0x0 0x47810000 0x1000>;
 
 			mmc3: mmc@0 {
-				compatible = "ti,am335-sdhci";
+				compatible = "ti,omap4-hsmmc";
 				ti,needs-special-reset;
 				interrupts = <29>;
 				reg = <0x0 0x1000>;
-				status = "disabled";
 			};
 		};
 

@@ -1104,8 +1104,9 @@
 			ranges = <0x0 0x60000 0x1000>;
 
 			mmc1: mmc@0 {
-				compatible = "ti,am437-sdhci";
+				compatible = "ti,omap4-hsmmc";
 				reg = <0x0 0x1000>;
+				ti,dual-volt;
 				ti,needs-special-reset;
 				dmas = <&edma 24 0>,
 					<&edma 25 0>;
@@ -1640,7 +1641,7 @@
 			ranges = <0x0 0xd8000 0x1000>;
 
 			mmc2: mmc@0 {
-				compatible = "ti,am437-sdhci";
+				compatible = "ti,omap4-hsmmc";
 				reg = <0x0 0x1000>;
 				ti,needs-special-reset;
 				dmas = <&edma 2 0>,
