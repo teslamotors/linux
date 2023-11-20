@@ -1256,7 +1256,7 @@ static int io_import_fixed(struct io_ring_ctx *ctx, int rw,
 		 */
 		const struct bio_vec *bvec = imu->bvec;
 
-		if (offset <= bvec->bv_len) {
+		if (offset < bvec->bv_len) {
 			iov_iter_advance(iter, offset);
 		} else {
 			unsigned long seg_skip;
