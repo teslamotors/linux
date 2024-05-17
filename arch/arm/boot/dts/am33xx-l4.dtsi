@@ -1337,8 +1337,7 @@
 				ti,dual-volt;
 				ti,needs-special-reset;
 				ti,needs-special-hs-handling;
-				dmas = <&edma_xbar 24 0 0
-					&edma_xbar 25 0 0>;
+				dmas = <&edma 24 0>, <&edma 25 0>;
 				dma-names = "tx", "rx";
 				interrupts = <64>;
 				reg = <0x0 0x1000>;

@@ -369,7 +369,8 @@ static int st7701_dsi_probe(struct mipi_dsi_device *dsi)
 	if (IS_ERR(st7701->backlight))
 		return PTR_ERR(st7701->backlight);
 
-	drm_panel_init(&st7701->panel);
+	drm_panel_init(&st7701->panel, &dsi->dev, &st7701_funcs,
+		       DRM_MODE_CONNECTOR_DSI);
 
 	/**
 	 * Once sleep out has been issued, ST7701 IC required to wait 120ms
@@ -381,8 +382,6 @@ static int st7701_dsi_probe(struct mipi_dsi_device *dsi)
 	 * ts8550b and there is no valid documentation for that.
 	 */
 	st7701->sleep_delay = 120 + desc->panel_sleep_delay;
-	st7701->panel.funcs = &st7701_funcs;
-	st7701->panel.dev = &dsi->dev;
 
 	ret = drm_panel_add(&st7701->panel);
 	if (ret < 0)
@@ -392,7 +391,15 @@ static int st7701_dsi_probe(struct mipi_dsi_device *dsi)
 	st7701->dsi = dsi;
 	st7701->desc = desc;
 
-	return mipi_dsi_attach(dsi);
+	ret = mipi_dsi_attach(dsi);
+	if (ret)
+		goto err_attach;
+
+	return 0;
+
+err_attach:
+	drm_panel_remove(&st7701->panel);
+	return ret;
 }
 
 static int st7701_dsi_remove(struct mipi_dsi_device *dsi)

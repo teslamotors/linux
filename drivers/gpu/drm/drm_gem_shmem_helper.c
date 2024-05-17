@@ -554,10 +554,8 @@ int drm_gem_shmem_mmap(struct file *filp, struct vm_area_struct *vma)
 	shmem = to_drm_gem_shmem_obj(vma->vm_private_data);
 
 	ret = drm_gem_shmem_get_pages(shmem);
-	if (ret) {
-		drm_gem_vm_close(vma);
+	if (ret)
 		return ret;
-	}
 
 	/* VM_PFNMAP was set by drm_gem_mmap() */
 	vma->vm_flags &= ~VM_PFNMAP;

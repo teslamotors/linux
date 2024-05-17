@@ -653,10 +653,17 @@ static struct platform_driver ccree_driver = {
 
 static int __init ccree_init(void)
 {
-	cc_hash_global_init();
+	int rc;
+
 	cc_debugfs_global_init();
 
-	return platform_driver_register(&ccree_driver);
+	rc = platform_driver_register(&ccree_driver);
+	if (rc) {
+		cc_debugfs_global_fini();
+		return rc;
+	}
+
+	return 0;
 }
 module_init(ccree_init);
 

@@ -61,7 +61,7 @@ void __init plat_mem_setup(void)
 
 	jz4740_reset_init();
 
-	if (__dtb_start != __dtb_end)
+	if (&__dtb_start != &__dtb_end)
 		dtb = __dtb_start;
 	else
 		dtb = (void *)fw_passed_dtb;

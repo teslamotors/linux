@@ -1366,7 +1366,7 @@ static struct trace_event *events[] __initdata = {
 	NULL
 };
 
-__init static int init_events(void)
+__init int init_events(void)
 {
 	struct trace_event *event;
 	int i, ret;
@@ -1384,4 +1384,3 @@ __init static int init_events(void)
 
 	return 0;
 }
-early_initcall(init_events);

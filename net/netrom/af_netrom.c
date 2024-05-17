@@ -378,6 +378,11 @@ static int nr_listen(struct socket *sock, int backlog)
 	struct sock *sk = sock->sk;
 
 	lock_sock(sk);
+	if (sock->state != SS_UNCONNECTED) {
+		release_sock(sk);
+		return -EINVAL;
+	}
+
 	if (sk->sk_state != TCP_LISTEN) {
 		memset(&nr_sk(sk)->user_addr, 0, AX25_ADDR_LEN);
 		sk->sk_max_ack_backlog = backlog;
@@ -630,6 +635,11 @@ static int nr_connect(struct socket *sock, struct sockaddr *uaddr,
 
 	if (sk->sk_state == TCP_ESTABLISHED) {
 		err = -EISCONN;	/* No reconnect on a seqpacket socket */
+		goto out_release;
+	}
+
+	if (sock->state == SS_CONNECTING) {
+		err = -EALREADY;
 		goto out_release;
 	}
 

@@ -1034,9 +1034,9 @@ struct rpcrdma_req *rpcrdma_req_create(struct rpcrdma_xprt *r_xprt, size_t size,
 	return req;
 
 out4:
-	kfree(req->rl_sendbuf);
+	rpcrdma_regbuf_free(req->rl_sendbuf);
 out3:
-	kfree(req->rl_rdmabuf);
+	rpcrdma_regbuf_free(req->rl_rdmabuf);
 out2:
 	kfree(req);
 out1:

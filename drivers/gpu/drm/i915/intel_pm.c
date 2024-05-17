@@ -2822,7 +2822,7 @@ hsw_compute_linetime_wm(const struct intel_crtc_state *crtc_state)
 }
 
 static void intel_read_wm_latency(struct drm_i915_private *dev_priv,
-				  u16 wm[8])
+				  u16 wm[])
 {
 	struct intel_uncore *uncore = &dev_priv->uncore;
 

@@ -46,6 +46,8 @@ void __init smp_prepare_cpus(unsigned int max_cpus)
 {
 	int cpuid;
 
+	store_cpu_topology(smp_processor_id());
+
 	/* This covers non-smp usecase mandated by "nosmp" option */
 	if (max_cpus == 0)
 		return;
@@ -142,8 +144,8 @@ asmlinkage __visible void __init smp_callin(void)
 	current->active_mm = mm;
 
 	trap_init();
+	store_cpu_topology(smp_processor_id());
 	notify_cpu_starting(smp_processor_id());
-	update_siblings_masks(smp_processor_id());
 	set_cpu_online(smp_processor_id(), 1);
 	/*
 	 * Remote TLB flushes are ignored while the CPU is offline, so emit
