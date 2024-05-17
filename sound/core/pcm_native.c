@@ -275,12 +275,18 @@ static int constrain_mask_params(struct snd_pcm_substream *substream,
 	return 0;
 }
 
+
+#ifdef AMD_TDM_MUX_DEMUX_ENABLE
+#define DRV_NAME "acp3x-i2s-audio"
+#define CARD_SHORTNAME "acp3x"
+#endif
 static int constrain_interval_params(struct snd_pcm_substream *substream,
 				     struct snd_pcm_hw_params *params)
 {
 	struct snd_pcm_hw_constraints *constrs =
 					&substream->runtime->hw_constraints;
 	struct snd_interval *i;
+	struct snd_interval *c;
 	unsigned int k;
 	struct snd_interval old_interval;
 	int changed;
@@ -290,6 +296,30 @@ static int constrain_interval_params(struct snd_pcm_substream *substream,
 		if (snd_interval_empty(i))
 			return -EINVAL;
 
+#ifdef AMD_TDM_MUX_DEMUX_ENABLE
+		if (!strcmp(substream->pcm->card->shortname, CARD_SHORTNAME)) {
+			if ((k == SNDRV_PCM_HW_PARAM_CHANNELS) && ((params->rmask & (1 << k)))) {
+				if ((AMD_TDM_MUX_DEMUX_CHANNEL == i->min) && (i->max == AMD_TDM_MUX_DEMUX_CHANNEL)) {
+					c = hw_param_interval(params, SNDRV_PCM_HW_PARAM_SAMPLE_BITS);
+					if (!snd_interval_empty(c)) {
+						params->cmask |= 1 << SNDRV_PCM_HW_PARAM_SAMPLE_BITS;
+						c->min = AMD_TDM_MUX_DEMUX_BITDEPTH;
+						c->max = AMD_TDM_MUX_DEMUX_BITDEPTH;
+					}
+					c = hw_param_interval(params, SNDRV_PCM_HW_PARAM_RATE);
+					if (!snd_interval_empty(c)) {
+						params->cmask |= 1 << SNDRV_PCM_HW_PARAM_RATE;
+						c->min = AMD_TDM_DEMUX_SAMPLERATE;
+						c->max = AMD_TDM_DEMUX_SAMPLERATE;
+					}
+					substream->amd_tdm16_enable = 1;
+				} else {
+					if (substream->amd_tdm16_enable == 1)
+					substream->amd_tdm16_enable = 0;
+				}
+			}
+		}
+#endif
 		/* This parameter is not requested to change by a caller. */
 		if (!(params->rmask & (1 << k)))
 			continue;
@@ -297,9 +327,24 @@ static int constrain_interval_params(struct snd_pcm_substream *substream,
 		if (trace_hw_interval_param_enabled())
 			old_interval = *i;
 
+#ifdef AMD_TDM_MUX_DEMUX_ENABLE
+		if (!strcmp(substream->pcm->card->shortname, CARD_SHORTNAME)) {
+			if ((k == SNDRV_PCM_HW_PARAM_CHANNELS) && ((params->rmask & (1 << k)))) {
+				c = &constrs->intervals[k - SNDRV_PCM_HW_PARAM_FIRST_INTERVAL];
+				c->max = AMD_TDM_MUX_DEMUX_CHANNEL;
+			}
+		}
+#endif
+
 		changed = snd_interval_refine(i, constrs_interval(constrs, k));
+
 		if (changed < 0)
 			return changed;
+#ifdef AMD_TDM_MUX_DEMUX_ENABLE
+		substream->amd_tdm16_bit_count = AMD_TDM_MUX_DEMUX_BITDEPTH;
+		substream->amd_tdm16_channel_count = AMD_TDM_MUX_DEMUX_CHANNEL;
+		substream->amd_tdm16_samplerate = AMD_TDM_DEMUX_SAMPLERATE;
+#endif
 		if (changed == 0)
 			continue;
 
@@ -697,13 +742,11 @@ static int snd_pcm_hw_params(struct snd_pcm_substream *substream,
 	err = fixup_unreferenced_params(substream, params);
 	if (err < 0)
 		goto _error;
-
 	if (substream->ops->hw_params != NULL) {
 		err = substream->ops->hw_params(substream, params);
 		if (err < 0)
 			goto _error;
 	}
-
 	runtime->access = params_access(params);
 	runtime->format = params_format(params);
 	runtime->subformat = params_subformat(params);
@@ -720,9 +763,23 @@ static int snd_pcm_hw_params(struct snd_pcm_substream *substream,
 			(params->flags & SNDRV_PCM_HW_PARAMS_NO_PERIOD_WAKEUP);
 
 	bits = snd_pcm_format_physical_width(runtime->format);
+
+#ifdef AMD_TDM_MUX_DEMUX_ENABLE
+	if (substream->amd_tdm16_enable) {
+		runtime->channels = 8;
+		runtime->rate = 96000;
+	}
+#endif
+
 	runtime->sample_bits = bits;
 	bits *= runtime->channels;
+
+#ifdef AMD_TDM_MUX_DEMUX_ENABLE
+	if (substream->amd_tdm16_enable)
+		bits *= 2; /* user created the playback for 16 channel so bits per frame is 2 times the 8 channel */
+#endif
 	runtime->frame_bits = bits;
+
 	frames = 1;
 	while (bits % 8 != 0) {
 		bits *= 2;
@@ -2508,6 +2565,10 @@ void snd_pcm_release_substream(struct snd_pcm_substream *substream)
 		substream->pcm_release(substream);
 		substream->pcm_release = NULL;
 	}
+#ifdef AMD_TDM_MUX_DEMUX_ENABLE
+	substream->amd_tdm16_enable = 0;
+#endif
+
 	snd_pcm_detach_substream(substream);
 }
 EXPORT_SYMBOL(snd_pcm_release_substream);
@@ -2543,8 +2604,12 @@ int snd_pcm_open_substream(struct snd_pcm *pcm, int stream,
 		pcm_dbg(pcm, "snd_pcm_hw_constraints_complete failed\n");
 		goto error;
 	}
-
+#ifdef AMD_TDM_MUX_DEMUX_ENABLE
+	substream->stitch_flag = false;
+	substream->outof_order = false;
+#endif
 	*rsubstream = substream;
+
 	return 0;
 
  error:

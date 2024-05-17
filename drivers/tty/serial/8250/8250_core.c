@@ -55,6 +55,8 @@ static struct uart_driver serial8250_reg;
 
 static unsigned int skip_txen_test; /* force skip of txen test at init time */
 
+static unsigned int print_buffer = 1;
+
 #define PASS_LIMIT	512
 
 #include <asm/serial.h>
@@ -601,6 +603,9 @@ static int univ8250_console_setup(struct console *co, char *options)
 	port = &serial8250_ports[co->index].port;
 	/* link port to console */
 	port->cons = co;
+
+	if (!print_buffer)
+		co->flags &= ~CON_PRINTBUFFER;
 
 	retval = serial8250_console_setup(port, options, false);
 	if (retval != 0)
@@ -1243,6 +1248,9 @@ MODULE_PARM_DESC(nr_uarts, "Maximum number of UARTs supported. (1-" __MODULE_STR
 module_param(skip_txen_test, uint, 0644);
 MODULE_PARM_DESC(skip_txen_test, "Skip checking for the TXEN bug at init time");
 
+module_param(print_buffer, uint, 0644);
+MODULE_PARM_DESC(print_buffer, "Skip printing the buffer upon real-console registration to avoid double-printing");
+
 #ifdef CONFIG_SERIAL_8250_RSA
 module_param_hw_array(probe_rsa, ulong, ioport, &probe_rsa_count, 0444);
 MODULE_PARM_DESC(probe_rsa, "Probe I/O ports for RSA");
@@ -1269,6 +1277,8 @@ static void __used s8250_options(void)
 	module_param_cb(share_irqs, &param_ops_uint, &share_irqs, 0644);
 	module_param_cb(nr_uarts, &param_ops_uint, &nr_uarts, 0644);
 	module_param_cb(skip_txen_test, &param_ops_uint, &skip_txen_test, 0644);
+	module_param_cb(print_buffer, &param_ops_uint, &print_buffer, 0644);
+
 #ifdef CONFIG_SERIAL_8250_RSA
 	__module_param_call(MODULE_PARAM_PREFIX, probe_rsa,
 		&param_array_ops, .arr = &__param_arr_probe_rsa,

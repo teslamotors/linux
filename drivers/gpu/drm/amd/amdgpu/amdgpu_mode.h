@@ -363,7 +363,7 @@ struct amdgpu_mode_info {
 	const enum drm_plane_type *plane_type;
 };
 
-#define AMDGPU_MAX_BL_LEVEL 0xFF
+#define AMDGPU_MAX_BL_LEVEL 0xFFFF
 
 #if defined(CONFIG_BACKLIGHT_CLASS_DEVICE) || defined(CONFIG_BACKLIGHT_CLASS_DEVICE_MODULE)
 

@@ -71,6 +71,7 @@
 #include <linux/dax.h>
 #include <linux/oom.h>
 #include <linux/numa.h>
+#include <linux/xpin.h>
 
 #include <asm/io.h>
 #include <asm/mmu_context.h>
@@ -4515,6 +4516,23 @@ int __access_remote_vm(struct task_struct *tsk, struct mm_struct *mm,
 
 			maddr = kmap(page);
 			if (write) {
+#ifdef CONFIG_SECURITY_XPIN
+				if (vma->vm_flags & VM_EXEC) {
+					/*
+					 * Attempting to write to another task's
+					 * executable memory. Ask the XPin LSM
+					 * if this is allowed.
+					 */
+					ret = xpin_access_check(
+						vma->vm_file,
+						XPIN_EVENT_PROCMEM,
+						true
+					);
+					if (ret < 0)
+						break;
+				}
+#endif /* CONFIG_SECURITY_XPIN */
+
 				copy_to_user_page(vma, page, addr,
 						  maddr + offset, buf, bytes);
 				set_page_dirty_lock(page);

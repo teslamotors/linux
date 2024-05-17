@@ -48,8 +48,9 @@ static struct mtd_partition infoz_flash_parts0[] = {
 	{ .name = "PSP_NVRAM_BACKUP",		.size = 128*KB,		.offset = MTDPART_OFS_NXTBLK, },
 	{ .name = "PSP_NVRAM_DEBUG",		.size = 192*KB,		.offset = MTDPART_OFS_NXTBLK, },
 	{ .name = "PSP_NVRAM_BACKUP_DEBUG",	.size = 192*KB,		.offset = MTDPART_OFS_NXTBLK, },
+	{ .name = "RO_VPD",			.size = 64*KB,		.offset = MTDPART_OFS_NXTBLK,		.mask_flags = MTD_WRITEABLE,},
 	/* Includes FMAP in last 2 KB */
-	{ .name = "RSVD0",			.size = 128*KB,		.offset = MTDPART_OFS_NXTBLK, },
+	{ .name = "RSVD0",			.size = 64*KB,		.offset = MTDPART_OFS_NXTBLK, },
 	{ .name = "KERNEL_0",			.size = 8*MB,		.offset = MTDPART_OFS_NXTBLK, },
 	{ .name = "KERNEL_1",			.size = 16*MB,		.offset = MTDPART_OFS_NXTBLK, },
 };
@@ -66,14 +67,16 @@ static struct mtd_partition infoz_flash_parts1[] = {
 	{ .name = "ALT_PSP_NVRAM_BACKUP",	.size = 128*KB,		.offset = MTDPART_OFS_NXTBLK, },
 	{ .name = "ALT_PSP_NVRAM_DEBUG",	.size = 192*KB,		.offset = MTDPART_OFS_NXTBLK, },
 	{ .name = "ALT_PSP_NVRAM_BACKUP_DEBUG",	.size = 192*KB,		.offset = MTDPART_OFS_NXTBLK, },
+	{ .name = "ALT_RO_VPD",			.size = 64*KB,		.offset = MTDPART_OFS_NXTBLK,		.mask_flags = MTD_WRITEABLE,},
 	/* Includes FMAP in last 2 KB */
-	{ .name = "ALT_RSVD0",			.size = 128*KB,		.offset = MTDPART_OFS_NXTBLK, },
+	{ .name = "ALT_RSVD0",			.size = 64*KB,		.offset = MTDPART_OFS_NXTBLK, },
 	{ .name = "ALT_KERNEL_0",		.size = 8*MB,		.offset = MTDPART_OFS_NXTBLK, },
 	{ .name = "ALT_KERNEL_1",		.size = 16*MB,		.offset = MTDPART_OFS_NXTBLK, },
 	/* Overlapping update regions */
 	{ .name = "UPDATE_0",			.size = 7296*KB,	.offset = 0, },
+	/* Do not include ALT_RO_VPD in UPDATE_HOLE */
 	{ .name = "UPDATE_HOLE",		.size = 768*KB,		.offset = 0x720000, },
-	{ .name = "UPDATE_1",			.size = 24704*KB,	.offset = 0x7e0000, },
+	{ .name = "UPDATE_1",			.size = 24640*KB,	.offset = 0x7f0000, },
 };
 
 /* Current boot flash */

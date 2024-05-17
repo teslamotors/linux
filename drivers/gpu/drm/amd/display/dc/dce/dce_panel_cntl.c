@@ -23,6 +23,7 @@
  *
  */
 
+#include "amdgpu.h"
 #include "reg_helper.h"
 #include "core_types.h"
 #include "dc_dmub_srv.h"
@@ -133,6 +134,8 @@ static uint32_t dce_panel_cntl_hw_init(struct panel_cntl *panel_cntl)
 		 * should have initialized PWM registers on boot.
 		 */
 		REG_WRITE(BL_PWM_CNTL, 0x8000FA00);
+		REG_WRITE(PWRSEQ_REF_DIV, 0x10000);
+		REG_WRITE(BL_PWM_CNTL2, 0xC0000000);
 		REG_WRITE(BL_PWM_PERIOD_CNTL, 0x000C0FA0);
 	}
 
@@ -150,6 +153,11 @@ static uint32_t dce_panel_cntl_hw_init(struct panel_cntl *panel_cntl)
 			BL_PWM_GRP1_REG_LOCK, 0);
 
 	current_backlight = dce_get_16_bit_backlight_from_pwm(panel_cntl);
+
+	DC_LOG_BACKLIGHT("       BL_PWM_CNTL=0x%x\n", REG_READ(BL_PWM_CNTL));
+	DC_LOG_BACKLIGHT("      BL_PWM_CNTL2=0x%x\n", REG_READ(BL_PWM_CNTL2));
+	DC_LOG_BACKLIGHT("BL_PWM_PERIOD_CNTL=0x%x\n", REG_READ(BL_PWM_PERIOD_CNTL));
+	DC_LOG_BACKLIGHT("    PWRSEQ_REF_DIV=0x%x\n", REG_READ(PWRSEQ_REF_DIV));
 
 	return current_backlight;
 }
@@ -250,6 +258,10 @@ static void dce_driver_set_backlight(struct panel_cntl *panel_cntl,
 
 	// 2.2 Write new active duty cycle
 	REG_UPDATE(BL_PWM_CNTL, BL_ACTIVE_INT_FRAC_CNT, backlight_16bit);
+
+	/* Disable LVDS Power Sequencer when not using pwm in eDP mode*/
+	if (amdgpu_force_pwm_bl)
+		REG_WRITE(PWRSEQ_CNTL, 0);
 
 	/* 2.3 Unlock group 2 backlight registers */
 	REG_UPDATE(BL_PWM_GRP1_REG_LOCK,

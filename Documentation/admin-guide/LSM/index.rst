@@ -33,15 +33,16 @@ Process attributes associated with "major" security modules should
 be accessed and maintained using the special files in ``/proc/.../attr``.
 A security module may maintain a module specific subdirectory there,
 named after the module. ``/proc/.../attr/smack`` is provided by the Smack
-security module and contains all its special files. The files directly
-in ``/proc/.../attr`` remain as legacy interfaces for modules that provide
-subdirectories.
+security module and contains all its special files, and XPin provides
+``/proc/.../attr/xpin``. The files directly in ``/proc/.../attr`` remain
+as legacy interfaces for modules that provide subdirectories.
 
 .. toctree::
    :maxdepth: 1
 
    apparmor
    LoadPin
+   XPin
    SELinux
    Smack
    tomoyo

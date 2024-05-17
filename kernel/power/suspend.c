@@ -61,6 +61,27 @@ static DECLARE_SWAIT_QUEUE_HEAD(s2idle_wait_head);
 enum s2idle_states __read_mostly s2idle_state;
 static DEFINE_RAW_SPINLOCK(s2idle_lock);
 
+void dpm_set_last_time_suspend_end(void)
+{
+       write_seqcount_begin(&suspend_stats.last_time_suspend_end_seq);
+       suspend_stats.last_time_suspend_end = ktime_get();
+       write_seqcount_end(&suspend_stats.last_time_suspend_end_seq);
+}
+EXPORT_SYMBOL_GPL(dpm_set_last_time_suspend_end);
+
+ktime_t dpm_get_last_time_suspend_end(void)
+{
+       ktime_t ret;
+       unsigned int seq;
+       do {
+               seq = read_seqcount_begin(&suspend_stats.last_time_suspend_end_seq);
+               ret = suspend_stats.last_time_suspend_end;
+       } while (read_seqcount_retry(&suspend_stats.last_time_suspend_end_seq, seq));
+
+       return ret;
+}
+EXPORT_SYMBOL_GPL(dpm_get_last_time_suspend_end);
+
 /**
  * pm_suspend_default_s2idle - Check if suspend-to-idle is the default suspend.
  *
@@ -583,6 +604,8 @@ static int enter_state(suspend_state_t state)
 	pm_restrict_gfp_mask();
 	error = suspend_devices_and_enter(state);
 	pm_restore_gfp_mask();
+
+	dpm_set_last_time_suspend_end();
 
  Finish:
 	events_check_enabled = false;

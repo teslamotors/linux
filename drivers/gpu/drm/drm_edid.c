@@ -34,6 +34,7 @@
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/vga_switcheroo.h>
+#include <linux/dmi.h>
 
 #include <drm/drm_displayid.h>
 #include <drm/drm_drv.h>
@@ -1785,7 +1786,18 @@ struct edid *drm_get_edid(struct drm_connector *connector,
 		return NULL;
 
 	if (connector->force == DRM_FORCE_UNSPECIFIED && !drm_probe_ddc(adapter))
+	{
+		if (dmi_match(DMI_PRODUCT_FAMILY, "Tesla_InfoZ"))
+		{
+			edid = drm_get_override_edid(connector);
+			DRM_WARN("drm_get_override_edid (%x)\n", edid);
+			if (edid) {
+				drm_get_displayid(connector, edid);
+				return edid;
+			}
+		}
 		return NULL;
+	}
 
 	edid = drm_do_get_edid(connector, drm_do_probe_ddc_edid, adapter);
 	if (edid)

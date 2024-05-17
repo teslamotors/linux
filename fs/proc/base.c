@@ -2666,6 +2666,13 @@ static const struct pid_entry smack_attr_dir_stuff[] = {
 LSM_DIR_OPS(smack);
 #endif
 
+#ifdef CONFIG_SECURITY_XPIN
+static const struct pid_entry xpin_attr_dir_stuff[] = {
+	ATTR("xpin", "current",		0444),
+};
+LSM_DIR_OPS(xpin);
+#endif
+
 static const struct pid_entry attr_dir_stuff[] = {
 	ATTR(NULL, "current",		0666),
 	ATTR(NULL, "prev",		0444),
@@ -2676,6 +2683,10 @@ static const struct pid_entry attr_dir_stuff[] = {
 #ifdef CONFIG_SECURITY_SMACK
 	DIR("smack",			0555,
 	    proc_smack_attr_dir_inode_ops, proc_smack_attr_dir_ops),
+#endif
+#ifdef CONFIG_SECURITY_XPIN
+	DIR("xpin",				0555,
+	    proc_xpin_attr_dir_inode_ops, proc_xpin_attr_dir_ops),
 #endif
 };
 

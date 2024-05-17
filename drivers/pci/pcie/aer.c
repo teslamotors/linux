@@ -1423,6 +1423,14 @@ static pci_ers_result_t aer_root_reset(struct pci_dev *dev)
 
 	rc = pci_bus_error_reset(dev);
 	pci_info(dev, "Root Port link has been reset\n");
+	if ((dev->device == 0x15d3) && (dev->subsystem_vendor == 0x1022)) {
+		u16 linksta;
+
+		pci_bridge_secondary_bus_reset(dev);
+		pci_restore_state(dev);
+		pcie_capability_read_word(dev, PCI_EXP_LNKSTA, &linksta);
+		pcie_update_link_speed(dev->subordinate, linksta);
+	}
 
 	/* Clear Root Error Status */
 	pci_read_config_dword(dev, pos + PCI_ERR_ROOT_STATUS, &reg32);

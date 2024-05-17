@@ -193,6 +193,8 @@ static int smu10_verify_smc_interface(struct pp_hwmgr *hwmgr)
 	if ((smc_driver_if_version != SMU10_DRIVER_IF_VERSION) &&
 	    (smc_driver_if_version != SMU10_DRIVER_IF_VERSION + 1)) {
 		pr_err("Attempt to read SMC IF Version Number Failed!\n");
+		/* XXX: tesla-internal: Force panic for unrecoverable failure mode */
+		panic("Fatal iGPU resume error in SMU (0x%x)", smc_driver_if_version);
 		return -EINVAL;
 	}
 

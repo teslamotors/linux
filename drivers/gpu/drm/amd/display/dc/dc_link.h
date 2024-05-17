@@ -38,6 +38,12 @@ enum dc_link_fec_state {
 };
 #endif
 
+enum hpd_override_state {
+	HPD_OVERRIDE_STATE_NONE = 0,
+	HPD_OVERRIDE_STATE_FORCE_CONNECTED,
+	HPD_OVERRIDE_STATE_FORCE_DISCONNECTED,
+};
+
 struct dc_link_status {
 	bool link_active;
 	struct dpcd_caps *dpcd_caps;
@@ -144,6 +150,7 @@ struct dc_link {
 
 	bool aux_mode;
 
+	bool sideband_pwm_control;
 	/* Private to DC core */
 
 	const struct dc *dc;
@@ -184,6 +191,7 @@ struct dc_link {
 
 	struct link_trace link_trace;
 	struct gpio *hpd_gpio;
+	enum hpd_override_state hpd_override;
 #ifdef CONFIG_DRM_AMD_DC_DSC_SUPPORT
 	enum dc_link_fec_state fec_state;
 #endif

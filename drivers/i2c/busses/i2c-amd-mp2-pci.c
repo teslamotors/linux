@@ -333,14 +333,18 @@ static int amd_mp2_pci_init(struct amd_mp2_dev *privdata,
 			goto err_dma_mask;
 	}
 
-	/* Set up intx irq */
+	/* Set up MSI-x irq */
 	writel(0, privdata->mmio + AMD_P2C_MSG_INTEN);
-	pci_intx(pci_dev, 1);
-	rc = devm_request_irq(&pci_dev->dev, pci_dev->irq, amd_mp2_irq_isr,
-			      IRQF_SHARED, dev_name(&pci_dev->dev), privdata);
+	rc = pci_alloc_irq_vectors(pci_dev, 1, 1, PCI_IRQ_MSIX);
+	if (rc < 0) {
+		dev_err(&pci_dev->dev, "Failed to allocate MSI-x interrupts err=%d\n", rc);
+		return rc;
+	}
+	rc = devm_request_irq(&pci_dev->dev, pci_irq_vector(pci_dev, 0),
+			      amd_mp2_irq_isr, 0, dev_name(&pci_dev->dev), privdata);
 	if (rc)
 		dev_err(&pci_dev->dev, "Failure requesting irq %i: %d\n",
-			pci_dev->irq, rc);
+			pci_irq_vector(pci_dev, 0), rc);
 
 	return rc;
 

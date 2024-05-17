@@ -2190,6 +2190,7 @@ static void xgbe_get_stats64(struct net_device *netdev,
 {
 	struct xgbe_prv_data *pdata = netdev_priv(netdev);
 	struct xgbe_mmc_stats *pstats = &pdata->mmc_stats;
+	struct xgbe_ext_stats *estats = &pdata->ext_stats;
 
 	DBGPR("-->%s\n", __func__);
 
@@ -2205,6 +2206,7 @@ static void xgbe_get_stats64(struct net_device *netdev,
 	s->rx_length_errors = pstats->rxlengtherror;
 	s->rx_crc_errors = pstats->rxcrcerror;
 	s->rx_fifo_errors = pstats->rxfifooverflow;
+	s->rx_missed_errors = estats->rx_missed_errors;
 
 	s->tx_packets = pstats->txframecount_gb;
 	s->tx_bytes = pstats->txoctetcount_gb;
@@ -2797,6 +2799,9 @@ read_again:
 				error = 1;
 				netdev_warn_once(netdev, "Bogus descriptor, "
 						 "skipping packet\n");
+				/* Try to recover by restarting the hardware */
+				schedule_work(&pdata->restart_work);
+				pdata->ext_stats.rx_missed_errors++;
 				goto skip_data;
 			}
 
@@ -2805,6 +2810,7 @@ read_again:
 						      buf1_len);
 				if (!skb) {
 					error = 1;
+					pdata->ext_stats.rx_missed_errors++;
 					goto skip_data;
 				}
 			}

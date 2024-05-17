@@ -56,7 +56,9 @@ static LIST_HEAD(dpm_suspended_list);
 static LIST_HEAD(dpm_late_early_list);
 static LIST_HEAD(dpm_noirq_list);
 
-struct suspend_stats suspend_stats;
+struct suspend_stats suspend_stats = {
+	.last_time_suspend_end_seq = SEQCNT_ZERO(suspend_stats.last_time_suspend_end_seq),
+};
 static DEFINE_MUTEX(dpm_list_mtx);
 static pm_message_t pm_transition;
 

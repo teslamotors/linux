@@ -3682,9 +3682,9 @@ static void register_backlight_device(struct amdgpu_display_manager *dm,
 {
 #if defined(CONFIG_BACKLIGHT_CLASS_DEVICE) ||\
 	defined(CONFIG_BACKLIGHT_CLASS_DEVICE_MODULE)
-
-	if ((link->connector_signal & (SIGNAL_TYPE_EDP | SIGNAL_TYPE_LVDS)) &&
-	    link->type != dc_connection_none) {
+	if (link->sideband_pwm_control ||
+	    (link->connector_signal & (SIGNAL_TYPE_EDP | SIGNAL_TYPE_LVDS) &&
+	     link->type != dc_connection_none)) {
 		/*
 		 * Event if registration failed, we should continue with
 		 * DM initialization because not having a backlight control
@@ -9801,6 +9801,8 @@ static int dm_update_crtc_state(struct amdgpu_display_manager *dm,
 
 	/* Remove stream for any changed/disabled CRTC */
 	if (!enable) {
+		bool fs_vid_mode = false;
+		fs_vid_mode = dm_old_crtc_state->freesync_config.state == VRR_STATE_ACTIVE_FIXED;
 
 		if (!dm_old_crtc_state->stream)
 			goto skip_modeset;
@@ -9808,15 +9810,17 @@ static int dm_update_crtc_state(struct amdgpu_display_manager *dm,
 		if (amdgpu_freesync_vid_mode && dm_new_crtc_state->stream &&
 		    is_timing_unchanged_for_freesync(new_crtc_state,
 						     old_crtc_state)) {
-			new_crtc_state->mode_changed = false;
-			DRM_DEBUG_DRIVER(
-				"Mode change not required for front porch change, "
-				"setting mode_changed to %d",
-				new_crtc_state->mode_changed);
-
-			set_freesync_fixed_config(dm_new_crtc_state);
-
-			goto skip_modeset;
+			if (!fs_vid_mode) {
+				new_crtc_state->mode_changed = false;
+				DRM_DEBUG_DRIVER(
+					"Mode change not required for front porch change, "
+					"setting mode_changed to %d",
+					new_crtc_state->mode_changed);
+				set_freesync_fixed_config(dm_new_crtc_state);
+				goto skip_modeset;
+			} else {
+				dm_new_crtc_state->freesync_config.state = VRR_STATE_INACTIVE;
+			}
 		} else if (amdgpu_freesync_vid_mode && aconnector &&
 			   is_freesync_video_mode(&new_crtc_state->mode,
 						  aconnector)) {
@@ -9824,8 +9828,11 @@ static int dm_update_crtc_state(struct amdgpu_display_manager *dm,
 
 			high_mode = get_highest_refresh_rate_mode(aconnector, false);
 			if (!drm_mode_equal(&new_crtc_state->mode, high_mode)) {
-				set_freesync_fixed_config(dm_new_crtc_state);
+				if (!fs_vid_mode)
+					set_freesync_fixed_config(dm_new_crtc_state);
 			}
+		} else if (amdgpu_freesync_vid_mode && aconnector) {
+			dm_new_crtc_state->freesync_config.state = VRR_STATE_INACTIVE;
 		}
 
 		ret = dm_atomic_get_state(state, &dm_state);

@@ -137,6 +137,17 @@ MODULE_PARM_DESC(debug, " Network interface message level setting");
 static const u32 default_msg_level = (NETIF_MSG_LINK | NETIF_MSG_IFDOWN |
 				      NETIF_MSG_IFUP);
 
+/* Default flow control settings */
+static unsigned int default_pause_autoneg = 1;
+static unsigned int default_tx_pause = 1;
+static unsigned int default_rx_pause = 1;
+module_param(default_pause_autoneg, uint, 0644);
+MODULE_PARM_DESC(default_pause_autoneg, "Initial flow control autonegotiation setting");
+module_param(default_tx_pause, uint, 0644);
+MODULE_PARM_DESC(default_tx_pause, "Initial TX pause frame setting");
+module_param(default_rx_pause, uint, 0644);
+MODULE_PARM_DESC(default_rx_pause, "Initial RX pause frame setting");
+
 static void xgbe_default_config(struct xgbe_prv_data *pdata)
 {
 	DBGPR("-->xgbe_default_config\n");
@@ -151,9 +162,9 @@ static void xgbe_default_config(struct xgbe_prv_data *pdata)
 	pdata->tx_osp_mode = DMA_OSP_ENABLE;
 	pdata->rx_sf_mode = MTL_RSF_DISABLE;
 	pdata->rx_threshold = MTL_RX_THRESHOLD_64;
-	pdata->pause_autoneg = 1;
-	pdata->tx_pause = 1;
-	pdata->rx_pause = 1;
+	pdata->pause_autoneg = default_pause_autoneg;
+	pdata->tx_pause = default_tx_pause;
+	pdata->rx_pause = default_rx_pause;
 	pdata->phy_speed = SPEED_UNKNOWN;
 	pdata->power_down = 0;
 

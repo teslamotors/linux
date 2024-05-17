@@ -139,26 +139,50 @@ static void psp_memory_training_fini(struct psp_context *psp)
 	struct psp_memory_training_context *ctx = &psp->mem_train_ctx;
 
 	ctx->init = PSP_MEM_TRAIN_NOT_SUPPORT;
-	kfree(ctx->sys_cache);
-	ctx->sys_cache = NULL;
 }
 
 static int psp_memory_training_init(struct psp_context *psp)
 {
 	int ret;
 	struct psp_memory_training_context *ctx = &psp->mem_train_ctx;
+	struct sys_cache_entry *e;
+	struct pci_dev *pdev = psp->adev->pdev;
+	unsigned int key = pdev->bus->number << 8 | pdev->devfn;
+	bool found = false;
 
 	if (ctx->init != PSP_MEM_TRAIN_RESERVE_SUCCESS) {
 		DRM_DEBUG("memory training is not supported!\n");
 		return 0;
 	}
 
-	ctx->sys_cache = kzalloc(ctx->train_data_size, GFP_KERNEL);
-	if (ctx->sys_cache == NULL) {
-		DRM_ERROR("alloc mem_train_ctx.sys_cache failed!\n");
-		ret = -ENOMEM;
-		goto Err_out;
+	mutex_lock(&amdgpu_get_psp_mem_cache()->lock);
+	hash_for_each_possible(amdgpu_get_psp_mem_cache()->cache, e, node, key) {
+		if (unlikely(e->bdf != key))
+			continue;
+
+		found = true;
+		break;
 	}
+
+	if (!found) {
+		e = kzalloc(sizeof(*e), GFP_KERNEL);
+		if (!e) {
+			DRM_ERROR("sys_cache_entry allocation  failed!\n");
+			ret = -ENOMEM;
+			goto Err_out;
+		}
+		e->sys_cache = kzalloc(ctx->train_data_size, GFP_KERNEL);
+		e->bdf = key;
+		if (e->sys_cache == NULL) {
+			DRM_ERROR("alloc mem_train_ctx.sys_cache failed!\n");
+			kfree(e);
+			ret = -ENOMEM;
+			goto Err_out;
+		}
+
+		hash_add(amdgpu_get_psp_mem_cache()->cache, &e->node, key);
+	}
+	mutex_unlock(&amdgpu_get_psp_mem_cache()->lock);
 
 	DRM_DEBUG("train_data_size:%llx,p2c_train_data_offset:%llx,c2p_train_data_offset:%llx.\n",
 		  ctx->train_data_size,
@@ -197,7 +221,13 @@ static int psp_sw_init(void *handle)
 		DRM_ERROR("Failed to initialize memory training!\n");
 		return ret;
 	}
-	ret = psp_mem_training(psp, PSP_MEM_TRAIN_COLD_BOOT);
+
+	if (adev->flags & AMD_IS_APU){
+		ret = psp_mem_training(psp, PSP_MEM_TRAIN_COLD_BOOT);
+	} else {
+		ret = psp_mem_training(psp, PSP_MEM_TRAIN_RESUME);
+	}
+
 	if (ret) {
 		DRM_ERROR("Failed to process memory training!\n");
 		return ret;
@@ -441,6 +471,7 @@ static bool psp_skip_tmr(struct psp_context *psp)
 	switch (psp->adev->asic_type) {
 	case CHIP_NAVI12:
 	case CHIP_SIENNA_CICHLID:
+	case CHIP_DIMGREY_CAVEFISH:
 	case CHIP_ALDEBARAN:
 		return true;
 	default:
@@ -1947,6 +1978,14 @@ static int psp_hw_start(struct psp_context *psp)
 	ret = psp_ring_create(psp, PSP_RING_TYPE__KM);
 	if (ret) {
 		DRM_ERROR("PSP create ring failed!\n");
+		if (adev->asic_type == CHIP_RAVEN) {
+			/*
+			 * Error does not appear to be recoverable and results
+			 * in failed GPU resets indefinitely.  Better to panic
+			 * here.
+			 */
+			panic("Fatal iGPU error in psp_ring_create (%d)", ret);
+		}
 		return ret;
 	}
 

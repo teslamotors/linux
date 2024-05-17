@@ -1,0 +1,47 @@
+# SPDX-License-Identifier: GPL-2.0-only
+config SECURITY_XPIN
+	bool "XPin support"
+	depends on SECURITY && DM_VERITY
+	help
+	  This selects XPin, which checks that all usermode pages mapped with
+	  PROT_EXEC must be file-backed by a dm-verity protected volume.
+	  See Documentation/admin-guide/LSM/XPin.rst for more information.
+
+	  If you are unsure how to answer this question, answer N.
+
+config SECURITY_XPIN_ENFORCE
+	bool "XPin enforcement at boot"
+	depends on SECURITY_XPIN
+	help
+	  If selected, XPin will enforce pinning at boot. If not
+	  selected, it can be enabled at boot with the kernel parameter
+	  "xpin.enforce=1", or after boot through the "xpin/enforce" entry
+	  in securityfs.
+
+	  If you are unsure how to answer this question, answer N.
+
+config SECURITY_XPIN_LOGGING
+	bool "XPin logging at boot"
+	depends on SECURITY_XPIN
+	help
+	  If selected, XPin will log violations at boot. If not
+	  selected, it can be enabled at boot with the kernel parameter
+	  "xpin.logging=1", or after boot through the "xpin/logging" entry
+	  in securityfs.
+
+	  If you are unsure how to answer this question, answer N.
+
+config SECURITY_XPIN_LOCKDOWN
+	bool "XPin lockdown at boot"
+	depends on SECURITY_XPIN
+	help
+	  If selected, XPin's lockdown mode will be enabled at boot. If not
+	  selected, it can be enabled at runtime through the "xpin/lockdown"
+	  entry in securityfs.
+
+	  Lockdown mode is a mode intended for use in production devices,
+	  as opposed to development/engineering. Enabling lockdown mode will
+	  prevent XPin's policy to become less restrictive, such as disabling
+	  enforcement (even by a process with `CAP_MAC_ADMIN`).
+
+	  If you are unsure how to answer this question, answer N.

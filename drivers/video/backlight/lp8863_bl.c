@@ -53,10 +53,25 @@
 #define DISPLAY_BRT_CTRL_PWM 0x00
 #define DISPLAY_BRT_CTRL_DISPLAY_BRT 0x02
 
+// INTERRUPT_STATUS_1 fields
+#define INTERRUPT_STATUS_1_BSTOVPH_STATUS  BIT(15)
+#define INTERRUPT_STATUS_1_TEMPHIGH_STATUS BIT(13)
+#define INTERRUPT_STATUS_1_BSTOVPL_STATUS  BIT(7)
+#define INTERRUPT_STATUS_1_BSTOCP_STATUS   BIT(5)
+#define INTERRUPT_STATUS_1_TSD_STATUS      BIT(1)
+
+// INTERRUPT_STATUS_2 fields
+#define INTERRUPT_STATUS_2_OPEN_LED   BIT(9)
+#define INTERRUPT_STATUS_2_SHORT_LED  BIT(8)
+#define INTERRUPT_STATUS_2_LED_STATUS BIT(7)
+#define INTERRUPT_STATUS_2_LED_CLEAR  BIT(6)
+
 struct lp8863 {
 	struct i2c_client *client;
+	struct i2c_client *analog_client;
+	struct i2c_client *diagnostics_client;
+	struct i2c_client *unused_client;
 	struct backlight_device *backlight;
-	void *pdata;
 	int power;
 };
 
@@ -66,6 +81,22 @@ struct lp8863 {
  * spaces. Four different slave addresses are used to access each
  * of the four 8-bit address register spaces.
  */
+static inline struct i2c_client* reg2client(struct lp8863* lp, u16 reg)
+{
+	switch((reg & 0xF00) >> 8){
+	case 0x1:
+		return lp->analog_client;
+	case 0x2:
+		return lp->diagnostics_client;
+	case 0x3:
+		return lp->unused_client; // Should never really be called.
+	case 0x0:
+		/* FALL-THRU */
+	default:
+		return lp->client;
+	}
+}
+
 static int lp8863_write(struct lp8863 *lp, u16 reg, u16 data)
 {
 	/* Write I2C transactions are made up of 4 bytes. The first byte
@@ -75,7 +106,7 @@ static int lp8863_write(struct lp8863 *lp, u16 reg, u16 data)
 	 * of the 10-bit register address. The last two bytes are the 16-bit*
 	 * register value.
 	 */
-	struct i2c_client *i2c = lp->client;
+	struct i2c_client *i2c = reg2client(lp, reg);
 	u8 buf[2];
 	s32 ret;
 
@@ -103,7 +134,7 @@ static int lp8863_write(struct lp8863 *lp, u16 reg, u16 data)
  */
 static int lp8863_read(struct lp8863 *lp, u16 reg, u16 *data)
 {
-	struct i2c_client *i2c = lp->client;
+	struct i2c_client *i2c = reg2client(lp, reg);
 	u8 buf[2];
 	s32 ret;
 
@@ -117,6 +148,25 @@ static int lp8863_read(struct lp8863 *lp, u16 reg, u16 *data)
 	}
 	return ret;
 }
+
+static inline u16 lp8863_read_isr1(struct lp8863* lp)
+{
+	u16 int_status = 0x0;
+	int ret;
+
+	ret = lp8863_read(lp, LP8863_REG_INTERRUPT_STATUS_1, &int_status);
+	return ret < 0 ? 0 : int_status;
+}
+
+static inline u16 lp8863_read_isr2(struct lp8863* lp)
+{
+	u16 int_status = 0x0;
+	int ret;
+
+	ret = lp8863_read(lp, LP8863_REG_INTERRUPT_STATUS_2, &int_status);
+	return ret < 0 ? 0 : int_status;
+}
+
 
 static int lp8863_backlight_configure(struct lp8863 *lp)
 {
@@ -200,8 +250,125 @@ static int lp8863_backlight_get_brightness(struct backlight_device *bl)
 	return current_brightness;
 }
 
+static ssize_t lp8863_fsm_diagnostics_show(struct device *dev,
+					      struct device_attribute *attr,
+					      char *buf)
+{
+	struct lp8863 *lp = dev_get_drvdata(dev);
+	u16 fsm = 0x0;
+	int ret;
+
+	ret = lp8863_read(lp, LP8863_REG_FSM_DIAGNOSTICS, &fsm);
+	if (ret < 0)
+		return ret;
+
+	return scnprintf(buf, PAGE_SIZE, "0x%0X\n", fsm);
+}
+
+static ssize_t lp8863_auto_detect_diagnostics_show(struct device *dev,
+						   struct device_attribute *attr,
+						   char *buf)
+{
+	struct lp8863 *lp = dev_get_drvdata(dev);
+	u16 auto_detect = 0x0;
+	int ret;
+
+	ret = lp8863_read(lp, LP8863_REG_AUTO_DETECT_DIAGNOSTICS, &auto_detect);
+	if (ret < 0)
+		return ret;
+
+	return scnprintf(buf, PAGE_SIZE, "0x%0X\n", auto_detect);
+}
+
+static ssize_t lp8863_open_show(struct device *dev,
+				 struct device_attribute *attr, char *buf)
+{
+	struct lp8863 *lp = dev_get_drvdata(dev);
+
+	return scnprintf(buf, PAGE_SIZE, "%s\n",
+			 lp8863_read_isr2(lp) & INTERRUPT_STATUS_2_OPEN_LED ? "open" : "none");
+}
+
+static ssize_t lp8863_short_show(struct device *dev,
+				 struct device_attribute *attr, char *buf)
+{
+	struct lp8863 *lp = dev_get_drvdata(dev);
+
+	return scnprintf(buf, PAGE_SIZE, "%s\n",
+			 lp8863_read_isr2(lp) & INTERRUPT_STATUS_2_SHORT_LED ? "short" : "none");
+}
+
+static ssize_t lp8863_fault_show(struct device *dev,
+				 struct device_attribute *attr, char *buf)
+{
+	struct lp8863 *lp = dev_get_drvdata(dev);
+
+	return scnprintf(buf, PAGE_SIZE, "%s\n",
+			 lp8863_read_isr2(lp) & INTERRUPT_STATUS_2_LED_STATUS ?
+			 "fault" : "none");
+}
+
+static ssize_t lp8863_ovp_show(struct device *dev,
+			       struct device_attribute *attr, char *buf)
+{
+	struct lp8863 *lp = dev_get_drvdata(dev);
+
+	return scnprintf(buf, PAGE_SIZE, "%s\n",
+			 lp8863_read_isr1(lp) &
+			 (INTERRUPT_STATUS_1_BSTOVPH_STATUS |
+			  INTERRUPT_STATUS_1_BSTOVPL_STATUS) ?
+			 "over-voltage" : "none");
+}
+
+static ssize_t lp8863_ocp_show(struct device *dev,
+			       struct device_attribute *attr, char *buf)
+{
+	struct lp8863 *lp = dev_get_drvdata(dev);
+
+	return scnprintf(buf, PAGE_SIZE, "%s\n",
+			 lp8863_read_isr1(lp) & INTERRUPT_STATUS_1_BSTOCP_STATUS ?
+			 "over-current" : "none");
+}
+
+static ssize_t lp8863_thermal_shutdown_show(struct device *dev,
+					    struct device_attribute *attr, char *buf)
+{
+	struct lp8863 *lp = dev_get_drvdata(dev);
+
+	return scnprintf(buf, PAGE_SIZE, "%s\n",
+			 lp8863_read_isr1(lp) &
+			 (INTERRUPT_STATUS_1_TEMPHIGH_STATUS | INTERRUPT_STATUS_1_TSD_STATUS) ?
+			 "thermal-shutdown" : "none");
+}
+
+static DEVICE_ATTR(fsm_diagnostics, 0444, lp8863_fsm_diagnostics_show ,NULL);
+static DEVICE_ATTR(auto_detect_diagnostics, 0444, lp8863_auto_detect_diagnostics_show ,NULL);
+static DEVICE_ATTR(open, 0444, lp8863_open_show, NULL);
+static DEVICE_ATTR(short, 0444, lp8863_short_show, NULL);
+static DEVICE_ATTR(fault, 0444, lp8863_fault_show, NULL);
+static DEVICE_ATTR(ovp, 0444, lp8863_ovp_show, NULL);
+static DEVICE_ATTR(ocp, 0444, lp8863_ocp_show, NULL);
+static DEVICE_ATTR(thermal_shutdown, 0444, lp8863_thermal_shutdown_show, NULL);
+
+static struct attribute *lp8863_attrs[] = {
+	&dev_attr_fsm_diagnostics.attr,
+	&dev_attr_auto_detect_diagnostics.attr,
+	&dev_attr_open.attr,
+	&dev_attr_short.attr,
+	&dev_attr_fault.attr,
+	&dev_attr_ovp.attr,
+	&dev_attr_ocp.attr,
+	&dev_attr_thermal_shutdown.attr,
+	NULL,
+};
+
+static const struct attribute_group lp8863_attr_group = {
+	.name = "diagnostics",
+	.attrs = lp8863_attrs,
+};
+
 static const struct backlight_ops lp8863_backlight_ops = {
-	.options = BL_CORE_SUSPENDRESUME,
+	.options = 0, /* no suspend resume support, done in userspace */
 	.update_status = lp8863_backlight_update_status,
 	.get_brightness = lp8863_backlight_get_brightness,
 };
@@ -219,6 +386,44 @@ static int lp8863_backlight_probe(struct i2c_client *client,
 		return -ENOMEM;
 
 	lp->client = client;
+
+	// Create auxillary diagnostics device clients that the device will
+	// respond to.
+	// Client for 0x1HH registers
+	lp->analog_client = devm_i2c_new_dummy_device(&client->dev,
+						      client->adapter,
+						      client->addr + 1);
+	if (IS_ERR(lp->analog_client)) {
+		ret = PTR_ERR(lp->analog_client);
+		dev_err(&client->dev,
+			"failed to register secondary i2c device, err: %d\n",
+			ret);
+		goto err_exit;
+	}
+
+	lp->diagnostics_client = devm_i2c_new_dummy_device(&client->dev,
+							   client->adapter,
+							   client->addr + 2);
+	// Client of 0x2HH registers
+	if (IS_ERR(lp->diagnostics_client)) {
+		ret = PTR_ERR(lp->diagnostics_client);
+		dev_err(&client->dev,
+			"failed to register tertiary i2c device, err: %d\n",
+			ret);
+		goto err_exit;
+	}
+	// Client for 0x3HH registers, however none are documented. Protect
+	// them anyway.
+	lp->unused_client = devm_i2c_new_dummy_device(&client->dev,
+						      client->adapter,
+						      client->addr + 3);
+	if (IS_ERR(lp->unused_client)) {
+		ret = PTR_ERR(lp->unused_client);
+		dev_err(&client->dev,
+			"failed register quaternary i2c device, err: %d\n",
+			ret);
+		goto err_exit;
+	}
 
 	dev_info(&client->dev, "Configuring lp8863 backlight\n");
 
@@ -245,6 +450,14 @@ static int lp8863_backlight_probe(struct i2c_client *client,
 		return PTR_ERR(backlight);
 	}
 
+	pr_err("Putting group on bd->dev.kobj\n");
+	ret = sysfs_create_group(&backlight->dev.kobj, &lp8863_attr_group);
+	if (ret) {
+		dev_err(&client->dev, "failed to register sysfs err: %d\n",
+			ret);
+		goto err_exit;
+	}
+
 	ret = backlight_update_status(backlight);
 	i2c_set_clientdata(client, backlight);
 err_exit:
@@ -254,9 +467,13 @@ err_exit:
 static int lp8863_backlight_remove(struct i2c_client *client)
 {
 	struct backlight_device *backlight = i2c_get_clientdata(client);
+	int ret;
 
 	backlight->props.brightness = 0;
-	return backlight_update_status(backlight);
+	ret = backlight_update_status(backlight);
+
+	sysfs_remove_group(&backlight->dev.kobj, &lp8863_attr_group);
+	return ret;
 }
 
 static const struct i2c_device_id lp8863_ids[] = {

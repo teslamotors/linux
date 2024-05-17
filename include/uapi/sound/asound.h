@@ -342,6 +342,11 @@ struct snd_pcm_info {
 	union snd_pcm_sync_id sync;	/* hardware synchronization ID */
 	unsigned char reserved[64];	/* reserved for future... */
 };
+enum {
+	CHANNEL_GROUP_A = 0,
+	CHANNEL_GROUP_B,
+	CHANNEL_GROUP_X,
+};
 
 typedef int snd_pcm_hw_param_t;
 #define	SNDRV_PCM_HW_PARAM_ACCESS	0	/* Access type */

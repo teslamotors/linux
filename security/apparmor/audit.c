@@ -108,7 +108,9 @@ void aa_audit_msg(int type, struct common_audit_data *sa,
 		  void (*cb) (struct audit_buffer *, void *))
 {
 	aad(sa)->type = type;
-	common_lsm_audit(sa, audit_pre, cb);
+	/* SW-385900: quiet file_inherit messages */
+	if (likely(strcmp(aad(sa)->op, OP_INHERIT) != 0))
+		common_lsm_audit(sa, audit_pre, cb);
 }
 
 /**

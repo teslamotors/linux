@@ -193,6 +193,7 @@ static void __report_bad_irq(struct irq_desc *desc, irqreturn_t action_ret)
 	unsigned int irq = irq_desc_get_irq(desc);
 	struct irqaction *action;
 	unsigned long flags;
+	char *envp[] __maybe_unused = { "DISABLED=1", NULL };
 
 	if (bad_action_ret(action_ret)) {
 		printk(KERN_ERR "irq event %d: bogus return value %x\n",
@@ -203,6 +204,11 @@ static void __report_bad_irq(struct irq_desc *desc, irqreturn_t action_ret)
 	}
 	dump_stack();
 	printk(KERN_ERR "handlers:\n");
+
+#ifdef CONFIG_SPARSE_IRQ
+	/* Notify userspace of disabled IRQ event */
+	kobject_uevent_env(&(desc->kobj), KOBJ_CHANGE, envp);
+#endif
 
 	/*
 	 * We need to take desc->lock here. note_interrupt() is called

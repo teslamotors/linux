@@ -1045,6 +1045,8 @@ const char *get_link(struct nameidata *nd)
 	struct inode *inode = nd->link_inode;
 	int error;
 	const char *res;
+	struct path link_path;
+	char *symlink, *pos = ERR_PTR(-ENOMEM);
 
 	if (!(nd->flags & LOOKUP_RCU)) {
 		touch_atime(&last->link);
@@ -1055,8 +1057,22 @@ const char *get_link(struct nameidata *nd)
 		touch_atime(&last->link);
 	}
 
-	if (nd->path.mnt->mnt_flags & MNT_NOSYMFOLLOW)
+	if (nd->path.mnt->mnt_flags & MNT_NOSYMFOLLOW) {
+		symlink = kzalloc(PATH_MAX, GFP_ATOMIC);
+		if (symlink) {
+			link_path.dentry = dentry;
+			link_path.mnt = nd->path.mnt;
+			pos = d_absolute_path(&link_path, symlink, PATH_MAX - 1);
+		}
+		if (IS_ERR(pos)) {
+			pr_notice_ratelimited("nosymfollow: denied: %x:%x",
+			    MAJOR(dentry->d_sb->s_dev), MINOR(dentry->d_sb->s_dev));
+		} else {
+			pr_notice_ratelimited("nosymfollow: denied: %s", pos);
+		}
+		kfree(symlink);
 		return ERR_PTR(-EACCES);
+	}
 
 	error = security_inode_follow_link(dentry, inode,
 					   nd->flags & LOOKUP_RCU);

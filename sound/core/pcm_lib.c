@@ -30,6 +30,11 @@
 #define trace_applptr(substream, prev, curr)
 #endif
 
+#ifdef AMD_TDM_MUX_DEMUX_ENABLE
+int tdm16_error_notify;
+EXPORT_SYMBOL(tdm16_error_notify);
+#endif
+
 static int fill_silence_frames(struct snd_pcm_substream *substream,
 			       snd_pcm_uframes_t off, snd_pcm_uframes_t frames);
 
@@ -1734,6 +1739,10 @@ static int snd_pcm_lib_ioctl_fifo_size(struct snd_pcm_substream *substream,
 	if (!(substream->runtime->hw.info & SNDRV_PCM_INFO_FIFO_IN_FRAMES)) {
 		format = params_format(params);
 		channels = params_channels(params);
+#ifdef AMD_TDM_MUX_DEMUX_ENABLE
+		if ((substream->amd_tdm16_enable) && (channels == 16))
+			channels = 8;
+#endif
 		frame_size = snd_pcm_format_size(format, channels);
 		if (frame_size > 0)
 			params->fifo_size /= frame_size;
@@ -1916,15 +1925,57 @@ static void *get_dma_ptr(struct snd_pcm_runtime *runtime,
 	return runtime->dma_area + hwoff +
 		channel * (runtime->dma_bytes / runtime->channels);
 }
+#ifdef AMD_TDM_MUX_DEMUX_ENABLE
 
+#define CHANNEL_STITCH_COUNT 1
+#define BYTES_PER_CHANNEL (AMD_TDM_MUX_DEMUX_BITDEPTH/8)
+#define BYTES_PER_CHANNEL_GROUP (BYTES_PER_CHANNEL*AMD_TDM_MUX_DEMUX_CHANNEL/2)
+
+static void set_channel_group(u8 channel_group_type, u8 *buff, u32 offset)
+{
+	u32 i = 0;
+
+	for (i = 0 ; i < (AMD_TDM_MUX_DEMUX_CHANNEL/2); i++) {
+		if (channel_group_type == 'A') {
+			*(buff + (offset * BYTES_PER_CHANNEL_GROUP) + i*BYTES_PER_CHANNEL) &= ~0x01;
+		} else if (channel_group_type == 'B') {
+			*(buff + (offset * BYTES_PER_CHANNEL_GROUP) + i*BYTES_PER_CHANNEL) |= 0x01;
+		}
+	}
+
+}
+
+#endif
 /* default copy_user ops for write; used for both interleaved and non- modes */
 static int default_write_copy(struct snd_pcm_substream *substream,
 			      int channel, unsigned long hwoff,
 			      void *buf, unsigned long bytes)
 {
+#ifdef AMD_TDM_MUX_DEMUX_ENABLE
+	u32 i;
+	u8 *data_kernel_buf;
+	int number_of_channels = bytes / BYTES_PER_CHANNEL;
+	int number_of_channel_grp = number_of_channels / (AMD_TDM_MUX_DEMUX_CHANNEL/2);
+
+	data_kernel_buf = (u8 *)get_dma_ptr(substream->runtime, channel, hwoff);
+	if (copy_from_user(data_kernel_buf, (void __user *) buf, bytes)) {
+		return -EFAULT;
+	}
+	if (substream->amd_tdm16_enable) {
+
+		for (i = 0; i < number_of_channel_grp; i++) {
+			if ((i % 2) == 0)
+				set_channel_group('A', data_kernel_buf, i);
+			else
+				set_channel_group('B', data_kernel_buf, i);
+		}
+	}
+#else
 	if (copy_from_user(get_dma_ptr(substream->runtime, channel, hwoff),
 			   (void __user *)buf, bytes))
 		return -EFAULT;
+
+#endif
 	return 0;
 }
 
@@ -1957,16 +2008,165 @@ static int fill_silence(struct snd_pcm_substream *substream, int channel,
 				   bytes_to_samples(runtime, bytes));
 	return 0;
 }
+#ifdef AMD_TDM_MUX_DEMUX_ENABLE
 
+
+
+int static check_group_type(u8 *buff, u32 offset)
+{
+	u8 channel_a_count = 0;
+	u8 channel_b_count = 0;
+	int i;
+
+	for (i = 0 ; i < (AMD_TDM_MUX_DEMUX_CHANNEL/2); i++) {
+		if (*(buff + (offset * BYTES_PER_CHANNEL_GROUP) + i*4) & 0x01)
+			channel_b_count++;
+		else
+			channel_a_count++;
+	}
+
+	if (channel_a_count == (AMD_TDM_MUX_DEMUX_CHANNEL/2))
+		return CHANNEL_GROUP_A;
+	else if (channel_b_count == (AMD_TDM_MUX_DEMUX_CHANNEL/2))
+		return CHANNEL_GROUP_B;
+	else
+		return CHANNEL_GROUP_X;
+}
+
+static void clear_lsb(u8 *buff, u32 offset)
+{
+	u8 i = 0;
+
+	for (i = 0 ; i < (AMD_TDM_MUX_DEMUX_CHANNEL/2); i++) {
+		*(buff + (offset * BYTES_PER_CHANNEL_GROUP) + i*4) &= ~0x01;
+	}
+}
+#endif
 /* default copy_user ops for read; used for both interleaved and non- modes */
 static int default_read_copy(struct snd_pcm_substream *substream,
 			     int channel, unsigned long hwoff,
 			     void *buf, unsigned long bytes)
 {
+#ifdef AMD_TDM_MUX_DEMUX_ENABLE
+	int i;
+	int j;
+	u8 *data_user_buf;
+	u8 temp_buf[32];
+	u8 outof_order_count = 0;
+	u8 channel_type;
+
+	int number_of_channels = bytes / BYTES_PER_CHANNEL;
+	int number_of_channel_grp = number_of_channels / (AMD_TDM_MUX_DEMUX_CHANNEL/2);
+
+	if (snd_BUG_ON(number_of_channels % (AMD_TDM_MUX_DEMUX_CHANNEL/2)))
+		return -EILSEQ;
+
+	data_user_buf = (u8 *)get_dma_ptr(substream->runtime, channel, hwoff);
+
+	if (substream->amd_tdm16_enable) {
+
+		for (i = 0; i < number_of_channel_grp; i++) {
+			channel_type = check_group_type(data_user_buf, i);
+
+			/* First find a sync data, then consider it for stitching
+			 * otherwise just coninue without making any change in buffer*/
+			if (substream->stitch_flag == false) {
+
+				if (channel_type == CHANNEL_GROUP_A) {
+					int channel_type_t;
+
+					/* we can only check till last channel group */
+					if (i < (number_of_channel_grp-1)) {
+						channel_type_t = check_group_type(data_user_buf, i+1);
+						if (channel_type_t == CHANNEL_GROUP_B) {
+							substream->stitch_flag = true;
+						}
+					}
+				}
+			}
+
+			if (substream->stitch_flag == false)
+				continue;
+
+			if ((i % 2) == 0) {
+				switch (channel_type) {
+				case CHANNEL_GROUP_B:
+					/* sync is broken need to handle */
+					if (substream->outof_order == false) {
+						memcpy(substream->carry_frame, data_user_buf + i*BYTES_PER_CHANNEL_GROUP, (BYTES_PER_CHANNEL*AMD_TDM_MUX_DEMUX_CHANNEL/2));
+						memset(data_user_buf + i*BYTES_PER_CHANNEL_GROUP, 0, (BYTES_PER_CHANNEL*AMD_TDM_MUX_DEMUX_CHANNEL/2));
+							substream->outof_order = true;
+					} else {
+						memcpy(temp_buf, data_user_buf + i*BYTES_PER_CHANNEL_GROUP, (BYTES_PER_CHANNEL*AMD_TDM_MUX_DEMUX_CHANNEL/2));
+						memcpy(data_user_buf + i*BYTES_PER_CHANNEL_GROUP, substream->carry_frame, (BYTES_PER_CHANNEL*AMD_TDM_MUX_DEMUX_CHANNEL/2));
+						memcpy(substream->carry_frame, temp_buf, (BYTES_PER_CHANNEL*AMD_TDM_MUX_DEMUX_CHANNEL/2));
+					}
+					outof_order_count++;
+					break;
+				case CHANNEL_GROUP_A:
+					/* data seems to be good */
+					if (substream->outof_order == true) {
+						substream->outof_order = false;
+						memset(substream->carry_frame, 0, (BYTES_PER_CHANNEL*AMD_TDM_MUX_DEMUX_CHANNEL/2));
+					}
+					break;
+				case CHANNEL_GROUP_X:
+					/* some corrupt data but sync is not broken*/
+					if (substream->outof_order == true) {
+						substream->outof_order = false;
+						memset(substream->carry_frame, 0, (BYTES_PER_CHANNEL*AMD_TDM_MUX_DEMUX_CHANNEL/2));
+						}
+					break;
+				}
+
+			} else {
+				switch (channel_type) {
+				case CHANNEL_GROUP_A:
+					/* sync is broken need to handle */
+					if (substream->outof_order == false) {
+						memcpy(substream->carry_frame, data_user_buf + i*BYTES_PER_CHANNEL_GROUP, (BYTES_PER_CHANNEL*AMD_TDM_MUX_DEMUX_CHANNEL/2));
+						memset(data_user_buf + i*BYTES_PER_CHANNEL_GROUP, 0, (BYTES_PER_CHANNEL*AMD_TDM_MUX_DEMUX_CHANNEL/2));
+						substream->outof_order = true;
+					} else {
+						memcpy(temp_buf, data_user_buf + i*BYTES_PER_CHANNEL_GROUP, (BYTES_PER_CHANNEL*AMD_TDM_MUX_DEMUX_CHANNEL/2));
+						memcpy(data_user_buf + i*BYTES_PER_CHANNEL_GROUP, substream->carry_frame, (BYTES_PER_CHANNEL*AMD_TDM_MUX_DEMUX_CHANNEL/2));
+						memcpy(substream->carry_frame, temp_buf, (BYTES_PER_CHANNEL*AMD_TDM_MUX_DEMUX_CHANNEL/2));
+						// data is supposed to B only, so need to clear
+						clear_lsb(data_user_buf, i);
+					}
+					outof_order_count++;
+					break;
+				case CHANNEL_GROUP_B:
+					if (substream->outof_order == true) {
+						substream->outof_order = false;
+						memset(substream->carry_frame, 0, (BYTES_PER_CHANNEL*AMD_TDM_MUX_DEMUX_CHANNEL/2));
+					}
+					/*need to clear LSB*/
+					clear_lsb(data_user_buf, i);
+					break;
+				case CHANNEL_GROUP_X:
+					if (substream->outof_order == true) {
+						substream->outof_order = false;
+						memset(substream->carry_frame, 0, (BYTES_PER_CHANNEL*AMD_TDM_MUX_DEMUX_CHANNEL/2));
+					}
+					break;
+				}
+			}
+		}
+	}
+
+	if (copy_to_user((void __user *)buf, data_user_buf, bytes))
+		return -EFAULT;
+
+	/*if once also sync is broken we will return error*/
+	if ((outof_order_count > 0) && (tdm16_error_notify != 0))
+		return -EILSEQ;
+#else
 	if (copy_to_user((void __user *)buf,
 			 get_dma_ptr(substream->runtime, channel, hwoff),
 			 bytes))
 		return -EFAULT;
+#endif
 	return 0;
 }
 

@@ -437,6 +437,15 @@ struct snd_pcm_group {		/* keep linked substreams */
 
 struct pid;
 
+#ifdef CONFIG_SND_PCM_TDM16
+#define AMD_TDM_MUX_DEMUX_ENABLE 1
+#endif
+#define AMD_TDM_MUX_DEMUX_CHANNEL 16
+#define AMD_TDM_MUX_DEMUX_BITDEPTH 32
+#define AMD_TDM_MUX_SAMPLERATE 96000
+#define AMD_TDM_DEMUX_SAMPLERATE 48000
+
+
 struct snd_pcm_substream {
 	struct snd_pcm *pcm;
 	struct snd_pcm_str *pstr;
@@ -477,6 +486,16 @@ struct snd_pcm_substream {
 #endif /* CONFIG_SND_VERBOSE_PROCFS */
 	/* misc flags */
 	unsigned int hw_opened: 1;
+#ifdef AMD_TDM_MUX_DEMUX_ENABLE
+	bool stitch_flag;
+	bool outof_order;
+	unsigned int amd_tdm16_bit_count;
+	unsigned int amd_tdm16_samplerate;
+	unsigned int amd_tdm16_channel_count;
+	unsigned int amd_tdm16_enable;
+	unsigned char carry_frame[64];
+#endif
+
 };
 
 #define SUBSTREAM_BUSY(substream) ((substream)->ref_count > 0)

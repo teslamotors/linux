@@ -1139,6 +1139,9 @@ int xhci_resume(struct xhci_hcd *xhci, bool hibernated)
 			xhci_warn(xhci, "Controller not ready at resume %d\n",
 				  retval);
 			spin_unlock_irq(&xhci->lock);
+			/* XXX: Tesla quirk: Unrecoverable error mode */
+			if (retval == -ENODEV)
+				panic("Fatal XHCI resume error");
 			return retval;
 		}
 		/* step 1: restore register */

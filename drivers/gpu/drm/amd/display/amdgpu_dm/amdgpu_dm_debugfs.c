@@ -36,6 +36,7 @@
 #include "dc_link_dp.h"
 #include "link_hwss.h"
 #include "dc/dc_dmub_srv.h"
+#include "gpio_service_interface.h"
 
 struct dmub_debugfs_trace_header {
 	uint32_t entry_count;
@@ -2477,6 +2478,100 @@ static int target_backlight_show(struct seq_file *m, void *unused)
 	return 0;
 }
 
+static int hpd_state_show(struct seq_file *m, void *d)
+{
+	struct amdgpu_dm_connector *connector = file_inode(m->file)->i_private;
+	struct dc_link *link = connector->dc_link;
+	struct gpio *hpd_pin;
+	uint32_t is_hpd_high = 0;
+	char *st = "unknown";
+
+	if (link == NULL || link->ctx == NULL)
+		return -ENODEV;
+
+	hpd_pin = get_hpd_gpio(link->ctx->dc_bios, link->link_id,
+			       link->ctx->gpio_service);
+
+	if (!hpd_pin) {
+		st = "error";
+	} else {
+		dal_gpio_open(hpd_pin, GPIO_MODE_INTERRUPT);
+		dal_gpio_get_value(hpd_pin, &is_hpd_high);
+		dal_gpio_close(hpd_pin);
+		dal_gpio_destroy_irq(&hpd_pin);
+		if (is_hpd_high)
+			st = "connected";
+		else
+			st = "disconnected";
+	}
+
+	seq_printf(m, "%s\n", st);
+
+	return 0;
+}
+
+DEFINE_SHOW_ATTRIBUTE(hpd_state);
+
+static ssize_t hdmi_hpd_override_read(struct file *f, char __user *buf,
+							size_t size, loff_t *pos)
+{
+	struct amdgpu_dm_connector *aconnector = file_inode(f)->i_private;
+	struct dc_link *link = aconnector->dc_link;
+	char data[32] = {0};
+	char *s;
+	ssize_t rc;
+
+	if (!aconnector || !link)
+		return -EINVAL;
+
+	switch (link->hpd_override) {
+	case HPD_OVERRIDE_STATE_NONE:
+		s = "none"; break;
+	case HPD_OVERRIDE_STATE_FORCE_CONNECTED:
+		s = "connected"; break;
+	case HPD_OVERRIDE_STATE_FORCE_DISCONNECTED:
+		s = "disconnected"; break;
+	default:
+		s = "unknown"; break;
+	}
+
+	sprintf(data, "%s\n", s);
+	rc = simple_read_from_buffer(buf, size, pos, data, strlen(data));
+
+	return rc;
+}
+
+
+static ssize_t hdmi_hpd_override_write(struct file *f, const char __user *buf,
+							size_t size, loff_t *pos)
+{
+	struct amdgpu_dm_connector *aconnector = file_inode(f)->i_private;
+	struct dc_link *link;
+	char data[32] = {0};
+
+	if (!aconnector || size == 0)
+		return -EINVAL;
+
+	link = aconnector->dc_link;
+	if (!link)
+		return -EINVAL;
+
+	simple_write_to_buffer(data, sizeof(data)-1, pos, buf, size);
+
+	if (strncmp("connected", data, strlen("connected")) == 0) {
+		link->hpd_override = HPD_OVERRIDE_STATE_FORCE_CONNECTED;
+	} else if (strncmp("disconnected", data, strlen("disconnected")) == 0) {
+		link->hpd_override = HPD_OVERRIDE_STATE_FORCE_DISCONNECTED;
+	} else if (strncmp("none", data, strlen("none")) == 0) {
+		link->hpd_override = HPD_OVERRIDE_STATE_NONE;
+	} else {
+		size = -EINVAL;
+	}
+
+	return size;
+}
+
+
 #ifdef CONFIG_DRM_AMD_DC_DSC_SUPPORT
 DEFINE_SHOW_ATTRIBUTE(dp_dsc_fec_support);
 #endif
@@ -2641,14 +2736,24 @@ static const struct {
 #endif
 };
 
-#ifdef CONFIG_DRM_AMD_DC_HDCP
+static const struct file_operations hdmi_hpd_override_fops = {
+	.owner = THIS_MODULE,
+	.read = hdmi_hpd_override_read,
+	.write = hdmi_hpd_override_write,
+	.llseek = default_llseek
+};
+
 static const struct {
 	char *name;
 	const struct file_operations *fops;
 } hdmi_debugfs_entries[] = {
+#ifdef CONFIG_DRM_AMD_DC_HDCP
 		{"hdcp_sink_capability", &hdcp_sink_capability_fops}
-};
 #endif
+		{"hpd_state", &hpd_state_fops},
+		{"hpd_override", &hdmi_hpd_override_fops},
+};
+
 /*
  * Force YUV420 output if available from the given mode
  */
@@ -2772,7 +2877,6 @@ void connector_debugfs_init(struct amdgpu_dm_connector *connector)
 	connector->debugfs_dpcd_address = 0;
 	connector->debugfs_dpcd_size = 0;
 
-#ifdef CONFIG_DRM_AMD_DC_HDCP
 	if (connector->base.connector_type == DRM_MODE_CONNECTOR_HDMIA) {
 		for (i = 0; i < ARRAY_SIZE(hdmi_debugfs_entries); i++) {
 			debugfs_create_file(hdmi_debugfs_entries[i].name,
@@ -2780,7 +2884,6 @@ void connector_debugfs_init(struct amdgpu_dm_connector *connector)
 					    hdmi_debugfs_entries[i].fops);
 		}
 	}
-#endif
 }
 
 #ifdef CONFIG_DRM_AMD_SECURE_DISPLAY

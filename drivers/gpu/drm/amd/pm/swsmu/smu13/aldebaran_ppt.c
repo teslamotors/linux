@@ -1501,6 +1501,9 @@ static int aldebaran_i2c_xfer(struct i2c_adapter *i2c_adap,
 	if (!adev->pm.dpm_enabled)
 		return -EBUSY;
 
+	if (!adev->pm.dpm_enabled)
+		return -EBUSY;
+
 	for (i = 0; i < num; i++) {
 		/*
 		 * SMU interface allows at most MAX_SW_I2C_COMMANDS bytes of data at

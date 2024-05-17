@@ -42,6 +42,7 @@
 #include "amdgpu_irq.h"
 #include "amdgpu_dma_buf.h"
 
+#include "amdgpu_fdinfo.h"
 #include "amdgpu_amdkfd.h"
 
 #include "amdgpu_ras.h"
@@ -175,6 +176,7 @@ uint amdgpu_freesync_vid_mode;
 int amdgpu_reset_method = -1; /* auto */
 int amdgpu_num_kcq = -1;
 int amdgpu_smartshift_bias;
+int amdgpu_force_pwm_bl = 0;
 
 static void amdgpu_drv_delayed_reset_work_handler(struct work_struct *work);
 
@@ -910,6 +912,17 @@ MODULE_PARM_DESC(smu_pptable_id,
 	"specify pptable id to be used (-1 = auto(default) value, 0 = use pptable from vbios, > 0 = soft pptable id)");
 module_param_named(smu_pptable_id, amdgpu_smu_pptable_id, int, 0444);
 
+/**
+ * DOC: force_pwm_bl (int)
+ * Enable the PWM backlight control sans eDP (0 = disable (default),  1 = enable)
+ */
+MODULE_PARM_DESC(force_pwm_bl, "Enable the PWM dimming control sans eDP(0 = disable (default),  1 = enable");
+module_param_named(force_pwm_bl, amdgpu_force_pwm_bl, int, 0444);
+
+static bool enable_s2idle = 0;
+module_param(enable_s2idle, bool, 0644);
+MODULE_PARM_DESC(enable_s2idle, "Enable s2idle support (0 = disable (default), 1 = enable)");
+
 static const struct pci_device_id pciidlist[] = {
 #ifdef  CONFIG_DRM_AMDGPU_SI
 	{0x1002, 0x6780, PCI_ANY_ID, PCI_ANY_ID, 0, 0, CHIP_TAHITI},
@@ -1495,8 +1508,16 @@ static int amdgpu_pmops_suspend(struct device *dev)
 	struct amdgpu_device *adev = drm_to_adev(drm_dev);
 	int r;
 
-	if (amdgpu_acpi_is_s0ix_supported(adev))
-		adev->in_s0ix = true;
+        if (enable_s2idle) {
+                if (pm_suspend_target_state == PM_SUSPEND_TO_IDLE) {
+                        return 0;
+                }
+        } else {
+                if (amdgpu_acpi_is_s0ix_supported(adev)) {
+                        adev->in_s0ix = true;
+                }
+        }
+
 	adev->in_s3 = true;
 	r = amdgpu_device_suspend(drm_dev, true);
 	adev->in_s3 = false;
@@ -1514,9 +1535,18 @@ static int amdgpu_pmops_resume(struct device *dev)
 	if (!pci_device_is_present(adev->pdev))
 		adev->no_hw_access = true;
 
-	r = amdgpu_device_resume(drm_dev, true);
-	if (amdgpu_acpi_is_s0ix_supported(adev))
-		adev->in_s0ix = false;
+	/* if device is not present no need to resume */
+	if (!adev->no_hw_access)
+		r = amdgpu_device_resume(drm_dev, true);
+	else
+		return 0;
+
+        if (!enable_s2idle) {
+                if (amdgpu_acpi_is_s0ix_supported(adev)) {
+                        adev->in_s0ix = false;
+                }
+        }
+
 	return r;
 }
 
@@ -1596,6 +1626,8 @@ static int amdgpu_pmops_runtime_suspend(struct device *dev)
 		pci_ignore_hotplug(pdev);
 		pci_set_power_state(pdev, PCI_D3cold);
 		drm_dev->switch_power_state = DRM_SWITCH_POWER_DYNAMIC_OFF;
+	} else if (amdgpu_device_supports_boco(drm_dev)) {
+		/* nothing to do */
 	} else if (amdgpu_device_supports_baco(drm_dev)) {
 		amdgpu_device_baco_enter(drm_dev);
 	}
@@ -1753,6 +1785,9 @@ static const struct file_operations amdgpu_driver_kms_fops = {
 #ifdef CONFIG_COMPAT
 	.compat_ioctl = amdgpu_kms_compat_ioctl,
 #endif
+#ifdef CONFIG_PROC_FS
+	.show_fdinfo = amdgpu_show_fdinfo
+#endif
 };
 
 int amdgpu_file_to_fpriv(struct file *filp, struct amdgpu_fpriv **fpriv)
@@ -1785,7 +1820,8 @@ static struct drm_driver kms_driver = {
 	.driver_features =
 	    DRIVER_ATOMIC |
 	    DRIVER_GEM |
-	    DRIVER_RENDER | DRIVER_MODESET | DRIVER_SYNCOBJ,
+	    DRIVER_RENDER | DRIVER_MODESET | DRIVER_SYNCOBJ |
+	    DRIVER_SYNCOBJ_TIMELINE,
 	.open = amdgpu_driver_open_kms,
 	.postclose = amdgpu_driver_postclose_kms,
 	.lastclose = amdgpu_driver_lastclose_kms,
@@ -1850,6 +1886,13 @@ static struct pci_driver amdgpu_kms_pci_driver = {
 	.dev_groups = amdgpu_sysfs_groups,
 };
 
+struct psp_mem_cache_cont  psp_mem_cache_cont;
+
+struct psp_mem_cache_cont* amdgpu_get_psp_mem_cache(void)
+{
+	return &psp_mem_cache_cont;
+}
+
 static int __init amdgpu_init(void)
 {
 	int r;
@@ -1876,6 +1919,9 @@ static int __init amdgpu_init(void)
 	/* Ignore KFD init failures. Normal when CONFIG_HSA_AMD is not set. */
 	amdgpu_amdkfd_init();
 
+	hash_init(psp_mem_cache_cont.cache);
+	mutex_init(&psp_mem_cache_cont.lock);
+
 	/* let modprobe override vga console setting */
 	return pci_register_driver(&amdgpu_kms_pci_driver);
 
@@ -1888,12 +1934,23 @@ error_sync:
 
 static void __exit amdgpu_exit(void)
 {
+	struct sys_cache_entry *e;
+	struct hlist_node *tmp;
+	unsigned i;
+
 	amdgpu_amdkfd_fini();
 	pci_unregister_driver(&amdgpu_kms_pci_driver);
 	amdgpu_unregister_atpx_handler();
 	amdgpu_sync_fini();
 	amdgpu_fence_slab_fini();
 	mmu_notifier_synchronize();
+
+	mutex_destroy(&psp_mem_cache_cont.lock);
+	hash_for_each_safe(psp_mem_cache_cont.cache, i, tmp, e, node) {
+		hash_del(&e->node);
+		kfree(e->sys_cache);
+		kfree(e);
+	}
 }
 
 module_init(amdgpu_init);

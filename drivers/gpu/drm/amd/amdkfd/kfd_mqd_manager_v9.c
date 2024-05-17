@@ -155,7 +155,7 @@ static struct kfd_mem_obj *allocate_mqd(struct kfd_dev *kfd,
 				ALIGN(sizeof(struct v9_mqd), PAGE_SIZE),
 			&(mqd_mem_obj->gtt_mem),
 			&(mqd_mem_obj->gpu_addr),
-			(void *)&(mqd_mem_obj->cpu_ptr), true);
+			(void *)&(mqd_mem_obj->cpu_ptr), true, true);
 
 		if (retval) {
 			kfree(mqd_mem_obj);

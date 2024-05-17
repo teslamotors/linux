@@ -2469,18 +2469,6 @@ void dcn10_update_mpcc(struct dc *dc, struct pipe_ctx *pipe_ctx)
 	struct mpc *mpc = dc->res_pool->mpc;
 	struct mpc_tree *mpc_tree_params = &(pipe_ctx->stream_res.opp->mpc_tree_params);
 
-	if (dc->debug.visual_confirm == VISUAL_CONFIRM_HDR) {
-		dcn10_get_hdr_visual_confirm_color(
-				pipe_ctx, &blnd_cfg.black_color);
-	} else if (dc->debug.visual_confirm == VISUAL_CONFIRM_SURFACE) {
-		dcn10_get_surface_visual_confirm_color(
-				pipe_ctx, &blnd_cfg.black_color);
-	} else {
-		color_space_to_black_color(
-				dc, pipe_ctx->stream->output_color_space,
-				&blnd_cfg.black_color);
-	}
-
 	blnd_cfg.overlap_only = false;
 	blnd_cfg.global_gain = 0xff;
 
@@ -3165,13 +3153,10 @@ void dcn10_update_pending_status(struct pipe_ctx *pipe_ctx)
 	struct dc_plane_state *plane_state = pipe_ctx->plane_state;
 	struct timing_generator *tg = pipe_ctx->stream_res.tg;
 	bool flip_pending;
-	struct dc *dc;
+	struct dc *dc = pipe_ctx->stream->ctx->dc;
 
 	if (plane_state == NULL)
 		return;
-
-	BUG_ON(pipe_ctx->plane_res.hubp == NULL);
-	BUG_ON(pipe_ctx->plane_res.hubp->funcs == NULL);
 
 	flip_pending = pipe_ctx->plane_res.hubp->funcs->hubp_is_flip_pending(
 					pipe_ctx->plane_res.hubp);
@@ -3187,7 +3172,6 @@ void dcn10_update_pending_status(struct pipe_ctx *pipe_ctx)
 				!tg->funcs->is_stereo_left_eye(pipe_ctx->stream_res.tg);
 	}
 
-	dc = plane_state->ctx->dc;
 	if (dc->hwseq->wa_state.disallow_self_refresh_during_multi_plane_transition_applied) {
 		struct dce_hwseq *hwseq = dc->hwseq;
 		struct timing_generator *tg = dc->res_pool->timing_generators[0];

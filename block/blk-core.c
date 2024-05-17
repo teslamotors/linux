@@ -215,6 +215,23 @@ static void print_req_error(struct request *req, blk_status_t status,
 	if (WARN_ON_ONCE(idx >= ARRAY_SIZE(blk_errors)))
 		return;
 
+	if (req->rq_disk) {
+		static DEFINE_RATELIMIT_STATE(_rs, 60*HZ, 1);
+		char re_event[] = "REQ_ERROR=1";
+		char re_errno[10];
+		char *re_envp[] = { re_event, re_errno, NULL };
+
+		if (__ratelimit(&_rs)) {
+			snprintf(re_errno, sizeof(re_errno), "ERRNO=%d",
+				-blk_errors[idx].errno);
+			/* ATTN: uevents are suppressed during
+			 * partition table readout
+			 */
+			kobject_uevent_env(&disk_to_dev(req->rq_disk)->kobj,
+					KOBJ_CHANGE, re_envp);
+		}
+	}
+
 	printk_ratelimited(KERN_ERR
 		"%s: %s error, dev %s, sector %llu op 0x%x:(%s) flags 0x%x "
 		"phys_seg %u prio class %u\n",

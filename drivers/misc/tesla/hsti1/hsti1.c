@@ -24,21 +24,25 @@ static ssize_t state_show(struct device *dev, struct device_attribute *attr,
 }
 static DEVICE_ATTR_RO(state);
 
-#define HSTI1_BIT(n) (((hsti1->state) & BIT(n)) >> (n))
+#define HSTI1_BITS(s, n) ((hsti1->state >> (s)) & (BIT(n) - 1))
 
-#define HSTI1_ATTR(name, n) \
+#define HSTI1_ATTR(name, s, n) \
 static ssize_t name##_show(struct device *dev, struct device_attribute *attr, \
 				char *buf) \
 { \
-	return snprintf(buf, PAGE_SIZE, "%lu\n", HSTI1_BIT(n)); \
+	return snprintf(buf, PAGE_SIZE, "%lu\n", HSTI1_BITS(s, n)); \
 } \
 static DEVICE_ATTR_RO(name)
 
-HSTI1_ATTR(bios_key_revid_update_req, 11);
+HSTI1_ATTR(bios_key_revid_update_req, 11, 1);
+HSTI1_ATTR(spl_revid_update_req, 12, 1);
+HSTI1_ATTR(spl_status, 13, 3);
 
 static struct attribute *attrs[] = {
 	&dev_attr_state.attr,
 	&dev_attr_bios_key_revid_update_req.attr,
+	&dev_attr_spl_revid_update_req.attr,
+	&dev_attr_spl_status.attr,
 	NULL,
 };
 

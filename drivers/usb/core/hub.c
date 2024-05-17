@@ -5026,6 +5026,27 @@ hub_power_remaining(struct usb_hub *hub)
 	return remaining;
 }
 
+#define SHORT_CONNECT_INTERVAL	(5 * HZ)
+#define LONG_CONNECT_INTERVAL	(60 * HZ)
+#define SHORT_CONNECT_BURST	5
+
+/* XXX: Tesla-specific hack: Move to userspace policy */
+static int tesla_infoz_usb_hub_is_external(struct usb_hub *hub)
+{
+	struct usb_device *hdev = hub->hdev;
+
+	/* Bus 2: Off-card USB3 */
+	if (hdev->bus->busnum == 2)
+		return 1;
+
+	/* Bus 1 off-card to external hub */
+	if (hdev->bus->busnum == 1 && hdev->parent == hdev->bus->root_hub &&
+	    hdev->portnum == 2)
+		return 1;
+
+	return 0;
+}
+
 static void hub_port_connect(struct usb_hub *hub, int port1, u16 portstatus,
 		u16 portchange)
 {
@@ -5038,6 +5059,7 @@ static void hub_port_connect(struct usb_hub *hub, int port1, u16 portstatus,
 	struct usb_device *udev = port_dev->child;
 	static int unreliable_port = -1;
 	bool retry_locked;
+	bool ratelimit_state, ratelimit_prev_state;
 
 	/* Disconnect any existing devices under this port */
 	if (udev) {
@@ -5052,6 +5074,56 @@ static void hub_port_connect(struct usb_hub *hub, int port1, u16 portstatus,
 	if (!(portstatus & USB_PORT_STAT_CONNECTION) ||
 			(portchange & USB_PORT_STAT_C_CONNECTION))
 		clear_bit(port1, hub->removed_bits);
+
+	/* This is a kind of self-resetting fuse for port connect events.
+	 * It should protect system from faulty USB hardware (e.g. dying USB
+	 * storage) that falls into re-connect loop. These recovery attempts do
+	 * not seem help the device to start working properly, at the same time
+	 * they negatevely affect host system performance.
+	 * Port will ignore connect events after several repeated frequent
+	 * attempts.
+	 * If device is re-plugged after certain dead-time, a new connect event
+	 * will reset the fuse.
+	 */
+	usb_lock_port(port_dev);
+	ratelimit_prev_state = (port_dev->reconnect_cnt > SHORT_CONNECT_BURST);
+	if (port_dev->last_connect) {
+		unsigned long now = jiffies;
+		if (time_before(now, port_dev->last_connect +
+					     SHORT_CONNECT_INTERVAL))
+			port_dev->reconnect_cnt++;
+		if (time_after(now, port_dev->last_connect +
+					     LONG_CONNECT_INTERVAL))
+			port_dev->reconnect_cnt = 0;
+		port_dev->last_connect = now;
+	} else
+		port_dev->last_connect = jiffies;
+	if (!tesla_infoz_usb_hub_is_external(hub)) {
+		/* whitelist internal devices */
+		port_dev->reconnect_cnt = 0;
+	}
+	ratelimit_state = (port_dev->reconnect_cnt > SHORT_CONNECT_BURST);
+	usb_unlock_port(port_dev);
+	if (ratelimit_state != ratelimit_prev_state) {
+		char rl_event[25];
+		char *rl_envp[] = { rl_event, NULL };
+
+		snprintf(rl_event, sizeof(rl_event),
+			 "PORT_CONNECT_RATELIMIT=%d", ratelimit_state);
+
+		/* Send event to userland for port connect rate limit condition */
+		kobject_uevent_env(&hub->intfdev->kobj, KOBJ_CHANGE, rl_envp);
+
+		if (ratelimit_state)
+			dev_err(&port_dev->dev,
+				"connect rate limit exceeded, ignoring device\n");
+		else
+			dev_info(&port_dev->dev, "connect rate limit reset\n");
+	}
+	if (ratelimit_state) {
+		/* Buggy hardware likely connected to port, ignore it */
+		return;
+	}
 
 	if (portchange & (USB_PORT_STAT_C_CONNECTION |
 				USB_PORT_STAT_C_ENABLE)) {

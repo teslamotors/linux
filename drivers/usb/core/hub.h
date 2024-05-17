@@ -89,6 +89,8 @@ struct usb_hub {
  * @is_superspeed cache super-speed status
  * @usb3_lpm_u1_permit: whether USB3 U1 LPM is permitted.
  * @usb3_lpm_u2_permit: whether USB3 U2 LPM is permitted.
+ * @last_connect: last connect event timestamp
+ * @reconnect_cnt: repeated connect attempts at short intervals
  */
 struct usb_port {
 	struct usb_device *child;
@@ -105,6 +107,8 @@ struct usb_port {
 	unsigned int is_superspeed:1;
 	unsigned int usb3_lpm_u1_permit:1;
 	unsigned int usb3_lpm_u2_permit:1;
+	unsigned long last_connect;
+	unsigned int reconnect_cnt;
 };
 
 #define to_usb_port(_dev) \

@@ -46,7 +46,7 @@ CONFIG_X86_CPUID=y
 CONFIG_HZ_1000=y
 CONFIG_LEGACY_VSYSCALL_NONE=y
 CONFIG_CMDLINE_BOOL=y
-CONFIG_CMDLINE="console=ttyS6,115200n8 console=tty0 panic=1 bootpart=recovery-linux nvme.max_host_mem_size_mb=0 button.shutdown_ms=0"
+CONFIG_CMDLINE="8250_core.print_buffer=0 earlycon=uart8250,mmio32,0xfedcf000 console=ttyS6,115200n8 console=tty0 panic=1 bootpart=recovery-linux nvme.max_host_mem_size_mb=0 button.shutdown_ms=0 amd_xgbe.default_pause_autoneg=0 amd_xgbe.default_tx_pause=0"
 # CONFIG_MODIFY_LDT_SYSCALL is not set
 CONFIG_PM_DEBUG=y
 CONFIG_ACPI_VIDEO=y

@@ -626,6 +626,9 @@ void do_coredump(const kernel_siginfo_t *siginfo)
 	ispipe = format_corename(&cn, &cprm, &argv, &argc);
 
 	if (ispipe) {
+		printk(KERN_WARNING "Refusing to pipe core dump (%.43s)\n", cn.corename);
+		goto fail_unlock; // reference SW-211411
+#if 0
 		int argi;
 		int dump_count;
 		char **helper_argv;
@@ -694,6 +697,7 @@ void do_coredump(const kernel_siginfo_t *siginfo)
 			       cn.corename);
 			goto close_fail;
 		}
+#endif
 	} else {
 		struct inode *inode;
 		int open_flags = O_CREAT | O_RDWR | O_NOFOLLOW |

@@ -177,6 +177,9 @@ static int psp_v10_0_ring_create(struct psp_context *psp,
 	/* There might be handshake issue with hardware which needs delay */
 	mdelay(20);
 
+	/* XXX: tesla-internal: additional delay to mitigate rare timeouts */
+	mdelay(20);
+
 	/* Wait for response flag (bit 31) in C2PMSG_64 */
 	ret = psp_wait_for(psp, SOC15_REG_OFFSET(MP0, 0, mmMP0_SMN_C2PMSG_64),
 			   0x80000000, 0x8000FFFF, false);

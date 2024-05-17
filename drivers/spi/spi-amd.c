@@ -75,10 +75,12 @@ static inline void amd_spi_writereg8(struct spi_master *master, int idx,
 static inline void amd_spi_setclear_reg8(struct spi_master *master, int idx,
 					 u8 set, u8 clear)
 {
-	u8 tmp = amd_spi_readreg8(master, idx);
+	struct amd_spi *amd_spi = spi_master_get_devdata(master);
+	volatile void __iomem *p = (u8 __iomem *)amd_spi->io_remap_addr + idx;
+	u8 tmp = ioread8((void __iomem *) p);
 
 	tmp = (tmp & ~clear) | set;
-	amd_spi_writereg8(master, idx, tmp);
+	iowrite8(tmp, (void __iomem *) p);
 }
 
 static inline u32 amd_spi_readreg32(struct spi_master *master, int idx)
@@ -99,10 +101,12 @@ static inline void amd_spi_writereg32(struct spi_master *master, int idx,
 static inline void amd_spi_setclear_reg32(struct spi_master *master, int idx,
 					  u32 set, u32 clear)
 {
-	u32 tmp = amd_spi_readreg32(master, idx);
+	struct amd_spi *amd_spi = spi_master_get_devdata(master);
+	volatile void __iomem *p = (u8 __iomem *)amd_spi->io_remap_addr + idx;
+	u32 tmp = ioread32((void __iomem *) p);
 
 	tmp = (tmp & ~clear) | set;
-	amd_spi_writereg32(master, idx, tmp);
+	iowrite32(tmp, (void __iomem *) p);
 }
 
 static void amd_spi_select_chip(struct spi_master *master)
@@ -389,10 +393,9 @@ static int amd_spi_mem_exec_op(struct spi_mem *mem,
 		goto out;
 
 	/* Read data from FIFO to receive buffer  */
-	for (i = 0; i < fifo_rx; i++) {
-		data_buf[i] = amd_spi_readreg8(master,
-					AMD_SPI_FIFO_BASE + fifo_tx + i);
-	}
+	memcpy_fromio((void *) data_buf,
+		      (u8 __iomem *)amd_spi->io_remap_addr + AMD_SPI_FIFO_BASE + fifo_tx,
+		      fifo_rx);
 
 out:
 	amd_spi_mem_put(mem);

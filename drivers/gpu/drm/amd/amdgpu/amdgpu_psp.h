@@ -209,12 +209,6 @@ enum psp_memory_training_ops {
 struct psp_memory_training_context {
 	/*training data size*/
 	u64 train_data_size;
-	/*
-	 * sys_cache
-	 * cpu virtual address
-	 * system memory buffer that used to store the training data.
-	 */
-	void *sys_cache;
 
 	/*vram offset of the p2c training data*/
 	u64 p2c_train_data_offset;

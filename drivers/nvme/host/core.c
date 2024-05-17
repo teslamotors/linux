@@ -4085,6 +4085,14 @@ static void nvme_fw_act_work(struct work_struct *work)
 	nvme_get_fw_slot_info(ctrl);
 }
 
+static void nvme_unfreeze_work(struct work_struct *work)
+{
+	struct nvme_ctrl *ctrl = container_of(to_delayed_work(work),
+			struct nvme_ctrl, unfreeze_work);
+
+	nvme_do_unfreeze(ctrl);
+}
+
 static u32 nvme_aer_type(u32 result)
 {
 	return result & 0x7;

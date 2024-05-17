@@ -338,6 +338,16 @@ static ssize_t last_failed_step_show(struct kobject *kobj,
 }
 static struct kobj_attribute last_failed_step = __ATTR_RO(last_failed_step);
 
+static ssize_t last_time_suspend_end_show(struct kobject *kobj,
+		struct kobj_attribute *attr, char *buf)
+{
+	const struct timespec64 last_time_suspend_end_ts64 = ns_to_timespec64(dpm_get_last_time_suspend_end());
+	return sprintf(buf, "%lu.%02lu\n",
+			(unsigned long) last_time_suspend_end_ts64.tv_sec,
+			(last_time_suspend_end_ts64.tv_nsec / (NSEC_PER_SEC / 100)));;
+}
+static struct kobj_attribute last_time_suspend_end = __ATTR_RO(last_time_suspend_end);
+
 static struct attribute *suspend_attrs[] = {
 	&success.attr,
 	&fail.attr,
@@ -352,6 +362,7 @@ static struct attribute *suspend_attrs[] = {
 	&last_failed_dev.attr,
 	&last_failed_errno.attr,
 	&last_failed_step.attr,
+	&last_time_suspend_end.attr,
 	NULL,
 };
 
@@ -364,6 +375,7 @@ static struct attribute_group suspend_attr_group = {
 static int suspend_stats_show(struct seq_file *s, void *unused)
 {
 	int i, index, last_dev, last_errno, last_step;
+	struct timespec64 last_time_suspend_end_ts64;
 
 	last_dev = suspend_stats.last_failed_dev + REC_FAILED_NUM - 1;
 	last_dev %= REC_FAILED_NUM;
@@ -413,6 +425,10 @@ static int suspend_stats_show(struct seq_file *s, void *unused)
 			suspend_step_name(
 				suspend_stats.failed_steps[index]));
 	}
+	last_time_suspend_end_ts64 = ns_to_timespec64(dpm_get_last_time_suspend_end());
+	seq_printf(s, " last_time_suspend_end: %lu.%02lu\n",
+			(unsigned long) last_time_suspend_end_ts64.tv_sec,
+			(last_time_suspend_end_ts64.tv_nsec / (NSEC_PER_SEC / 100)));
 
 	return 0;
 }

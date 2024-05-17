@@ -35,6 +35,7 @@
 #include "amdgpu_display.h"
 #include "amdgpu_gem.h"
 #include <drm/amdgpu_drm.h>
+#include <drm/drm_drv.h>
 #include <linux/dma-buf.h>
 #include <linux/dma-fence-array.h>
 #include <linux/pm_runtime.h>
@@ -417,14 +418,18 @@ amdgpu_dma_buf_move_notify(struct dma_buf_attachment *attach)
 	struct ttm_operation_ctx ctx = { false, false };
 	struct ttm_placement placement = {};
 	struct amdgpu_vm_bo_base *bo_base;
-	int r;
+	int idx, r;
 
 	if (bo->tbo.mem.mem_type == TTM_PL_SYSTEM)
+		return;
+
+	if (!drm_dev_enter(adev_to_drm(adev), &idx))
 		return;
 
 	r = ttm_bo_validate(&bo->tbo, &placement, &ctx);
 	if (r) {
 		DRM_ERROR("Failed to invalidate DMA-buf import (%d))\n", r);
+		drm_dev_exit(idx);
 		return;
 	}
 
@@ -460,6 +465,7 @@ amdgpu_dma_buf_move_notify(struct dma_buf_attachment *attach)
 
 		dma_resv_unlock(resv);
 	}
+	drm_dev_exit(idx);
 }
 
 static const struct dma_buf_attach_ops amdgpu_dma_buf_attach_ops = {
@@ -481,6 +487,7 @@ struct drm_gem_object *amdgpu_gem_prime_import(struct drm_device *dev,
 {
 	struct dma_buf_attachment *attach;
 	struct drm_gem_object *obj;
+	int r;
 
 	if (dma_buf->ops == &amdgpu_dmabuf_ops) {
 		obj = dma_buf->priv;
@@ -494,18 +501,47 @@ struct drm_gem_object *amdgpu_gem_prime_import(struct drm_device *dev,
 		}
 	}
 
+	r = pm_runtime_resume_and_get(dev->dev);
+	if (r)
+		return ERR_PTR(r);
+
 	obj = amdgpu_dma_buf_create_obj(dev, dma_buf);
 	if (IS_ERR(obj))
 		return obj;
+	if (IS_ERR(obj)) {
+		r = PTR_ERR(obj);
+		goto err_pm;
+	}
 
 	attach = dma_buf_dynamic_attach(dma_buf, dev->dev,
 					&amdgpu_dma_buf_attach_ops, obj);
 	if (IS_ERR(attach)) {
-		drm_gem_object_put(obj);
-		return ERR_CAST(attach);
+		r = PTR_ERR(attach);
+		goto err_put;
 	}
 
 	get_dma_buf(dma_buf);
 	obj->import_attach = attach;
 	return obj;
+err_put:
+	drm_gem_object_put(obj);
+
+err_pm:
+	pm_runtime_put_autosuspend(dev->dev);
+	return ERR_PTR(r);
+}
+
+/**
+ * amdgpu_gem_prime_destroy - destroy an imported BO again
+ * @bo: the imported BO
+ *
+ * Make sure to cleanup the SG table, detach from the DMA-buf and drop the PM
+ * reference we grabbed.
+ */
+void amdgpu_gem_prime_destroy(struct amdgpu_bo *bo)
+{
+	struct amdgpu_device *adev = amdgpu_ttm_adev(bo->tbo.bdev);
+
+	drm_prime_gem_destroy(&bo->tbo.base, bo->tbo.sg);
+	pm_runtime_put_autosuspend(adev_to_drm(adev)->dev);
 }

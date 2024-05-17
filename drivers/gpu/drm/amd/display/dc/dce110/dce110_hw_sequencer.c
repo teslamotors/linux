@@ -2880,11 +2880,14 @@ bool dce110_set_backlight_level(struct pipe_ctx *pipe_ctx,
 	 */
 	uint32_t controller_id = pipe_ctx->stream_res.tg->inst + 1;
 
-	if (abm == NULL || panel_cntl == NULL || (abm->funcs->set_backlight_level_pwm == NULL))
-		return false;
-
 	if (dmcu)
 		fw_set_brightness = dmcu->funcs->is_dmcu_initialized(dmcu);
+
+	if (fw_set_brightness && (abm == NULL || (abm->funcs->set_backlight_level_pwm == NULL)))
+		return false;
+
+	if (!fw_set_brightness && panel_cntl == NULL)
+		return false;
 
 	if (!fw_set_brightness && panel_cntl->funcs->driver_set_backlight)
 		panel_cntl->funcs->driver_set_backlight(panel_cntl, backlight_pwm_u16_16);

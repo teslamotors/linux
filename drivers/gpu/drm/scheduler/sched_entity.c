@@ -23,6 +23,7 @@
 
 #include <linux/kthread.h>
 #include <linux/slab.h>
+#include <linux/completion.h>
 
 #include <drm/drm_print.h>
 #include <drm/gpu_scheduler.h>
@@ -78,6 +79,11 @@ int drm_sched_entity_init(struct drm_sched_entity *entity,
 		entity->rq = &entity->sched_list[0]->sched_rq[entity->priority];
 
 	entity->last_scheduled = NULL;
+
+	init_completion(&entity->entity_idle);
+
+	/* We start in an idle state. */
+	complete(&entity->entity_idle);
 
 	spin_lock_init(&entity->rq_lock);
 	spsc_queue_init(&entity->job_queue);
@@ -300,24 +306,17 @@ static void drm_sched_entity_kill_jobs(struct drm_sched_entity *entity)
  */
 void drm_sched_entity_fini(struct drm_sched_entity *entity)
 {
-	struct drm_gpu_scheduler *sched = NULL;
-
 	if (entity->rq) {
-		sched = entity->rq->sched;
 		drm_sched_rq_remove_entity(entity->rq, entity);
 	}
+
+	/* Make sure this entity is not used by the scheduler at the moment */
+	wait_for_completion(&entity->entity_idle);
 
 	/* Consumption of existing IBs wasn't completed. Forcefully
 	 * remove them here.
 	 */
 	if (spsc_queue_count(&entity->job_queue)) {
-		if (sched) {
-			/* Park the kernel for a moment to make sure it isn't processing
-			 * our enity.
-			 */
-			kthread_park(sched->thread);
-			kthread_unpark(sched->thread);
-		}
 		if (entity->dependency) {
 			dma_fence_remove_callback(entity->dependency,
 						  &entity->cb);

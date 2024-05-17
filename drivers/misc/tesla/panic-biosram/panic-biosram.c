@@ -12,6 +12,8 @@
 #include <linux/init.h>
 #include <linux/notifier.h>
 #include <linux/kdebug.h>
+#include <linux/sysfs.h>
+#include <linux/kobject.h>
 
 #define DRV_NAME	"panic-biosram"
 #define PFX		DRV_NAME ": "
@@ -25,6 +27,10 @@
 /* Magic marker at beginning of BIOSRAM region */
 static uint8_t biosram_panic_magic[] = { 0xf0, 0x0f, 'K', 'P' };
 
+/* Info about previous panic copied from BIOSRAM */
+static bool panic_present;
+static uint8_t panic_msg[BIOSRAM_KP_MSG_SIZE + 1];  // +1 to guarantee null termination
+
 static void __iomem *biosram_base = NULL;
 
 struct panic_save {
@@ -37,10 +43,70 @@ struct panic_save {
 
 static struct panic_save saved_info = { 0 };
 
-static inline void biosram_write8(int idx, uint8_t val)
+static inline void biosram_write8(size_t idx, uint8_t val)
 {
 	iowrite8(val, (uint8_t __iomem *) biosram_base + idx);
 }
+
+static inline uint8_t biosram_read8(size_t idx)
+{
+	return ioread8((uint8_t __iomem *) biosram_base + idx);
+}
+
+static bool panic_detected(void)
+{
+	size_t i;
+	for (i = 0; i < ARRAY_SIZE(biosram_panic_magic); i++) {
+		if (biosram_read8(i) != biosram_panic_magic[i]) {
+			return false;
+		}
+	}
+	
+	return true;
+}
+
+static inline void panic_msg_clear(void)
+{
+	biosram_write8(0, 0xaa);
+}
+
+static inline void panic_msg_copy(uint8_t* dst, size_t len)
+{
+	size_t i;
+
+	for (i = 0; i < min((size_t)BIOSRAM_KP_MSG_SIZE, len-1); i++)
+		dst[i] = biosram_read8(BIOSRAM_KP_MSG_OFS+i);
+
+	dst[i++] = '\0';
+}
+
+static ssize_t panic_present_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", panic_present);
+}
+
+static ssize_t panic_msg_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
+{
+	if (panic_present) {
+		return snprintf(buf, sizeof(panic_msg)+1, "%s\n", panic_msg);
+	}
+
+	return 0;
+}
+
+static struct kobj_attribute panic_present_attr = __ATTR_RO(panic_present);
+static struct kobj_attribute panic_msg_attr = __ATTR_RO(panic_msg);
+
+static struct attribute *attrs[] = {
+	&panic_present_attr.attr,
+	&panic_msg_attr.attr,
+	NULL,
+};
+
+static const struct attribute_group attr_group = {
+	.attrs = attrs,
+};
+
 
 static int die_biosram_notifier(struct notifier_block *nb,
 				unsigned long reason, void *arg)
@@ -63,7 +129,7 @@ static int die_biosram_notifier(struct notifier_block *nb,
 static int panic_biosram_notifier(struct notifier_block *nb,
 				  unsigned long code, void *msg)
 {
-	int i;
+	size_t i;
 	int n_written = 0;
 	char s[BIOSRAM_KP_MSG_SIZE];
 
@@ -125,6 +191,22 @@ static int panic_biosram_enable(const struct dmi_system_id *id)
 		goto err;
 	}
 
+
+	if (panic_detected()) {
+		panic_present = true;
+
+		panic_msg_copy(panic_msg, sizeof(panic_msg));
+
+		panic_msg_clear();
+
+		printk(KERN_INFO PFX "Kernel panic message detected: %s\n", panic_msg);
+	}
+
+	ret = sysfs_create_group(firmware_kobj, &attr_group);
+	if (ret) {
+		printk(KERN_ERR PFX "error %d creating sysfs group\n", ret);
+	}
+
 	printk(KERN_INFO PFX "successfully enabled");
 
 	return 0;
@@ -143,6 +225,7 @@ static void panic_biosram_disable(void)
 		(void) atomic_notifier_chain_unregister(&panic_notifier_list,
 			&panic_biosram_nb);
 		(void) unregister_die_notifier(&die_biosram_nb);
+		sysfs_remove_group(firmware_kobj, &attr_group);
 	}
 }
 

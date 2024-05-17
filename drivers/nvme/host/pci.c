@@ -2925,7 +2925,8 @@ static unsigned long check_vendor_combination_bug(struct pci_dev *pdev)
 		if ((dmi_match(DMI_BOARD_VENDOR, "LENOVO")) &&
 		     dmi_match(DMI_BOARD_NAME, "LNVNB161216"))
 			return NVME_QUIRK_SIMPLE_SUSPEND;
-	} else if ((dmi_match(DMI_PRODUCT_FAMILY, "Tesla_InfoZ"))) {
+	} else if (dmi_match(DMI_PRODUCT_FAMILY, "Tesla_InfoZ") &&
+		   !dmi_match(DMI_PRODUCT_SKU, "1960450")) {
 		/*
 		 * Power cycle NVMe controller during live resets on Tesla Infoz
 		 * Platform boards.

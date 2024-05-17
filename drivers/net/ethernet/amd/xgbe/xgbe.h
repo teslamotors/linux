@@ -726,6 +726,7 @@ struct xgbe_ext_stats {
 	u64 rx_vxlan_packets;
 	u64 rx_csum_errors;
 	u64 rx_vxlan_csum_errors;
+	u64 rx_missed_errors;
 };
 
 struct xgbe_hw_if {

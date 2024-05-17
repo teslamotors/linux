@@ -234,6 +234,10 @@ static void gmc_v10_0_flush_vm_hub(struct amdgpu_device *adev, uint32_t vmid,
 	hub_ip = (vmhub == AMDGPU_GFXHUB_0) ?
 		   GC_HWIP : MMHUB_HWIP;
 
+        /* Avoids registers access if device is physically gone */
+	if (!pci_device_is_present(adev->pdev))
+		return;
+
 	spin_lock(&adev->gmc.invalidate_lock);
 	/*
 	 * It may lose gpuvm invalidate acknowldege state across power-gating

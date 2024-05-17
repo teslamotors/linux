@@ -2649,18 +2649,8 @@ static int xgbe_phy_link_status(struct xgbe_prv_data *pdata, int *an_restart)
 	 */
 	reg = XMDIO_READ(pdata, MDIO_MMD_PCS, MDIO_STAT1);
 	reg = XMDIO_READ(pdata, MDIO_MMD_PCS, MDIO_STAT1);
-	if(phy_data->sfp_speed == XGBE_SFP_SPEED_10000) {
-		if ((reg & MDIO_STAT1_LSTATUS) && !(reg & MDIO_STAT1_FAULT)) {
-			return 1;
-		} else {
-			*an_restart = 1;
-			pdata->phy_if.phy_reset(pdata);
-			return 0;
-		}
-	} else {
-		if (reg & MDIO_STAT1_LSTATUS)
-			return 1;
-	}
+	if (reg & MDIO_STAT1_LSTATUS)
+		return 1;
 
 	if (pdata->phy.autoneg == AUTONEG_ENABLE &&
 	    phy_data->port_mode == XGBE_PORT_MODE_BACKPLANE) {

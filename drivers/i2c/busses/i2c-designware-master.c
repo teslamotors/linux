@@ -413,6 +413,18 @@ i2c_dw_read(struct dw_i2c_dev *dev)
 	}
 }
 
+static void i2c_dw_log_msg_err(struct dw_i2c_dev *dev, struct i2c_msg msgs[], int num)
+{
+	int i;
+	struct i2c_msg *msg = msgs;
+	for (i = 0; i < num; i++) {
+		dev_err_ratelimited(dev->dev,
+				    "idx=%d addr=0x%x flags=0x%04x len=0x%x\n",
+				    i, msg->addr, msg->flags, msg->len);
+		msg++;
+	}
+}
+
 /*
  * Prepare controller for a transaction and call i2c_dw_xfer_msg.
  */
@@ -456,6 +468,7 @@ i2c_dw_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int num)
 	/* Wait for tx to complete */
 	if (!wait_for_completion_timeout(&dev->cmd_complete, adap->timeout)) {
 		dev_err(dev->dev, "controller timed out\n");
+		i2c_dw_log_msg_err(dev, msgs, num);
 		/* i2c_dw_init implicitly disables the adapter */
 		i2c_recover_bus(&dev->adapter);
 		i2c_dw_init_master(dev);

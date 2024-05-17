@@ -140,10 +140,14 @@ void iommu_put_dma_cookie(struct iommu_domain *domain)
 
 	list_for_each_entry_safe(msi, tmp, &cookie->msi_page_list, list) {
 		list_del(&msi->list);
-		kfree(msi);
+		if(msi)
+			kfree(msi);
 	}
-	kfree(cookie);
-	domain->iova_cookie = NULL;
+	if (cookie)
+	{
+		kfree(cookie);
+		domain->iova_cookie = NULL;
+	}
 }
 EXPORT_SYMBOL(iommu_put_dma_cookie);
 

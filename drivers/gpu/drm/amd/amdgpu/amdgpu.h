@@ -109,6 +109,7 @@
 #include "amdgpu_gfxhub.h"
 #include "amdgpu_df.h"
 #include "amdgpu_smuio.h"
+#include "amdgpu_fdinfo.h"
 
 #define MAX_GPU_INSTANCE		16
 
@@ -236,6 +237,7 @@ extern int amdgpu_si_support;
 extern int amdgpu_cik_support;
 #endif
 extern int amdgpu_num_kcq;
+extern int amdgpu_force_pwm_bl;
 
 #define AMDGPU_VM_MAX_NUM_CTX			4096
 #define AMDGPU_SG_THRESHOLD			(256*1024*1024)
@@ -1112,11 +1114,24 @@ struct amdgpu_device {
 
 	bool                            no_hw_access;
 	struct pci_saved_state          *pci_state;
+	pci_channel_state_t		pci_channel_state;
 
         struct list_head                device_bo_list;
 	/* Track auto wait count on s_barrier settings */
 	bool				barrier_has_auto_waitcnt;
 	struct amdgpu_reset_control	*reset_cntl;
+
+	/* reset dump register */
+	uint32_t                        *reset_dump_reg_list;
+	uint32_t			*reset_dump_reg_value;
+	int                             num_regs;
+
+#ifdef CONFIG_DEV_COREDUMP
+	struct amdgpu_task_info         reset_task_info;
+	bool                            reset_vram_lost;
+	struct timespec64               reset_time;
+#endif
+
 };
 
 static inline struct amdgpu_device *drm_to_adev(struct drm_device *ddev)
@@ -1474,4 +1489,25 @@ static inline int amdgpu_in_reset(struct amdgpu_device *adev)
 {
 	return atomic_read(&adev->in_gpu_reset);
 }
+
+struct psp_mem_cache_cont {
+	DECLARE_HASHTABLE(cache, 4);
+	struct mutex lock;
+};
+
+/*
+ * sys_cache
+ * cpu virtual address
+ * system memory buffer that used to store the training data.
+ */
+
+struct sys_cache_entry {
+	struct hlist_node	node;
+	void 			*sys_cache;
+	unsigned int		bdf;
+};
+
+struct psp_mem_cache_cont* amdgpu_get_psp_mem_cache(void);
+
+
 #endif

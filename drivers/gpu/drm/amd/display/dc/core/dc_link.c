@@ -25,6 +25,7 @@
 
 #include <linux/slab.h>
 
+#include "amdgpu.h"
 #include "dm_services.h"
 #include "atomfirmware.h"
 #include "dm_helpers.h"
@@ -269,6 +270,24 @@ bool dc_link_detect_sink(struct dc_link *link, enum dc_connection_type *type)
 	dal_gpio_get_value(hpd_pin, &is_hpd_high);
 	dal_gpio_close(hpd_pin);
 	dal_gpio_destroy_irq(&hpd_pin);
+
+	switch (link->hpd_override) {
+	case HPD_OVERRIDE_STATE_FORCE_CONNECTED:
+		if (!is_hpd_high) {
+			pr_warn_ratelimited("ignored low HDMI HPD state, overriding as high\n");
+			is_hpd_high = 1;
+		}
+		break;
+	case HPD_OVERRIDE_STATE_FORCE_DISCONNECTED:
+		if (is_hpd_high) {
+			pr_warn_ratelimited("ignored high HDMI HPD state, overriding as low\n");
+			is_hpd_high = 0;
+		}
+		break;
+	case HPD_OVERRIDE_STATE_NONE:
+	default:
+		break;
+	}
 
 	if (is_hpd_high) {
 		*type = dc_connection_single;
@@ -1559,10 +1578,26 @@ static bool dc_link_construct(struct dc_link *link,
 	link->ddc_hw_inst =
 		dal_ddc_get_line(dal_ddc_service_get_ddc_pin(link->ddc));
 
+	link->sideband_pwm_control = false;
+
+	/* User wants to use BL controller without a eDP display. Attach the panel control
+	 * to the first connector.
+	 */
+	if (amdgpu_force_pwm_bl) {
+		WARN_ONCE((link->link_id.id == CONNECTOR_ID_EDP ||
+			   link->link_id.id == CONNECTOR_ID_LVDS),
+			  "Enabling sideband PWM control on embedded panel");
+
+		if (link->link_index == 0) {
+			pr_info("%s: Side band control enabled\n", __func__);
+			link->sideband_pwm_control = true;
+		}
+	}
 
 	if (link->dc->res_pool->funcs->panel_cntl_create &&
 		(link->link_id.id == CONNECTOR_ID_EDP ||
-			link->link_id.id == CONNECTOR_ID_LVDS)) {
+			link->link_id.id == CONNECTOR_ID_LVDS ||
+			link->sideband_pwm_control)) {
 		panel_cntl_init_data.ctx = dc_ctx;
 		panel_cntl_init_data.inst =
 			panel_cntl_init_data.ctx->dc_edp_id_count;
@@ -2695,7 +2730,8 @@ bool dc_link_set_backlight_level(const struct dc_link *link,
 	DC_LOG_BACKLIGHT("New Backlight level: %d (0x%X)\n",
 			backlight_pwm_u16_16, backlight_pwm_u16_16);
 
-	if (dc_is_embedded_signal(link->connector_signal)) {
+	if (dc_is_embedded_signal(link->connector_signal)
+	    || link->sideband_pwm_control) {
 		struct pipe_ctx *pipe_ctx = get_pipe_from_link(link);
 
 		if (pipe_ctx) {

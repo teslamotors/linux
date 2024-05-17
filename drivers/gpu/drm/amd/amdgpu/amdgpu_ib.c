@@ -26,6 +26,7 @@
  *          Jerome Glisse
  *          Christian König
  */
+#include <linux/kernel.h>
 #include <linux/seq_file.h>
 #include <linux/slab.h>
 
@@ -429,6 +430,12 @@ int amdgpu_ib_ring_tests(struct amdgpu_device *adev)
 		if (ring == &adev->gfx.gfx_ring[0]) {
 			/* oh, oh, that's really bad */
 			adev->accel_working = false;
+
+			if (adev->asic_type == CHIP_RAVEN) {
+				/* Tesla: panic on gfx IB test failure */
+				panic("Fatal iGPU error in amdgpu_ring_test_ib (%d)", r);
+			}
+
 			return r;
 
 		} else {

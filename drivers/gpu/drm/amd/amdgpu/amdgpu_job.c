@@ -50,10 +50,10 @@ static enum drm_gpu_sched_stat amdgpu_job_timedout(struct drm_sched_job *s_job)
 
 	memset(&ti, 0, sizeof(struct amdgpu_task_info));
 
-        if (drm_dev_is_unplugged(&adev->ddev)) {
-                DRM_INFO("ring %s timeout, but device unplugged, skipping.\n",
-                                          s_job->sched->name);
-                return DRM_GPU_SCHED_STAT_ENODEV;
+	if (drm_dev_is_unplugged(&adev->ddev)) {
+		DRM_INFO("ring %s timeout, but device unplugged, skipping.\n",
+			 s_job->sched->name);
+		return DRM_GPU_SCHED_STAT_ENODEV;
         }
 
 	if (amdgpu_gpu_recovery &&

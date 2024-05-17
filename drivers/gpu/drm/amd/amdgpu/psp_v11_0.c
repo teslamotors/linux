@@ -607,12 +607,32 @@ static int psp_v11_0_memory_training_send_msg(struct psp_context *psp, int msg)
 static int psp_v11_0_memory_training(struct psp_context *psp, uint32_t ops)
 {
 	struct psp_memory_training_context *ctx = &psp->mem_train_ctx;
-	uint32_t *pcache = (uint32_t *)ctx->sys_cache;
+	uint32_t *pcache = NULL;
 	struct amdgpu_device *adev = psp->adev;
 	uint32_t p2c_header[4];
 	uint32_t sz;
 	void *buf;
 	int ret, idx;
+	struct sys_cache_entry *e;
+	unsigned int key = adev->pdev->bus->number << 8 | adev->pdev->devfn;
+	bool found = false;
+
+	mutex_lock(&amdgpu_get_psp_mem_cache()->lock);
+	hash_for_each_possible(amdgpu_get_psp_mem_cache()->cache, e, node, key) {
+		if (unlikely(e->bdf != key))
+			continue;
+
+		found = true;
+		break;
+	}
+	mutex_unlock(&amdgpu_get_psp_mem_cache()->lock);
+
+	if (!found) {
+		DRM_ERROR("Can't find sys_cache_entry for key: %x", key);
+		return -ENOENT;
+	}
+
+	pcache = (uint32_t *)e->sys_cache;
 
 	if (ctx->init == PSP_MEM_TRAIN_NOT_SUPPORT) {
 		DRM_DEBUG("Memory training is not supported.\n");
@@ -706,11 +726,11 @@ static int psp_v11_0_memory_training(struct psp_context *psp, uint32_t ops)
 	}
 
 	if (ops & PSP_MEM_TRAIN_SAVE) {
-		amdgpu_device_vram_access(psp->adev, ctx->p2c_train_data_offset, ctx->sys_cache, ctx->train_data_size, false);
+		amdgpu_device_vram_access(psp->adev, ctx->p2c_train_data_offset, e->sys_cache, ctx->train_data_size, false);
 	}
 
 	if (ops & PSP_MEM_TRAIN_RESTORE) {
-		amdgpu_device_vram_access(psp->adev, ctx->c2p_train_data_offset, ctx->sys_cache, ctx->train_data_size, true);
+		amdgpu_device_vram_access(psp->adev, ctx->c2p_train_data_offset, e->sys_cache, ctx->train_data_size, true);
 	}
 
 	if (ops & PSP_MEM_TRAIN_SEND_SHORT_MSG) {

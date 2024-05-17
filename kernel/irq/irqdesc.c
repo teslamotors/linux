@@ -12,6 +12,7 @@
 #include <linux/export.h>
 #include <linux/interrupt.h>
 #include <linux/kernel_stat.h>
+#include <linux/kobject.h>
 #include <linux/radix-tree.h>
 #include <linux/bitmap.h>
 #include <linux/irqdomain.h>
@@ -23,6 +24,8 @@
  * lockdep: we want to handle all irq_desc locks as a single lock-class:
  */
 static struct lock_class_key irq_desc_lock_class;
+
+static struct kset *irq_desc_kset;
 
 #if defined(CONFIG_SMP)
 static int __init irq_affinity_setup(char *str)
@@ -286,6 +289,7 @@ static struct kobj_type irq_kobj_type = {
 static void irq_sysfs_add(int irq, struct irq_desc *desc)
 {
 	if (irq_kobj_base) {
+		desc->kobj.kset = irq_desc_kset;
 		/*
 		 * Continue even in case of failure as this is nothing
 		 * crucial and failures in the late irq_sysfs_init()
@@ -314,22 +318,33 @@ static int __init irq_sysfs_init(void)
 {
 	struct irq_desc *desc;
 	int irq;
+	int ret = 0;
 
 	/* Prevent concurrent irq alloc/free */
 	irq_lock_sparse();
 
 	irq_kobj_base = kobject_create_and_add("irq", kernel_kobj);
 	if (!irq_kobj_base) {
-		irq_unlock_sparse();
-		return -ENOMEM;
+		pr_debug("Could not create and add irq base kobject\n");
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	irq_desc_kset = kset_create_and_add("irq_desc", NULL, irq_kobj_base);
+	if (!irq_desc_kset) {
+		pr_debug("Could not create and add irq_desc kset\n");
+		kobject_put(irq_kobj_base);
+		ret = -ENOMEM;
+		goto out;
 	}
 
 	/* Add the already allocated interrupts */
 	for_each_irq_desc(irq, desc)
 		irq_sysfs_add(irq, desc);
-	irq_unlock_sparse();
 
-	return 0;
+out:
+	irq_unlock_sparse();
+	return ret;
 }
 postcore_initcall(irq_sysfs_init);
 

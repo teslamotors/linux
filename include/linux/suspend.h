@@ -8,6 +8,7 @@
 #include <linux/pm.h>
 #include <linux/mm.h>
 #include <linux/freezer.h>
+#include <linux/seqlock.h>
 #include <asm/errno.h>
 
 #ifdef CONFIG_VT
@@ -69,6 +70,9 @@ struct suspend_stats {
 	int	errno[REC_FAILED_NUM];
 	int	last_failed_step;
 	enum suspend_stat_step	failed_steps[REC_FAILED_NUM];
+
+	seqcount_t last_time_suspend_end_seq;
+	ktime_t last_time_suspend_end;
 };
 
 extern struct suspend_stats suspend_stats;
@@ -95,6 +99,9 @@ static inline void dpm_save_failed_step(enum suspend_stat_step step)
 	suspend_stats.last_failed_step++;
 	suspend_stats.last_failed_step %= REC_FAILED_NUM;
 }
+
+ktime_t dpm_get_last_time_suspend_end(void);
+void dpm_set_last_time_suspend_end(void);
 
 /**
  * struct platform_suspend_ops - Callbacks for managing platform dependent

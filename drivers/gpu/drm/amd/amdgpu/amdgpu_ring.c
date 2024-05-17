@@ -452,12 +452,19 @@ int amdgpu_ring_test_helper(struct amdgpu_ring *ring)
 	int r;
 
 	r = amdgpu_ring_test_ring(ring);
-	if (r)
+	if (r) {
 		DRM_DEV_ERROR(adev->dev, "ring %s test failed (%d)\n",
 			      ring->name, r);
-	else
+		if (adev->asic_type == CHIP_RAVEN) {
+			if (ring->funcs->type == AMDGPU_RING_TYPE_VCN_ENC) {
+				/* Known unrecoverable failure mode without reboot */
+				panic("Fatal iGPU ring %s test failure (%d)", ring->name, r);
+			}
+		}
+	} else {
 		DRM_DEV_DEBUG(adev->dev, "ring test on %s succeeded\n",
 			      ring->name);
+	}
 
 	ring->sched.ready = !r;
 	return r;

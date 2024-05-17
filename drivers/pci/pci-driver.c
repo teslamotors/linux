@@ -546,7 +546,7 @@ static void pci_pm_set_unknown_state(struct pci_dev *pci_dev)
  * Default "resume" method for devices that have no driver provided resume,
  * or not even a driver at all (second part).
  */
-static int pci_pm_reenable_device(struct pci_dev *pci_dev)
+int pci_pm_reenable_device(struct pci_dev *pci_dev)
 {
 	int retval;
 
@@ -561,6 +561,8 @@ static int pci_pm_reenable_device(struct pci_dev *pci_dev)
 
 	return retval;
 }
+
+EXPORT_SYMBOL(pci_pm_reenable_device);
 
 static int pci_legacy_suspend(struct device *dev, pm_message_t state)
 {
